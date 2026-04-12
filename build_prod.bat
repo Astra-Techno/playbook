@@ -1,32 +1,55 @@
 @echo off
 setlocal
+title KoCourt – Build & Push
 
-echo [1/3] Building Frontend...
+echo.
+echo ╔═════════════════════════════════════╗
+echo ║   KoCourt – Build and Push to Git  ║
+echo ╚═════════════════════════════════════╝
+echo.
+
+:: ── Step 1: Build Frontend ──────────────────────────────────────────────────
+echo [1/4] Building Vue frontend...
 cd frontend
-call npm install
+call npm install --silent
 call npm run build
 if %ERRORLEVEL% neq 0 (
-    echo Frontend build failed!
-    exit /b %ERRORLEVEL%
+    echo  ERROR: Frontend build failed!
+    pause & exit /b 1
 )
 cd ..
-
-echo [2/3] Preparing Deployment Package...
-if exist deploy_package rmdir /s /q deploy_package
-mkdir deploy_package
-
-echo [3/3] Copying files...
-xcopy /E /I backend deploy_package\backend
-xcopy /E /I frontend\dist deploy_package\public_html
-copy .htaccess deploy_package\public_html\
-
+echo  Done.
 echo.
-echo ========================================================
-echo Deployment Package Ready in: deploy_package/
+
+:: ── Step 2: Copy dist → public_html/ in repo ────────────────────────────────
+echo [2/4] Copying build output to public_html/...
+if exist public_html rmdir /s /q public_html
+mkdir public_html
+xcopy /E /I /Q frontend\dist\* public_html\
+echo  Done.
 echo.
-echo INSTRUCTIONS for kocourt.com:
-echo 1. Upload content of 'deploy_package/public_html/' to the ROOT of kourtcurt.com
-echo 2. Upload 'deploy_package/backend/' folder to kourtcurt.com/backend/
-echo 3. Update 'backend/.env' on the server with production DB credentials.
-echo ========================================================
+
+:: ── Step 3: Git add, commit, push ───────────────────────────────────────────
+echo [3/4] Committing and pushing to GitHub...
+git add public_html/ backend/ frontend/src/ .gitignore .htaccess deploy.php
+git commit -m "build: deploy $(date /t) $(time /t)"
+git push
+if %ERRORLEVEL% neq 0 (
+    echo  ERROR: Git push failed! Check your credentials.
+    pause & exit /b 1
+)
+echo  Done.
+echo.
+
+:: ── Step 4: Instructions ────────────────────────────────────────────────────
+echo [4/4] Build pushed to GitHub.
+echo.
+echo ╔══════════════════════════════════════════════════════════════╗
+echo ║  Now deploy to kocourt.com — open this URL in your browser: ║
+echo ║                                                              ║
+echo ║  https://kocourt.com/deploy.php?key=YOUR_DEPLOY_KEY         ║
+echo ║                                                              ║
+echo ║  (DEPLOY_KEY is set in backend/.env on the server)          ║
+echo ╚══════════════════════════════════════════════════════════════╝
+echo.
 pause

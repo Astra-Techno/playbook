@@ -10,6 +10,7 @@ vendor/
 # ── Build output ───────────────────────────────────────────────────────────────
 frontend/dist/
 deploy_package/
+# public_html/ is intentionally tracked — contains the built frontend for deployment
 
 # ── Uploads (user-generated content) ──────────────────────────────────────────
 backend/public/uploads/
