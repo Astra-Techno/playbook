@@ -1,0 +1,365 @@
+<?php
+
+// ── Error reporting (reads APP_DEBUG from .env) ───────────────────────────
+// Set APP_DEBUG=false in production .env to silence errors
+$_debugEnv = @file_get_contents(__DIR__ . '/.env') ?: '';
+$_debug    = !preg_match('/APP_DEBUG\s*=\s*false/i', $_debugEnv);
+
+if ($_debug) {
+    ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+} else {
+    ini_set('display_errors', 0);
+    error_reporting(0);
+}
+
+// Global exception handler — always returns JSON, never raw HTML
+set_exception_handler(function (Throwable $e) use ($_debug) {
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=UTF-8');
+    }
+    $payload = ['status' => 'error', 'message' => $e->getMessage()];
+    if ($_debug) {
+        $payload['exception'] = get_class($e);
+        $payload['file']      = str_replace(__DIR__, '', $e->getFile());
+        $payload['line']      = $e->getLine();
+        $payload['trace']     = array_map(
+            function ($f) {
+                return (isset($f['file']) ? str_replace(__DIR__, '', $f['file']) : '') .
+                       (isset($f['line']) ? ':' . $f['line'] : '') . ' ' .
+                       (isset($f['class']) ? $f['class'] . '::' : '') .
+                       (isset($f['function']) ? $f['function'] : '');
+            },
+            array_slice($e->getTrace(), 0, 8)
+        );
+    }
+    echo json_encode($payload);
+    exit();
+});
+
+// Convert fatal PHP errors to exceptions so they get caught above
+register_shutdown_function(function () use ($_debug) {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        if (!headers_sent()) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=UTF-8');
+        }
+        $payload = ['status' => 'error', 'message' => 'Fatal error: ' . $err['message']];
+        if ($_debug) {
+            $payload['file'] = str_replace(__DIR__, '', $err['file']);
+            $payload['line'] = $err['line'];
+        }
+        echo json_encode($payload);
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+header("Access-Control-Allow-Origin: *");
+header("Content-Type: application/json; charset=UTF-8");
+header("Access-Control-Allow-Methods: OPTIONS,GET,POST,PUT,DELETE");
+header("Access-Control-Max-Age: 3600");
+header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    http_response_code(200);
+    exit();
+}
+
+require_once __DIR__ . '/config/database.php';
+
+$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+// Strip the script's directory prefix (e.g. /backend)
+$base_dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+if ($base_dir !== '' && strpos($uri, $base_dir) === 0) {
+    $uri = substr($uri, strlen($base_dir));
+}
+
+// Also strip /api prefix — requests routed via root .htaccess RewriteRule ^api/(.*)$
+// keep REQUEST_URI as /api/... so we need to remove that prefix here
+if (strpos($uri, '/api/') === 0) {
+    $uri = substr($uri, 4);
+} elseif ($uri === '/api') {
+    $uri = '/';
+}
+
+// Split into segments; $seg[0] = first path part (e.g. 'auth', 'courts')
+$seg = array_values(array_filter(explode('/', $uri), 'strlen'));
+
+// Test / DB status endpoint
+if (isset($seg[0]) && $seg[0] === 'test') {
+    $start = microtime(true);
+    try {
+        $db = Database::getConnection();
+
+        // MySQL version
+        $version = $db->query("SELECT VERSION() AS v")->fetchColumn();
+
+        // Ping latency
+        $db->query("SELECT 1");
+        $latency = round((microtime(true) - $start) * 1000, 2);
+
+        // Tables in current DB
+        $tables = $db->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+
+        // Row counts per table
+        $counts = [];
+        foreach ($tables as $t) {
+            $counts[$t] = (int)$db->query("SELECT COUNT(*) FROM `$t`")->fetchColumn();
+        }
+
+        echo json_encode([
+            "status"       => "ok",
+            "message"      => "Database connected successfully",
+            "host"         => getenv('DB_HOST') ?: 'localhost',
+            "port"         => getenv('DB_PORT') ?: '3306',
+            "database"     => getenv('DB_NAME') ?: 'playbook',
+            "mysql_version"=> $version,
+            "latency_ms"   => $latency,
+            "tables"       => $counts,
+            "php_version"  => PHP_VERSION,
+            "server_time"  => date('Y-m-d H:i:s'),
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            "status"  => "error",
+            "message" => $e->getMessage(),
+            "host"    => getenv('DB_HOST') ?: 'localhost',
+            "port"    => getenv('DB_PORT') ?: '3306',
+        ]);
+    }
+    exit();
+}
+
+// Upload Route
+if (isset($seg[0]) && $seg[0] === 'upload') {
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $file = $_FILES['image'] ?? null;
+        if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
+            http_response_code(400);
+            echo json_encode(['message' => 'No file or upload error.']);
+            exit();
+        }
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime  = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        $allowed = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+        if (!array_key_exists($mime, $allowed)) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Invalid file type. JPG, PNG, WebP only.']);
+            exit();
+        }
+        if ($file['size'] > 5 * 1024 * 1024) {
+            http_response_code(400);
+            echo json_encode(['message' => 'File too large. Max 5 MB.']);
+            exit();
+        }
+        $uploads_dir = __DIR__ . '/uploads/';
+        if (!is_dir($uploads_dir)) {
+            mkdir($uploads_dir, 0755, true);
+        }
+        $filename = 'court_' . bin2hex(random_bytes(8)) . '.' . $allowed[$mime];
+        if (move_uploaded_file($file['tmp_name'], $uploads_dir . $filename)) {
+            $protocol   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $script_dir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+            $url = $protocol . '://' . $_SERVER['HTTP_HOST'] . $script_dir . '/uploads/' . $filename;
+            http_response_code(200);
+            echo json_encode(['url' => $url]);
+        } else {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to save file.']);
+        }
+    } else {
+        http_response_code(405);
+        echo json_encode(['message' => 'Method not allowed.']);
+    }
+    exit();
+}
+
+// Payment Routes
+if (isset($seg[0]) && $seg[0] === 'payments') {
+    require_once __DIR__ . '/src/Controllers/PaymentController.php';
+    $paymentController = new PaymentController();
+
+    if (isset($seg[1]) && $seg[1] === 'create-order' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $paymentController->createOrder();
+        exit();
+    }
+    if (isset($seg[1]) && $seg[1] === 'verify' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $paymentController->verify();
+        exit();
+    }
+    http_response_code(404);
+    echo json_encode(['message' => 'Payment endpoint not found']);
+    exit();
+}
+
+// Auth Routes
+if (isset($seg[0]) && $seg[0] === 'auth') {
+    require_once __DIR__ . '/src/Controllers/AuthController.php';
+    $authController = new AuthController();
+
+    if (isset($seg[1]) && $seg[1] === 'send-otp' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $authController->sendOtp(); exit();
+    }
+    if (isset($seg[1]) && $seg[1] === 'check-phone' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $authController->checkPhone(); exit();
+    }
+    if (isset($seg[1]) && $seg[1] === 'verify-otp' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $authController->verifyOtp(); exit();
+    }
+    if (isset($seg[1]) && $seg[1] === 'profile' && $_SERVER['REQUEST_METHOD'] === 'PUT') {
+        $authController->updateProfile(); exit();
+    }
+}
+
+// Court Routes
+if (isset($seg[0]) && $seg[0] === 'courts') {
+    require_once __DIR__ . '/src/Controllers/CourtController.php';
+    $courtController = new CourtController();
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') { $courtController->index(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { $courtController->create(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT'    && isset($seg[1])) { $courtController->update((int)$seg[1]); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { $courtController->delete((int)$seg[1]); exit(); }
+}
+
+// Plan Routes
+if (isset($seg[0]) && $seg[0] === 'plans') {
+    require_once __DIR__ . '/src/Controllers/PlanController.php';
+    $planController = new PlanController();
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        $planController->index();
+        exit();
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $planController->create();
+        exit();
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) {
+        $planController->delete((int)$seg[1]);
+        exit();
+    }
+}
+
+// Subscription Routes
+if (isset($seg[0]) && $seg[0] === 'subscriptions') {
+    require_once __DIR__ . '/src/Controllers/SubscriptionController.php';
+    $subController = new SubscriptionController();
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') { $subController->index(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($seg[1])) { $subController->create(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'cancel') {
+        $subController->cancel((int)$seg[1]); exit();
+    }
+}
+
+// Notifications Route — GET /notifications?user_id=X
+if (isset($seg[0]) && $seg[0] === 'notifications' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $user_id = (int)($_GET['user_id'] ?? 0);
+    if (!$user_id) { http_response_code(400); echo json_encode(['message' => 'user_id required']); exit(); }
+    $db   = Database::getConnection();
+    $stmt = $db->prepare(
+        "SELECT us.id, us.end_date, us.status, p.name AS plan_name, c.id AS court_id, c.name AS court_name
+         FROM user_subscriptions us
+         JOIN plans p  ON us.plan_id  = p.id
+         JOIN courts c ON us.court_id = c.id
+         WHERE us.user_id = ? AND us.status = 'active'
+           AND us.end_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)
+         ORDER BY us.end_date ASC"
+    );
+    $stmt->execute([$user_id]);
+    $expiring = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    echo json_encode(['expiring_soon' => $expiring, 'count' => count($expiring)]);
+    exit();
+}
+
+// Booking Routes
+if (isset($seg[0]) && $seg[0] === 'bookings') {
+    require_once __DIR__ . '/src/Controllers/BookingController.php';
+    $bookingController = new BookingController();
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') { $bookingController->index(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { $bookingController->create(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) {
+        $bookingController->cancel((int)$seg[1]);
+        exit();
+    }
+}
+
+// Earnings Routes
+if (isset($seg[0]) && $seg[0] === 'earnings') {
+    require_once __DIR__ . '/src/Controllers/EarningsController.php';
+    $earningsController = new EarningsController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'ledger') {
+        $earningsController->ledger(); exit();
+    }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') { $earningsController->index(); exit(); }
+}
+
+// Payouts Routes (admin records manual transfers)
+if (isset($seg[0]) && $seg[0] === 'payouts') {
+    require_once __DIR__ . '/src/Controllers/EarningsController.php';
+    $earningsController = new EarningsController();
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { $earningsController->createPayout(); exit(); }
+}
+
+// Review Routes
+if (isset($seg[0]) && $seg[0] === 'reviews') {
+    require_once __DIR__ . '/src/Controllers/ReviewController.php';
+    $reviewController = new ReviewController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET')  { $reviewController->index();  exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { $reviewController->create(); exit(); }
+}
+
+// Favorites Routes
+if (isset($seg[0]) && $seg[0] === 'favorites') {
+    require_once __DIR__ . '/src/Controllers/FavoriteController.php';
+    $favController = new FavoriteController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET')  { $favController->index();  exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { $favController->toggle(); exit(); }
+}
+
+// Posts Routes
+if (isset($seg[0]) && $seg[0] === 'posts') {
+    require_once __DIR__ . '/src/Controllers/PostController.php';
+    $postController = new PostController();
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && !isset($seg[1])) { $postController->index(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1])) { $postController->show((int)$seg[1]); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST'  && !isset($seg[1])) { $postController->create(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { $postController->delete((int)$seg[1]); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST'  && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'like') {
+        $postController->like((int)$seg[1]); exit();
+    }
+}
+
+// Tag Search — GET /tag-search?q=&type=users|courts|all
+if (isset($seg[0]) && $seg[0] === 'tag-search' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $q    = '%' . trim($_GET['q'] ?? '') . '%';
+    $type = $_GET['type'] ?? 'all';
+    $db   = Database::getConnection();
+    $out  = [];
+    if ($type === 'users' || $type === 'all') {
+        $s = $db->prepare("SELECT id, name, avatar_url, 'user' AS kind FROM users WHERE name LIKE ? LIMIT 6");
+        $s->execute([$q]);
+        $out = array_merge($out, $s->fetchAll(PDO::FETCH_ASSOC));
+    }
+    if ($type === 'courts' || $type === 'all') {
+        $s = $db->prepare("SELECT id, name, type AS subtype, image_url, 'court' AS kind FROM courts WHERE name LIKE ? LIMIT 6");
+        $s->execute([$q]);
+        $out = array_merge($out, $s->fetchAll(PDO::FETCH_ASSOC));
+    }
+    echo json_encode(['results' => $out]);
+    exit();
+}
+
+echo json_encode(["message" => "Welcome to Playbook API"]);

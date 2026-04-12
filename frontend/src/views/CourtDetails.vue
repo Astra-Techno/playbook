@@ -1,0 +1,910 @@
+<script setup>
+import { ref, onMounted, watch, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import axios from 'axios'
+import { useAuthStore } from '../stores/auth'
+import { useToastStore } from '../stores/toast'
+import {
+    ChevronLeft, MapPin, Star, Clock,
+    Calendar, CheckCircle2, XCircle, Info,
+    Wind, Flag, Target, Activity, CircleDot, Layers3, Dumbbell, Waves, Swords,
+    Share2, Heart, Lock, Sun, Moon, Crown, Infinity, BadgeCheck
+} from 'lucide-vue-next'
+
+const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
+const toast = useToastStore()
+
+const court = ref(null)
+const plans = ref([])
+const activeTab = ref('booking')
+const loading = ref(true)
+const bookingLoading = ref(false)
+const subscribeLoading = ref(null)  // holds plan_id being subscribed
+
+const selectedDate = ref('')
+const selectedSlot = ref(null)
+const bookedSlots = ref([])
+const activeSub = ref(null)     // user's active subscription for this court
+const lockedSlotPeak = ref(null) // 'morning' | 'evening' when user taps a locked slot
+const reviews = ref([])
+const avgRating = ref(null)
+const reviewCount = ref(0)
+const isFavorited = ref(false)
+const favLoading = ref(false)
+
+// Review form
+const showReviewForm  = ref(false)
+const reviewRating    = ref(0)
+const hoverRating     = ref(0)
+const reviewComment   = ref('')
+const reviewSubmitting = ref(false)
+const userPastBooking = ref(null)   // past booking_id for this court
+const alreadyReviewed = ref(false)
+
+// 14-day date options
+const today = new Date()
+const dateOptions = Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(today)
+    d.setDate(today.getDate() + i)
+    const value = d.toISOString().slice(0, 10)
+    return {
+        value,
+        day: d.getDate(),
+        weekday: d.toLocaleDateString('en-IN', { weekday: 'short' }),
+        isToday: i === 0,
+        isTomorrow: i === 1,
+    }
+})
+
+// Build slot list based on court operating hours
+const TIME_SLOTS = computed(() => {
+    const openH  = court.value ? parseInt((court.value.open_time  || '06:00').split(':')[0]) : 6
+    const closeH = court.value ? parseInt((court.value.close_time || '22:00').split(':')[0]) : 22
+    return Array.from({ length: closeH - openH }, (_, i) => {
+        const hour = openH + i
+        const h12  = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour)
+        const ampm = hour >= 12 ? 'PM' : 'AM'
+        return {
+            hour,
+            label: `${h12}:00 ${ampm}`,
+            short: `${h12}${ampm}`,
+            pad:   String(hour).padStart(2, '0') + ':00',
+        }
+    })
+})
+
+// ── Peak hour helpers ─────────────────────────────────────────────────────────
+
+const slotPeakType = (slot) => {
+    if (!court.value) return null
+    const time = slot.pad + ':00'
+    const mps  = court.value.morning_peak_start || '05:00:00'
+    const mpe  = court.value.morning_peak_end   || '09:00:00'
+    const eps  = court.value.evening_peak_start || '17:00:00'
+    const epe  = court.value.evening_peak_end   || '21:00:00'
+    if (time >= mps && time < mpe) return 'morning'
+    if (time >= eps && time < epe) return 'evening'
+    return null
+}
+
+const subCoversSlot = (subSlotType, peakType) => {
+    if (!subSlotType) return false
+    if (subSlotType === 'unlimited' || subSlotType === 'full_day') return true
+    return subSlotType === peakType
+}
+
+const isPeakLocked = (slot) => {
+    if (!court.value?.peak_members_only) return false
+    const pt = slotPeakType(slot)
+    if (!pt) return false
+    return !subCoversSlot(activeSub.value?.slot_type, pt)
+}
+
+// ── Slot state ────────────────────────────────────────────────────────────────
+
+const isBooked = (slot) => {
+    const s = `${selectedDate.value} ${slot.pad}:00`
+    const e = new Date(new Date(`${selectedDate.value}T${slot.pad}:00`).getTime() + 3600000)
+        .toISOString().slice(0, 19).replace('T', ' ')
+    return bookedSlots.value.some(b => s < b.end_time && e > b.start_time)
+}
+
+const slotState = (slot) => {
+    if (!selectedDate.value) return 'idle'
+    if (isBooked(slot)) return 'booked'
+    if (selectedSlot.value?.hour === slot.hour) return 'selected'
+    if (isPeakLocked(slot)) {
+        return slotPeakType(slot) === 'morning' ? 'peak_morning' : 'peak_evening'
+    }
+    return 'free'
+}
+
+// ── Sport metadata ────────────────────────────────────────────────────────────
+
+const sportInfo = {
+    shuttle:  { label: 'Badminton',   cls: 'bg-blue-100 text-blue-700',    icon: Wind     },
+    turf:     { label: 'Football',    cls: 'bg-green-100 text-green-700',   icon: Flag     },
+    gym:      { label: 'Gym',         cls: 'bg-violet-100 text-violet-700', icon: Dumbbell },
+    cricket:  { label: 'Cricket',     cls: 'bg-orange-100 text-orange-700', icon: Target   },
+    tennis:   { label: 'Tennis',      cls: 'bg-yellow-100 text-yellow-700', icon: Activity },
+    swimming: { label: 'Swimming',    cls: 'bg-cyan-100 text-cyan-700',     icon: Waves    },
+    boxing:   { label: 'Boxing',      cls: 'bg-red-100 text-red-700',       icon: Swords   },
+    basket:   { label: 'Basketball',  cls: 'bg-rose-100 text-rose-700',     icon: CircleDot},
+    other:    { label: 'Other',       cls: 'bg-slate-100 text-slate-700',   icon: Layers3  },
+}
+const getSport = (t) => sportInfo[t] || sportInfo.other
+
+const sportImages = {
+    shuttle:  'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=600&q=80',
+    turf:     'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=600&q=80',
+    gym:      'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&q=80',
+    cricket:  'https://images.unsplash.com/photo-1540747913346-19212a4b8277?w=600&q=80',
+    tennis:   'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=600&q=80',
+    basket:   'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=600&q=80',
+    swimming: 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?w=600&q=80',
+    boxing:   'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=600&q=80',
+}
+const heroImg = computed(() =>
+    court.value?.image_url || sportImages[court.value?.type] || sportImages.turf
+)
+
+const price = computed(() => court.value ? parseFloat(court.value.hourly_rate) : 0)
+
+// Computed slot groups for clean template rendering
+const morningPeakSlots = computed(() => TIME_SLOTS.value.filter(s => slotPeakType(s) === 'morning'))
+const eveningPeakSlots = computed(() => TIME_SLOTS.value.filter(s => slotPeakType(s) === 'evening'))
+const offPeakSlots     = computed(() => TIME_SLOTS.value.filter(s => slotPeakType(s) === null))
+
+// Plan slot display
+const slotMeta = {
+    morning:   { label: 'Morning',   icon: Sun,      cls: 'bg-amber-100 text-amber-700' },
+    evening:   { label: 'Evening',   icon: Moon,     cls: 'bg-indigo-100 text-indigo-700' },
+    full_day:  { label: 'Full Day',  icon: BadgeCheck,cls: 'bg-primary-light text-primary' },
+    unlimited: { label: 'Unlimited', icon: Infinity, cls: 'bg-slate-100 text-slate-600' },
+}
+
+// Which plans are relevant for the locked slot type (to highlight on membership tab)
+const recommendedPlanIds = computed(() => {
+    if (!lockedSlotPeak.value || !plans.value.length) return []
+    return plans.value
+        .filter(p => {
+            const st = p.slot_type || 'unlimited'
+            return st === 'unlimited' || st === 'full_day' || st === lockedSlotPeak.value
+        })
+        .map(p => p.id)
+})
+
+// ── Data fetching ─────────────────────────────────────────────────────────────
+
+onMounted(async () => {
+    try {
+        const res = await axios.get('/courts')
+        court.value = (res.data.records || []).find(c => c.id == route.params.id) || null
+        if (court.value) {
+            const [plansRes, reviewsRes] = await Promise.all([
+                axios.get(`/plans?court_id=${court.value.id}`),
+                axios.get(`/reviews?court_id=${court.value.id}`),
+            ])
+            plans.value = plansRes.data.records || []
+            reviews.value = reviewsRes.data.records || []
+            avgRating.value = reviewsRes.data.avg_rating || null
+            reviewCount.value = reviewsRes.data.count || 0
+
+            // Check user's active subscription + favorites + past bookings
+            if (auth.isLoggedIn) {
+                try {
+                    const [subRes, favRes, bkRes] = await Promise.all([
+                        axios.get(`/subscriptions?user_id=${auth.user?.id}&court_id=${court.value.id}`),
+                        axios.get(`/favorites?user_id=${auth.user?.id}`),
+                        axios.get(`/bookings?user_id=${auth.user?.id}`),
+                    ])
+                    activeSub.value   = subRes.data.active || null
+                    isFavorited.value = (favRes.data.ids || []).includes(court.value.id)
+                    // Find a past booking for this court
+                    const now = new Date()
+                    const past = (bkRes.data.records || []).find(b =>
+                        b.court_id == court.value.id && new Date(b.start_time) <= now
+                    )
+                    userPastBooking.value = past || null
+                    // Check if user already left a review
+                    alreadyReviewed.value = reviews.value.some(r => r.user_name === auth.user?.name)
+                } catch { activeSub.value = null }
+            }
+        }
+    } catch { court.value = null }
+    finally { loading.value = false }
+})
+
+watch(selectedDate, async (date) => {
+    selectedSlot.value = null
+    lockedSlotPeak.value = null
+    bookedSlots.value = []
+    if (date && court.value) {
+        try {
+            const r = await axios.get(`/bookings?court_id=${court.value.id}&date=${date}`)
+            bookedSlots.value = r.data.records || []
+        } catch { bookedSlots.value = [] }
+    }
+})
+
+// ── Reviews ───────────────────────────────────────────────────────────────────
+
+const submitReview = async () => {
+    if (!reviewRating.value) { toast.error('Please select a rating'); return }
+    reviewSubmitting.value = true
+    try {
+        await axios.post('/reviews', {
+            court_id:   court.value.id,
+            user_id:    auth.user.id,
+            booking_id: userPastBooking.value.id,
+            rating:     reviewRating.value,
+            comment:    reviewComment.value.trim(),
+        })
+        toast.success('Review submitted!')
+        // Refresh reviews
+        const res = await axios.get(`/reviews?court_id=${court.value.id}`)
+        reviews.value     = res.data.records || []
+        avgRating.value   = res.data.avg_rating || null
+        reviewCount.value = res.data.count || 0
+        alreadyReviewed.value = true
+        showReviewForm.value  = false
+        reviewRating.value    = 0
+        reviewComment.value   = ''
+    } catch (e) {
+        const msg = e.response?.data?.message || 'Could not submit review'
+        toast.error(msg)
+        if (e.response?.status === 409) alreadyReviewed.value = true
+    } finally {
+        reviewSubmitting.value = false
+    }
+}
+
+// ── Favorites ─────────────────────────────────────────────────────────────────
+
+const toggleFavorite = async () => {
+    if (!auth.isLoggedIn) { router.push('/login'); return }
+    favLoading.value = true
+    try {
+        const res = await axios.post('/favorites', { user_id: auth.user?.id, court_id: court.value.id })
+        isFavorited.value = res.data.favorited
+        toast.success(isFavorited.value ? 'Added to saved!' : 'Removed from saved')
+    } catch { toast.error('Could not update favorites') }
+    finally { favLoading.value = false }
+}
+
+// ── Cashfree helpers ──────────────────────────────────────────────────────────
+
+const loadCashfreeScript = () =>
+    new Promise((resolve) => {
+        if (window.Cashfree) { resolve(true); return }
+        const s = document.createElement('script')
+        s.src     = 'https://sdk.cashfree.com/js/v3/cashfree.js'
+        s.onload  = () => resolve(true)
+        s.onerror = () => resolve(false)
+        document.head.appendChild(s)
+    })
+
+/**
+ * Create a Cashfree order, open the checkout modal, then call onSuccess.
+ * @param {number}   amount    - amount in ₹
+ * @param {string}   type      - 'booking' | 'subscription'
+ * @param {object}   payload   - stored in DB for the verify step
+ * @param {Function} onSuccess - called with { order_id } after payment succeeds
+ */
+const openCashfree = async (amount, type, payload, onSuccess) => {
+    // 1. Create order on our backend
+    let orderData
+    try {
+        const res = await axios.post('/payments/create-order', {
+            user_id: auth.user?.id, amount, type, payload,
+        })
+        orderData = res.data
+    } catch {
+        toast.error('Could not initiate payment. Try again.')
+        return
+    }
+
+    // 2a. Demo mode — Cashfree not configured, skip payment UI
+    if (orderData.demo) {
+        toast.info(`Demo mode — ₹${amount} payment simulated`)
+        await onSuccess({ order_id: orderData.order_id })
+        return
+    }
+
+    // 2b. Real Cashfree checkout
+    const loaded = await loadCashfreeScript()
+    if (!loaded) { toast.error('Payment gateway unavailable. Check your internet.'); return }
+
+    const cashfree = window.Cashfree({ mode: orderData.env })
+
+    cashfree.checkout({
+        paymentSessionId: orderData.payment_session_id,
+        redirectTarget:   '_modal',
+    }).then(async (result) => {
+        if (result.error) {
+            toast.error(result.error.message || 'Payment failed or cancelled')
+            return
+        }
+        if (result.paymentDetails || result.redirect) {
+            await onSuccess({ order_id: orderData.order_id })
+        }
+    }).catch(() => {
+        toast.error('Payment window closed')
+    })
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+
+const handleSlotClick = (slot) => {
+    const state = slotState(slot)
+    if (state === 'booked') return
+
+    if (state === 'peak_morning' || state === 'peak_evening') {
+        const pt = slotPeakType(slot)
+        lockedSlotPeak.value = pt
+        // Switch to membership tab to show subscribe options
+        activeTab.value = 'membership'
+        toast.error(`${pt === 'morning' ? 'Morning' : 'Evening'} peak is members only. Subscribe below!`)
+        return
+    }
+
+    lockedSlotPeak.value = null
+    selectedSlot.value = selectedSlot.value?.hour === slot.hour ? null : slot
+}
+
+const confirmBooking = async () => {
+    if (!selectedDate.value || !selectedSlot.value) { toast.error('Choose a date and time slot'); return }
+    if (!auth.isLoggedIn) { router.push('/login'); return }
+
+    const start = `${selectedDate.value} ${selectedSlot.value.pad}:00`
+    const end   = new Date(new Date(`${selectedDate.value}T${selectedSlot.value.pad}:00`).getTime() + 3600000)
+        .toISOString().slice(0, 19).replace('T', ' ')
+
+    bookingLoading.value = true
+
+    await openCashfree(
+        price.value,
+        'booking',
+        {
+            user_id: auth.user?.id, court_id: court.value.id,
+            start_time: start, end_time: end, type: 'hourly', total_price: price.value,
+        },
+        async ({ order_id }) => {
+            try {
+                await axios.post('/payments/verify', { order_id })
+                toast.success('Booking confirmed!')
+                router.push('/bookings')
+            } catch (err) {
+                if (err.response?.status === 409) {
+                    toast.error('Slot just taken — pick another')
+                    const r = await axios.get(`/bookings?court_id=${court.value.id}&date=${selectedDate.value}`)
+                    bookedSlots.value = r.data.records || []
+                    selectedSlot.value = null
+                } else {
+                    toast.error(err.response?.data?.message || 'Booking failed after payment')
+                }
+            } finally { bookingLoading.value = false }
+        }
+    )
+
+    bookingLoading.value = false
+}
+
+const subscribePlan = async (plan) => {
+    if (!auth.isLoggedIn) { router.push('/login'); return }
+    subscribeLoading.value = plan.id
+
+    await openCashfree(
+        parseFloat(plan.price),
+        'subscription',
+        {
+            user_id:       auth.user?.id,
+            plan_id:       plan.id,
+            court_id:      court.value.id,
+            slot_type:     plan.slot_type || 'unlimited',
+            duration_days: plan.duration_days,
+        },
+        async ({ order_id }) => {
+            try {
+                await axios.post('/payments/verify', { order_id })
+                toast.success(`Subscribed to ${plan.name}!`)
+                const subRes = await axios.get(`/subscriptions?user_id=${auth.user?.id}&court_id=${court.value.id}`)
+                activeSub.value = subRes.data.active || null
+                lockedSlotPeak.value = null
+                activeTab.value = 'booking'
+            } catch (err) {
+                toast.error(err.response?.data?.message || 'Subscription failed after payment')
+            } finally { subscribeLoading.value = null }
+        }
+    )
+
+    subscribeLoading.value = null
+}
+</script>
+
+<template>
+    <div class="min-h-full bg-slate-50">
+
+        <!-- Dynamic Header Subject -->
+        <Teleport v-if="court" to="#header-subject">
+            {{ court.name }}
+        </Teleport>
+
+        <!-- Loading -->
+        <div v-if="loading" class="flex items-center justify-center h-64">
+            <div class="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+        </div>
+
+        <!-- Not found -->
+        <div v-else-if="!court" class="flex flex-col items-center justify-center py-24 gap-3">
+            <XCircle :size="48" class="text-slate-300" />
+            <p class="text-slate-500 font-medium">Court not found</p>
+            <button @click="router.push('/')" class="mt-2 bg-primary text-white font-semibold px-6 py-2.5 rounded-xl">
+                Go Home
+            </button>
+        </div>
+
+        <template v-else>
+            <!-- Hero Image -->
+            <div class="relative h-60 bg-slate-200">
+                <img :src="heroImg" :alt="court.name" class="w-full h-full object-cover"
+                    onerror="this.src='https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=600&q=80'" />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+
+
+                <!-- Action buttons -->
+                <div class="absolute top-12 right-4 flex gap-2">
+                    <button @click="toggleFavorite" :disabled="favLoading"
+                        class="w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform">
+                        <Heart :size="16" :class="isFavorited ? 'fill-red-500 text-red-500' : 'text-slate-600'" />
+                    </button>
+                    <button class="w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md">
+                        <Share2 :size="16" class="text-slate-600" />
+                    </button>
+                </div>
+
+                <!-- Sport badge -->
+                <div class="absolute bottom-4 left-4 flex items-center gap-2">
+                    <span :class="[getSport(court.type).cls, 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm']">
+                        <component :is="getSport(court.type).icon" :size="12" />
+                        {{ getSport(court.type).label }}
+                    </span>
+                    <!-- Active subscription badge -->
+                    <span v-if="activeSub" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-primary text-white shadow-sm">
+                        <Crown :size="11" />
+                        Member
+                    </span>
+                </div>
+            </div>
+
+            <!-- Court Info Card -->
+            <div class="bg-white px-5 py-4 border-b border-slate-100">
+                <div class="flex items-start justify-between gap-2 mb-2">
+                    <h1 class="text-xl font-extrabold text-slate-900">{{ court.name }}</h1>
+                    <div class="flex items-center gap-1 bg-amber-50 px-2.5 py-1.5 rounded-xl shrink-0">
+                        <Star :size="13" class="text-amber-500 fill-amber-400" />
+                        <span class="text-sm font-bold text-amber-700">{{ avgRating || '—' }}</span>
+                        <span v-if="reviewCount" class="text-[11px] text-amber-600">({{ reviewCount }})</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-1.5 text-slate-500 text-sm mb-3">
+                    <MapPin :size="13" class="text-slate-400" />
+                    {{ court.location || 'Location not set' }}
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="flex items-center gap-1.5 text-slate-500 text-sm">
+                        <Clock :size="13" class="text-slate-400" />
+                        {{ court.open_time?.slice(0,5) || '06:00' }} – {{ court.close_time?.slice(0,5) || '22:00' }}
+                    </span>
+                    <span class="text-xl font-extrabold text-primary">
+                        ₹{{ court.hourly_rate }}<span class="text-sm font-semibold text-slate-400">/hr</span>
+                    </span>
+                </div>
+
+                <!-- Peak hours info strip (if applicable) -->
+                <div v-if="court.peak_members_only" class="mt-3 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-sm">
+                    <Lock :size="14" :stroke-width="2.5" class="text-amber-600 shrink-0" />
+                    <p class="text-xs text-amber-800 font-semibold leading-snug">
+                        Peak hours are members only: <span class="text-amber-600/80">{{ court.morning_peak_start?.slice(0,5) }}–{{ court.morning_peak_end?.slice(0,5) }}</span> &amp;
+                        <span class="text-amber-600/80">{{ court.evening_peak_start?.slice(0,5) }}–{{ court.evening_peak_end?.slice(0,5) }}</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="bg-white border-b border-slate-100 flex px-5 sticky top-0 z-30">
+                <button @click="activeTab = 'booking'"
+                    class="flex-1 py-3.5 text-sm font-bold border-b-2 transition-colors"
+                    :class="activeTab === 'booking' ? 'border-primary text-primary' : 'border-transparent text-slate-400'">
+                    Book a Slot
+                </button>
+                <button @click="activeTab = 'membership'"
+                    class="flex-1 py-3.5 text-sm font-bold border-b-2 transition-colors relative"
+                    :class="activeTab === 'membership' ? 'border-primary text-primary' : 'border-transparent text-slate-400'">
+                    Memberships
+                    <span v-if="activeSub" class="absolute top-2.5 right-3 w-2 h-2 bg-primary-light0 rounded-full"></span>
+                </button>
+            </div>
+
+            <!-- Tab Content -->
+            <div class="px-4 py-5 pb-48">
+
+                <!-- BOOKING TAB -->
+                <div v-if="activeTab === 'booking'">
+                    <!-- Date Picker -->
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Select Date</h3>
+                    <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-6">
+                        <button
+                            v-for="d in dateOptions" :key="d.value"
+                            @click="selectedDate = d.value"
+                            class="flex flex-col items-center px-3.5 py-3 rounded-2xl border-2 min-w-[58px] transition-all shrink-0"
+                            :class="selectedDate === d.value
+                                ? 'bg-primary border-primary text-white'
+                                : 'bg-white border-slate-200 text-slate-600'">
+                            <span class="text-[10px] font-bold uppercase tracking-wider leading-none mb-1"
+                                :class="selectedDate === d.value ? 'text-white/70' : 'text-slate-400'">
+                                {{ d.weekday }}
+                            </span>
+                            <span class="text-xl font-extrabold leading-none">{{ d.day }}</span>
+                            <span v-if="d.isToday || d.isTomorrow"
+                                class="text-[9px] font-bold mt-1 leading-none"
+                                :class="selectedDate === d.value ? 'text-white/70' : 'text-primary'">
+                                {{ d.isToday ? 'TODAY' : 'TMR' }}
+                            </span>
+                        </button>
+                    </div>
+
+                    <!-- Slot Grid -->
+                    <div class="flex items-center justify-between mb-3 flex-wrap gap-1">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Time</h3>
+                        <div v-if="selectedDate" class="flex items-center gap-2 text-[10px] font-semibold flex-wrap">
+                            <span class="flex items-center gap-1 text-primary">
+                                <span class="w-3 h-3 rounded-sm bg-primary inline-block"></span> Chosen
+                            </span>
+                            <span class="flex items-center gap-1 text-slate-400">
+                                <span class="w-3 h-3 rounded-sm bg-slate-200 inline-block"></span> Booked
+                            </span>
+                            <span v-if="court.peak_members_only" class="flex items-center gap-1 text-amber-600">
+                                <span class="w-3 h-3 rounded-sm bg-amber-200 inline-block border border-amber-300"></span>
+                                <Lock :size="10" /> Peak
+                            </span>
+                        </div>
+                    </div>
+
+                    <div v-if="!selectedDate"
+                        class="bg-slate-100 rounded-2xl flex flex-col items-center py-10 mb-6">
+                        <Calendar :size="30" class="text-slate-300 mb-2" />
+                        <p class="text-sm text-slate-400 font-medium">Select a date first</p>
+                    </div>
+
+                    <!-- Slot Grid -->
+                    <div v-else class="mb-6 space-y-4">
+
+                        <!-- Non-peak court: single flat grid -->
+                        <template v-if="!court.peak_members_only">
+                            <div class="grid grid-cols-4 gap-2">
+                                <button
+                                    v-for="slot in TIME_SLOTS" :key="slot.hour"
+                                    @click="handleSlotClick(slot)"
+                                    class="py-3 rounded-xl text-xs font-bold border-2 transition-all text-center"
+                                    :class="{
+                                        'bg-primary border-primary text-white shadow-sm': slotState(slot) === 'selected',
+                                        'bg-slate-100 border-slate-100 text-slate-300 cursor-not-allowed': slotState(slot) === 'booked',
+                                        'bg-white border-slate-200 text-slate-700 hover:border-primary/40 hover:bg-primary-light active:scale-95 cursor-pointer': slotState(slot) === 'free',
+                                    }">
+                                    {{ slot.short }}
+                                </button>
+                            </div>
+                        </template>
+
+                        <!-- Peak court: grouped sections -->
+                        <template v-else>
+                            <!-- Morning peak -->
+                            <div v-if="morningPeakSlots.length">
+                                <div class="flex items-center gap-1.5 mb-2 text-[11px] font-semibold text-amber-600">
+                                    <Sun :size="12" />
+                                    Morning peak · {{ court.morning_peak_start?.slice(0,5) }} – {{ court.morning_peak_end?.slice(0,5) }}
+                                    <span v-if="activeSub && subCoversSlot(activeSub.slot_type, 'morning')" class="text-primary font-bold ml-1">✓ Access granted</span>
+                                    <Lock v-else :size="11" class="ml-0.5" />
+                                </div>
+                                <div class="grid grid-cols-4 gap-2">
+                                    <button v-for="slot in morningPeakSlots" :key="slot.hour"
+                                        @click="handleSlotClick(slot)"
+                                        class="py-3 rounded-xl text-xs font-bold border-2 transition-all text-center relative"
+                                        :class="{
+                                            'bg-primary border-primary text-white shadow-sm': slotState(slot) === 'selected',
+                                            'bg-slate-100 border-slate-100 text-slate-300 cursor-not-allowed': slotState(slot) === 'booked',
+                                            'bg-amber-100 border-amber-200 text-amber-700 cursor-pointer': slotState(slot) === 'peak_morning',
+                                            'bg-white border-slate-200 text-slate-700 hover:border-primary/40 hover:bg-primary-light active:scale-95 cursor-pointer': slotState(slot) === 'free',
+                                        }">
+                                        {{ slot.short }}
+                                        <Lock v-if="slotState(slot) === 'peak_morning'" :size="8" class="absolute top-1 right-1 opacity-60" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Evening peak -->
+                            <div v-if="eveningPeakSlots.length">
+                                <div class="flex items-center gap-1.5 mb-2 text-[11px] font-semibold text-indigo-600">
+                                    <Moon :size="12" />
+                                    Evening peak · {{ court.evening_peak_start?.slice(0,5) }} – {{ court.evening_peak_end?.slice(0,5) }}
+                                    <span v-if="activeSub && subCoversSlot(activeSub.slot_type, 'evening')" class="text-primary font-bold ml-1">✓ Access granted</span>
+                                    <Lock v-else :size="11" class="ml-0.5" />
+                                </div>
+                                <div class="grid grid-cols-4 gap-2">
+                                    <button v-for="slot in eveningPeakSlots" :key="slot.hour"
+                                        @click="handleSlotClick(slot)"
+                                        class="py-3 rounded-xl text-xs font-bold border-2 transition-all text-center relative"
+                                        :class="{
+                                            'bg-primary border-primary text-white shadow-sm': slotState(slot) === 'selected',
+                                            'bg-slate-100 border-slate-100 text-slate-300 cursor-not-allowed': slotState(slot) === 'booked',
+                                            'bg-indigo-100 border-indigo-200 text-indigo-700 cursor-pointer': slotState(slot) === 'peak_evening',
+                                            'bg-white border-slate-200 text-slate-700 hover:border-primary/40 hover:bg-primary-light active:scale-95 cursor-pointer': slotState(slot) === 'free',
+                                        }">
+                                        {{ slot.short }}
+                                        <Lock v-if="slotState(slot) === 'peak_evening'" :size="8" class="absolute top-1 right-1 opacity-60" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Off-peak (open to all) -->
+                            <div v-if="offPeakSlots.length">
+                                <p class="text-[11px] font-semibold text-slate-400 mb-2">Off-peak · open to all</p>
+                                <div class="grid grid-cols-4 gap-2">
+                                    <button v-for="slot in offPeakSlots" :key="slot.hour"
+                                        @click="handleSlotClick(slot)"
+                                        class="py-3 rounded-xl text-xs font-bold border-2 transition-all text-center"
+                                        :class="{
+                                            'bg-primary border-primary text-white shadow-sm': slotState(slot) === 'selected',
+                                            'bg-slate-100 border-slate-100 text-slate-300 cursor-not-allowed': slotState(slot) === 'booked',
+                                            'bg-white border-slate-200 text-slate-700 hover:border-primary/40 hover:bg-primary-light active:scale-95 cursor-pointer': slotState(slot) === 'free',
+                                        }">
+                                        {{ slot.short }}
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Booking Summary -->
+                    <div v-if="selectedSlot && selectedDate"
+                        class="bg-primary-light border border-primary/20 rounded-2xl p-4">
+                        <div class="flex items-center gap-2 mb-3">
+                            <CheckCircle2 :size="16" class="text-primary" />
+                            <span class="text-sm font-bold text-primary">Booking Summary</span>
+                        </div>
+                        <div class="space-y-1.5 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Date</span>
+                                <span class="font-semibold text-slate-800">
+                                    {{ new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN', { dateStyle: 'medium' }) }}
+                                </span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Time</span>
+                                <span class="font-semibold text-slate-800">{{ selectedSlot.label }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Duration</span>
+                                <span class="font-semibold text-slate-800">1 hour</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center pt-3 mt-3 border-t border-primary/20">
+                            <span class="font-bold text-slate-700">Total payable</span>
+                            <span class="text-xl font-extrabold text-primary">₹{{ price }}</span>
+                        </div>
+                    </div>
+
+                    <!-- REVIEWS SECTION -->
+                    <div class="mt-6">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="section-title">Reviews</h3>
+                            <div v-if="reviewCount > 0" class="flex items-center gap-1.5">
+                                <Star :size="14" class="fill-amber-400 text-amber-400" />
+                                <span class="font-bold text-slate-800 text-sm">{{ avgRating }}</span>
+                                <span class="text-xs text-slate-400">({{ reviewCount }})</span>
+                            </div>
+                        </div>
+
+                        <!-- Write a Review button -->
+                        <div v-if="auth.isLoggedIn && userPastBooking && !alreadyReviewed && !showReviewForm"
+                            class="mb-4">
+                            <button @click="showReviewForm = true"
+                                class="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-primary/30 text-primary text-sm font-bold active:scale-[0.98] transition-transform hover:bg-primary/5">
+                                <Star :size="15" class="fill-primary" />
+                                Write a Review
+                            </button>
+                        </div>
+
+                        <!-- Already reviewed badge -->
+                        <div v-if="alreadyReviewed" class="mb-4 flex items-center gap-2 text-xs font-bold text-emerald-600 bg-emerald-50 px-4 py-2.5 rounded-xl">
+                            <CheckCircle2 :size="14" />
+                            You've reviewed this court
+                        </div>
+
+                        <!-- Review Form -->
+                        <div v-if="showReviewForm"
+                            class="mb-4 bg-primary/5 rounded-2xl p-4 ring-1 ring-primary/20">
+                            <p class="text-sm font-black text-slate-800 mb-3">Your Rating</p>
+
+                            <!-- Star selector -->
+                            <div class="flex gap-2 mb-4">
+                                <button v-for="n in 5" :key="n"
+                                    @click="reviewRating = n"
+                                    @mouseenter="hoverRating = n"
+                                    @mouseleave="hoverRating = 0"
+                                    class="active:scale-110 transition-transform">
+                                    <Star :size="32"
+                                        :class="n <= (hoverRating || reviewRating) ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'" />
+                                </button>
+                            </div>
+
+                            <!-- Comment -->
+                            <textarea v-model="reviewComment"
+                                placeholder="Share your experience (optional)…"
+                                rows="3"
+                                class="w-full text-sm rounded-xl bg-white border border-slate-200 px-4 py-3 resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 outline-none placeholder:text-slate-300 mb-3">
+                            </textarea>
+
+                            <div class="flex gap-2">
+                                <button @click="showReviewForm = false; reviewRating = 0; reviewComment = ''"
+                                    class="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-500 active:scale-95 transition-transform">
+                                    Cancel
+                                </button>
+                                <button @click="submitReview"
+                                    :disabled="!reviewRating || reviewSubmitting"
+                                    class="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-40 active:scale-95 transition-transform flex items-center justify-center gap-1.5">
+                                    <span v-if="reviewSubmitting">Submitting…</span>
+                                    <span v-else>Submit Review</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-if="reviews.length === 0" class="text-center py-8">
+                            <Star :size="32" class="text-slate-200 mx-auto mb-2" />
+                            <p class="text-sm text-slate-400">No reviews yet. Be the first!</p>
+                        </div>
+
+                        <div v-else class="space-y-3">
+                            <div v-for="review in reviews" :key="review.id"
+                                class="bg-white rounded-2xl p-4 border border-slate-100">
+                                <div class="flex items-start justify-between gap-2 mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <div class="w-8 h-8 rounded-full bg-primary-light flex items-center justify-center shrink-0">
+                                            <span class="text-xs font-bold text-primary">
+                                                {{ (review.user_name || 'U').charAt(0).toUpperCase() }}
+                                            </span>
+                                        </div>
+                                        <span class="text-sm font-semibold text-slate-800">{{ review.user_name || 'Player' }}</span>
+                                    </div>
+                                    <div class="flex gap-0.5">
+                                        <Star v-for="n in 5" :key="n" :size="12"
+                                            :class="n <= review.rating ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'" />
+                                    </div>
+                                </div>
+                                <p v-if="review.comment" class="text-sm text-slate-500 leading-relaxed">{{ review.comment }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MEMBERSHIP TAB -->
+                <div v-else>
+
+                    <!-- Active subscription banner -->
+                    <div v-if="activeSub"
+                        class="bg-primary-light border border-primary/20 rounded-2xl p-4 mb-5 flex items-start gap-3">
+                        <div class="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shrink-0">
+                            <Crown :size="17" class="text-white" />
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-bold text-primary text-sm">Active Membership</p>
+                            <p class="text-xs text-primary mt-0.5">
+                                <span class="font-semibold capitalize">{{ activeSub.slot_type?.replace('_', ' ') }}</span> access
+                                · expires {{ new Date(activeSub.end_date).toLocaleDateString('en-IN', { dateStyle: 'medium' }) }}
+                            </p>
+                        </div>
+                        <span class="text-[10px] font-bold bg-primary text-white px-2 py-1 rounded-full capitalize">Active</span>
+                    </div>
+
+                    <!-- Prompt when coming from locked slot -->
+                    <div v-if="lockedSlotPeak && !activeSub"
+                        class="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-5 flex items-start gap-3">
+                        <Lock :size="18" class="text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                            <p class="font-bold text-amber-800 text-sm">Subscription needed</p>
+                            <p class="text-xs text-amber-700 mt-0.5">
+                                {{ lockedSlotPeak === 'morning' ? 'Morning' : 'Evening' }} peak slots require a membership.
+                                Choose a plan below to unlock access.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div v-if="plans.length === 0" class="flex flex-col items-center py-12 text-center">
+                        <Info :size="40" class="text-slate-300 mb-3" />
+                        <p class="font-bold text-slate-600">No plans yet</p>
+                        <p class="text-sm text-slate-400 mt-1">This court hasn't set up membership plans yet.</p>
+                    </div>
+
+                    <div v-else class="space-y-4">
+                        <div v-for="(plan, i) in plans" :key="plan.id"
+                            class="bg-white rounded-2xl p-5 border-2 relative overflow-hidden transition-all"
+                            :class="[
+                                recommendedPlanIds.includes(plan.id) && !activeSub ? 'border-amber-400 ring-2 ring-amber-200' :
+                                (i === 0 ? 'border-primary' : 'border-slate-200')
+                            ]">
+                            <!-- Tags -->
+                            <div class="absolute top-0 right-0 flex gap-1 flex-col items-end">
+                                <div v-if="i === 0" class="bg-primary text-white text-[10px] font-extrabold px-3 py-1 rounded-bl-xl tracking-wider">
+                                    POPULAR
+                                </div>
+                                <div v-if="recommendedPlanIds.includes(plan.id) && !activeSub"
+                                    class="bg-amber-500 text-white text-[10px] font-extrabold px-3 py-1 rounded-bl-xl tracking-wider mr-0 mt-0">
+                                    RECOMMENDED
+                                </div>
+                            </div>
+
+                            <div class="flex items-start justify-between mb-3 pr-2">
+                                <div>
+                                    <h3 class="font-extrabold text-slate-900">{{ plan.name }}</h3>
+                                    <p v-if="plan.description" class="text-sm text-slate-500 mt-0.5">{{ plan.description }}</p>
+                                    <!-- Slot type badge -->
+                                    <span v-if="plan.slot_type"
+                                        class="inline-flex items-center gap-1 mt-2 text-[11px] font-bold px-2 py-0.5 rounded-full"
+                                        :class="(slotMeta[plan.slot_type] || slotMeta.unlimited).cls">
+                                        <component :is="(slotMeta[plan.slot_type] || slotMeta.unlimited).icon" :size="11" />
+                                        {{ (slotMeta[plan.slot_type] || slotMeta.unlimited).label }}
+                                    </span>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <p class="text-2xl font-extrabold text-primary">₹{{ plan.price }}</p>
+                                    <p class="text-xs text-slate-400">{{ plan.duration_days }} days</p>
+                                </div>
+                            </div>
+
+                            <button
+                                @click="!auth.isLoggedIn ? router.push('/login') : subscribePlan(plan)"
+                                :disabled="subscribeLoading === plan.id || (activeSub && subCoversSlot(activeSub.slot_type, plan.slot_type || 'unlimited'))"
+                                class="w-full font-bold py-3 rounded-xl text-sm active:scale-95 transition-all flex items-center justify-center gap-2"
+                                :class="activeSub && subCoversSlot(activeSub.slot_type, plan.slot_type || 'unlimited')
+                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                    : 'bg-primary text-white'">
+                                <span v-if="subscribeLoading === plan.id" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                <template v-else>
+                                    <CheckCircle2 v-if="activeSub && subCoversSlot(activeSub.slot_type, plan.slot_type || 'unlimited')" :size="15" />
+                                    <Crown v-else :size="15" />
+                                    {{ activeSub && subCoversSlot(activeSub.slot_type, plan.slot_type || 'unlimited') ? 'Already subscribed' : 'Subscribe Now' }}
+                                </template>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sticky Bottom Button -->
+            <div class="fixed bottom-[72px] left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-slate-100 px-4 py-3 z-40"
+                style="box-shadow: 0 -4px 20px rgba(0,0,0,0.06)">
+
+                <!-- Booking tab button -->
+                <button v-if="activeTab === 'booking'"
+                    @click="confirmBooking"
+                    :disabled="!selectedSlot || !selectedDate || bookingLoading"
+                    class="w-full bg-primary text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:scale-100">
+                    <span v-if="bookingLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    <span v-else-if="selectedSlot && selectedDate">Confirm Booking · ₹{{ price }}</span>
+                    <span v-else>Select a date &amp; time slot</span>
+                </button>
+
+                <!-- Membership tab: Go back to booking when subscribed -->
+                <button v-else-if="activeSub"
+                    @click="activeTab = 'booking'"
+                    class="w-full bg-primary text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2">
+                    <Crown :size="17" />
+                    Book a Slot (Member Access)
+                </button>
+            </div>
+        </template>
+    </div>
+</template>

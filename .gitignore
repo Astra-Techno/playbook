@@ -1,0 +1,21 @@
+# ── Secrets — never commit these ──────────────────────────────────────────────
+.env
+backend/.env
+frontend/.env
+
+# ── Dependencies ───────────────────────────────────────────────────────────────
+frontend/node_modules/
+vendor/
+
+# ── Build output ───────────────────────────────────────────────────────────────
+frontend/dist/
+deploy_package/
+
+# ── Uploads (user-generated content) ──────────────────────────────────────────
+backend/public/uploads/
+
+# ── OS / editor ────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+*.log

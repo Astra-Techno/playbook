@@ -1,0 +1,26 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Force HTTPS on production only (skip localhost / 127.0.0.1)
+  RewriteCond %{HTTPS} off
+  RewriteCond %{HTTP_HOST} !^localhost [NC]
+  RewriteCond %{HTTP_HOST} !^127\.0\.0\.1
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # Route /api/* → backend (Vite dev-proxy equivalent for production)
+  RewriteRule ^api/(.*)$ backend/index.php [L,QSA]
+
+  # Pass real backend/* files/dirs through (assets, uploads etc.)
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^backend/ - [L]
+
+  # Route /backend/* → backend/index.php (direct API calls)
+  RewriteRule ^backend/(.*)$ backend/index.php [L,QSA]
+
+  # All other requests → Vue SPA
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . index.html [L]
+</IfModule>

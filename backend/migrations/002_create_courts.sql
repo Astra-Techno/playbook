@@ -1,0 +1,22 @@
+-- Migration 002: Courts (services) table
+CREATE TABLE IF NOT EXISTS courts (
+    id                   INT AUTO_INCREMENT PRIMARY KEY,
+    owner_id             INT           NOT NULL,
+    name                 VARCHAR(255)  NOT NULL,
+    type                 VARCHAR(50)   NOT NULL DEFAULT 'other',
+    description          TEXT,
+    location             VARCHAR(255),
+    lat                  DECIMAL(10,7),
+    lng                  DECIMAL(10,7),
+    hourly_rate          DECIMAL(10,2) NOT NULL,
+    image_url            VARCHAR(255),
+    open_time            TIME          DEFAULT '06:00:00',
+    close_time           TIME          DEFAULT '22:00:00',
+    morning_peak_start   TIME          DEFAULT '05:00:00',
+    morning_peak_end     TIME          DEFAULT '09:00:00',
+    evening_peak_start   TIME          DEFAULT '17:00:00',
+    evening_peak_end     TIME          DEFAULT '21:00:00',
+    peak_members_only    TINYINT(1)    DEFAULT 0,
+    created_at           TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
+);
