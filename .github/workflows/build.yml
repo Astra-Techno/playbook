@@ -1,0 +1,54 @@
+name: Build Frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/src/**'
+      - 'frontend/index.html'
+      - 'frontend/package.json'
+      - 'frontend/vite.config.js'
+      - 'frontend/tailwind.config.js'
+      - 'frontend/postcss.config.js'
+      - 'frontend/public/**'
+      - '.htaccess'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: frontend
+
+      - name: Copy dist → public_html/
+        run: |
+          rm -rf public_html
+          cp -r frontend/dist public_html
+
+      - name: Commit built files
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public_html/
+          git diff --staged --quiet && echo "Nothing to commit" || (
+            git commit -m "build: update public_html [skip ci]"
+            git push
+          )
