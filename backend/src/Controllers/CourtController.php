@@ -72,8 +72,13 @@ class CourtController {
             $court->peak_members_only   = !empty($data->peak_members_only) ? 1 : 0;
 
             if ($court->create()) {
+                $db    = Database::getConnection();
+                $newId = (int)$db->lastInsertId();
+                if ($newId && $court->lat && $court->lng) {
+                    $this->autoLinkPlace($newId, (float)$court->lat, (float)$court->lng, (string)$court->name, $db);
+                }
                 http_response_code(201);
-                echo json_encode(["message" => "Court was created."]);
+                echo json_encode(["message" => "Court was created.", "id" => $newId]);
             } else {
                 http_response_code(503);
                 echo json_encode(["message" => "Unable to create court."]);
@@ -81,6 +86,66 @@ class CourtController {
         } else {
             http_response_code(400);
             echo json_encode(["message" => "Data is incomplete."]);
+        }
+    }
+
+    // Auto-link newly created court to a nearby ghost place (within ~200 m)
+    private function autoLinkPlace(int $courtId, float $lat, float $lng, string $courtName, PDO $db): void
+    {
+        // 0.002 deg ≈ 200 m
+        $delta = 0.002;
+        $stmt  = $db->prepare(
+            "SELECT id FROM places
+             WHERE status IN ('unregistered','contacted')
+               AND court_id IS NULL
+               AND lat BETWEEN ? AND ?
+               AND lng BETWEEN ? AND ?
+             ORDER BY request_count DESC
+             LIMIT 1"
+        );
+        $stmt->execute([$lat - $delta, $lat + $delta, $lng - $delta, $lng + $delta]);
+        $place = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$place) return;
+
+        $placeId = (int)$place['id'];
+
+        // Link and mark onboarded
+        $db->prepare(
+            "UPDATE places SET court_id = ?, status = 'onboarded', updated_at = NOW() WHERE id = ?"
+        )->execute([$courtId, $placeId]);
+
+        // Get all interested user IDs
+        $uStmt = $db->prepare("SELECT user_id FROM service_requests WHERE place_id = ?");
+        $uStmt->execute([$placeId]);
+        $userIds = $uStmt->fetchAll(PDO::FETCH_COLUMN);
+
+        if (empty($userIds)) return;
+
+        // Ensure user_notifications table exists
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS user_notifications (
+                id         INT AUTO_INCREMENT PRIMARY KEY,
+                user_id    INT          NOT NULL,
+                type       VARCHAR(50)  NOT NULL,
+                title      VARCHAR(255) NOT NULL,
+                body       TEXT,
+                court_id   INT          DEFAULT NULL,
+                read_at    DATETIME     DEFAULT NULL,
+                created_at DATETIME     DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+
+        $nStmt = $db->prepare(
+            "INSERT INTO user_notifications (user_id, type, title, body, court_id)
+             VALUES (?, 'venue_live', ?, ?, ?)"
+        );
+        foreach ($userIds as $uid) {
+            $nStmt->execute([
+                (int)$uid,
+                'A venue you requested is now on KoCourt!',
+                "{$courtName} is now available for booking.",
+                $courtId,
+            ]);
         }
     }
 

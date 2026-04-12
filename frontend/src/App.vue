@@ -4,7 +4,7 @@ import { RouterView, RouterLink, useRoute, useRouter } from 'vue-router'
 import {
     CalendarDays, User,
     CheckCircle2, XCircle, Info,
-    Compass, Rss, Map
+    Compass, Rss, Map, ShieldCheck
 } from 'lucide-vue-next'
 import { useAuthStore } from './stores/auth'
 import { useToastStore } from './stores/toast'
@@ -16,9 +16,17 @@ const toastStore    = useToastStore()
 const notifications = useNotificationsStore()
 
 // Fetch notifications when user logs in; clear on logout
-watch(() => auth.user?.id, (uid) => {
-    if (uid) notifications.fetch(uid)
-    else     notifications.clear()
+watch(() => auth.user?.id, async (uid) => {
+    if (uid) {
+        await notifications.fetch(uid)
+        // Show toast for unread venue-live alerts
+        notifications.venueAlerts.filter(n => !n.read_at).forEach(n => {
+            toastStore.info(n.title)
+            notifications.markRead(n.id)
+        })
+    } else {
+        notifications.clear()
+    }
 }, { immediate: true })
 const route      = useRoute()
 const router     = useRouter()
@@ -94,7 +102,14 @@ const toastBg   = { success: 'bg-slate-900', error: 'bg-red-600', info: 'bg-prim
                 <span class="text-[10px] font-medium mt-1" :class="isActive('/map') ? 'text-primary font-bold' : 'text-slate-400'">Map</span>
             </div>
 
-            <RouterLink to="/bookings"
+            <!-- Admin: show Admin panel link; others: show Bookings -->
+            <RouterLink v-if="auth.isAdmin" to="/admin"
+                class="flex flex-col items-center gap-0.5 transition-colors relative"
+                :class="isActive('/admin') ? 'text-primary' : 'text-slate-400'">
+                <ShieldCheck :size="24" :stroke-width="isActive('/admin') ? 2.5 : 1.8" />
+                <span class="text-[10px]" :class="isActive('/admin') ? 'font-bold' : 'font-medium'">Admin</span>
+            </RouterLink>
+            <RouterLink v-else to="/bookings"
                 class="flex flex-col items-center gap-0.5 transition-colors"
                 :class="isActive('/bookings') ? 'text-primary' : 'text-slate-400'">
                 <CalendarDays :size="24" :stroke-width="isActive('/bookings') ? 2.5 : 1.8" />

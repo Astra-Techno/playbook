@@ -116,13 +116,87 @@ class PlacesController
 
     // ── Private helpers ──────────────────────────────────────────────────────
 
+    // ── Admin: GET /admin/demand?admin_id= ──────────────────────────────────
+
+    public function adminDemand(): void
+    {
+        $adminId = (int)($_GET['admin_id'] ?? 0);
+        if (!$this->isAdmin($adminId)) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden']);
+            return;
+        }
+
+        $stmt = $this->db->query(
+            "SELECT p.*,
+                    GROUP_CONCAT(u.name  ORDER BY sr.created_at SEPARATOR '||') AS requester_names,
+                    GROUP_CONCAT(u.phone ORDER BY sr.created_at SEPARATOR '||') AS requester_phones,
+                    GROUP_CONCAT(u.id    ORDER BY sr.created_at SEPARATOR ',')  AS requester_ids
+             FROM places p
+             LEFT JOIN service_requests sr ON sr.place_id = p.id
+             LEFT JOIN users u             ON u.id = sr.user_id
+             WHERE p.status IN ('unregistered','contacted')
+             GROUP BY p.id
+             ORDER BY p.request_count DESC, p.created_at DESC"
+        );
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($rows as &$p) {
+            $names  = $p['requester_names']  ? explode('||', $p['requester_names'])  : [];
+            $phones = $p['requester_phones'] ? explode('||', $p['requester_phones']) : [];
+            $ids    = $p['requester_ids']    ? array_map('intval', explode(',', $p['requester_ids'])) : [];
+
+            $p['requesters'] = array_map(fn($i) => [
+                'id'    => $ids[$i]    ?? null,
+                'name'  => $names[$i]  ?? '',
+                'phone' => $phones[$i] ?? '',
+            ], array_keys($names));
+
+            unset($p['requester_names'], $p['requester_phones'], $p['requester_ids']);
+            $p['image_url'] = $this->buildPhotoUrl($p['photo_reference'], $p['type']);
+        }
+        unset($p);
+
+        echo json_encode(['places' => array_values($rows)]);
+    }
+
+    // ── Admin: PUT /admin/places/:id/contact ─────────────────────────────────
+
+    public function adminContact(int $id): void
+    {
+        $data    = json_decode(file_get_contents('php://input'), true) ?? [];
+        $adminId = (int)($data['admin_id'] ?? 0);
+        if (!$this->isAdmin($adminId)) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden']);
+            return;
+        }
+
+        $this->db->prepare(
+            "UPDATE places SET status = 'contacted', updated_at = NOW() WHERE id = ? AND status = 'unregistered'"
+        )->execute([$id]);
+
+        echo json_encode(['success' => true]);
+    }
+
+    // ── Private helpers ──────────────────────────────────────────────────────
+
+    private function isAdmin(int $userId): bool
+    {
+        if (!$userId) return false;
+        $stmt = $this->db->prepare("SELECT role FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        return $stmt->fetchColumn() === 'admin';
+    }
+
     private function getFromCache(float $lat, float $lng): array
     {
-        // 0.018 degrees ≈ 2 km
+        // 0.018 degrees ≈ 2 km; exclude already-onboarded places
         $delta = 0.018;
         $stmt  = $this->db->prepare(
             "SELECT * FROM places
              WHERE status IN ('unregistered','contacted')
+               AND court_id IS NULL
                AND lat BETWEEN ? AND ?
                AND lng BETWEEN ? AND ?
                AND cached_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)

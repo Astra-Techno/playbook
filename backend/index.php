@@ -356,6 +356,57 @@ if (isset($seg[0]) && $seg[0] === 'service-requests' && $_SERVER['REQUEST_METHOD
     exit();
 }
 
+// Admin Routes
+if (isset($seg[0]) && $seg[0] === 'admin') {
+    require_once __DIR__ . '/src/Controllers/PlacesController.php';
+    $pc = new PlacesController();
+    // GET /admin/demand?admin_id=X
+    if (isset($seg[1]) && $seg[1] === 'demand' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        $pc->adminDemand(); exit();
+    }
+    // PUT /admin/places/:id/contact
+    if (isset($seg[1]) && $seg[1] === 'places' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'contact' && $_SERVER['REQUEST_METHOD'] === 'PUT') {
+        $pc->adminContact((int)$seg[2]); exit();
+    }
+    http_response_code(404); echo json_encode(['message' => 'Admin endpoint not found']); exit();
+}
+
+// User Notifications — GET /user-notifications?user_id=X
+if (isset($seg[0]) && $seg[0] === 'user-notifications') {
+    $db = Database::getConnection();
+    // Ensure table exists
+    $db->exec("
+        CREATE TABLE IF NOT EXISTS user_notifications (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_id INT NOT NULL, type VARCHAR(50) NOT NULL,
+            title VARCHAR(255) NOT NULL, body TEXT, court_id INT DEFAULT NULL,
+            read_at DATETIME DEFAULT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    ");
+
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        $uid = (int)($_GET['user_id'] ?? 0);
+        if (!$uid) { http_response_code(400); echo json_encode(['error' => 'user_id required']); exit(); }
+        $stmt = $db->prepare(
+            "SELECT n.*, c.name AS court_name FROM user_notifications n
+             LEFT JOIN courts c ON c.id = n.court_id
+             WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT 20"
+        );
+        $stmt->execute([$uid]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode(['notifications' => $rows]);
+        exit();
+    }
+
+    // PUT /user-notifications/:id/read
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'read') {
+        $db->prepare("UPDATE user_notifications SET read_at = NOW() WHERE id = ?")->execute([(int)$seg[1]]);
+        echo json_encode(['success' => true]);
+        exit();
+    }
+    exit();
+}
+
 // Tag Search — GET /tag-search?q=&type=users|courts|all
 if (isset($seg[0]) && $seg[0] === 'tag-search' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     $q    = '%' . trim($_GET['q'] ?? '') . '%';

@@ -1,24 +1,38 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import axios from 'axios'
 
 export const useNotificationsStore = defineStore('notifications', () => {
-    const expiringSoon = ref([])   // subscriptions expiring within 7 days
-    const count        = ref(0)
+    const expiringSoon    = ref([])   // subscriptions expiring within 7 days
+    const venueAlerts     = ref([])   // requested venues that went live
+    const count = computed(() =>
+        expiringSoon.value.length + venueAlerts.value.filter(n => !n.read_at).length
+    )
 
     const fetch = async (userId) => {
         if (!userId) return
         try {
-            const res = await axios.get(`/notifications?user_id=${userId}`)
-            expiringSoon.value = res.data.expiring_soon || []
-            count.value        = res.data.count || 0
+            const [subRes, notifRes] = await Promise.all([
+                axios.get(`/notifications?user_id=${userId}`),
+                axios.get(`/user-notifications?user_id=${userId}`),
+            ])
+            expiringSoon.value = subRes.data.expiring_soon   || []
+            venueAlerts.value  = notifRes.data.notifications || []
         } catch {
             expiringSoon.value = []
-            count.value        = 0
+            venueAlerts.value  = []
         }
     }
 
-    const clear = () => { expiringSoon.value = []; count.value = 0 }
+    const markRead = async (id) => {
+        try {
+            await axios.put(`/user-notifications/${id}/read`)
+            const n = venueAlerts.value.find(n => n.id === id)
+            if (n) n.read_at = new Date().toISOString()
+        } catch { /* ignore */ }
+    }
 
-    return { expiringSoon, count, fetch, clear }
+    const clear = () => { expiringSoon.value = []; venueAlerts.value = [] }
+
+    return { expiringSoon, venueAlerts, count, fetch, markRead, clear }
 })

@@ -107,6 +107,12 @@ const router = createRouter({
             component: () => import('../views/LedgerView.vue'),
             meta: { requiresAuth: true, title: 'Ledger' },
         },
+        {
+            path: '/admin',
+            name: 'admin',
+            component: () => import('../views/AdminView.vue'),
+            meta: { requiresAdmin: true, title: 'Admin Panel' },
+        },
         // legacy redirects
         { path: '/owner/dashboard', redirect: '/my-services' },
         { path: '/owner/court/:id/plans', redirect: to => `/my-services/${to.params.id}/plans` },
@@ -128,6 +134,10 @@ router.beforeEach((to, from, next) => {
     const token = localStorage.getItem('token')
     const user = safeGetUser()
     const isLoggedIn = !!token && !!user
+
+    if (to.meta.requiresAdmin && (!isLoggedIn || user?.role !== 'admin')) {
+        return next({ name: 'home' })
+    }
 
     if (to.meta.requiresAuth && !isLoggedIn) {
         return next({ name: 'login' })
