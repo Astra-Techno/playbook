@@ -17,6 +17,10 @@
  * Set GITHUB_TOKEN in backend/.env  (only needed for private repos)
  */
 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 // ── Bootstrap ────────────────────────────────────────────────────────────────
 define('BASE_DIR',    __DIR__);
 define('BACKEND_DIR', BASE_DIR . '/backend');
@@ -27,8 +31,8 @@ $envFile = BACKEND_DIR . '/.env';
 if (file_exists($envFile)) {
     foreach (file($envFile) as $line) {
         $line = trim($line);
-        if (!$line || str_starts_with($line, '#')) continue;
-        if (str_contains($line, '=')) {
+        if (!$line || $line[0] === '#') continue;
+        if (strpos($line, '=') !== false) {
             [$k, $v] = explode('=', $line, 2);
             $_ENV[trim($k)] = trim($v, " \t\n\r\0\x0B\"'");
         }
