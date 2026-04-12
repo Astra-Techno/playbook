@@ -88,9 +88,33 @@ $opts   = ['http' => [
     ])),
 ]];
 
-$zipData = @file_get_contents($zipUrl, false, stream_context_create($opts));
+// Try cURL first (works even when allow_url_fopen is off)
+$zipData = false;
+if (function_exists('curl_init')) {
+    $ch = curl_init($zipUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 60,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_USERAGENT      => 'KoCourt-Deployer/1.0',
+        CURLOPT_HTTPHEADER     => array_filter([
+            $token ? "Authorization: Bearer {$token}" : null,
+        ]),
+    ]);
+    $zipData  = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    if (PHP_VERSION_ID < 80100) curl_close($ch);
+    if ($httpCode === 404) abort("Repo not found (404). Is the repo private? Add GITHUB_TOKEN to backend/.env");
+    if ($httpCode === 401 || $httpCode === 403) abort("GitHub auth failed ({$httpCode}). Add GITHUB_TOKEN to backend/.env");
+    if ($httpCode !== 200) abort("GitHub returned HTTP {$httpCode}. cURL error: {$curlErr}");
+} else {
+    $zipData = @file_get_contents($zipUrl, false, stream_context_create($opts));
+}
+
 if (!$zipData) {
-    abort("Failed to download ZIP from GitHub. Check GITHUB_REPO / GITHUB_TOKEN in .env");
+    abort("Failed to download ZIP. Enable cURL or allow_url_fopen on this server.");
 }
 log_step('✓', 'Download complete (' . round(strlen($zipData) / 1024) . ' KB)', 'ok');
 
