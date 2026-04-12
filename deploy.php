@@ -307,6 +307,8 @@ function render_banner(bool $ok, string $msg): string {
 }
 
 function page(string $title, string $body): string {
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $now  = date('Y-m-d H:i:s');
     return <<<HTML
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -326,7 +328,7 @@ function page(string $title, string $body): string {
   .banner.err{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
 </style></head><body>
 <h1>🚀 KoCourt Deployer</h1>
-<p class="sub">{$_SERVER['HTTP_HOST']} &nbsp;·&nbsp; {date('Y-m-d H:i:s')}</p>
+<p class="sub">{$host} &nbsp;·&nbsp; {$now}</p>
 {$body}
 </body></html>
 HTML;
