@@ -342,6 +342,20 @@ if (isset($seg[0]) && $seg[0] === 'posts') {
     }
 }
 
+// Ghost Listings — GET /nearby-places?lat=&lng=&user_id=
+if (isset($seg[0]) && $seg[0] === 'nearby-places' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_once __DIR__ . '/src/Controllers/PlacesController.php';
+    (new PlacesController())->nearby();
+    exit();
+}
+
+// Service Requests — POST /service-requests
+if (isset($seg[0]) && $seg[0] === 'service-requests' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_once __DIR__ . '/src/Controllers/PlacesController.php';
+    (new PlacesController())->requestService();
+    exit();
+}
+
 // Tag Search — GET /tag-search?q=&type=users|courts|all
 if (isset($seg[0]) && $seg[0] === 'tag-search' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     $q    = '%' . trim($_GET['q'] ?? '') . '%';

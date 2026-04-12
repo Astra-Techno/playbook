@@ -6,14 +6,15 @@ import { useAuthStore } from '../stores/auth'
 import {
     Search, MapPin, SlidersHorizontal, Heart,
     Wind, CircleDot, Target, Flag, Activity, Layers3,
-    Dumbbell, Waves, Swords, Loader2, Star, Flame, Map
+    Dumbbell, Waves, Swords, Loader2, Star, Flame, Map,
+    Lock, Bell
 } from 'lucide-vue-next'
 
 const router = useRouter()
 const auth   = useAuthStore()
 
 const courts        = ref([])
-const loading       = ref(true)
+const loading       = ref(false)
 const searchText    = ref('')
 const selectedSport = ref('All')
 const locating      = ref(false)
@@ -21,6 +22,11 @@ const userLat       = ref(null)
 const userLng       = ref(null)
 const favorites     = ref(new Set())
 const favLoading    = ref(new Set())
+
+// Ghost listings
+const ghostPlaces     = ref([])
+const ghostLoading    = ref(false)
+const requestingId    = ref(null)   // place id currently being requested
 
 // ── Location detection ────────────────────────────────────────
 const detectLocation = () => {
@@ -40,12 +46,39 @@ const detectLocation = () => {
                     || data.address?.village || data.address?.suburb || data.address?.county
                 if (city) searchText.value = city
                 fetchVenues()
+                fetchGhostPlaces(latitude, longitude)
             } catch { /* ignore */ }
             finally { locating.value = false }
         },
         () => { locating.value = false },
         { timeout: 8000 }
     )
+}
+
+// ── Ghost listings ────────────────────────────────────────────
+const fetchGhostPlaces = async (lat, lng) => {
+    ghostLoading.value = true
+    try {
+        const uid = auth.user?.id ? `&user_id=${auth.user.id}` : ''
+        const res = await axios.get(`/nearby-places?lat=${lat}&lng=${lng}${uid}`)
+        ghostPlaces.value = res.data.places || []
+    } catch { ghostPlaces.value = [] }
+    finally { ghostLoading.value = false }
+}
+
+const requestService = async (place) => {
+    if (!auth.isLoggedIn) { router.push('/login'); return }
+    if (requestingId.value === place.id) return
+    requestingId.value = place.id
+    try {
+        const res = await axios.post('/service-requests', {
+            place_id: place.id,
+            user_id:  auth.user.id,
+        })
+        place.user_requested  = true
+        place.request_count   = res.data.request_count
+    } catch { /* ignore */ }
+    finally { requestingId.value = null }
 }
 
 const onSearchInput = () => { userLat.value = null; userLng.value = null }
@@ -78,6 +111,8 @@ const venueImages = {
 const getImage = (v) => v.image_url || venueImages[v.type] || venueImages.other
 
 // ── Computed ──────────────────────────────────────────────────
+const hasLocation = computed(() => !!searchText.value.trim() || (!!userLat.value && !!userLng.value))
+
 const locationLabel = computed(() => {
     if (locating.value) return 'Detecting...'
     if (searchText.value) return (userLat.value ? 'Near ' : '') + searchText.value
@@ -123,7 +158,6 @@ const fetchVenues = async () => {
 
 onMounted(async () => {
     detectLocation()
-    fetchVenues()
     if (auth.isLoggedIn) {
         try {
             const res = await axios.get(`/favorites?user_id=${auth.user?.id}`)
@@ -133,8 +167,11 @@ onMounted(async () => {
 })
 
 let timer = null
-watch(searchText,    () => { clearTimeout(timer); timer = setTimeout(fetchVenues, 400) })
-watch(selectedSport, fetchVenues)
+watch(searchText, () => {
+    clearTimeout(timer)
+    if (searchText.value.trim()) { timer = setTimeout(fetchVenues, 400) } else { courts.value = [] }
+})
+watch(selectedSport, () => { if (hasLocation.value) fetchVenues() })
 </script>
 
 <template>
@@ -181,6 +218,23 @@ watch(selectedSport, fetchVenues)
         <!-- ── Main content (scrollable) ── -->
         <main class="flex-1 px-4 py-4 pb-28">
 
+            <!-- No location yet -->
+            <div v-if="!hasLocation && !locating" class="flex flex-col items-center py-20 text-center px-6">
+                <div class="w-20 h-20 bg-primary-light rounded-full flex items-center justify-center mb-5">
+                    <MapPin :size="36" class="text-primary" :stroke-width="1.8" />
+                </div>
+                <p class="font-extrabold text-slate-800 text-lg">Where are you playing?</p>
+                <p class="text-sm text-slate-400 mt-2 max-w-[240px] leading-relaxed">
+                    Search for a city or allow location access to discover venues near you
+                </p>
+                <button @click="detectLocation"
+                    class="mt-6 flex items-center gap-2 bg-primary text-white text-sm font-bold px-6 py-3 rounded-2xl shadow-md active:scale-95 transition-transform">
+                    <MapPin :size="16" />
+                    Use My Location
+                </button>
+            </div>
+
+            <template v-else>
             <!-- Section title -->
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-[17px] font-extrabold text-slate-900">{{ sectionTitle }}</h2>
@@ -295,6 +349,118 @@ watch(selectedSport, fetchVenues)
                     </div>
                 </div>
             </div>
+
+            <!-- ── Ghost Listings Section ── -->
+            <div v-if="ghostLoading || ghostPlaces.length > 0" class="mt-8">
+                <!-- Section header -->
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h2 class="text-[17px] font-extrabold text-slate-900">Also Nearby</h2>
+                        <p class="text-[11px] text-slate-400 font-medium mt-0.5">Not on KoCourt yet — show your interest</p>
+                    </div>
+                    <span class="text-[10px] font-black bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full uppercase tracking-wide">
+                        Coming Soon
+                    </span>
+                </div>
+
+                <!-- Ghost skeletons -->
+                <div v-if="ghostLoading && ghostPlaces.length === 0" class="space-y-4">
+                    <div v-for="i in 3" :key="i" class="bg-white rounded-2xl overflow-hidden shadow-card animate-pulse opacity-60">
+                        <div class="h-44 bg-slate-200"></div>
+                        <div class="p-4 space-y-2.5">
+                            <div class="h-4 bg-slate-200 rounded-lg w-2/5"></div>
+                            <div class="h-3 bg-slate-200 rounded-lg w-3/5"></div>
+                            <div class="h-9 bg-slate-200 rounded-xl w-full mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ghost cards -->
+                <div v-else class="space-y-4">
+                    <div v-for="place in ghostPlaces" :key="place.id"
+                        class="bg-white rounded-2xl overflow-hidden shadow-card relative">
+
+                        <!-- Image with desaturated overlay -->
+                        <div class="relative h-44 w-full">
+                            <img :src="place.image_url" :alt="place.name"
+                                class="w-full h-full object-cover grayscale-[40%] brightness-90"
+                                loading="lazy"
+                                onerror="this.src='https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=600&q=80'" />
+
+                            <!-- Dark overlay -->
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent"></div>
+
+                            <!-- NOT ON KOCOURT badge -->
+                            <div class="absolute top-3 left-3 z-10">
+                                <span class="bg-black/60 backdrop-blur text-white text-[9px] font-extrabold px-3 py-1.5 rounded-full tracking-widest uppercase flex items-center gap-1.5">
+                                    <Lock :size="9" :stroke-width="3" />
+                                    Not on KoCourt yet
+                                </span>
+                            </div>
+
+                            <!-- Rating badge -->
+                            <div v-if="place.rating" class="absolute top-3 right-3 z-10">
+                                <span class="bg-white/90 backdrop-blur text-amber-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
+                                    <Star :size="10" class="fill-amber-400 text-amber-400" />
+                                    {{ place.rating }}
+                                </span>
+                            </div>
+
+                            <!-- Type badge -->
+                            <div class="absolute bottom-3 left-3 z-10">
+                                <span class="bg-white/80 backdrop-blur text-slate-600 text-[10px] font-extrabold px-3.5 py-1.5 rounded-full tracking-wide uppercase flex items-center gap-1.5">
+                                    <component :is="categories.find(c => c.id === place.type)?.icon" :size="11" :stroke-width="3" />
+                                    {{ categories.find(c => c.id === place.type)?.label || place.type }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Card body -->
+                        <div class="px-4 pt-3 pb-4">
+                            <h3 class="font-extrabold text-slate-800 text-[15px] leading-tight mb-1">{{ place.name }}</h3>
+                            <div class="flex items-center gap-1 text-slate-400 text-xs mb-3.5">
+                                <MapPin :size="11" class="shrink-0" />
+                                <span class="truncate">{{ place.address }}</span>
+                            </div>
+
+                            <!-- Interest count + CTA -->
+                            <div class="flex items-center justify-between gap-3">
+                                <!-- Interest count -->
+                                <div v-if="place.request_count > 0" class="flex items-center gap-1.5">
+                                    <div class="flex -space-x-1.5">
+                                        <div v-for="n in Math.min(place.request_count, 3)" :key="n"
+                                            class="w-5 h-5 rounded-full bg-primary/10 border-2 border-white flex items-center justify-center">
+                                            <span class="text-[7px] font-extrabold text-primary">{{ n }}</span>
+                                        </div>
+                                    </div>
+                                    <span class="text-[11px] font-bold text-slate-500">
+                                        {{ place.request_count }} {{ place.request_count === 1 ? 'person' : 'people' }} interested
+                                    </span>
+                                </div>
+                                <div v-else class="text-[11px] text-slate-400 font-medium">Be the first to request</div>
+
+                                <!-- Request / Requested button -->
+                                <button v-if="!place.user_requested"
+                                    @click="requestService(place)"
+                                    :disabled="requestingId === place.id"
+                                    class="flex items-center gap-2 bg-slate-800 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl active:scale-95 disabled:opacity-60 transition-all shrink-0">
+                                    <Loader2 v-if="requestingId === place.id" :size="12" class="animate-spin" />
+                                    <Bell v-else :size="12" :stroke-width="2.5" />
+                                    Request Service
+                                </button>
+                                <div v-else
+                                    class="flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-extrabold px-4 py-2.5 rounded-xl shrink-0">
+                                    <svg viewBox="0 0 12 12" fill="none" class="w-3 h-3">
+                                        <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                    Requested
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </template>
         </main>
     </div>
 </template>

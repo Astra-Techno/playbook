@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS places (
+    id               INT AUTO_INCREMENT PRIMARY KEY,
+    google_place_id  VARCHAR(255)    NOT NULL UNIQUE,
+    name             VARCHAR(255)    NOT NULL,
+    type             VARCHAR(50)     DEFAULT 'other',
+    address          TEXT,
+    lat              DECIMAL(10,8),
+    lng              DECIMAL(11,8),
+    phone            VARCHAR(50),
+    website          VARCHAR(500),
+    rating           DECIMAL(3,1)    DEFAULT NULL,
+    photo_reference  TEXT,
+    status           ENUM('unregistered','contacted','onboarded') DEFAULT 'unregistered',
+    court_id         INT             DEFAULT NULL,
+    request_count    INT             DEFAULT 0,
+    cached_at        DATETIME        DEFAULT CURRENT_TIMESTAMP,
+    created_at       DATETIME        DEFAULT CURRENT_TIMESTAMP,
+    updated_at       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (court_id) REFERENCES courts(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
