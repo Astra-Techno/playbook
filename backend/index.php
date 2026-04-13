@@ -349,18 +349,42 @@ if (isset($seg[0]) && $seg[0] === 'nearby-places' && $_SERVER['REQUEST_METHOD'] 
     exit();
 }
 
-// Debug: GET /nearby-places/test?lat=&lng= — tests Overpass connectivity (remove after debugging)
+// Debug: GET /nearby-places/test?lat=&lng= — tests MapmyIndia + Overpass connectivity
 if (isset($seg[0], $seg[1]) && $seg[0] === 'nearby-places' && $seg[1] === 'test') {
-    $lat = (float)($_GET['lat'] ?? 12.9716);
-    $lng = (float)($_GET['lng'] ?? 77.5946);
-    $query = '[out:json][timeout:15];(node["sport"~"badminton|cricket|tennis|football"](around:10000,' . $lat . ',' . $lng . ');node["name"~"sports|court|ground|stadium|gym|badminton|cricket",i](around:10000,' . $lat . ',' . $lng . '););out center 5;';
-    $ch = curl_init('https://overpass-api.de/api/interpreter');
-    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true,CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>'data='.urlencode($query),CURLOPT_TIMEOUT=>15,CURLOPT_USERAGENT=>'KoCourt/1.0']);
-    $resp = curl_exec($ch);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err  = curl_error($ch);
-    curl_close($ch);
-    echo json_encode(['http_code'=>$code,'curl_error'=>$err,'response_length'=>strlen($resp ?: ''),'preview'=>substr($resp ?: '', 0, 500)]);
+    $lat       = (float)($_GET['lat'] ?? 12.9716);
+    $lng       = (float)($_GET['lng'] ?? 77.5946);
+    $clientId  = getenv('MAPMYINDIA_CLIENT_ID')     ?: '';
+    $clientSec = getenv('MAPMYINDIA_CLIENT_SECRET') ?: '';
+    $result    = ['mmi' => null, 'overpass' => null];
+
+    if ($clientId && $clientSec) {
+        $ch = curl_init('https://outpost.mapmyindia.com/api/security/oauth/token');
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true,CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>http_build_query(['grant_type'=>'client_credentials','client_id'=>$clientId,'client_secret'=>$clientSec]),CURLOPT_TIMEOUT=>10]);
+        $tokenResp = curl_exec($ch); $tokenCode = curl_getinfo($ch, CURLINFO_HTTP_CODE); curl_close($ch);
+        $tokenData = json_decode($tokenResp, true);
+        $token = $tokenData['access_token'] ?? null;
+        if ($token) {
+            $url = 'https://atlas.mapmyindia.com/api/places/nearby/json?keywords=' . urlencode('Badminton Court;Cricket Ground;Sports Complex;Gymnasium;Turf') . '&refLocation=' . $lat . ',' . $lng . '&radius=10000';
+            $ch2 = curl_init($url);
+            curl_setopt_array($ch2, [CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>10,CURLOPT_HTTPHEADER=>['Authorization: Bearer '.$token]]);
+            $mmiResp = curl_exec($ch2); $mmiCode = curl_getinfo($ch2, CURLINFO_HTTP_CODE); curl_close($ch2);
+            $mmiData = json_decode($mmiResp, true);
+            $result['mmi'] = ['http_code'=>$mmiCode,'count'=>count($mmiData['suggestedLocations'] ?? []),'preview'=>array_slice($mmiData['suggestedLocations'] ?? [], 0, 5)];
+        } else {
+            $result['mmi'] = ['error'=>'Token fetch failed','http_code'=>$tokenCode,'raw'=>substr($tokenResp,0,200)];
+        }
+    } else {
+        $result['mmi'] = ['error'=>'MAPMYINDIA credentials not set in .env'];
+    }
+
+    $query = '[out:json][timeout:15];(node["name"~"sports|court|ground|gym|badminton|cricket",i](around:10000,'.$lat.','.$lng.'););out center 5;';
+    $ch3 = curl_init('https://overpass-api.de/api/interpreter');
+    curl_setopt_array($ch3, [CURLOPT_RETURNTRANSFER=>true,CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>'data='.urlencode($query),CURLOPT_TIMEOUT=>15,CURLOPT_USERAGENT=>'KoCourt/1.0']);
+    $ovResp = curl_exec($ch3); $ovCode = curl_getinfo($ch3, CURLINFO_HTTP_CODE); curl_close($ch3);
+    $ovData = json_decode($ovResp, true);
+    $result['overpass'] = ['http_code'=>$ovCode,'count'=>count($ovData['elements'] ?? []),'preview'=>array_slice($ovData['elements'] ?? [], 0, 3)];
+
+    echo json_encode($result, JSON_PRETTY_PRINT);
     exit();
 }
 

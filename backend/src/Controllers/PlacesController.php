@@ -2,7 +2,9 @@
 
 class PlacesController
 {
-    private PDO $db;
+    private PDO    $db;
+    private string $mmiClientId;
+    private string $mmiClientSecret;
 
     // Fallback Unsplash images per sport type
     private const FALLBACK_IMAGES = [
@@ -20,7 +22,9 @@ class PlacesController
 
     public function __construct()
     {
-        $this->db = Database::getConnection();
+        $this->db              = Database::getConnection();
+        $this->mmiClientId     = getenv('MAPMYINDIA_CLIENT_ID')     ?: '';
+        $this->mmiClientSecret = getenv('MAPMYINDIA_CLIENT_SECRET') ?: '';
         $this->ensureTables();
     }
 
@@ -42,9 +46,13 @@ class PlacesController
         $places = $this->getFromCache($lat, $lng);
 
         if (empty($places)) {
-            $raw = $this->fetchFromOverpass($lat, $lng);
+            // Priority: MapmyIndia → Overpass → Demo
+            $raw = $this->hasMmi() ? $this->fetchFromMapmyIndia($lat, $lng) : [];
             if (empty($raw)) {
-                $raw = $this->getDemoPlaces($lat, $lng); // offline fallback
+                $raw = $this->fetchFromOverpass($lat, $lng);
+            }
+            if (empty($raw)) {
+                $raw = $this->getDemoPlaces($lat, $lng);
             }
             $this->storePlaces($raw);
             $places = $this->getFromCache($lat, $lng);
@@ -174,6 +182,138 @@ class PlacesController
         )->execute([$id]);
 
         echo json_encode(['success' => true]);
+    }
+
+    // ── MapmyIndia Places API ────────────────────────────────────────────────
+
+    private function hasMmi(): bool
+    {
+        return !empty($this->mmiClientId) && !empty($this->mmiClientSecret);
+    }
+
+    private function getMmiToken(): ?string
+    {
+        // Cache token in a temp file (valid ~6 hours, we refresh every 5)
+        $cacheFile = sys_get_temp_dir() . '/mmi_token.json';
+        if (file_exists($cacheFile)) {
+            $cached = json_decode(file_get_contents($cacheFile), true);
+            if ($cached && isset($cached['token'], $cached['expires_at']) && time() < $cached['expires_at']) {
+                return $cached['token'];
+            }
+        }
+
+        $resp = $this->curlPost(
+            'https://outpost.mapmyindia.com/api/security/oauth/token',
+            http_build_query([
+                'grant_type'    => 'client_credentials',
+                'client_id'     => $this->mmiClientId,
+                'client_secret' => $this->mmiClientSecret,
+            ]),
+            10
+        );
+
+        if (!$resp) return null;
+        $data = json_decode($resp, true);
+        if (empty($data['access_token'])) return null;
+
+        file_put_contents($cacheFile, json_encode([
+            'token'      => $data['access_token'],
+            'expires_at' => time() + 18000, // 5 hours
+        ]));
+
+        return $data['access_token'];
+    }
+
+    private function fetchFromMapmyIndia(float $lat, float $lng): array
+    {
+        $token = $this->getMmiToken();
+        if (!$token) return [];
+
+        // Search multiple sport keywords — MMI uses semicolon-separated keywords
+        $keywords = 'Badminton Court;Cricket Ground;Tennis Court;Sports Complex;Gymnasium;'
+                  . 'Fitness Centre;Swimming Pool;Football Ground;Turf;Sports Club;'
+                  . 'Volleyball Court;Basketball Court;Sports Academy;Sports Arena';
+
+        $url = 'https://atlas.mapmyindia.com/api/places/nearby/json'
+             . '?keywords=' . urlencode($keywords)
+             . '&refLocation=' . $lat . ',' . $lng
+             . '&radius=10000'
+             . '&bounds=' . ($lat - 0.09) . ',' . ($lng - 0.09) . ';' . ($lat + 0.09) . ',' . ($lng + 0.09)
+             . '&richData=true';
+
+        if (!function_exists('curl_init')) return [];
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_USERAGENT      => 'KoCourt/1.0',
+            CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $token],
+        ]);
+        $resp     = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || !$resp) return [];
+
+        $data = json_decode($resp, true);
+        if (empty($data['suggestedLocations'])) return [];
+
+        $out  = [];
+        $seen = [];
+
+        foreach ($data['suggestedLocations'] as $r) {
+            $name = trim($r['placeName'] ?? '');
+            $eloc = $r['eLoc'] ?? null;
+            if (!$name || !$eloc || isset($seen[$eloc])) continue;
+            $seen[$eloc] = true;
+
+            $elLat = isset($r['latitude'])  ? (float)$r['latitude']  : null;
+            $elLng = isset($r['longitude']) ? (float)$r['longitude'] : null;
+            if ($elLat === null || $elLng === null) continue;
+
+            // Build address
+            $address = trim($r['placeAddress'] ?? '');
+            if (!$address) {
+                $dist    = isset($r['distance']) ? round($r['distance'] / 1000, 1) : null;
+                $address = $dist ? $dist . ' km away' : '';
+            }
+
+            $out[] = [
+                'google_place_id' => 'mmi_' . $eloc,
+                'name'            => $name,
+                'type'            => $this->inferTypeFromName($name, $r['type'] ?? ''),
+                'address'         => $address,
+                'lat'             => $elLat,
+                'lng'             => $elLng,
+                'phone'           => null,
+                'website'         => null,
+                'rating'          => null,
+                'photo_reference' => null,
+                '_dist'           => isset($r['distance']) ? (float)$r['distance'] / 1000 : $this->haversine($lat, $lng, $elLat, $elLng),
+            ];
+        }
+
+        usort($out, fn($a, $b) => $a['_dist'] <=> $b['_dist']);
+
+        return array_map(function ($p) {
+            unset($p['_dist']);
+            return $p;
+        }, array_slice($out, 0, 20));
+    }
+
+    private function inferTypeFromName(string $name, string $category = ''): string
+    {
+        $n = strtolower($name . ' ' . $category);
+        if (strpos($n, 'badminton') !== false || strpos($n, 'shuttle') !== false) return 'shuttle';
+        if (strpos($n, 'cricket')   !== false) return 'cricket';
+        if (strpos($n, 'tennis')    !== false) return 'tennis';
+        if (strpos($n, 'swim')      !== false || strpos($n, 'pool') !== false || strpos($n, 'aqua') !== false) return 'swimming';
+        if (strpos($n, 'basket')    !== false) return 'basket';
+        if (strpos($n, 'football')  !== false || strpos($n, 'turf') !== false || strpos($n, 'futsal') !== false || strpos($n, 'soccer') !== false) return 'turf';
+        if (strpos($n, 'boxing')    !== false || strpos($n, 'martial') !== false || strpos($n, 'mma') !== false) return 'boxing';
+        if (strpos($n, 'gym')       !== false || strpos($n, 'fitness') !== false || strpos($n, 'crossfit') !== false) return 'gym';
+        return 'other';
     }
 
     // ── Overpass API (OpenStreetMap) ─────────────────────────────────────────
