@@ -3,6 +3,7 @@
 class PlacesController
 {
     private PDO    $db;
+    private string $googleApiKey;
     private string $mmiClientId;
     private string $mmiClientSecret;
 
@@ -23,6 +24,7 @@ class PlacesController
     public function __construct()
     {
         $this->db              = Database::getConnection();
+        $this->googleApiKey    = getenv('GOOGLE_PLACES_API_KEY')    ?: '';
         $this->mmiClientId     = getenv('MAPMYINDIA_CLIENT_ID')     ?: '';
         $this->mmiClientSecret = getenv('MAPMYINDIA_CLIENT_SECRET') ?: '';
         $this->ensureTables();
@@ -46,8 +48,11 @@ class PlacesController
         $places = $this->getFromCache($lat, $lng);
 
         if (empty($places)) {
-            // Priority: MapmyIndia → Overpass → Demo
-            $raw = $this->hasMmi() ? $this->fetchFromMapmyIndia($lat, $lng) : [];
+            // Priority: Google Places → MapmyIndia → Overpass → Demo
+            $raw = $this->hasGoogle() ? $this->fetchFromGoogle($lat, $lng) : [];
+            if (empty($raw)) {
+                $raw = $this->hasMmi() ? $this->fetchFromMapmyIndia($lat, $lng) : [];
+            }
             if (empty($raw)) {
                 $raw = $this->fetchFromOverpass($lat, $lng);
             }
@@ -182,6 +187,158 @@ class PlacesController
         )->execute([$id]);
 
         echo json_encode(['success' => true]);
+    }
+
+    // ── Google Places API ────────────────────────────────────────────────────
+
+    private function hasGoogle(): bool
+    {
+        return !empty($this->googleApiKey) && $this->googleApiKey !== 'your_google_places_api_key';
+    }
+
+    private function fetchFromGoogle(float $lat, float $lng): array
+    {
+        // Use the newer Places API (v1) — supports fieldMask for cost control
+        // Basic fields (displayName, location, formattedAddress, types) are FREE
+        // We only request fields in the Basic tier to avoid charges
+        $url = 'https://places.googleapis.com/v1/places:searchNearby';
+
+        $body = json_encode([
+            'includedTypes'    => [
+                'sports_complex', 'sports_club', 'stadium', 'gym', 'fitness_center',
+                'swimming_pool', 'golf_course', 'bowling_alley',
+            ],
+            'locationRestriction' => [
+                'circle' => [
+                    'center' => ['latitude' => $lat, 'longitude' => $lng],
+                    'radius' => 10000.0,
+                ],
+            ],
+            'maxResultCount' => 20,
+            'rankPreference'  => 'DISTANCE',
+        ]);
+
+        if (!function_exists('curl_init')) return [];
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_USERAGENT      => 'KoCourt/1.0',
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'X-Goog-Api-Key: ' . $this->googleApiKey,
+                // Only request Basic tier fields — these are FREE (no charge per field)
+                'X-Goog-FieldMask: places.id,places.displayName,places.formattedAddress,places.location,places.types,places.internationalPhoneNumber,places.websiteUri,places.rating',
+            ],
+        ]);
+        $resp     = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || !$resp) return [];
+
+        $data = json_decode($resp, true);
+        if (empty($data['places'])) return [];
+
+        $out  = [];
+        $seen = [];
+
+        foreach ($data['places'] as $r) {
+            $placeId = $r['id'] ?? null;
+            $name    = $r['displayName']['text'] ?? null;
+            if (!$placeId || !$name || isset($seen[$placeId])) continue;
+            $seen[$placeId] = true;
+
+            $elLat = $r['location']['latitude']  ?? null;
+            $elLng = $r['location']['longitude'] ?? null;
+            if ($elLat === null || $elLng === null) continue;
+
+            $out[] = [
+                'google_place_id' => $placeId,
+                'name'            => $name,
+                'type'            => $this->inferTypeFromName($name, implode(' ', $r['types'] ?? [])),
+                'address'         => $r['formattedAddress'] ?? '',
+                'lat'             => (float)$elLat,
+                'lng'             => (float)$elLng,
+                'phone'           => $r['internationalPhoneNumber'] ?? null,
+                'website'         => $r['websiteUri'] ?? null,
+                'rating'          => isset($r['rating']) ? (float)$r['rating'] : null,
+                'photo_reference' => null,
+                '_dist'           => $this->haversine($lat, $lng, (float)$elLat, (float)$elLng),
+            ];
+        }
+
+        // Google caps at 20 per call — make a second pass with different types
+        $moreTypes = [
+            'athletic_field', 'basketball_court', 'cricket_ground',
+            'tennis_court', 'volleyball_court', 'badminton_court',
+        ];
+        $body2 = json_encode([
+            'includedTypes'       => $moreTypes,
+            'locationRestriction' => [
+                'circle' => [
+                    'center' => ['latitude' => $lat, 'longitude' => $lng],
+                    'radius' => 10000.0,
+                ],
+            ],
+            'maxResultCount' => 20,
+            'rankPreference'  => 'DISTANCE',
+        ]);
+        $ch2 = curl_init($url);
+        curl_setopt_array($ch2, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body2,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_USERAGENT      => 'KoCourt/1.0',
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'X-Goog-Api-Key: ' . $this->googleApiKey,
+                'X-Goog-FieldMask: places.id,places.displayName,places.formattedAddress,places.location,places.types,places.internationalPhoneNumber,places.websiteUri,places.rating',
+            ],
+        ]);
+        $resp2     = curl_exec($ch2);
+        $httpCode2 = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
+        curl_close($ch2);
+
+        if ($httpCode2 === 200 && $resp2) {
+            $data2 = json_decode($resp2, true);
+            foreach ($data2['places'] ?? [] as $r) {
+                $placeId = $r['id'] ?? null;
+                $name    = $r['displayName']['text'] ?? null;
+                if (!$placeId || !$name || isset($seen[$placeId])) continue;
+                $seen[$placeId] = true;
+
+                $elLat = $r['location']['latitude']  ?? null;
+                $elLng = $r['location']['longitude'] ?? null;
+                if ($elLat === null || $elLng === null) continue;
+
+                $out[] = [
+                    'google_place_id' => $placeId,
+                    'name'            => $name,
+                    'type'            => $this->inferTypeFromName($name, implode(' ', $r['types'] ?? [])),
+                    'address'         => $r['formattedAddress'] ?? '',
+                    'lat'             => (float)$elLat,
+                    'lng'             => (float)$elLng,
+                    'phone'           => $r['internationalPhoneNumber'] ?? null,
+                    'website'         => $r['websiteUri'] ?? null,
+                    'rating'          => isset($r['rating']) ? (float)$r['rating'] : null,
+                    'photo_reference' => null,
+                    '_dist'           => $this->haversine($lat, $lng, (float)$elLat, (float)$elLng),
+                ];
+            }
+        }
+
+        usort($out, fn($a, $b) => $a['_dist'] <=> $b['_dist']);
+
+        return array_map(function ($p) {
+            unset($p['_dist']);
+            return $p;
+        }, $out);
     }
 
     // ── MapmyIndia Places API ────────────────────────────────────────────────
@@ -516,7 +673,7 @@ class PlacesController
                AND court_id IS NULL
                AND lat BETWEEN ? AND ?
                AND lng BETWEEN ? AND ?
-               AND cached_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
+               AND cached_at > DATE_SUB(NOW(), INTERVAL 30 DAY)
              ORDER BY request_count DESC"
         );
         $stmt->execute([$lat - $delta, $lat + $delta, $lng - $delta, $lng + $delta]);
