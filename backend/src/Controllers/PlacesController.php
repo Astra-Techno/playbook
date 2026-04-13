@@ -228,70 +228,79 @@ class PlacesController
     {
         $token = $this->getMmiToken();
         if (!$token) return [];
-
-        // Search multiple sport keywords — MMI uses semicolon-separated keywords
-        $keywords = 'Badminton Court;Cricket Ground;Tennis Court;Sports Complex;Gymnasium;'
-                  . 'Fitness Centre;Swimming Pool;Football Ground;Turf;Sports Club;'
-                  . 'Volleyball Court;Basketball Court;Sports Academy;Sports Arena';
-
-        $url = 'https://atlas.mapmyindia.com/api/places/nearby/json'
-             . '?keywords=' . urlencode($keywords)
-             . '&refLocation=' . $lat . ',' . $lng
-             . '&radius=10000'
-             . '&bounds=' . ($lat - 0.09) . ',' . ($lng - 0.09) . ';' . ($lat + 0.09) . ',' . ($lng + 0.09)
-             . '&richData=true';
-
         if (!function_exists('curl_init')) return [];
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 15,
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_USERAGENT      => 'KoCourt/1.0',
-            CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $token],
-        ]);
-        $resp     = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
-        if ($httpCode !== 200 || !$resp) return [];
-
-        $data = json_decode($resp, true);
-        if (empty($data['suggestedLocations'])) return [];
+        // Split into keyword batches — MMI returns ~10 per call, so multiple calls = more results
+        $keywordBatches = [
+            'Badminton Court;Shuttle Court;Badminton Academy;Tennis Court;Squash Court',
+            'Cricket Ground;Cricket Stadium;Cricket Club;Cricket Academy',
+            'Football Ground;Turf;Futsal Court;Football Club;Soccer Ground',
+            'Sports Complex;Sports Club;Sports Academy;Sports Centre;Sports Arena',
+            'Gymnasium;Gym;Fitness Centre;Crossfit;Yoga Centre',
+            'Swimming Pool;Aquatic Centre;Swim Club',
+            'Basketball Court;Volleyball Court;Boxing Club;Martial Arts',
+        ];
 
         $out  = [];
         $seen = [];
 
-        foreach ($data['suggestedLocations'] as $r) {
-            $name = trim($r['placeName'] ?? '');
-            $eloc = $r['eLoc'] ?? null;
-            if (!$name || !$eloc || isset($seen[$eloc])) continue;
-            $seen[$eloc] = true;
+        foreach ($keywordBatches as $keywords) {
+            // Fetch page 1 and page 2 for each batch
+            for ($page = 1; $page <= 2; $page++) {
+                $url = 'https://atlas.mapmyindia.com/api/places/nearby/json'
+                     . '?keywords='    . urlencode($keywords)
+                     . '&refLocation=' . $lat . ',' . $lng
+                     . '&radius=10000'
+                     . '&page='        . $page;
 
-            $elLat = isset($r['latitude'])  ? (float)$r['latitude']  : null;
-            $elLng = isset($r['longitude']) ? (float)$r['longitude'] : null;
-            if ($elLat === null || $elLng === null) continue;
+                $ch = curl_init($url);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT        => 10,
+                    CURLOPT_SSL_VERIFYPEER => true,
+                    CURLOPT_USERAGENT      => 'KoCourt/1.0',
+                    CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $token],
+                ]);
+                $resp     = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
 
-            // Build address
-            $address = trim($r['placeAddress'] ?? '');
-            if (!$address) {
-                $dist    = isset($r['distance']) ? round($r['distance'] / 1000, 1) : null;
-                $address = $dist ? $dist . ' km away' : '';
+                if ($httpCode !== 200 || !$resp) continue;
+
+                $data = json_decode($resp, true);
+                if (empty($data['suggestedLocations'])) break; // no more pages
+
+                foreach ($data['suggestedLocations'] as $r) {
+                    $name = trim($r['placeName'] ?? '');
+                    $eloc = $r['eLoc'] ?? null;
+                    if (!$name || !$eloc || isset($seen[$eloc])) continue;
+                    $seen[$eloc] = true;
+
+                    $elLat = isset($r['latitude'])  ? (float)$r['latitude']  : null;
+                    $elLng = isset($r['longitude']) ? (float)$r['longitude'] : null;
+                    if ($elLat === null || $elLng === null) continue;
+
+                    $address = trim($r['placeAddress'] ?? '');
+                    if (!$address) {
+                        $dist    = isset($r['distance']) ? round($r['distance'] / 1000, 1) : null;
+                        $address = $dist ? $dist . ' km away' : '';
+                    }
+
+                    $out[] = [
+                        'google_place_id' => 'mmi_' . $eloc,
+                        'name'            => $name,
+                        'type'            => $this->inferTypeFromName($name, $r['type'] ?? ''),
+                        'address'         => $address,
+                        'lat'             => $elLat,
+                        'lng'             => $elLng,
+                        'phone'           => null,
+                        'website'         => null,
+                        'rating'          => null,
+                        'photo_reference' => null,
+                        '_dist'           => isset($r['distance']) ? (float)$r['distance'] / 1000 : $this->haversine($lat, $lng, $elLat, $elLng),
+                    ];
+                }
             }
-
-            $out[] = [
-                'google_place_id' => 'mmi_' . $eloc,
-                'name'            => $name,
-                'type'            => $this->inferTypeFromName($name, $r['type'] ?? ''),
-                'address'         => $address,
-                'lat'             => $elLat,
-                'lng'             => $elLng,
-                'phone'           => null,
-                'website'         => null,
-                'rating'          => null,
-                'photo_reference' => null,
-                '_dist'           => isset($r['distance']) ? (float)$r['distance'] / 1000 : $this->haversine($lat, $lng, $elLat, $elLng),
-            ];
         }
 
         usort($out, fn($a, $b) => $a['_dist'] <=> $b['_dist']);
@@ -299,7 +308,7 @@ class PlacesController
         return array_map(function ($p) {
             unset($p['_dist']);
             return $p;
-        }, array_slice($out, 0, 20));
+        }, array_slice($out, 0, 40));
     }
 
     private function inferTypeFromName(string $name, string $category = ''): string
@@ -509,7 +518,7 @@ class PlacesController
                AND lng BETWEEN ? AND ?
                AND cached_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
              ORDER BY request_count DESC
-             LIMIT 20"
+             LIMIT 40"
         );
         $stmt->execute([$lat - $delta, $lat + $delta, $lng - $delta, $lng + $delta]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
