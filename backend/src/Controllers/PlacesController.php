@@ -308,7 +308,7 @@ class PlacesController
         return array_map(function ($p) {
             unset($p['_dist']);
             return $p;
-        }, array_slice($out, 0, 40));
+        }, $out);
     }
 
     private function inferTypeFromName(string $name, string $category = ''): string
@@ -408,7 +408,7 @@ class PlacesController
         return array_map(function ($p) {
             unset($p['_dist']);
             return $p;
-        }, array_slice($out, 0, 20));
+        }, $out);
     }
 
     private function buildOsmAddress(array $tags, float $userLat, float $userLng, float $elLat, float $elLng): string
@@ -517,8 +517,7 @@ class PlacesController
                AND lat BETWEEN ? AND ?
                AND lng BETWEEN ? AND ?
                AND cached_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
-             ORDER BY request_count DESC
-             LIMIT 40"
+             ORDER BY request_count DESC"
         );
         $stmt->execute([$lat - $delta, $lat + $delta, $lng - $delta, $lng + $delta]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
