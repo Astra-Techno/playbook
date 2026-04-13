@@ -342,13 +342,6 @@ if (isset($seg[0]) && $seg[0] === 'posts') {
     }
 }
 
-// Ghost Listings — GET /nearby-places?lat=&lng=&user_id=
-if (isset($seg[0]) && $seg[0] === 'nearby-places' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    require_once __DIR__ . '/src/Controllers/PlacesController.php';
-    (new PlacesController())->nearby();
-    exit();
-}
-
 // Debug: GET /nearby-places/test?lat=&lng= — tests MapmyIndia + Overpass connectivity
 if (isset($seg[0], $seg[1]) && $seg[0] === 'nearby-places' && $seg[1] === 'test') {
     $lat       = (float)($_GET['lat'] ?? 12.9716);
@@ -385,6 +378,13 @@ if (isset($seg[0], $seg[1]) && $seg[0] === 'nearby-places' && $seg[1] === 'test'
     $result['overpass'] = ['http_code'=>$ovCode,'count'=>count($ovData['elements'] ?? []),'preview'=>array_slice($ovData['elements'] ?? [], 0, 3)];
 
     echo json_encode($result, JSON_PRETTY_PRINT);
+    exit();
+}
+
+// Ghost Listings — GET /nearby-places?lat=&lng=&user_id=
+if (isset($seg[0]) && $seg[0] === 'nearby-places' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_once __DIR__ . '/src/Controllers/PlacesController.php';
+    (new PlacesController())->nearby();
     exit();
 }
 
