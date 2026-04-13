@@ -2,10 +2,9 @@
 
 class PlacesController
 {
-    private PDO    $db;
-    private string $apiKey;
+    private PDO $db;
 
-    // Fallback Unsplash images per sport type (when no Google photo / no API key)
+    // Fallback Unsplash images per sport type
     private const FALLBACK_IMAGES = [
         'shuttle'  => 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=600&q=80',
         'turf'     => 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?w=600&q=80',
@@ -15,13 +14,13 @@ class PlacesController
         'basket'   => 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=600&q=80',
         'swimming' => 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?w=600&q=80',
         'boxing'   => 'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=600&q=80',
+        'squash'   => 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=600&q=80',
         'other'    => 'https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=600&q=80',
     ];
 
     public function __construct()
     {
-        $this->db     = Database::getConnection();
-        $this->apiKey = getenv('GOOGLE_PLACES_API_KEY') ?: '';
+        $this->db = Database::getConnection();
         $this->ensureTables();
     }
 
@@ -29,9 +28,9 @@ class PlacesController
 
     public function nearby(): void
     {
-        $lat    = isset($_GET['lat'])  ? (float)$_GET['lat']  : null;
-        $lng    = isset($_GET['lng'])  ? (float)$_GET['lng']  : null;
-        $userId = isset($_GET['user_id']) ? (int)$_GET['user_id'] : null;
+        $lat    = isset($_GET['lat'])     ? (float)$_GET['lat']     : null;
+        $lng    = isset($_GET['lng'])     ? (float)$_GET['lng']     : null;
+        $userId = isset($_GET['user_id']) ? (int)$_GET['user_id']   : null;
 
         if ($lat === null || $lng === null) {
             http_response_code(400);
@@ -39,21 +38,25 @@ class PlacesController
             return;
         }
 
-        // Try cache first (results within ~2 km fetched in last 24 h)
+        // Serve from cache first (within ~2 km, last 24 h)
         $places = $this->getFromCache($lat, $lng);
 
         if (empty($places)) {
-            $raw    = $this->isDemoMode() ? $this->getDemoPlaces($lat, $lng) : $this->fetchFromGoogle($lat, $lng);
+            $raw = $this->fetchFromOverpass($lat, $lng);
+            if (empty($raw)) {
+                $raw = $this->getDemoPlaces($lat, $lng); // offline fallback
+            }
             $this->storePlaces($raw);
             $places = $this->getFromCache($lat, $lng);
         }
 
-        // Attach photo URL and user-request status
+        // Attach image + user-request flag
         $requestedIds = $userId ? $this->getUserRequestedIds($userId) : [];
 
         foreach ($places as &$p) {
-            $p['image_url']       = $this->buildPhotoUrl($p['photo_reference'], $p['type']);
-            $p['user_requested']  = in_array((int)$p['id'], $requestedIds, true);
+            $p['image_url']      = self::FALLBACK_IMAGES[$p['type']] ?? self::FALLBACK_IMAGES['other'];
+            $p['user_requested'] = in_array((int)$p['id'], $requestedIds, true);
+            unset($p['photo_reference']); // not used with OSM
         }
         unset($p);
 
@@ -74,7 +77,6 @@ class PlacesController
             return;
         }
 
-        // Verify place exists
         $check = $this->db->prepare("SELECT id, request_count, status FROM places WHERE id = ?");
         $check->execute([$placeId]);
         $place = $check->fetch(PDO::FETCH_ASSOC);
@@ -84,7 +86,6 @@ class PlacesController
             return;
         }
 
-        // Insert (ignore duplicate — user already requested)
         $stmt = $this->db->prepare(
             "INSERT IGNORE INTO service_requests (place_id, user_id) VALUES (?, ?)"
         );
@@ -97,12 +98,10 @@ class PlacesController
             )->execute([$placeId]);
         }
 
-        // Fetch fresh count
         $countRow = $this->db->prepare("SELECT request_count FROM places WHERE id = ?");
         $countRow->execute([$placeId]);
         $count = (int)$countRow->fetchColumn();
 
-        // Trigger outreach threshold check (5 requests)
         if ($inserted && $count >= 5 && $place['status'] === 'unregistered') {
             $this->flagForOutreach($placeId);
         }
@@ -114,9 +113,7 @@ class PlacesController
         ]);
     }
 
-    // ── Private helpers ──────────────────────────────────────────────────────
-
-    // ── Admin: GET /admin/demand?admin_id= ──────────────────────────────────
+    // ── Admin: GET /admin/demand?admin_id= ───────────────────────────────────
 
     public function adminDemand(): void
     {
@@ -153,7 +150,7 @@ class PlacesController
             ], array_keys($names));
 
             unset($p['requester_names'], $p['requester_phones'], $p['requester_ids']);
-            $p['image_url'] = $this->buildPhotoUrl($p['photo_reference'], $p['type']);
+            $p['image_url'] = self::FALLBACK_IMAGES[$p['type']] ?? self::FALLBACK_IMAGES['other'];
         }
         unset($p);
 
@@ -179,7 +176,170 @@ class PlacesController
         echo json_encode(['success' => true]);
     }
 
-    // ── Private helpers ──────────────────────────────────────────────────────
+    // ── Overpass API (OpenStreetMap) ─────────────────────────────────────────
+
+    private function fetchFromOverpass(float $lat, float $lng): array
+    {
+        // Query nodes + ways for sports/leisure venues within 5 km
+        $query = '[out:json][timeout:20];'
+            . '('
+            . 'node["leisure"~"sports_centre|fitness_centre|stadium|pitch|swimming_pool"](around:5000,' . $lat . ',' . $lng . ');'
+            . 'node["sport"~"badminton|tennis|cricket|football|soccer|futsal|swimming|basketball|boxing|squash|volleyball|kabaddi"](around:5000,' . $lat . ',' . $lng . ');'
+            . 'node["amenity"="gym"](around:5000,' . $lat . ',' . $lng . ');'
+            . 'way["leisure"~"sports_centre|fitness_centre|stadium|pitch|swimming_pool"](around:5000,' . $lat . ',' . $lng . ');'
+            . 'way["sport"~"badminton|tennis|cricket|football|soccer|futsal|swimming|basketball|boxing|squash|volleyball|kabaddi"](around:5000,' . $lat . ',' . $lng . ');'
+            . 'way["amenity"="gym"](around:5000,' . $lat . ',' . $lng . ');'
+            . ');'
+            . 'out center 40;';
+
+        // Try primary mirror, fallback to secondary
+        $mirrors = [
+            'https://overpass-api.de/api/interpreter',
+            'https://overpass.kumi.systems/api/interpreter',
+        ];
+
+        $response = false;
+        foreach ($mirrors as $url) {
+            $response = $this->curlPost($url, 'data=' . urlencode($query), 20);
+            if ($response !== false) break;
+        }
+
+        if (!$response) return [];
+
+        $data = json_decode($response, true);
+        if (!isset($data['elements'])) return [];
+
+        $out  = [];
+        $seen = [];
+
+        foreach ($data['elements'] as $el) {
+            // Nodes have lat/lon; ways return center point
+            $elLat = isset($el['lat']) ? (float)$el['lat'] : (isset($el['center']['lat']) ? (float)$el['center']['lat'] : null);
+            $elLng = isset($el['lon']) ? (float)$el['lon'] : (isset($el['center']['lon']) ? (float)$el['center']['lon'] : null);
+            if ($elLat === null || $elLng === null) continue;
+
+            $tags = $el['tags'] ?? [];
+            $name = isset($tags['name']) ? trim($tags['name']) : null;
+            if (!$name) continue; // skip unnamed map features
+
+            $osmId = $el['type'] . '_' . $el['id'];
+            if (isset($seen[$osmId])) continue;
+            $seen[$osmId] = true;
+
+            // Build human-readable address from OSM tags
+            $address = $this->buildOsmAddress($tags, $lat, $lng, $elLat, $elLng);
+
+            $out[] = [
+                'google_place_id' => $osmId,           // reuse column; stores OSM ID
+                'name'            => $name,
+                'type'            => $this->inferTypeFromOsm($tags),
+                'address'         => $address,
+                'lat'             => $elLat,
+                'lng'             => $elLng,
+                'phone'           => $tags['phone'] ?? $tags['contact:phone'] ?? $tags['contact:mobile'] ?? null,
+                'website'         => $tags['website'] ?? $tags['contact:website'] ?? null,
+                'rating'          => null,
+                'photo_reference' => null,
+                '_dist'           => $this->haversine($lat, $lng, $elLat, $elLng),
+            ];
+        }
+
+        // Sort nearest first
+        usort($out, fn($a, $b) => $a['_dist'] <=> $b['_dist']);
+
+        return array_map(function ($p) {
+            unset($p['_dist']);
+            return $p;
+        }, array_slice($out, 0, 20));
+    }
+
+    private function buildOsmAddress(array $tags, float $userLat, float $userLng, float $elLat, float $elLng): string
+    {
+        // Prefer full address from OSM tags
+        if (!empty($tags['addr:full'])) {
+            return $tags['addr:full'];
+        }
+
+        $parts = array_filter([
+            $tags['addr:housenumber'] ?? null,
+            $tags['addr:street']      ?? null,
+            $tags['addr:suburb']      ?? ($tags['addr:neighbourhood'] ?? null),
+            $tags['addr:city']        ?? ($tags['addr:town'] ?? null),
+        ]);
+
+        if (!empty($parts)) {
+            return implode(', ', $parts);
+        }
+
+        // Distance fallback
+        $dist = $this->haversine($userLat, $userLng, $elLat, $elLng);
+        return round($dist, 1) . ' km away';
+    }
+
+    private function inferTypeFromOsm(array $tags): string
+    {
+        $sport   = strtolower($tags['sport']   ?? '');
+        $leisure = strtolower($tags['leisure'] ?? '');
+        $amenity = strtolower($tags['amenity'] ?? '');
+        $name    = strtolower($tags['name']    ?? '');
+
+        // sport tag is most precise
+        if (strpos($sport, 'badminton') !== false || strpos($sport, 'shuttlecock') !== false) return 'shuttle';
+        if (strpos($sport, 'tennis')    !== false) return 'tennis';
+        if (strpos($sport, 'cricket')   !== false) return 'cricket';
+        if (strpos($sport, 'swimming')  !== false) return 'swimming';
+        if (strpos($sport, 'basketball')!== false) return 'basket';
+        if (strpos($sport, 'football')  !== false || strpos($sport, 'soccer') !== false || strpos($sport, 'futsal') !== false) return 'turf';
+        if (strpos($sport, 'boxing')    !== false || strpos($sport, 'martial') !== false || strpos($sport, 'kabaddi') !== false) return 'boxing';
+        if (strpos($sport, 'squash')    !== false || strpos($sport, 'volleyball') !== false) return 'squash';
+
+        // leisure / amenity tag
+        if ($leisure === 'fitness_centre' || $amenity === 'gym') return 'gym';
+        if ($leisure === 'swimming_pool') return 'swimming';
+        if ($leisure === 'pitch') return 'turf';
+
+        // name-based fallback
+        if (strpos($name, 'badminton') !== false || strpos($name, 'shuttle') !== false) return 'shuttle';
+        if (strpos($name, 'turf')      !== false || strpos($name, 'football') !== false || strpos($name, 'futsal') !== false) return 'turf';
+        if (strpos($name, 'cricket')   !== false) return 'cricket';
+        if (strpos($name, 'tennis')    !== false) return 'tennis';
+        if (strpos($name, 'swim')      !== false || strpos($name, 'pool') !== false || strpos($name, 'aqua') !== false) return 'swimming';
+        if (strpos($name, 'basket')    !== false) return 'basket';
+        if (strpos($name, 'boxing')    !== false || strpos($name, 'martial') !== false || strpos($name, 'mma') !== false) return 'boxing';
+        if (strpos($name, 'gym')       !== false || strpos($name, 'fitness') !== false || strpos($name, 'crossfit') !== false) return 'gym';
+
+        return 'other';
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private function curlPost(string $url, string $body, int $timeout): ?string
+    {
+        if (!function_exists('curl_init')) return null;
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_USERAGENT      => 'KoCourt/1.0 (sports-booking-app)',
+            CURLOPT_HTTPHEADER     => ['Content-Type: application/x-www-form-urlencoded'],
+        ]);
+        $result   = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        return ($httpCode === 200 && $result) ? $result : null;
+    }
+
+    private function haversine(float $lat1, float $lng1, float $lat2, float $lng2): float
+    {
+        $r    = 6371;
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLng = deg2rad($lng2 - $lng1);
+        $a    = sin($dLat / 2) ** 2 + cos(deg2rad($lat1)) * cos(deg2rad($lat2)) * sin($dLng / 2) ** 2;
+        return $r * 2 * atan2(sqrt($a), sqrt(1 - $a));
+    }
 
     private function isAdmin(int $userId): bool
     {
@@ -191,8 +351,7 @@ class PlacesController
 
     private function getFromCache(float $lat, float $lng): array
     {
-        // 0.018 degrees ≈ 2 km; exclude already-onboarded places
-        $delta = 0.018;
+        $delta = 0.018; // ~2 km
         $stmt  = $this->db->prepare(
             "SELECT * FROM places
              WHERE status IN ('unregistered','contacted')
@@ -200,68 +359,25 @@ class PlacesController
                AND lat BETWEEN ? AND ?
                AND lng BETWEEN ? AND ?
                AND cached_at > DATE_SUB(NOW(), INTERVAL 24 HOUR)
-             ORDER BY request_count DESC, rating DESC
+             ORDER BY request_count DESC
              LIMIT 20"
         );
         $stmt->execute([$lat - $delta, $lat + $delta, $lng - $delta, $lng + $delta]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    private function fetchFromGoogle(float $lat, float $lng): array
-    {
-        $url = sprintf(
-            'https://maps.googleapis.com/maps/api/place/nearbysearch/json'
-            . '?location=%s,%s&radius=5000&keyword=%s&key=%s',
-            $lat,
-            $lng,
-            urlencode('sports court gym turf badminton cricket tennis swimming'),
-            $this->apiKey
-        );
-
-        $ctx      = stream_context_create(['http' => ['timeout' => 8]]);
-        $response = @file_get_contents($url, false, $ctx);
-        if (!$response) return [];
-
-        $data = json_decode($response, true);
-        if (!isset($data['results'])) return [];
-
-        $out  = [];
-        $seen = [];
-        foreach ($data['results'] as $r) {
-            $pid = $r['place_id'] ?? null;
-            if (!$pid || isset($seen[$pid])) continue;
-            $seen[$pid] = true;
-
-            $out[] = [
-                'google_place_id' => $pid,
-                'name'            => $r['name'] ?? 'Unknown Venue',
-                'type'            => $this->inferType($r),
-                'address'         => $r['vicinity'] ?? '',
-                'lat'             => (float)($r['geometry']['location']['lat'] ?? $lat),
-                'lng'             => (float)($r['geometry']['location']['lng'] ?? $lng),
-                'phone'           => null,
-                'rating'          => isset($r['rating']) ? (float)$r['rating'] : null,
-                'photo_reference' => $r['photos'][0]['photo_reference'] ?? null,
-            ];
-        }
-
-        return array_slice($out, 0, 15);
-    }
-
     private function storePlaces(array $places): void
     {
         $stmt = $this->db->prepare(
             "INSERT INTO places
-                (google_place_id, name, type, address, lat, lng, phone, rating, photo_reference, cached_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+                (google_place_id, name, type, address, lat, lng, phone, website, rating, photo_reference, cached_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
              ON DUPLICATE KEY UPDATE
-                name            = VALUES(name),
-                address         = VALUES(address),
-                lat             = VALUES(lat),
-                lng             = VALUES(lng),
-                rating          = VALUES(rating),
-                photo_reference = VALUES(photo_reference),
-                cached_at       = NOW()"
+                name      = VALUES(name),
+                address   = VALUES(address),
+                phone     = COALESCE(VALUES(phone), phone),
+                website   = COALESCE(VALUES(website), website),
+                cached_at = NOW()"
         );
 
         foreach ($places as $p) {
@@ -272,8 +388,9 @@ class PlacesController
                 $p['address'],
                 $p['lat'],
                 $p['lng'],
-                $p['phone'] ?? null,
-                $p['rating'] ?? null,
+                $p['phone']   ?? null,
+                $p['website'] ?? null,
+                $p['rating']  ?? null,
                 $p['photo_reference'] ?? null,
             ]);
         }
@@ -281,68 +398,29 @@ class PlacesController
 
     private function getUserRequestedIds(int $userId): array
     {
-        $stmt = $this->db->prepare(
-            "SELECT place_id FROM service_requests WHERE user_id = ?"
-        );
+        $stmt = $this->db->prepare("SELECT place_id FROM service_requests WHERE user_id = ?");
         $stmt->execute([$userId]);
         return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
-    private function buildPhotoUrl(?string $ref, string $type): string
-    {
-        if ($ref && $this->apiKey && !$this->isDemoMode()) {
-            return sprintf(
-                'https://maps.googleapis.com/maps/api/place/photo?maxwidth=600&photo_reference=%s&key=%s',
-                urlencode($ref),
-                $this->apiKey
-            );
-        }
-        return self::FALLBACK_IMAGES[$type] ?? self::FALLBACK_IMAGES['other'];
-    }
-
-    private function inferType(array $place): string
-    {
-        $types = $place['types'] ?? [];
-        $name  = strtolower($place['name'] ?? '');
-
-        if (in_array('gym', $types) || str_contains($name, 'gym') || str_contains($name, 'fitness') || str_contains($name, 'crossfit')) return 'gym';
-        if (str_contains($name, 'badminton') || str_contains($name, 'shuttle')) return 'shuttle';
-        if (str_contains($name, 'turf') || str_contains($name, 'football') || str_contains($name, 'soccer') || str_contains($name, 'futsal')) return 'turf';
-        if (str_contains($name, 'cricket')) return 'cricket';
-        if (str_contains($name, 'tennis')) return 'tennis';
-        if (str_contains($name, 'swim') || str_contains($name, 'pool') || str_contains($name, 'aqua')) return 'swimming';
-        if (str_contains($name, 'basketball') || str_contains($name, 'basket')) return 'basket';
-        if (str_contains($name, 'boxing') || str_contains($name, 'martial') || str_contains($name, 'karate')) return 'boxing';
-        if (in_array('stadium', $types) || in_array('sports_complex', $types)) return 'turf';
-        return 'other';
-    }
-
     private function flagForOutreach(int $placeId): void
     {
-        // Mark as 'contacted' so we don't double-trigger
         $this->db->prepare(
             "UPDATE places SET status = 'contacted' WHERE id = ? AND status = 'unregistered'"
         )->execute([$placeId]);
-
-        // TODO: trigger WhatsApp / SMS / email to places.phone or places.website owner
-        // e.g. "X people near you want to book your facility on KoCourt. Join free at ..."
+        // TODO: send WhatsApp/SMS to places.phone when 5+ requests come in
     }
 
-    private function isDemoMode(): bool
-    {
-        return empty($this->apiKey)
-            || $this->apiKey === 'your_google_places_api_key';
-    }
-
+    // Demo fallback when Overpass is unreachable
     private function getDemoPlaces(float $lat, float $lng): array
     {
         return [
-            ['google_place_id' => 'demo_p1', 'name' => 'City Badminton Academy',    'type' => 'shuttle',  'address' => '2.1 km away', 'lat' => $lat + 0.005, 'lng' => $lng + 0.003, 'phone' => null, 'rating' => 4.2, 'photo_reference' => null],
-            ['google_place_id' => 'demo_p2', 'name' => 'FitZone Sports Club',       'type' => 'gym',      'address' => '1.4 km away', 'lat' => $lat - 0.004, 'lng' => $lng + 0.006, 'phone' => null, 'rating' => 4.5, 'photo_reference' => null],
-            ['google_place_id' => 'demo_p3', 'name' => 'Green Turf Football Arena', 'type' => 'turf',     'address' => '3.0 km away', 'lat' => $lat + 0.008, 'lng' => $lng - 0.005, 'phone' => null, 'rating' => 4.0, 'photo_reference' => null],
-            ['google_place_id' => 'demo_p4', 'name' => 'Victory Cricket Ground',    'type' => 'cricket',  'address' => '2.7 km away', 'lat' => $lat - 0.007, 'lng' => $lng - 0.004, 'phone' => null, 'rating' => 4.3, 'photo_reference' => null],
-            ['google_place_id' => 'demo_p5', 'name' => 'AquaFit Swimming Centre',   'type' => 'swimming', 'address' => '1.8 km away', 'lat' => $lat + 0.002, 'lng' => $lng + 0.009, 'phone' => null, 'rating' => 4.1, 'photo_reference' => null],
-            ['google_place_id' => 'demo_p6', 'name' => 'Smash Tennis Club',         'type' => 'tennis',   'address' => '3.5 km away', 'lat' => $lat - 0.010, 'lng' => $lng + 0.002, 'phone' => null, 'rating' => 4.4, 'photo_reference' => null],
+            ['google_place_id' => 'demo_p1', 'name' => 'City Badminton Academy',    'type' => 'shuttle',  'address' => '2.1 km away', 'lat' => $lat + 0.005, 'lng' => $lng + 0.003, 'phone' => null, 'website' => null, 'rating' => null, 'photo_reference' => null],
+            ['google_place_id' => 'demo_p2', 'name' => 'FitZone Sports Club',       'type' => 'gym',      'address' => '1.4 km away', 'lat' => $lat - 0.004, 'lng' => $lng + 0.006, 'phone' => null, 'website' => null, 'rating' => null, 'photo_reference' => null],
+            ['google_place_id' => 'demo_p3', 'name' => 'Green Turf Football Arena', 'type' => 'turf',     'address' => '3.0 km away', 'lat' => $lat + 0.008, 'lng' => $lng - 0.005, 'phone' => null, 'website' => null, 'rating' => null, 'photo_reference' => null],
+            ['google_place_id' => 'demo_p4', 'name' => 'Victory Cricket Ground',    'type' => 'cricket',  'address' => '2.7 km away', 'lat' => $lat - 0.007, 'lng' => $lng - 0.004, 'phone' => null, 'website' => null, 'rating' => null, 'photo_reference' => null],
+            ['google_place_id' => 'demo_p5', 'name' => 'AquaFit Swimming Centre',   'type' => 'swimming', 'address' => '1.8 km away', 'lat' => $lat + 0.002, 'lng' => $lng + 0.009, 'phone' => null, 'website' => null, 'rating' => null, 'photo_reference' => null],
+            ['google_place_id' => 'demo_p6', 'name' => 'Smash Tennis Club',         'type' => 'tennis',   'address' => '3.5 km away', 'lat' => $lat - 0.010, 'lng' => $lng + 0.002, 'phone' => null, 'website' => null, 'rating' => null, 'photo_reference' => null],
         ];
     }
 
