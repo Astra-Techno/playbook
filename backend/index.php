@@ -353,7 +353,7 @@ if (isset($seg[0]) && $seg[0] === 'nearby-places' && $_SERVER['REQUEST_METHOD'] 
 if (isset($seg[0], $seg[1]) && $seg[0] === 'nearby-places' && $seg[1] === 'test') {
     $lat = (float)($_GET['lat'] ?? 12.9716);
     $lng = (float)($_GET['lng'] ?? 77.5946);
-    $query = '[out:json][timeout:10];node["sport"="badminton"](around:5000,' . $lat . ',' . $lng . ');out 3;';
+    $query = '[out:json][timeout:15];(node["sport"~"badminton|cricket|tennis|football"](around:10000,' . $lat . ',' . $lng . ');node["name"~"sports|court|ground|stadium|gym|badminton|cricket",i](around:10000,' . $lat . ',' . $lng . '););out center 5;';
     $ch = curl_init('https://overpass-api.de/api/interpreter');
     curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER=>true,CURLOPT_POST=>true,CURLOPT_POSTFIELDS=>'data='.urlencode($query),CURLOPT_TIMEOUT=>15,CURLOPT_USERAGENT=>'KoCourt/1.0']);
     $resp = curl_exec($ch);

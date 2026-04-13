@@ -180,15 +180,24 @@ class PlacesController
 
     private function fetchFromOverpass(float $lat, float $lng): array
     {
-        // Query nodes + ways for sports/leisure venues within 5 km
-        $query = '[out:json][timeout:20];'
+        $r = 10000; // 10 km radius — wider for smaller Indian cities
+
+        // Two-pass query:
+        // Pass 1: tag-based (precise) — sport/leisure/amenity tags
+        // Pass 2: name-based regex (catches untagged Indian venues by name)
+        $query = '[out:json][timeout:25];'
             . '('
-            . 'node["leisure"~"sports_centre|fitness_centre|stadium|pitch|swimming_pool"](around:5000,' . $lat . ',' . $lng . ');'
-            . 'node["sport"~"badminton|tennis|cricket|football|soccer|futsal|swimming|basketball|boxing|squash|volleyball|kabaddi"](around:5000,' . $lat . ',' . $lng . ');'
-            . 'node["amenity"="gym"](around:5000,' . $lat . ',' . $lng . ');'
-            . 'way["leisure"~"sports_centre|fitness_centre|stadium|pitch|swimming_pool"](around:5000,' . $lat . ',' . $lng . ');'
-            . 'way["sport"~"badminton|tennis|cricket|football|soccer|futsal|swimming|basketball|boxing|squash|volleyball|kabaddi"](around:5000,' . $lat . ',' . $lng . ');'
-            . 'way["amenity"="gym"](around:5000,' . $lat . ',' . $lng . ');'
+            // Tag-based — nodes
+            . 'node["leisure"~"sports_centre|fitness_centre|stadium|pitch|swimming_pool"](around:' . $r . ',' . $lat . ',' . $lng . ');'
+            . 'node["sport"~"badminton|tennis|cricket|football|soccer|futsal|swimming|basketball|boxing|squash|volleyball|kabaddi|hockey"](around:' . $r . ',' . $lat . ',' . $lng . ');'
+            . 'node["amenity"~"gym|sports_centre|swimming_pool|stadium"](around:' . $r . ',' . $lat . ',' . $lng . ');'
+            // Tag-based — ways (buildings/grounds)
+            . 'way["leisure"~"sports_centre|fitness_centre|stadium|pitch|swimming_pool"](around:' . $r . ',' . $lat . ',' . $lng . ');'
+            . 'way["sport"~"badminton|tennis|cricket|football|soccer|futsal|swimming|basketball|boxing|squash|volleyball|kabaddi|hockey"](around:' . $r . ',' . $lat . ',' . $lng . ');'
+            . 'way["amenity"~"gym|sports_centre|swimming_pool|stadium"](around:' . $r . ',' . $lat . ',' . $lng . ');'
+            // Name-based — catches untagged Indian venues (e.g. "Sivakasi Badminton Court")
+            . 'node["name"~"badminton|cricket|tennis|turf|stadium|gym|fitness|swimming|basketball|boxing|squash|sports|court|arena|ground|academy|club",i](around:' . $r . ',' . $lat . ',' . $lng . ');'
+            . 'way["name"~"badminton|cricket|tennis|turf|stadium|gym|fitness|swimming|basketball|boxing|squash|sports|court|arena|ground|academy|club",i](around:' . $r . ',' . $lat . ',' . $lng . ');'
             . ');'
             . 'out center 40;';
 
