@@ -512,6 +512,27 @@ if (isset($seg[0]) && $seg[0] === 'tag-search' && $_SERVER['REQUEST_METHOD'] ===
     exit();
 }
 
+// ── Court Regulars  GET /courts/:id/regulars?exclude_user=X ──────────────────
+if (isset($seg[0]) && $seg[0] === 'courts' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'regulars' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $court_id    = (int)$seg[1];
+    $exclude_uid = (int)($_GET['exclude_user'] ?? 0);
+    $db   = Database::getConnection();
+    $stmt = $db->prepare(
+        "SELECT u.id, u.name, u.phone, u.avatar_url, COUNT(b.id) AS booking_count
+         FROM bookings b
+         JOIN users u ON u.id = b.user_id
+         WHERE b.court_id = ? AND b.status = 'confirmed'
+           AND b.user_id != ?
+           AND b.start_time >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+         GROUP BY u.id
+         ORDER BY booking_count DESC
+         LIMIT 12"
+    );
+    $stmt->execute([$court_id, $exclude_uid]);
+    echo json_encode(['players' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    exit();
+}
+
 // ── User search by phone  GET /users/search?phone=X ──────────────────────────
 if (isset($seg[0]) && $seg[0] === 'users' && isset($seg[1]) && $seg[1] === 'search' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     $phone = trim($_GET['phone'] ?? '');

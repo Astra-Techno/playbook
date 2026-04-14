@@ -47,11 +47,22 @@ const alreadyReviewed = ref(false)
 
 // Add Players modal — shown after a successful booking
 const addPlayers = ref({
-    show: false, bookingIds: [],
+    show: false, bookingIds: [], slotLabel: '',
+    regulars: [], regularsLoading: false,
     phone: '', searchResult: null, searching: false, notFound: false,
     selected: [],   // [{ id, name, phone, avatar_url }]
     submitting: false,
 })
+
+const isSelected = (id) => addPlayers.value.selected.some(p => p.id === id)
+
+const toggleRegular = (u) => {
+    if (isSelected(u.id)) {
+        addPlayers.value.selected = addPlayers.value.selected.filter(p => p.id !== u.id)
+    } else {
+        addPlayers.value.selected.push(u)
+    }
+}
 
 const searchPlayer = async () => {
     const phone = addPlayers.value.phone.trim()
@@ -62,9 +73,8 @@ const searchPlayer = async () => {
     try {
         const res = await axios.get(`/users/search?phone=${encodeURIComponent(phone)}`)
         if (res.data.user) {
-            // skip self or already added
             const u = res.data.user
-            if (u.id === auth.user?.id || addPlayers.value.selected.find(s => s.id === u.id)) {
+            if (u.id === auth.user?.id || isSelected(u.id)) {
                 addPlayers.value.notFound = true
             } else {
                 addPlayers.value.searchResult = u
@@ -77,7 +87,7 @@ const searchPlayer = async () => {
 }
 
 const addPlayerToList = (u) => {
-    addPlayers.value.selected.push(u)
+    if (!isSelected(u.id)) addPlayers.value.selected.push(u)
     addPlayers.value.searchResult = null
     addPlayers.value.phone = ''
     addPlayers.value.notFound = false
@@ -87,9 +97,17 @@ const removePlayer = (id) => {
     addPlayers.value.selected = addPlayers.value.selected.filter(p => p.id !== id)
 }
 
+const shareWhatsApp = () => {
+    const { slotLabel } = addPlayers.value
+    const courtName = court.value?.name || 'a court'
+    const appUrl = window.location.origin
+    const msg = `Hey! I've booked a slot at *${courtName}*${slotLabel ? ' on ' + slotLabel : ''}. Come join me! 🏸\n${appUrl}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank')
+}
+
 const submitPlayers = async () => {
     const { bookingIds, selected } = addPlayers.value
-    if (!selected.length) { router.push('/bookings'); return }
+    if (!selected.length) { addPlayers.value.show = false; router.push('/bookings'); return }
     addPlayers.value.submitting = true
     try {
         await Promise.all(bookingIds.map(bid =>
@@ -99,7 +117,7 @@ const submitPlayers = async () => {
                 user_ids: selected.map(p => p.id),
             })
         ))
-        toast.success('Players notified!')
+        toast.success(`${selected.length} player${selected.length > 1 ? 's' : ''} notified!`)
     } catch { /* non-critical */ }
     finally {
         addPlayers.value.submitting = false
@@ -108,12 +126,25 @@ const submitPlayers = async () => {
     }
 }
 
-const openAddPlayers = (bookingIds) => {
+const openAddPlayers = async (bookingIds, startTime) => {
+    // Format slot label: "Wed, 16 Apr · 06:00 PM"
+    let slotLabel = ''
+    if (startTime) {
+        const d = new Date(`${startTime.replace(' ', 'T')}`)
+        slotLabel = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) +
+                    ' · ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+    }
     addPlayers.value = {
-        show: true, bookingIds,
+        show: true, bookingIds, slotLabel,
+        regulars: [], regularsLoading: true,
         phone: '', searchResult: null, searching: false, notFound: false,
         selected: [], submitting: false,
     }
+    try {
+        const res = await axios.get(`/courts/${court.value.id}/regulars?exclude_user=${auth.user?.id}`)
+        addPlayers.value.regulars = res.data.players || []
+    } catch { addPlayers.value.regulars = [] }
+    finally { addPlayers.value.regularsLoading = false }
 }
 
 // Parse "YYYY-MM-DD HH:MM:SS" as local time (avoids browser UTC timezone shift)
@@ -483,7 +514,7 @@ const confirmBooking = async () => {
             ))
             const bookingIds = results.map(r => r.data.id).filter(Boolean)
             toast.success(`${selectedSlots.value.length} slot${selectedSlots.value.length > 1 ? 's' : ''} booked!`)
-            openAddPlayers(bookingIds)
+            openAddPlayers(bookingIds, slots[0]?.start_time)
         } catch (err) {
             if (err.response?.status === 409) {
                 toast.error('One or more slots were just taken — please reselect')
@@ -509,7 +540,7 @@ const confirmBooking = async () => {
                 const vRes = await axios.post('/payments/verify', { order_id })
                 const bookingIds = (vRes.data.booking_ids || [])
                 toast.success(`${selectedSlots.value.length} slot${selectedSlots.value.length > 1 ? 's' : ''} booked!`)
-                openAddPlayers(bookingIds)
+                openAddPlayers(bookingIds, slots[0]?.start_time)
             } catch (err) {
                 if (err.response?.status === 409) {
                     toast.error('One or more slots were just taken — please reselect')
@@ -1083,7 +1114,7 @@ const subscribePlan = async (plan) => {
         leave-from-class="opacity-100"
         leave-to-class="opacity-0">
         <div v-if="addPlayers.show" class="fixed inset-0 bg-black/50 z-50 flex items-end" @click.self="submitPlayers">
-            <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-10 max-h-[85dvh] flex flex-col">
+            <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-10 max-h-[90dvh] flex flex-col">
 
                 <!-- Header -->
                 <div class="flex items-center justify-between mb-1 shrink-0">
@@ -1095,73 +1126,116 @@ const subscribePlan = async (plan) => {
                         <X :size="16" class="text-slate-500" />
                     </button>
                 </div>
-                <p class="text-sm text-slate-500 mb-4 shrink-0">Search by phone number to notify teammates</p>
+                <!-- Slot info -->
+                <p v-if="addPlayers.slotLabel" class="text-xs text-slate-400 mb-4 shrink-0">{{ court?.name }} · {{ addPlayers.slotLabel }}</p>
+                <div v-else class="mb-4"></div>
 
-                <!-- Search box -->
-                <div class="flex gap-2 mb-3 shrink-0">
-                    <div class="flex-1 relative">
-                        <input v-model="addPlayers.phone" @keyup.enter="searchPlayer"
-                            type="tel" placeholder="Enter phone number"
-                            class="input-field pr-10 w-full" maxlength="15" />
-                        <Loader2 v-if="addPlayers.searching" :size="16"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 animate-spin" />
-                    </div>
-                    <button @click="searchPlayer"
-                        class="w-11 h-11 rounded-xl bg-primary flex items-center justify-center shrink-0 active:scale-95 transition-transform">
-                        <Search :size="18" class="text-white" />
-                    </button>
-                </div>
+                <!-- Scrollable body -->
+                <div class="flex-1 overflow-y-auto scrollbar-hide space-y-5 min-h-0">
 
-                <!-- Search result -->
-                <div v-if="addPlayers.searchResult"
-                    class="mb-3 p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-3 shrink-0">
-                    <div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <span class="text-sm font-bold text-primary">{{ addPlayers.searchResult.name?.[0]?.toUpperCase() }}</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <p class="font-semibold text-slate-800 text-sm truncate">{{ addPlayers.searchResult.name }}</p>
-                        <p class="text-xs text-slate-400">{{ addPlayers.searchResult.phone }}</p>
-                    </div>
-                    <button @click="addPlayerToList(addPlayers.searchResult)"
-                        class="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg bg-primary text-white active:scale-95 transition-transform">
-                        <UserPlus :size="13" /> Add
-                    </button>
-                </div>
-                <p v-else-if="addPlayers.notFound" class="text-xs text-slate-400 mb-3 shrink-0">No player found with that number</p>
-
-                <!-- Selected players -->
-                <div v-if="addPlayers.selected.length" class="flex-1 overflow-y-auto space-y-2 mb-4 scrollbar-hide">
-                    <div v-for="p in addPlayers.selected" :key="p.id"
-                        class="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/10">
-                        <div class="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
-                            <span class="text-sm font-bold text-primary">{{ p.name?.[0]?.toUpperCase() }}</span>
+                    <!-- ① Regular players -->
+                    <div class="shrink-0">
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Regular Players</p>
+                        <!-- Loading -->
+                        <div v-if="addPlayers.regularsLoading" class="flex gap-3">
+                            <div v-for="i in 4" :key="i" class="flex flex-col items-center gap-1.5 animate-pulse">
+                                <div class="w-12 h-12 rounded-full bg-slate-100"></div>
+                                <div class="w-10 h-2.5 rounded bg-slate-100"></div>
+                            </div>
                         </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="font-semibold text-slate-800 text-sm truncate">{{ p.name }}</p>
-                            <p class="text-xs text-slate-400">{{ p.phone }}</p>
+                        <!-- Players -->
+                        <div v-else-if="addPlayers.regulars.length" class="flex gap-3 flex-wrap">
+                            <button v-for="p in addPlayers.regulars" :key="p.id"
+                                @click="toggleRegular(p)"
+                                class="flex flex-col items-center gap-1 active:scale-90 transition-transform">
+                                <div class="relative w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all"
+                                    :class="isSelected(p.id)
+                                        ? 'bg-primary text-white border-primary'
+                                        : 'bg-primary/10 text-primary border-transparent'">
+                                    <img v-if="p.avatar_url" :src="p.avatar_url" class="w-full h-full rounded-full object-cover" />
+                                    <span v-else>{{ p.name?.[0]?.toUpperCase() }}</span>
+                                    <div v-if="isSelected(p.id)"
+                                        class="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full border-2 border-white flex items-center justify-center">
+                                        <CheckCircle2 :size="10" class="text-white" />
+                                    </div>
+                                </div>
+                                <span class="text-[10px] font-semibold text-slate-600 max-w-[48px] truncate">{{ p.name?.split(' ')[0] }}</span>
+                            </button>
                         </div>
-                        <button @click="removePlayer(p.id)"
-                            class="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center active:scale-90 transition-transform">
-                            <X :size="13" class="text-red-400" />
-                        </button>
+                        <p v-else class="text-xs text-slate-400 italic">No regulars found for this court yet</p>
                     </div>
-                </div>
-                <div v-else class="flex-1 flex items-center justify-center text-slate-300 mb-4">
-                    <div class="text-center">
-                        <Users :size="36" class="mx-auto mb-2 opacity-40" />
-                        <p class="text-xs">No players added yet</p>
+
+                    <!-- ② Phone search -->
+                    <div class="shrink-0">
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Search by Phone</p>
+                        <div class="flex gap-2">
+                            <div class="flex-1 relative">
+                                <input v-model="addPlayers.phone" @keyup.enter="searchPlayer"
+                                    type="tel" placeholder="Enter phone number"
+                                    class="input-field pr-10 w-full" maxlength="15" />
+                                <Loader2 v-if="addPlayers.searching" :size="16"
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 animate-spin" />
+                            </div>
+                            <button @click="searchPlayer"
+                                class="w-11 h-11 rounded-xl bg-primary flex items-center justify-center shrink-0 active:scale-95 transition-transform">
+                                <Search :size="18" class="text-white" />
+                            </button>
+                        </div>
+                        <!-- Result -->
+                        <div v-if="addPlayers.searchResult"
+                            class="mt-2 p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-sm font-bold text-primary">
+                                {{ addPlayers.searchResult.name?.[0]?.toUpperCase() }}
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="font-semibold text-slate-800 text-sm truncate">{{ addPlayers.searchResult.name }}</p>
+                                <p class="text-xs text-slate-400">{{ addPlayers.searchResult.phone }}</p>
+                            </div>
+                            <button @click="addPlayerToList(addPlayers.searchResult)"
+                                class="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg bg-primary text-white active:scale-95 transition-transform">
+                                <UserPlus :size="13" /> Add
+                            </button>
+                        </div>
+                        <p v-else-if="addPlayers.notFound" class="text-xs text-slate-400 mt-2">No registered player found with that number</p>
                     </div>
-                </div>
+
+                    <!-- ③ Selected list -->
+                    <div v-if="addPlayers.selected.length" class="shrink-0">
+                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            Invited ({{ addPlayers.selected.length }})
+                        </p>
+                        <div class="space-y-2">
+                            <div v-for="p in addPlayers.selected" :key="p.id"
+                                class="flex items-center gap-3 p-2.5 rounded-xl bg-primary/5 border border-primary/10">
+                                <div class="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0 text-xs font-bold text-primary">
+                                    <img v-if="p.avatar_url" :src="p.avatar_url" class="w-full h-full rounded-full object-cover" />
+                                    <span v-else>{{ p.name?.[0]?.toUpperCase() }}</span>
+                                </div>
+                                <span class="flex-1 text-sm font-semibold text-slate-700 truncate">{{ p.name }}</span>
+                                <button @click="removePlayer(p.id)"
+                                    class="w-6 h-6 rounded-full bg-red-50 flex items-center justify-center active:scale-90 transition-transform">
+                                    <X :size="11" class="text-red-400" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div><!-- end scroll -->
 
                 <!-- Actions -->
-                <div class="flex gap-3 shrink-0">
-                    <button @click="router.push('/bookings')" class="btn-ghost flex-1 text-sm">Skip</button>
+                <div class="flex gap-2 mt-4 shrink-0">
+                    <!-- WhatsApp share -->
+                    <button @click="shareWhatsApp"
+                        class="flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl bg-[#25D366]/10 text-[#25D366] font-bold text-sm active:scale-95 transition-transform shrink-0">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                        Share
+                    </button>
                     <button @click="submitPlayers" :disabled="addPlayers.submitting"
                         class="btn-primary flex-1 flex items-center justify-center gap-2 text-sm">
                         <Loader2 v-if="addPlayers.submitting" :size="15" class="animate-spin" />
                         <template v-else>
                             <UserPlus :size="15" />
-                            {{ addPlayers.selected.length ? `Invite ${addPlayers.selected.length} Player${addPlayers.selected.length > 1 ? 's' : ''}` : 'Done' }}
+                            {{ addPlayers.selected.length ? `Notify ${addPlayers.selected.length} Player${addPlayers.selected.length > 1 ? 's' : ''}` : 'Skip' }}
                         </template>
                     </button>
                 </div>
