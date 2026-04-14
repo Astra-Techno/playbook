@@ -160,8 +160,9 @@ if (!is_dir($srcBackend)) {
 }
 
 // Copy backend files — preserve existing .env (never overwrite secrets)
-rcopy($srcBackend, BACKEND_DIR, ['.env']);
-log_step('✓', 'Backend files updated', 'ok');
+$backendFiles = rcopy($srcBackend, BACKEND_DIR, ['.env']);
+log_step('✓', 'Backend files updated — ' . count($backendFiles) . ' file(s)', 'ok');
+log_step('📄', render_file_list($backendFiles, BACKEND_DIR), 'muted');
 
 // ────────────────────────────────────────────────────────────────────────────
 // STEP 4 — Update frontend files
@@ -173,8 +174,9 @@ if (!is_dir($srcFrontend)) {
     log_step('⚠', 'public_html/ not found in repo — skipping frontend update. Run build_prod.bat and push first.', 'warn');
 } else {
     // Copy frontend — preserve deploy.php and backend/ dir
-    rcopy($srcFrontend, BASE_DIR, ['deploy.php', 'backend']);
-    log_step('✓', 'Frontend files updated', 'ok');
+    $frontendFiles = rcopy($srcFrontend, BASE_DIR, ['deploy.php', 'backend']);
+    log_step('✓', 'Frontend files updated — ' . count($frontendFiles) . ' file(s)', 'ok');
+    log_step('📄', render_file_list($frontendFiles, BASE_DIR), 'muted');
 }
 
 // Also copy root .htaccess if present
@@ -261,8 +263,8 @@ function runMigrations(): array {
     return $log;
 }
 
-/** Recursive copy, skipping listed names */
-function rcopy(string $src, string $dst, array $skip = []): void {
+/** Recursive copy, skipping listed names. Returns list of copied file paths. */
+function rcopy(string $src, string $dst, array $skip = [], array &$copied = []): array {
     if (!is_dir($dst)) mkdir($dst, 0755, true);
     foreach (new DirectoryIterator($src) as $item) {
         if ($item->isDot()) continue;
@@ -270,11 +272,28 @@ function rcopy(string $src, string $dst, array $skip = []): void {
         $srcPath = $item->getPathname();
         $dstPath = $dst . '/' . $item->getFilename();
         if ($item->isDir()) {
-            rcopy($srcPath, $dstPath, []);
+            rcopy($srcPath, $dstPath, [], $copied);
         } else {
             copy($srcPath, $dstPath);
+            $copied[] = $dstPath;
         }
     }
+    return $copied;
+}
+
+/** Renders a collapsible file list for the deploy log */
+function render_file_list(array $files, string $baseDir): string {
+    if (empty($files)) return 'No files copied.';
+    $base  = rtrim($baseDir, '/');
+    $items = '';
+    foreach ($files as $f) {
+        $rel    = ltrim(str_replace($base, '', $f), '/');
+        $items .= '<li style="font-family:monospace;font-size:.78rem;color:#475569">' . htmlspecialchars($rel) . '</li>';
+    }
+    return '<details style="cursor:pointer"><summary style="font-size:.82rem;color:#64748b">'
+         . count($files) . ' files — click to expand</summary>'
+         . '<ul style="margin:6px 0 0 16px;padding:0;list-style:disc">' . $items . '</ul>'
+         . '</details>';
 }
 
 /** Recursive remove */
