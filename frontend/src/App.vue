@@ -207,7 +207,7 @@ const submitPromptRating = async () => {
             leave-from-class="opacity-100"
             leave-to-class="opacity-0">
             <div v-if="reviewPrompt.show" class="absolute inset-0 bg-black/50 z-[300] flex items-end" @click.self="dismissPrompt">
-                <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-10">
+                <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-24">
                     <div class="flex items-center justify-between mb-1">
                         <div>
                             <p class="text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">How was your session?</p>

@@ -276,8 +276,8 @@ const dismissModal = () => {
             leave-active-class="transition duration-150 ease-in"
             leave-from-class="opacity-100"
             leave-to-class="opacity-0">
-            <div v-if="ratingModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-end" @click.self="dismissModal">
-                <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-10">
+            <div v-if="ratingModal.show" class="fixed inset-0 bg-black/50 z-[200] flex items-end justify-center" @click.self="dismissModal">
+                <div class="bg-white w-full max-w-[430px] rounded-t-3xl px-5 pt-5 pb-24">
                     <div class="flex items-center justify-between mb-1">
                         <div>
                             <p v-if="ratingModal.auto" class="text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">How was your session?</p>
