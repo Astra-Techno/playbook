@@ -24,10 +24,10 @@ const ratingModal = ref({ show: false, booking: null, rating: 0, comment: '', lo
 const now = new Date()
 
 const upcoming = computed(() =>
-    bookings.value.filter(b => new Date(b.start_time) >= now && b.status !== 'cancelled')
+    bookings.value.filter(b => parseLocal(b.start_time) >= now && b.status !== 'cancelled')
 )
 const past = computed(() =>
-    bookings.value.filter(b => new Date(b.start_time) < now || b.status === 'cancelled')
+    bookings.value.filter(b => parseLocal(b.start_time) < now || b.status === 'cancelled')
 )
 const displayedBookings = computed(() =>
     activeFilter.value === 'upcoming' ? upcoming.value : past.value
@@ -60,6 +60,7 @@ onMounted(async () => {
 // ── Cancel ────────────────────────────────────────────────────────────────────
 
 const cancelBooking = async (booking) => {
+    if (cancellingId.value === booking.id) return   // prevent double-tap
     if (!confirm(`Cancel booking at ${booking.court_name}? This cannot be undone.`)) return
     cancellingId.value = booking.id
     try {
@@ -67,7 +68,13 @@ const cancelBooking = async (booking) => {
         toast.success('Booking cancelled')
         booking.status = 'cancelled'
     } catch (err) {
-        toast.error(err.response?.data?.message || 'Could not cancel booking')
+        const msg = err.response?.data?.message || ''
+        if (msg.toLowerCase().includes('already cancelled') || err.response?.status === 404) {
+            // Already cancelled in DB — just reflect it in UI
+            booking.status = 'cancelled'
+        } else {
+            toast.error(msg || 'Could not cancel booking')
+        }
     } finally {
         cancellingId.value = null
     }
