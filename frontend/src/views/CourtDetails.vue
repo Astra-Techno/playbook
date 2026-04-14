@@ -23,8 +23,8 @@ const loading = ref(true)
 const bookingLoading = ref(false)
 const subscribeLoading = ref(null)  // holds plan_id being subscribed
 
-const selectedDate = ref('')
-const selectedSlot = ref(null)
+const selectedDate  = ref('')
+const selectedSlots = ref([]) // multi-select
 const bookedSlots = ref([])
 const activeSub = ref(null)     // user's active subscription for this court
 const lockedSlotPeak = ref(null) // 'morning' | 'evening' when user taps a locked slot
@@ -114,7 +114,7 @@ const isBooked = (slot) => {
 const slotState = (slot) => {
     if (!selectedDate.value) return 'idle'
     if (isBooked(slot)) return 'booked'
-    if (selectedSlot.value?.hour === slot.hour) return 'selected'
+    if (selectedSlots.value.some(s => s.hour === slot.hour)) return 'selected'
     if (isPeakLocked(slot)) {
         return slotPeakType(slot) === 'morning' ? 'peak_morning' : 'peak_evening'
     }
@@ -150,7 +150,8 @@ const heroImg = computed(() =>
     court.value?.image_url || sportImages[court.value?.type] || sportImages.turf
 )
 
-const price = computed(() => court.value ? parseFloat(court.value.hourly_rate) : 0)
+const price      = computed(() => court.value ? parseFloat(court.value.hourly_rate) : 0)
+const totalPrice = computed(() => price.value * selectedSlots.value.length)
 
 // Computed slot groups for clean template rendering
 const morningPeakSlots = computed(() => TIME_SLOTS.value.filter(s => slotPeakType(s) === 'morning'))
@@ -218,7 +219,7 @@ onMounted(async () => {
 })
 
 watch(selectedDate, async (date) => {
-    selectedSlot.value = null
+    selectedSlots.value = []
     lockedSlotPeak.value = null
     bookedSlots.value = []
     if (date && court.value) {
@@ -351,37 +352,46 @@ const handleSlotClick = (slot) => {
     }
 
     lockedSlotPeak.value = null
-    selectedSlot.value = selectedSlot.value?.hour === slot.hour ? null : slot
+    const idx = selectedSlots.value.findIndex(s => s.hour === slot.hour)
+    if (idx >= 0) {
+        selectedSlots.value.splice(idx, 1)
+    } else {
+        selectedSlots.value.push(slot)
+        selectedSlots.value.sort((a, b) => a.hour - b.hour)
+    }
 }
 
 const confirmBooking = async () => {
-    if (!selectedDate.value || !selectedSlot.value) { toast.error('Choose a date and time slot'); return }
+    if (!selectedDate.value || !selectedSlots.value.length) { toast.error('Choose a date and time slot'); return }
     if (!auth.isLoggedIn) { router.push('/login'); return }
 
-    const start = `${selectedDate.value} ${selectedSlot.value.pad}:00`
-    const end   = new Date(new Date(`${selectedDate.value}T${selectedSlot.value.pad}:00`).getTime() + 3600000)
-        .toISOString().slice(0, 19).replace('T', ' ')
+    const slots = selectedSlots.value.map(slot => {
+        const start = `${selectedDate.value} ${slot.pad}:00`
+        const end   = new Date(new Date(`${selectedDate.value}T${slot.pad}:00`).getTime() + 3600000)
+            .toISOString().slice(0, 19).replace('T', ' ')
+        return { start_time: start, end_time: end }
+    })
 
     bookingLoading.value = true
 
     await openCashfree(
-        price.value,
+        totalPrice.value,
         'booking',
         {
             user_id: auth.user?.id, court_id: court.value.id,
-            start_time: start, end_time: end, type: 'hourly', total_price: price.value,
+            slots, type: 'hourly', total_price: totalPrice.value,
         },
         async ({ order_id }) => {
             try {
                 await axios.post('/payments/verify', { order_id })
-                toast.success('Booking confirmed!')
+                toast.success(`${slots.length} slot${slots.length > 1 ? 's' : ''} booked!`)
                 router.push('/bookings')
             } catch (err) {
                 if (err.response?.status === 409) {
-                    toast.error('Slot just taken — pick another')
+                    toast.error('One or more slots were just taken — please reselect')
                     const r = await axios.get(`/bookings?court_id=${court.value.id}&date=${selectedDate.value}`)
                     bookedSlots.value = r.data.records || []
-                    selectedSlot.value = null
+                    selectedSlots.value = []
                 } else {
                     toast.error(err.response?.data?.message || 'Booking failed after payment')
                 }
@@ -669,7 +679,7 @@ const subscribePlan = async (plan) => {
                     </div>
 
                     <!-- Booking Summary -->
-                    <div v-if="selectedSlot && selectedDate"
+                    <div v-if="selectedSlots.length && selectedDate"
                         class="bg-primary-light border border-primary/20 rounded-2xl p-4">
                         <div class="flex items-center gap-2 mb-3">
                             <CheckCircle2 :size="16" class="text-primary" />
@@ -682,18 +692,27 @@ const subscribePlan = async (plan) => {
                                     {{ new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN', { dateStyle: 'medium' }) }}
                                 </span>
                             </div>
-                            <div class="flex justify-between">
-                                <span class="text-slate-500">Time</span>
-                                <span class="font-semibold text-slate-800">{{ selectedSlot.label }}</span>
+                            <div class="flex justify-between items-start">
+                                <span class="text-slate-500">Slots</span>
+                                <div class="flex flex-wrap gap-1 justify-end max-w-[60%]">
+                                    <span v-for="s in selectedSlots" :key="s.hour"
+                                        class="bg-primary/10 text-primary text-xs font-semibold px-2 py-0.5 rounded-full">
+                                        {{ s.short }}
+                                    </span>
+                                </div>
                             </div>
                             <div class="flex justify-between">
                                 <span class="text-slate-500">Duration</span>
-                                <span class="font-semibold text-slate-800">1 hour</span>
+                                <span class="font-semibold text-slate-800">{{ selectedSlots.length }} hour{{ selectedSlots.length > 1 ? 's' : '' }}</span>
+                            </div>
+                            <div v-if="selectedSlots.length > 1" class="flex justify-between text-xs text-slate-400">
+                                <span>₹{{ price }} × {{ selectedSlots.length }} slots</span>
+                                <span>₹{{ totalPrice }}</span>
                             </div>
                         </div>
                         <div class="flex justify-between items-center pt-3 mt-3 border-t border-primary/20">
                             <span class="font-bold text-slate-700">Total payable</span>
-                            <span class="text-xl font-extrabold text-primary">₹{{ price }}</span>
+                            <span class="text-xl font-extrabold text-primary">₹{{ totalPrice }}</span>
                         </div>
                     </div>
 
@@ -890,10 +909,12 @@ const subscribePlan = async (plan) => {
                 <!-- Booking tab button -->
                 <button v-if="activeTab === 'booking'"
                     @click="confirmBooking"
-                    :disabled="!selectedSlot || !selectedDate || bookingLoading"
+                    :disabled="!selectedSlots.length || !selectedDate || bookingLoading"
                     class="w-full bg-primary text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:scale-100">
                     <span v-if="bookingLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                    <span v-else-if="selectedSlot && selectedDate">Confirm Booking · ₹{{ price }}</span>
+                    <span v-else-if="selectedSlots.length && selectedDate">
+                        Confirm {{ selectedSlots.length > 1 ? selectedSlots.length + ' Slots' : 'Booking' }} · ₹{{ totalPrice }}
+                    </span>
                     <span v-else>Select a date &amp; time slot</span>
                 </button>
 

@@ -209,58 +209,63 @@ class PaymentController {
             $cStmt->execute([(int)$payload['court_id']]);
             $court = $cStmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($court && $court['peak_members_only']) {
-                $peakType = $this->getPeakType($payload['start_time'], $court);
-                if ($peakType !== null) {
-                    $sub    = new Subscription();
-                    $active = $sub->getActive((int)$payload['user_id'], (int)$payload['court_id']);
-                    if (!$active || !Subscription::coversSlot($active['slot_type'], $peakType)) {
-                        $db->prepare(
-                            "UPDATE payments SET status = 'refund_pending' WHERE id = ?"
-                        )->execute([$payment['id']]);
-                        http_response_code(403);
-                        echo json_encode([
-                            'message' => 'Peak hours are for members only. Contact support for a refund.',
-                        ]);
-                        return;
+            // Support both single booking (legacy) and multiple slots
+            $slots = isset($payload['slots']) && is_array($payload['slots'])
+                ? $payload['slots']
+                : [['start_time' => $payload['start_time'], 'end_time' => $payload['end_time']]];
+
+            $slotPrice    = count($slots) > 0 ? round(floatval($payload['total_price']) / count($slots), 2) : floatval($payload['total_price']);
+            $bookingIds   = [];
+            $takenSlots   = [];
+
+            foreach ($slots as $slot) {
+                // Race-condition guard per slot
+                if (!$booking->isSlotAvailable($payload['court_id'], $slot['start_time'], $slot['end_time'])) {
+                    $takenSlots[] = $slot['start_time'];
+                    continue;
+                }
+
+                // Peak guard per slot
+                if ($court && $court['peak_members_only']) {
+                    $peakType = $this->getPeakType($slot['start_time'], $court);
+                    if ($peakType !== null) {
+                        $sub    = new Subscription();
+                        $active = $sub->getActive((int)$payload['user_id'], (int)$payload['court_id']);
+                        if (!$active || !Subscription::coversSlot($active['slot_type'], $peakType)) {
+                            $takenSlots[] = $slot['start_time'] . ' (members only)';
+                            continue;
+                        }
                     }
+                }
+
+                $b = new Booking();
+                $b->user_id     = (int)$payload['user_id'];
+                $b->court_id    = (int)$payload['court_id'];
+                $b->start_time  = $slot['start_time'];
+                $b->end_time    = $slot['end_time'];
+                $b->type        = $payload['type'] ?? 'hourly';
+                $b->total_price = $slotPrice;
+
+                if ($b->create()) {
+                    $bookingIds[] = (int)$db->lastInsertId();
                 }
             }
 
-            // Race-condition guard: re-check slot availability
-            if (!$booking->isSlotAvailable(
-                $payload['court_id'],
-                $payload['start_time'],
-                $payload['end_time']
-            )) {
-                $db->prepare(
-                    "UPDATE payments SET status = 'refund_pending' WHERE id = ?"
-                )->execute([$payment['id']]);
+            if (empty($bookingIds)) {
+                $db->prepare("UPDATE payments SET status = 'refund_pending' WHERE id = ?")->execute([$payment['id']]);
                 http_response_code(409);
-                echo json_encode([
-                    'message' => 'Slot was taken during payment. Contact support for a refund.',
-                ]);
+                echo json_encode(['message' => 'All selected slots were taken during payment. Contact support for a refund.']);
                 return;
             }
 
-            $booking->user_id     = (int)$payload['user_id'];
-            $booking->court_id    = (int)$payload['court_id'];
-            $booking->start_time  = $payload['start_time'];
-            $booking->end_time    = $payload['end_time'];
-            $booking->type        = $payload['type'] ?? 'hourly';
-            $booking->total_price = $payload['total_price'];
-
-            if ($booking->create()) {
-                $bookingId = $db->lastInsertId();
-                $db->prepare(
-                    "UPDATE payments SET reference_id = ? WHERE id = ?"
-                )->execute([$bookingId, $payment['id']]);
-                http_response_code(200);
-                echo json_encode(['message' => 'Booking confirmed!', 'booking_id' => $bookingId]);
-            } else {
-                http_response_code(503);
-                echo json_encode(['message' => 'Booking creation failed after payment']);
-            }
+            // Link first booking to payment record
+            $db->prepare("UPDATE payments SET reference_id = ? WHERE id = ?")->execute([$bookingIds[0], $payment['id']]);
+            http_response_code(200);
+            echo json_encode([
+                'message'     => count($bookingIds) . ' slot(s) booked!',
+                'booking_ids' => $bookingIds,
+                'skipped'     => $takenSlots,
+            ]);
 
         // ── 3b. Activate Subscription ─────────────────────────────────────────
         } elseif ($payment['type'] === 'subscription') {
