@@ -40,6 +40,9 @@ class PlacesController
 
     public function nearby(): void
     {
+        // Dynamic data — never serve a stale browser-cached copy
+        header('Cache-Control: no-store, no-cache, must-revalidate');
+
         $lat    = isset($_GET['lat'])     ? (float)$_GET['lat']   : null;
         $lng    = isset($_GET['lng'])     ? (float)$_GET['lng']   : null;
         $userId = isset($_GET['user_id']) ? (int)$_GET['user_id'] : null;
