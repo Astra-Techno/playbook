@@ -48,11 +48,11 @@ class Booking {
     }
 
     public function readByUser($user_id) {
-        $query = "SELECT b.*, c.name as court_name 
-                  FROM " . $this->table_name . " b
-                  JOIN courts c ON b.court_id = c.id
-                  WHERE b.user_id = ?
-                  ORDER BY b.start_time DESC";
+        $query = "SELECT b.*, c.name as court_name" .
+                 " FROM " . $this->table_name . " b" .
+                 " JOIN courts c ON b.court_id = c.id" .
+                 " WHERE b.user_id = ? AND b.status != 'cancelled'" .
+                 " ORDER BY b.start_time DESC";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(1, $user_id);
         $stmt->execute();

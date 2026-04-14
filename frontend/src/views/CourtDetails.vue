@@ -385,7 +385,7 @@ const confirmBooking = async () => {
         return acc
     }, [])
 
-    const hourPrice = parseFloat(court.value.price_per_hour) || 0
+    const hourPrice = parseFloat(court.value.hourly_rate) || 0
     const slots = groups.map(group => ({
         start_time:  `${selectedDate.value} ${group[0].pad}:00`,
         end_time:    `${selectedDate.value} ${String(group[group.length - 1].hour + 1).padStart(2, '0')}:00:00`,
