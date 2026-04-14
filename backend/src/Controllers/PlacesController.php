@@ -188,88 +188,156 @@ class PlacesController
         return !empty($this->apiKey) && $this->apiKey !== 'your_google_places_api_key';
     }
 
+    private const FIELD_MASK = 'places.id,places.displayName,places.formattedAddress,places.location,places.types,places.internationalPhoneNumber,places.websiteUri,places.rating,places.photos';
+
+    /**
+     * Fetch all sports venues near a location using two complementary strategies:
+     *  1. Nearby Search  — finds formally-typed venues (gyms, complexes, pools…)
+     *  2. Text Search ×3 — finds venues by name (turf courts, academies…) that
+     *                       have no specific Google type tag; supports pagination
+     *                       → up to 20 per page × 3 pages = 60 per keyword batch
+     * Total: 4 quota calls per fresh location (up from 2), returning ~80–120 unique places.
+     */
     private function fetchFromGoogle(float $lat, float $lng): array
     {
-        $endpoint = 'https://places.googleapis.com/v1/places:searchNearby';
-        $headers  = [
-            'Content-Type: application/json',
-            'X-Goog-Api-Key: ' . $this->apiKey,
-            // Advanced tier fields (photos upgrades from $0.032 → $0.035 per 1000 — negligible)
-            'X-Goog-FieldMask: places.id,places.displayName,places.formattedAddress,places.location,places.types,places.internationalPhoneNumber,places.websiteUri,places.rating,places.photos',
-        ];
-
         $seen = [];
         $out  = [];
 
-        // Two calls: general sports venues + specific court types
-        $typeBatches = [
-            ['sports_complex', 'sports_club', 'stadium', 'gym', 'fitness_center', 'swimming_pool'],
-            ['athletic_field', 'basketball_court', 'cricket_ground', 'tennis_court', 'volleyball_court', 'badminton_court', 'dance_studio', 'yoga_studio', 'martial_arts_school', 'golf_course', 'bowling_alley'],
+        // ── 1. Nearby Search — all formal sports types in one call ───────────
+        if (!$this->isQuotaExceeded()) {
+            $allTypes = [
+                'sports_complex', 'sports_club', 'stadium', 'gym', 'fitness_center',
+                'swimming_pool', 'athletic_field', 'basketball_court', 'cricket_ground',
+                'tennis_court', 'volleyball_court', 'badminton_court', 'dance_studio',
+                'yoga_studio', 'martial_arts_school', 'golf_course', 'bowling_alley',
+                'recreation_center',
+            ];
+            $this->runNearbySearch($lat, $lng, $allTypes, $seen, $out);
+        }
+
+        // ── 2. Text Search by keyword — catches venues Google doesn't type ────
+        // Most Indian turf courts, cricket grounds, badminton halls etc. are
+        // stored as plain "establishment" in Google; text search finds them by name.
+        $textQueries = [
+            'turf football futsal ground court',          // turf/football venues
+            'badminton court cricket ground tennis club', // racket/ball sports
+            'gym fitness yoga dance studio sports academy', // fitness & arts
         ];
-
-        foreach ($typeBatches as $types) {
+        foreach ($textQueries as $query) {
             if ($this->isQuotaExceeded()) break;
-
-            $body = json_encode([
-                'includedTypes'       => $types,
-                'locationRestriction' => [
-                    'circle' => [
-                        'center' => ['latitude' => $lat, 'longitude' => $lng],
-                        'radius' => 10000.0,
-                    ],
-                ],
-                'maxResultCount' => 20,
-                'rankPreference' => 'DISTANCE',
-            ]);
-
-            $ch = curl_init($endpoint);
-            curl_setopt_array($ch, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_POST           => true,
-                CURLOPT_POSTFIELDS     => $body,
-                CURLOPT_TIMEOUT        => 15,
-                CURLOPT_SSL_VERIFYPEER => true,
-                CURLOPT_USERAGENT      => 'KoCourt/1.0',
-                CURLOPT_HTTPHEADER     => $headers,
-            ]);
-            $resp     = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            $this->incrementQuota(); // count every call regardless of result
-
-            if ($httpCode !== 200 || !$resp) continue;
-
-            $data = json_decode($resp, true);
-            foreach ($data['places'] ?? [] as $r) {
-                $placeId = $r['id'] ?? null;
-                $name    = $r['displayName']['text'] ?? null;
-                if (!$placeId || !$name || isset($seen[$placeId])) continue;
-                $seen[$placeId] = true;
-
-                $elLat = (float)($r['location']['latitude']  ?? 0);
-                $elLng = (float)($r['location']['longitude'] ?? 0);
-                if (!$elLat && !$elLng) continue;
-
-                $out[] = [
-                    'google_place_id' => $placeId,
-                    'name'            => $name,
-                    'type'            => $this->inferType($name, $r['types'] ?? []),
-                    'address'         => $r['formattedAddress'] ?? '',
-                    'lat'             => $elLat,
-                    'lng'             => $elLng,
-                    'phone'           => $r['internationalPhoneNumber'] ?? null,
-                    'website'         => $r['websiteUri'] ?? null,
-                    'rating'          => isset($r['rating']) ? (float)$r['rating'] : null,
-                    'photo_reference' => $r['photos'][0]['name'] ?? null,
-                    '_dist'           => $this->haversine($lat, $lng, $elLat, $elLng),
-                ];
-            }
+            $this->runTextSearch($lat, $lng, $query, $seen, $out);
         }
 
         usort($out, fn($a, $b) => $a['_dist'] <=> $b['_dist']);
-
         return array_map(function ($p) { unset($p['_dist']); return $p; }, $out);
+    }
+
+    /** Nearby Search (New) — max 20 results, sorted by distance */
+    private function runNearbySearch(
+        float $lat, float $lng, array $types, array &$seen, array &$out
+    ): void {
+        $body = json_encode([
+            'includedTypes'       => $types,
+            'locationRestriction' => [
+                'circle' => ['center' => ['latitude' => $lat, 'longitude' => $lng], 'radius' => 10000.0],
+            ],
+            'maxResultCount' => 20,
+            'rankPreference' => 'DISTANCE',
+        ]);
+
+        $resp = $this->postPlaces('https://places.googleapis.com/v1/places:searchNearby', $body);
+        $this->incrementQuota();
+        $this->parsePlacesResponse($resp, $lat, $lng, $seen, $out);
+    }
+
+    /**
+     * Text Search (New) — keyword query with locationBias.
+     * Paginates automatically up to 3 pages (60 results max per query).
+     * Text Search costs $0.017/call vs $0.032 for Nearby — cheaper per result.
+     */
+    private function runTextSearch(
+        float $lat, float $lng, string $query, array &$seen, array &$out
+    ): void {
+        $pageToken = null;
+        $pages     = 0;
+
+        do {
+            if ($this->isQuotaExceeded()) break;
+
+            $payload = [
+                'textQuery'    => $query,
+                'locationBias' => [
+                    'circle' => ['center' => ['latitude' => $lat, 'longitude' => $lng], 'radius' => 10000.0],
+                ],
+                'maxResultCount' => 20,
+            ];
+            if ($pageToken) {
+                $payload['pageToken'] = $pageToken;
+            }
+
+            $resp = $this->postPlaces('https://places.googleapis.com/v1/places:searchText', json_encode($payload));
+            $this->incrementQuota();
+            $this->parsePlacesResponse($resp, $lat, $lng, $seen, $out);
+
+            $data      = json_decode($resp, true);
+            $pageToken = $data['nextPageToken'] ?? null;
+            $pages++;
+        } while ($pageToken && $pages < 3); // max 3 pages = 60 results per query
+    }
+
+    /** Shared cURL POST helper for Places API (New) */
+    private function postPlaces(string $endpoint, string $body): string
+    {
+        $ch = curl_init($endpoint);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST           => true,
+            CURLOPT_POSTFIELDS     => $body,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_USERAGENT      => 'KoCourt/1.0',
+            CURLOPT_HTTPHEADER     => [
+                'Content-Type: application/json',
+                'X-Goog-Api-Key: '  . $this->apiKey,
+                'X-Goog-FieldMask: ' . self::FIELD_MASK,
+            ],
+        ]);
+        $resp     = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        return ($httpCode === 200 && $resp) ? $resp : '';
+    }
+
+    /** Parse a Places API response, deduplicate by google_place_id, append to $out */
+    private function parsePlacesResponse(
+        string $resp, float $lat, float $lng, array &$seen, array &$out
+    ): void {
+        if (!$resp) return;
+        $data = json_decode($resp, true);
+
+        foreach ($data['places'] ?? [] as $r) {
+            $placeId = $r['id'] ?? null;
+            $name    = $r['displayName']['text'] ?? null;
+            if (!$placeId || !$name || isset($seen[$placeId])) continue;
+            $seen[$placeId] = true;
+
+            $elLat = (float)($r['location']['latitude']  ?? 0);
+            $elLng = (float)($r['location']['longitude'] ?? 0);
+            if (!$elLat && !$elLng) continue;
+
+            $out[] = [
+                'google_place_id' => $placeId,
+                'name'            => $name,
+                'type'            => $this->inferType($name, $r['types'] ?? []),
+                'address'         => $r['formattedAddress'] ?? '',
+                'lat'             => $elLat,
+                'lng'             => $elLng,
+                'phone'           => $r['internationalPhoneNumber'] ?? null,
+                'website'         => $r['websiteUri'] ?? null,
+                'rating'          => isset($r['rating']) ? (float)$r['rating'] : null,
+                'photo_reference' => $r['photos'][0]['name'] ?? null,
+                '_dist'           => $this->haversine($lat, $lng, $elLat, $elLng),
+            ];
+        }
     }
 
     // ── Quota tracking ───────────────────────────────────────────────────────
@@ -401,12 +469,13 @@ class PlacesController
                 (google_place_id, name, type, address, lat, lng, phone, website, rating, photo_reference, cached_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
              ON DUPLICATE KEY UPDATE
-                name      = VALUES(name),
-                address   = VALUES(address),
-                phone     = COALESCE(VALUES(phone), phone),
-                website   = COALESCE(VALUES(website), website),
-                rating    = COALESCE(VALUES(rating), rating),
-                cached_at = NOW()"
+                name            = VALUES(name),
+                address         = VALUES(address),
+                phone           = COALESCE(VALUES(phone), phone),
+                website         = COALESCE(VALUES(website), website),
+                rating          = COALESCE(VALUES(rating), rating),
+                photo_reference = COALESCE(VALUES(photo_reference), photo_reference),
+                cached_at       = NOW()"
         );
         foreach ($places as $p) {
             $stmt->execute([
