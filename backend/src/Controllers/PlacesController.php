@@ -65,7 +65,9 @@ class PlacesController
         $requestedIds = $userId ? $this->getUserRequestedIds($userId) : [];
 
         foreach ($places as &$p) {
-            $p['image_url']      = self::FALLBACK_IMAGES[$p['type']] ?? self::FALLBACK_IMAGES['other'];
+            $p['image_url']      = !empty($p['photo_reference'])
+                ? '/api/place-photo?ref=' . urlencode($p['photo_reference'])
+                : (self::FALLBACK_IMAGES[$p['type']] ?? self::FALLBACK_IMAGES['other']);
             $p['user_requested'] = in_array((int)$p['id'], $requestedIds, true);
             unset($p['photo_reference']);
         }
@@ -192,8 +194,8 @@ class PlacesController
         $headers  = [
             'Content-Type: application/json',
             'X-Goog-Api-Key: ' . $this->apiKey,
-            // Basic tier fields only — free of charge
-            'X-Goog-FieldMask: places.id,places.displayName,places.formattedAddress,places.location,places.types,places.internationalPhoneNumber,places.websiteUri,places.rating',
+            // Advanced tier fields (photos upgrades from $0.032 → $0.035 per 1000 — negligible)
+            'X-Goog-FieldMask: places.id,places.displayName,places.formattedAddress,places.location,places.types,places.internationalPhoneNumber,places.websiteUri,places.rating,places.photos',
         ];
 
         $seen = [];
@@ -259,7 +261,7 @@ class PlacesController
                     'phone'           => $r['internationalPhoneNumber'] ?? null,
                     'website'         => $r['websiteUri'] ?? null,
                     'rating'          => isset($r['rating']) ? (float)$r['rating'] : null,
-                    'photo_reference' => null,
+                    'photo_reference' => $r['photos'][0]['name'] ?? null,
                     '_dist'           => $this->haversine($lat, $lng, $elLat, $elLng),
                 ];
             }

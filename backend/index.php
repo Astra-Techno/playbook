@@ -342,6 +342,39 @@ if (isset($seg[0]) && $seg[0] === 'posts') {
     }
 }
 
+// Google Place Photo proxy — GET /place-photo?ref=places/xxx/photos/yyy
+if (isset($seg[0]) && $seg[0] === 'place-photo') {
+    $ref    = $_GET['ref'] ?? '';
+    $apiKey = getenv('GOOGLE_PLACES_API_KEY') ?: '';
+    if (!$ref || !$apiKey) { http_response_code(400); exit(); }
+
+    $url = 'https://places.googleapis.com/v1/' . $ref . '/media?maxWidthPx=800&skipHttpRedirect=true&key=' . $apiKey;
+    $ch  = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_SSL_VERIFYPEER => true,
+        CURLOPT_USERAGENT      => 'KoCourt/1.0',
+    ]);
+    $resp     = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode === 200 && $resp) {
+        $data     = json_decode($resp, true);
+        $photoUri = $data['photoUri'] ?? null;
+        if ($photoUri) {
+            // Cache header so browser doesn't re-fetch on every load
+            header('Cache-Control: public, max-age=2592000'); // 30 days
+            header('Location: ' . $photoUri, true, 302);
+            exit();
+        }
+    }
+    // Fallback: redirect to a generic sports image
+    header('Location: https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=800&q=80', true, 302);
+    exit();
+}
+
 // Debug: GET /nearby-places/test?lat=&lng= — tests MapmyIndia + Overpass connectivity
 if (isset($seg[0], $seg[1]) && $seg[0] === 'nearby-places' && $seg[1] === 'test') {
     $lat       = (float)($_GET['lat'] ?? 12.9716);
