@@ -972,7 +972,10 @@ const subscribePlan = async (plan) => {
                                                 {{ (review.user_name || 'U').charAt(0).toUpperCase() }}
                                             </span>
                                         </div>
-                                        <span class="text-sm font-semibold text-slate-800">{{ review.user_name || 'Player' }}</span>
+                                        <div>
+                                            <span class="text-sm font-semibold text-slate-800">{{ review.user_name || 'Player' }}</span>
+                                            <p class="text-[10px] text-slate-400">{{ review.created_at ? new Date(review.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '' }}</p>
+                                        </div>
                                     </div>
                                     <div class="flex gap-0.5">
                                         <Star v-for="n in 5" :key="n" :size="12"

@@ -66,6 +66,30 @@ const clearImage = () => {
     newCourt.value.image_url = ''
 }
 
+// Edit court photo upload
+const editImagePreview = ref(null)
+const editUploadLoading = ref(false)
+
+const handleEditImageSelect = async (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (e) => { editImagePreview.value = e.target.result }
+    reader.readAsDataURL(file)
+    editUploadLoading.value = true
+    try {
+        const formData = new FormData()
+        formData.append('image', file)
+        const res = await axios.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+        editCourt.value.image_url = res.data.url
+    } catch {
+        toast.error('Photo upload failed')
+        editImagePreview.value = null
+    } finally {
+        editUploadLoading.value = false
+    }
+}
+
 const hasPeakHours = computed(() => newCourt.value.type !== 'turf' && newCourt.value.type !== 'cricket')
 const addLoading    = ref(false)
 const geoLoading    = ref(false)
@@ -243,6 +267,7 @@ const addCourt = async () => {
 }
 
 const openEdit = (court) => {
+    editImagePreview.value = null
     editCourt.value = {
         id: court.id, owner_id: auth.user?.id,
         name: court.name, location: court.location || '', type: court.type,
@@ -930,7 +955,30 @@ const handleAvatarUpload = async (event) => {
                                 </div>
                             </div>
                         </div>
-                        <button @click="saveEdit" :disabled="editLoading"
+                        <!-- Photo upload -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Service Photo</label>
+                            <div class="relative h-40 rounded-2xl border-2 border-dashed border-slate-200 overflow-hidden flex items-center justify-center bg-slate-50 cursor-pointer">
+                                <img v-if="editImagePreview || editCourt.image_url"
+                                    :src="editImagePreview || editCourt.image_url"
+                                    class="w-full h-full object-cover absolute inset-0" />
+                                <div v-if="!editImagePreview && !editCourt.image_url" class="flex flex-col items-center gap-2 text-slate-400 pointer-events-none">
+                                    <Camera :size="28" class="text-slate-300" />
+                                    <p class="text-sm font-medium text-slate-500">Tap to change photo</p>
+                                </div>
+                                <div v-else class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                                    <p class="text-white text-xs font-bold">Tap to change</p>
+                                </div>
+                                <input type="file" accept="image/jpeg,image/png,image/webp"
+                                    @change="handleEditImageSelect"
+                                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                <div v-if="editUploadLoading" class="absolute inset-0 bg-white/80 flex items-center justify-center rounded-2xl">
+                                    <Loader2 :size="24" class="animate-spin text-primary" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <button @click="saveEdit" :disabled="editLoading || editUploadLoading"
                             class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-fab">
                             <span v-if="editLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                             <template v-else><Check :size="17" /> Save Changes</template>
