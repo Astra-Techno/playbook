@@ -78,10 +78,10 @@ class Booking {
      * Returns true when available.
      */
     public function isSlotAvailable($court_id, $start_time, $end_time) {
-        $query = "SELECT COUNT(*) as cnt FROM " . $this->table_name . " \
-                  WHERE court_id = :court_id \
-                    AND (start_time < :end_time AND end_time > :start_time) \
-                    AND status = 'confirmed'";
+        $query = "SELECT COUNT(*) as cnt FROM " . $this->table_name .
+                 " WHERE court_id = :court_id" .
+                 " AND (start_time < :end_time AND end_time > :start_time)" .
+                 " AND status = 'confirmed'";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':court_id', $court_id);
         $stmt->bindParam(':start_time', $start_time);
