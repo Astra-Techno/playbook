@@ -512,4 +512,94 @@ if (isset($seg[0]) && $seg[0] === 'tag-search' && $_SERVER['REQUEST_METHOD'] ===
     exit();
 }
 
+// ── User search by phone  GET /users/search?phone=X ──────────────────────────
+if (isset($seg[0]) && $seg[0] === 'users' && isset($seg[1]) && $seg[1] === 'search' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $phone = trim($_GET['phone'] ?? '');
+    if (!$phone) { echo json_encode(['user' => null]); exit(); }
+    $db   = Database::getConnection();
+    $stmt = $db->prepare("SELECT id, name, phone, avatar_url FROM users WHERE phone = ? LIMIT 1");
+    $stmt->execute([$phone]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    echo json_encode(['user' => $user]);
+    exit();
+}
+
+// ── Booking Players  POST/GET /booking-players ────────────────────────────────
+if (isset($seg[0]) && $seg[0] === 'booking-players') {
+    $db = Database::getConnection();
+    // Auto-create table
+    $db->exec("CREATE TABLE IF NOT EXISTS booking_players (
+        id            INT AUTO_INCREMENT PRIMARY KEY,
+        booking_id    INT NOT NULL,
+        user_id       INT NOT NULL,
+        invited_by    INT NOT NULL,
+        created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_bp (booking_id, user_id),
+        FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id)    REFERENCES users(id)    ON DELETE CASCADE,
+        FOREIGN KEY (invited_by) REFERENCES users(id)    ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // GET /booking-players?booking_id=X
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        $bid  = (int)($_GET['booking_id'] ?? 0);
+        $stmt = $db->prepare(
+            "SELECT u.id, u.name, u.phone, u.avatar_url
+             FROM booking_players bp JOIN users u ON u.id = bp.user_id
+             WHERE bp.booking_id = ?"
+        );
+        $stmt->execute([$bid]);
+        echo json_encode(['players' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        exit();
+    }
+
+    // POST /booking-players  { booking_id, invited_by, user_ids:[] }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $body       = json_decode(file_get_contents('php://input'), true) ?? [];
+        $booking_id = (int)($body['booking_id'] ?? 0);
+        $invited_by = (int)($body['invited_by'] ?? 0);
+        $user_ids   = array_filter(array_map('intval', $body['user_ids'] ?? []));
+
+        if (!$booking_id || !$invited_by || empty($user_ids)) {
+            http_response_code(400); echo json_encode(['message' => 'booking_id, invited_by, user_ids required']); exit();
+        }
+
+        // Fetch booking + court info for notification body
+        $bStmt = $db->prepare(
+            "SELECT b.start_time, c.name AS court_name, c.id AS court_id, u.name AS inviter_name
+             FROM bookings b
+             JOIN courts c ON c.id = b.court_id
+             JOIN users  u ON u.id = ?
+             WHERE b.id = ? LIMIT 1"
+        );
+        $bStmt->execute([$invited_by, $booking_id]);
+        $info = $bStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$info) { http_response_code(404); echo json_encode(['message' => 'Booking not found']); exit(); }
+
+        $dt    = new DateTime($info['start_time']);
+        $date  = $dt->format('D, d M');
+        $time  = $dt->format('h:i A');
+        $title = $info['inviter_name'] . ' added you to a game!';
+        $body_text = 'Join the session at ' . $info['court_name'] . ' on ' . $date . ' at ' . $time;
+
+        $ins  = $db->prepare("INSERT IGNORE INTO booking_players (booking_id, user_id, invited_by) VALUES (?,?,?)");
+        $notif = $db->prepare(
+            "INSERT INTO user_notifications (user_id, type, title, body, court_id) VALUES (?,?,?,?,?)"
+        );
+
+        $added = 0;
+        foreach ($user_ids as $uid) {
+            if ($uid === $invited_by) continue;   // don't add yourself
+            $ins->execute([$booking_id, $uid, $invited_by]);
+            if ($ins->rowCount()) {
+                $notif->execute([$uid, 'booking_invite', $title, $body_text, $info['court_id']]);
+                $added++;
+            }
+        }
+        echo json_encode(['added' => $added]);
+        exit();
+    }
+    exit();
+}
+
 echo json_encode(["message" => "Welcome to Playbook API"]);

@@ -125,7 +125,7 @@ class BookingController {
 
             if ($booking->create()) {
                 http_response_code(201);
-                echo json_encode(["message" => "Booking confirmed."]);
+                echo json_encode(["message" => "Booking confirmed.", "id" => (int)$booking->conn->lastInsertId()]);
             } else {
                 http_response_code(503);
                 echo json_encode(["message" => "Unable to create booking."]);

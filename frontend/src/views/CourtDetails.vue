@@ -8,7 +8,8 @@ import {
     ChevronLeft, MapPin, Star, Clock,
     Calendar, CheckCircle2, XCircle, Info,
     Wind, Flag, Target, Activity, CircleDot, Layers3, Dumbbell, Waves, Swords,
-    Share2, Heart, Lock, Sun, Moon, Crown, Infinity, BadgeCheck
+    Share2, Heart, Lock, Sun, Moon, Crown, Infinity, BadgeCheck,
+    UserPlus, X, Search, Loader2, Users
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -43,6 +44,80 @@ const reviewComment   = ref('')
 const reviewSubmitting = ref(false)
 const userPastBooking = ref(null)   // past booking_id for this court
 const alreadyReviewed = ref(false)
+
+// Add Players modal — shown after a successful booking
+const addPlayers = ref({
+    show: false, bookingIds: [],
+    phone: '', searchResult: null, searching: false, notFound: false,
+    selected: [],   // [{ id, name, phone, avatar_url }]
+    submitting: false,
+})
+
+const searchPlayer = async () => {
+    const phone = addPlayers.value.phone.trim()
+    if (phone.length < 10) return
+    addPlayers.value.searching = true
+    addPlayers.value.searchResult = null
+    addPlayers.value.notFound = false
+    try {
+        const res = await axios.get(`/users/search?phone=${encodeURIComponent(phone)}`)
+        if (res.data.user) {
+            // skip self or already added
+            const u = res.data.user
+            if (u.id === auth.user?.id || addPlayers.value.selected.find(s => s.id === u.id)) {
+                addPlayers.value.notFound = true
+            } else {
+                addPlayers.value.searchResult = u
+            }
+        } else {
+            addPlayers.value.notFound = true
+        }
+    } catch { addPlayers.value.notFound = true }
+    finally { addPlayers.value.searching = false }
+}
+
+const addPlayerToList = (u) => {
+    addPlayers.value.selected.push(u)
+    addPlayers.value.searchResult = null
+    addPlayers.value.phone = ''
+    addPlayers.value.notFound = false
+}
+
+const removePlayer = (id) => {
+    addPlayers.value.selected = addPlayers.value.selected.filter(p => p.id !== id)
+}
+
+const submitPlayers = async () => {
+    const { bookingIds, selected } = addPlayers.value
+    if (!selected.length) { router.push('/bookings'); return }
+    addPlayers.value.submitting = true
+    try {
+        await Promise.all(bookingIds.map(bid =>
+            axios.post('/booking-players', {
+                booking_id: bid,
+                invited_by: auth.user?.id,
+                user_ids: selected.map(p => p.id),
+            })
+        ))
+        toast.success('Players notified!')
+    } catch { /* non-critical */ }
+    finally {
+        addPlayers.value.submitting = false
+        addPlayers.value.show = false
+        router.push('/bookings')
+    }
+}
+
+const openAddPlayers = (bookingIds) => {
+    addPlayers.value = {
+        show: true, bookingIds,
+        phone: '', searchResult: null, searching: false, notFound: false,
+        selected: [], submitting: false,
+    }
+}
+
+// Parse "YYYY-MM-DD HH:MM:SS" as local time (avoids browser UTC timezone shift)
+const parseLocal = (dt) => { const [d, t] = String(dt).split(' '); return new Date(`${d}T${t || '00:00:00'}`) }
 
 // 14-day date options
 const today = new Date()
@@ -212,7 +287,7 @@ onMounted(async () => {
                     // Find a past booking for this court
                     const now = new Date()
                     const past = (bkRes.data.records || []).find(b =>
-                        b.court_id == court.value.id && new Date(b.start_time) <= now
+                        b.court_id == court.value.id && parseLocal(b.start_time) <= now
                     )
                     userPastBooking.value = past || null
                     // Check if user already left a review
@@ -396,7 +471,7 @@ const confirmBooking = async () => {
     // Demo mode — no payment gateway configured, book directly
     if (paymentDemo.value) {
         try {
-            const promises = slots.map(s =>
+            const results = await Promise.all(slots.map(s =>
                 axios.post('/bookings', {
                     user_id:     auth.user?.id,
                     court_id:    court.value.id,
@@ -405,10 +480,10 @@ const confirmBooking = async () => {
                     type:        'hourly',
                     total_price: s.total_price,
                 })
-            )
-            await Promise.all(promises)
+            ))
+            const bookingIds = results.map(r => r.data.id).filter(Boolean)
             toast.success(`${selectedSlots.value.length} slot${selectedSlots.value.length > 1 ? 's' : ''} booked!`)
-            router.push('/bookings')
+            openAddPlayers(bookingIds)
         } catch (err) {
             if (err.response?.status === 409) {
                 toast.error('One or more slots were just taken — please reselect')
@@ -431,9 +506,10 @@ const confirmBooking = async () => {
         },
         async ({ order_id }) => {
             try {
-                await axios.post('/payments/verify', { order_id })
+                const vRes = await axios.post('/payments/verify', { order_id })
+                const bookingIds = (vRes.data.booking_ids || [])
                 toast.success(`${selectedSlots.value.length} slot${selectedSlots.value.length > 1 ? 's' : ''} booked!`)
-                router.push('/bookings')
+                openAddPlayers(bookingIds)
             } catch (err) {
                 if (err.response?.status === 409) {
                     toast.error('One or more slots were just taken — please reselect')
@@ -997,4 +1073,101 @@ const subscribePlan = async (plan) => {
             </div>
         </template>
     </div>
+
+    <!-- Add Players Bottom Sheet ──────────────────────────────────────────── -->
+    <Transition
+        enter-active-class="transition duration-300 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-200 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0">
+        <div v-if="addPlayers.show" class="fixed inset-0 bg-black/50 z-50 flex items-end" @click.self="submitPlayers">
+            <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-10 max-h-[85dvh] flex flex-col">
+
+                <!-- Header -->
+                <div class="flex items-center justify-between mb-1 shrink-0">
+                    <div>
+                        <p class="text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">Booking Confirmed!</p>
+                        <h3 class="font-bold text-slate-900 text-base">Invite Players</h3>
+                    </div>
+                    <button @click="submitPlayers" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+                        <X :size="16" class="text-slate-500" />
+                    </button>
+                </div>
+                <p class="text-sm text-slate-500 mb-4 shrink-0">Search by phone number to notify teammates</p>
+
+                <!-- Search box -->
+                <div class="flex gap-2 mb-3 shrink-0">
+                    <div class="flex-1 relative">
+                        <input v-model="addPlayers.phone" @keyup.enter="searchPlayer"
+                            type="tel" placeholder="Enter phone number"
+                            class="input-field pr-10 w-full" maxlength="15" />
+                        <Loader2 v-if="addPlayers.searching" :size="16"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 animate-spin" />
+                    </div>
+                    <button @click="searchPlayer"
+                        class="w-11 h-11 rounded-xl bg-primary flex items-center justify-center shrink-0 active:scale-95 transition-transform">
+                        <Search :size="18" class="text-white" />
+                    </button>
+                </div>
+
+                <!-- Search result -->
+                <div v-if="addPlayers.searchResult"
+                    class="mb-3 p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-3 shrink-0">
+                    <div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <span class="text-sm font-bold text-primary">{{ addPlayers.searchResult.name?.[0]?.toUpperCase() }}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-slate-800 text-sm truncate">{{ addPlayers.searchResult.name }}</p>
+                        <p class="text-xs text-slate-400">{{ addPlayers.searchResult.phone }}</p>
+                    </div>
+                    <button @click="addPlayerToList(addPlayers.searchResult)"
+                        class="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg bg-primary text-white active:scale-95 transition-transform">
+                        <UserPlus :size="13" /> Add
+                    </button>
+                </div>
+                <p v-else-if="addPlayers.notFound" class="text-xs text-slate-400 mb-3 shrink-0">No player found with that number</p>
+
+                <!-- Selected players -->
+                <div v-if="addPlayers.selected.length" class="flex-1 overflow-y-auto space-y-2 mb-4 scrollbar-hide">
+                    <div v-for="p in addPlayers.selected" :key="p.id"
+                        class="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/10">
+                        <div class="w-9 h-9 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                            <span class="text-sm font-bold text-primary">{{ p.name?.[0]?.toUpperCase() }}</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-slate-800 text-sm truncate">{{ p.name }}</p>
+                            <p class="text-xs text-slate-400">{{ p.phone }}</p>
+                        </div>
+                        <button @click="removePlayer(p.id)"
+                            class="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center active:scale-90 transition-transform">
+                            <X :size="13" class="text-red-400" />
+                        </button>
+                    </div>
+                </div>
+                <div v-else class="flex-1 flex items-center justify-center text-slate-300 mb-4">
+                    <div class="text-center">
+                        <Users :size="36" class="mx-auto mb-2 opacity-40" />
+                        <p class="text-xs">No players added yet</p>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex gap-3 shrink-0">
+                    <button @click="router.push('/bookings')" class="btn-ghost flex-1 text-sm">Skip</button>
+                    <button @click="submitPlayers" :disabled="addPlayers.submitting"
+                        class="btn-primary flex-1 flex items-center justify-center gap-2 text-sm">
+                        <Loader2 v-if="addPlayers.submitting" :size="15" class="animate-spin" />
+                        <template v-else>
+                            <UserPlus :size="15" />
+                            {{ addPlayers.selected.length ? `Invite ${addPlayers.selected.length} Player${addPlayers.selected.length > 1 ? 's' : ''}` : 'Done' }}
+                        </template>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </Transition>
+
 </template>

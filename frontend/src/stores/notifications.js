@@ -8,6 +8,9 @@ export const useNotificationsStore = defineStore('notifications', () => {
     const count = computed(() =>
         expiringSoon.value.length + venueAlerts.value.filter(n => !n.read_at).length
     )
+    const bookingInvites = computed(() =>
+        venueAlerts.value.filter(n => n.type === 'booking_invite' && !n.read_at)
+    )
 
     const fetch = async (userId) => {
         if (!userId) return
@@ -34,5 +37,5 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
     const clear = () => { expiringSoon.value = []; venueAlerts.value = [] }
 
-    return { expiringSoon, venueAlerts, count, fetch, markRead, clear }
+    return { expiringSoon, venueAlerts, bookingInvites, count, fetch, markRead, clear }
 })

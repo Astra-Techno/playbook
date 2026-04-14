@@ -18,8 +18,17 @@ const bookings = ref([])
 const loading = ref(true)
 const activeFilter = ref('upcoming')
 const cancellingId = ref(null)
-const reviewedIds = ref(new Set())
-const ratingModal = ref({ show: false, booking: null, rating: 0, comment: '', loading: false })
+
+// Persist reviewed/dismissed booking IDs in localStorage so we don't nag again
+const lsKey     = () => `reviewed_bookings_${auth.user?.id}`
+const lsDismiss = () => `dismissed_reviews_${auth.user?.id}`
+const storedReviewed  = () => new Set(JSON.parse(localStorage.getItem(lsKey())     || '[]'))
+const storedDismissed = () => new Set(JSON.parse(localStorage.getItem(lsDismiss()) || '[]'))
+const saveReviewed  = (id) => { const s = storedReviewed();  s.add(id); localStorage.setItem(lsKey(),     JSON.stringify([...s])) }
+const saveDismissed = (id) => { const s = storedDismissed(); s.add(id); localStorage.setItem(lsDismiss(), JSON.stringify([...s])) }
+
+const reviewedIds = ref(storedReviewed())
+const ratingModal = ref({ show: false, booking: null, rating: 0, comment: '', loading: false, auto: false })
 
 const now = new Date()
 
@@ -50,12 +59,31 @@ onMounted(async () => {
     try {
         const res = await axios.get(`/bookings?user_id=${auth.user?.id}`)
         bookings.value = res.data.records || []
+        autoPromptReview()
     } catch {
         bookings.value = []
     } finally {
         loading.value = false
     }
 })
+
+// Auto-show rating prompt for first unreviewed, non-dismissed past booking (within 30 days)
+const autoPromptReview = () => {
+    const reviewed  = storedReviewed()
+    const dismissed = storedDismissed()
+    const cutoff    = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    const target    = bookings.value.find(b =>
+        b.status !== 'cancelled' &&
+        parseLocal(b.start_time) < now &&
+        parseLocal(b.start_time) >= cutoff &&
+        !reviewed.has(String(b.id)) &&
+        !dismissed.has(String(b.id))
+    )
+    if (!target) return
+    setTimeout(() => {
+        ratingModal.value = { show: true, booking: target, rating: 0, comment: '', loading: false, auto: true }
+    }, 1200)
+}
 
 // ── Cancel ────────────────────────────────────────────────────────────────────
 
@@ -96,13 +124,20 @@ const submitRating = async () => {
             booking_id: booking.id, rating, comment,
         })
         toast.success('Thanks for your review!')
-        reviewedIds.value = new Set([...reviewedIds.value, booking.id])
+        saveReviewed(String(booking.id))
+        reviewedIds.value = storedReviewed()
         ratingModal.value.show = false
     } catch (err) {
         toast.error(err.response?.data?.message || 'Failed to submit review')
     } finally {
         ratingModal.value.loading = false
     }
+}
+
+const dismissModal = () => {
+    const { booking } = ratingModal.value
+    if (booking) saveDismissed(String(booking.id))
+    ratingModal.value.show = false
 }
 </script>
 
@@ -241,11 +276,14 @@ const submitRating = async () => {
             leave-active-class="transition duration-150 ease-in"
             leave-from-class="opacity-100"
             leave-to-class="opacity-0">
-            <div v-if="ratingModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-end" @click.self="ratingModal.show = false">
+            <div v-if="ratingModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-end" @click.self="dismissModal">
                 <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-10">
                     <div class="flex items-center justify-between mb-1">
-                        <h3 class="font-bold text-slate-900 text-base">Rate Your Experience</h3>
-                        <button @click="ratingModal.show = false" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+                        <div>
+                            <p v-if="ratingModal.auto" class="text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">How was your session?</p>
+                            <h3 class="font-bold text-slate-900 text-base">Rate Your Experience</h3>
+                        </div>
+                        <button @click="dismissModal" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
                             <X :size="16" class="text-slate-500" />
                         </button>
                     </div>
@@ -262,7 +300,7 @@ const submitRating = async () => {
                     <textarea v-model="ratingModal.comment" placeholder="Share your experience (optional)..." class="input-field resize-none mb-4" rows="3" />
 
                     <div class="flex gap-3">
-                        <button @click="ratingModal.show = false" class="btn-ghost flex-1">Skip</button>
+                        <button @click="dismissModal" class="btn-ghost flex-1">Not Now</button>
                         <button @click="submitRating" :disabled="!ratingModal.rating || ratingModal.loading"
                             class="btn-primary flex-1 flex items-center justify-center gap-2">
                             <Loader2 v-if="ratingModal.loading" :size="16" class="animate-spin" />
