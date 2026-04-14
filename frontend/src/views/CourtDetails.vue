@@ -373,10 +373,11 @@ const confirmBooking = async () => {
     if (!auth.isLoggedIn) { router.push('/login'); return }
 
     const slots = selectedSlots.value.map(slot => {
-        const start = `${selectedDate.value} ${slot.pad}:00`
-        const end   = new Date(new Date(`${selectedDate.value}T${slot.pad}:00`).getTime() + 3600000)
-            .toISOString().slice(0, 19).replace('T', ' ')
-        return { start_time: start, end_time: end }
+        const endHour = String(slot.hour + 1).padStart(2, '0')
+        return {
+            start_time: `${selectedDate.value} ${slot.pad}:00`,
+            end_time:   `${selectedDate.value} ${endHour}:00:00`,
+        }
     })
 
     bookingLoading.value = true
@@ -384,10 +385,15 @@ const confirmBooking = async () => {
     // Demo mode — no payment gateway configured, book directly
     if (paymentDemo.value) {
         try {
+            const slotPrice = court.value.price_per_hour || 0
             const promises = slots.map(s =>
                 axios.post('/bookings', {
-                    user_id: auth.user?.id, court_id: court.value.id,
-                    start_time: s.start_time, end_time: s.end_time, type: 'hourly',
+                    user_id:     auth.user?.id,
+                    court_id:    court.value.id,
+                    start_time:  s.start_time,
+                    end_time:    s.end_time,
+                    type:        'hourly',
+                    total_price: slotPrice,
                 })
             )
             await Promise.all(promises)

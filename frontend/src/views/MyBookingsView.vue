@@ -40,8 +40,10 @@ const statusConfig = {
 }
 const getStatus = (s) => statusConfig[s] || statusConfig.pending
 
-const formatDate = (dt) => new Date(dt).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
-const formatTime = (dt) => new Date(dt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+// Parse "YYYY-MM-DD HH:MM:SS" as local time — avoids browser UTC timezone shift
+const parseLocal = (dt) => { const [d, t] = String(dt).split(' '); return new Date(`${d}T${t || '00:00:00'}`) }
+const formatDate = (dt) => parseLocal(dt).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+const formatTime = (dt) => parseLocal(dt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
 
 onMounted(async () => {
     if (!auth.isLoggedIn) { router.push('/login'); return }
@@ -157,8 +159,8 @@ const submitRating = async () => {
                         <!-- Date block -->
                         <div class="shrink-0 w-12 h-12 rounded-xl flex flex-col items-center justify-center text-white"
                             :class="booking.status === 'cancelled' ? 'bg-slate-400' : 'bg-primary'">
-                            <span class="text-lg font-bold leading-none">{{ new Date(booking.start_time).getDate() }}</span>
-                            <span class="text-[10px] font-semibold uppercase">{{ new Date(booking.start_time).toLocaleDateString('en-IN', { month: 'short' }) }}</span>
+                            <span class="text-lg font-bold leading-none">{{ parseLocal(booking.start_time).getDate() }}</span>
+                            <span class="text-[10px] font-semibold uppercase">{{ parseLocal(booking.start_time).toLocaleDateString('en-IN', { month: 'short' }) }}</span>
                         </div>
 
                         <div class="flex-1 min-w-0">
