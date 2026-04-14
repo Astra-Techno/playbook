@@ -233,7 +233,7 @@ onMounted(() => {
 
                         <!-- Mention suggestions dropdown -->
                         <div v-if="showSuggestions"
-                            class="absolute left-0 right-0 top-full mt-1 bg-white rounded-2xl shadow-xl ring-1 ring-slate-200 z-30 overflow-hidden max-h-52 overflow-y-auto">
+                            class="absolute left-0 right-0 bottom-full mb-2 bg-white rounded-2xl shadow-xl ring-1 ring-slate-200 z-30 overflow-hidden max-h-52 overflow-y-auto">
                             <div v-if="mentionLoading" class="flex items-center gap-2 px-4 py-3 text-xs text-slate-400">
                                 <Loader2 :size="12" class="animate-spin" /> Searching…
                             </div>
