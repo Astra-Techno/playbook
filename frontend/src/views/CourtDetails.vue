@@ -372,20 +372,31 @@ const confirmBooking = async () => {
     if (!selectedDate.value || !selectedSlots.value.length) { toast.error('Choose a date and time slot'); return }
     if (!auth.isLoggedIn) { router.push('/login'); return }
 
-    const slots = selectedSlots.value.map(slot => {
-        const endHour = String(slot.hour + 1).padStart(2, '0')
-        return {
-            start_time: `${selectedDate.value} ${slot.pad}:00`,
-            end_time:   `${selectedDate.value} ${endHour}:00:00`,
+    // Group consecutive selected hours into continuous time ranges.
+    // e.g. [8,9,10, 12] → [{8:00–11:00}, {12:00–13:00}]
+    const sorted = [...selectedSlots.value].sort((a, b) => a.hour - b.hour)
+    const groups = sorted.reduce((acc, slot) => {
+        const last = acc[acc.length - 1]
+        if (last && slot.hour === last[last.length - 1].hour + 1) {
+            last.push(slot)
+        } else {
+            acc.push([slot])
         }
-    })
+        return acc
+    }, [])
+
+    const hourPrice = parseFloat(court.value.price_per_hour) || 0
+    const slots = groups.map(group => ({
+        start_time:  `${selectedDate.value} ${group[0].pad}:00`,
+        end_time:    `${selectedDate.value} ${String(group[group.length - 1].hour + 1).padStart(2, '0')}:00:00`,
+        total_price: group.length * hourPrice,
+    }))
 
     bookingLoading.value = true
 
     // Demo mode — no payment gateway configured, book directly
     if (paymentDemo.value) {
         try {
-            const slotPrice = court.value.price_per_hour || 0
             const promises = slots.map(s =>
                 axios.post('/bookings', {
                     user_id:     auth.user?.id,
@@ -393,11 +404,11 @@ const confirmBooking = async () => {
                     start_time:  s.start_time,
                     end_time:    s.end_time,
                     type:        'hourly',
-                    total_price: slotPrice,
+                    total_price: s.total_price,
                 })
             )
             await Promise.all(promises)
-            toast.success(`${slots.length} slot${slots.length > 1 ? 's' : ''} booked!`)
+            toast.success(`${selectedSlots.value.length} slot${selectedSlots.value.length > 1 ? 's' : ''} booked!`)
             router.push('/bookings')
         } catch (err) {
             if (err.response?.status === 409) {
@@ -422,7 +433,7 @@ const confirmBooking = async () => {
         async ({ order_id }) => {
             try {
                 await axios.post('/payments/verify', { order_id })
-                toast.success(`${slots.length} slot${slots.length > 1 ? 's' : ''} booked!`)
+                toast.success(`${selectedSlots.value.length} slot${selectedSlots.value.length > 1 ? 's' : ''} booked!`)
                 router.push('/bookings')
             } catch (err) {
                 if (err.response?.status === 409) {
