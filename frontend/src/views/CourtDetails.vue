@@ -22,6 +22,7 @@ const activeTab = ref('booking')
 const loading = ref(true)
 const bookingLoading = ref(false)
 const subscribeLoading = ref(null)  // holds plan_id being subscribed
+const paymentDemo = ref(false)   // true when Cashfree is not configured
 
 const selectedDate  = ref('')
 const selectedSlots = ref([]) // multi-select
@@ -180,6 +181,12 @@ const recommendedPlanIds = computed(() => {
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
 onMounted(async () => {
+    // Check if payment gateway is configured — silently ignore if endpoint missing
+    try {
+        const cfg = await axios.get('/payments/config')
+        paymentDemo.value = cfg.data.demo === true
+    } catch { paymentDemo.value = true }
+
     try {
         const res = await axios.get('/courts')
         court.value = (res.data.records || []).find(c => c.id == route.params.id) || null
@@ -374,6 +381,31 @@ const confirmBooking = async () => {
 
     bookingLoading.value = true
 
+    // Demo mode — no payment gateway configured, book directly
+    if (paymentDemo.value) {
+        try {
+            const promises = slots.map(s =>
+                axios.post('/bookings', {
+                    user_id: auth.user?.id, court_id: court.value.id,
+                    start_time: s.start_time, end_time: s.end_time, type: 'hourly',
+                })
+            )
+            await Promise.all(promises)
+            toast.success(`${slots.length} slot${slots.length > 1 ? 's' : ''} booked!`)
+            router.push('/bookings')
+        } catch (err) {
+            if (err.response?.status === 409) {
+                toast.error('One or more slots were just taken — please reselect')
+                const r = await axios.get(`/bookings?court_id=${court.value.id}&date=${selectedDate.value}`)
+                bookedSlots.value = r.data.records || []
+                selectedSlots.value = []
+            } else {
+                toast.error(err.response?.data?.message || 'Booking failed')
+            }
+        } finally { bookingLoading.value = false }
+        return
+    }
+
     await openCashfree(
         totalPrice.value,
         'booking',
@@ -405,6 +437,27 @@ const confirmBooking = async () => {
 const subscribePlan = async (plan) => {
     if (!auth.isLoggedIn) { router.push('/login'); return }
     subscribeLoading.value = plan.id
+
+    // Demo mode — activate subscription directly
+    if (paymentDemo.value) {
+        try {
+            await axios.post('/subscriptions', {
+                user_id:       auth.user?.id,
+                plan_id:       plan.id,
+                court_id:      court.value.id,
+                slot_type:     plan.slot_type || 'unlimited',
+                duration_days: plan.duration_days,
+            })
+            toast.success(`Subscribed to ${plan.name}!`)
+            const subRes = await axios.get(`/subscriptions?user_id=${auth.user?.id}&court_id=${court.value.id}`)
+            activeSub.value = subRes.data.active || null
+            lockedSlotPeak.value = null
+            activeTab.value = 'booking'
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Subscription failed')
+        } finally { subscribeLoading.value = null }
+        return
+    }
 
     await openCashfree(
         parseFloat(plan.price),

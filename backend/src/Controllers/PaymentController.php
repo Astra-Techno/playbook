@@ -5,6 +5,34 @@ require_once __DIR__ . '/../../config/cashfree.php';
 
 class PaymentController {
 
+    public function __construct() {
+        // Auto-create payments table so demo mode works without running migrations
+        $db = Database::getConnection();
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS payments (
+                id            INT AUTO_INCREMENT PRIMARY KEY,
+                user_id       INT            NOT NULL,
+                cf_order_id   VARCHAR(100)   NOT NULL UNIQUE,
+                cf_payment_id VARCHAR(100)   DEFAULT NULL,
+                amount        DECIMAL(10,2)  NOT NULL,
+                type          ENUM('booking','subscription') NOT NULL DEFAULT 'booking',
+                payload       JSON,
+                status        ENUM('created','demo','paid','refund_pending','failed') NOT NULL DEFAULT 'created',
+                reference_id  INT            DEFAULT NULL,
+                created_at    DATETIME       DEFAULT CURRENT_TIMESTAMP,
+                updated_at    DATETIME       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        ");
+    }
+
+    /** GET /payments/config — frontend uses this to detect demo mode before showing payment UI */
+    public function config(): void {
+        echo json_encode([
+            'demo'        => $this->isDemoMode(),
+            'environment' => CASHFREE_ENV,
+        ]);
+    }
+
     // ── Private Helpers ────────────────────────────────────────────────────────
 
     /** Shared cURL helper for Cashfree API calls */

@@ -186,6 +186,10 @@ if (isset($seg[0]) && $seg[0] === 'payments') {
     require_once __DIR__ . '/src/Controllers/PaymentController.php';
     $paymentController = new PaymentController();
 
+    if (isset($seg[1]) && $seg[1] === 'config' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        $paymentController->config();
+        exit();
+    }
     if (isset($seg[1]) && $seg[1] === 'create-order' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $paymentController->createOrder();
         exit();
