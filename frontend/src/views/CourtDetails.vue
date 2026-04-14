@@ -107,8 +107,7 @@ const isPeakLocked = (slot) => {
 
 const isBooked = (slot) => {
     const s = `${selectedDate.value} ${slot.pad}:00`
-    const e = new Date(new Date(`${selectedDate.value}T${slot.pad}:00`).getTime() + 3600000)
-        .toISOString().slice(0, 19).replace('T', ' ')
+    const e = `${selectedDate.value} ${String(slot.hour + 1).padStart(2, '0')}:00:00`
     return bookedSlots.value.some(b => s < b.end_time && e > b.start_time)
 }
 
