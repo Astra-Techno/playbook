@@ -1,3 +1,9 @@
+# Allow DELETE and PUT — LiteSpeed blocks these by default
+<Limit DELETE PUT PATCH>
+  Order allow,deny
+  Allow from all
+</Limit>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
