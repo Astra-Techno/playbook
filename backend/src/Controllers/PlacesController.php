@@ -52,13 +52,12 @@ class PlacesController
 
         $places = $this->getFromCache($lat, $lng);
 
-        if (empty($places)) {
-            if ($this->hasApiKey() && !$this->isQuotaExceeded()) {
-                $raw = $this->fetchFromGoogle($lat, $lng);
-                if (!empty($raw)) {
-                    $this->storePlaces($raw);
-                    $places = $this->getFromCache($lat, $lng);
-                }
+        // Re-fetch if cache is empty OR stale (< 30 results means old single-strategy fetch)
+        if (count($places) < 30 && $this->hasApiKey() && !$this->isQuotaExceeded()) {
+            $raw = $this->fetchFromGoogle($lat, $lng);
+            if (!empty($raw)) {
+                $this->storePlaces($raw);
+                $places = $this->getFromCache($lat, $lng);
             }
         }
 
@@ -269,7 +268,7 @@ class PlacesController
                 'locationBias' => [
                     'circle' => ['center' => ['latitude' => $lat, 'longitude' => $lng], 'radius' => 10000.0],
                 ],
-                'maxResultCount' => 20,
+                'pageSize' => 20,  // Text Search uses pageSize, not maxResultCount
             ];
             if ($pageToken) {
                 $payload['pageToken'] = $pageToken;
