@@ -16,8 +16,12 @@ if (token) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
 }
 
-// LiteSpeed blocks DELETE/PUT at server level — tunnel them through POST
+// Prevent browser from caching API responses
 axios.interceptors.request.use(config => {
+    config.headers['Cache-Control'] = 'no-cache, no-store'
+    config.headers['Pragma'] = 'no-cache'
+
+    // LiteSpeed blocks DELETE/PUT at server level — tunnel them through POST
     if (['delete', 'put', 'patch'].includes(config.method)) {
         config.headers['X-HTTP-Method-Override'] = config.method.toUpperCase()
         config.method = 'post'
