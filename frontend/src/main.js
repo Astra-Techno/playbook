@@ -16,6 +16,15 @@ if (token) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
 }
 
+// LiteSpeed blocks DELETE/PUT at server level — tunnel them through POST
+axios.interceptors.request.use(config => {
+    if (['delete', 'put', 'patch'].includes(config.method)) {
+        config.headers['X-HTTP-Method-Override'] = config.method.toUpperCase()
+        config.method = 'post'
+    }
+    return config
+})
+
 const app = createApp(App)
 app.use(createPinia())
 app.use(router)
