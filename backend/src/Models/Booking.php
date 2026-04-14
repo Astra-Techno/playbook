@@ -65,6 +65,7 @@ class Booking {
         $query = "SELECT * FROM " . $this->table_name .
                  " WHERE court_id = :court_id" .
                  " AND DATE(start_time) = :date" .
+                 " AND status = 'confirmed'" .
                  " ORDER BY start_time";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':court_id', $court_id);
