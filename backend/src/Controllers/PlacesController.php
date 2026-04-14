@@ -50,14 +50,11 @@ class PlacesController
         if (empty($places)) {
             if ($this->hasApiKey() && !$this->isQuotaExceeded()) {
                 $raw = $this->fetchFromGoogle($lat, $lng);
-            } else {
-                $raw = [];
+                if (!empty($raw)) {
+                    $this->storePlaces($raw);
+                    $places = $this->getFromCache($lat, $lng);
+                }
             }
-            if (empty($raw)) {
-                $raw = $this->getDemoPlaces($lat, $lng);
-            }
-            $this->storePlaces($raw);
-            $places = $this->getFromCache($lat, $lng);
         }
 
         $requestedIds = $userId ? $this->getUserRequestedIds($userId) : [];
@@ -422,17 +419,6 @@ class PlacesController
         return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
 
-    private function getDemoPlaces(float $lat, float $lng): array
-    {
-        return [
-            ['google_place_id' => 'demo_p1', 'name' => 'City Badminton Academy',    'type' => 'shuttle',  'address' => '2.1 km away', 'lat' => $lat + 0.005, 'lng' => $lng + 0.003, 'phone' => null, 'website' => null, 'rating' => null, 'photo_reference' => null],
-            ['google_place_id' => 'demo_p2', 'name' => 'FitZone Sports Club',       'type' => 'gym',      'address' => '1.4 km away', 'lat' => $lat - 0.004, 'lng' => $lng + 0.006, 'phone' => null, 'website' => null, 'rating' => null, 'photo_reference' => null],
-            ['google_place_id' => 'demo_p3', 'name' => 'Green Turf Football Arena', 'type' => 'turf',     'address' => '3.0 km away', 'lat' => $lat + 0.008, 'lng' => $lng - 0.005, 'phone' => null, 'website' => null, 'rating' => null, 'photo_reference' => null],
-            ['google_place_id' => 'demo_p4', 'name' => 'Victory Cricket Ground',    'type' => 'cricket',  'address' => '2.7 km away', 'lat' => $lat - 0.007, 'lng' => $lng - 0.004, 'phone' => null, 'website' => null, 'rating' => null, 'photo_reference' => null],
-            ['google_place_id' => 'demo_p5', 'name' => 'AquaFit Swimming Centre',   'type' => 'swimming', 'address' => '1.8 km away', 'lat' => $lat + 0.002, 'lng' => $lng + 0.009, 'phone' => null, 'website' => null, 'rating' => null, 'photo_reference' => null],
-            ['google_place_id' => 'demo_p6', 'name' => 'Smash Tennis Club',         'type' => 'tennis',   'address' => '3.5 km away', 'lat' => $lat - 0.010, 'lng' => $lng + 0.002, 'phone' => null, 'website' => null, 'rating' => null, 'photo_reference' => null],
-        ];
-    }
 
     private function ensureTables(): void
     {
