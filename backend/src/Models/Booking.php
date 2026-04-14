@@ -62,10 +62,10 @@ class Booking {
      * Return bookings for a specific court on a specific date.
      */
     public function readByCourtAndDate($court_id, $date) {
-        $query = "SELECT * FROM " . $this->table_name . " \
-                  WHERE court_id = :court_id \
-                    AND DATE(start_time) = :date \
-                  ORDER BY start_time";
+        $query = "SELECT * FROM " . $this->table_name .
+                 " WHERE court_id = :court_id" .
+                 " AND DATE(start_time) = :date" .
+                 " ORDER BY start_time";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':court_id', $court_id);
         $stmt->bindParam(':date', $date);
