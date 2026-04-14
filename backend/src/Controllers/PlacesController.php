@@ -20,6 +20,7 @@ class PlacesController
         'basket'   => 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=600&q=80',
         'swimming' => 'https://images.unsplash.com/photo-1576013551627-0cc20b96c2a7?w=600&q=80',
         'boxing'   => 'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?w=600&q=80',
+        'dance'    => 'https://images.unsplash.com/photo-1547153760-18fc86324498?w=600&q=80',
         'other'    => 'https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=600&q=80',
     ];
 
@@ -197,7 +198,7 @@ class PlacesController
         // Two calls: general sports venues + specific court types
         $typeBatches = [
             ['sports_complex', 'sports_club', 'stadium', 'gym', 'fitness_center', 'swimming_pool'],
-            ['athletic_field', 'basketball_court', 'cricket_ground', 'tennis_court', 'volleyball_court', 'badminton_court'],
+            ['athletic_field', 'basketball_court', 'cricket_ground', 'tennis_court', 'volleyball_court', 'badminton_court', 'dance_studio'],
         ];
 
         foreach ($typeBatches as $types) {
@@ -345,6 +346,7 @@ class PlacesController
         if (strpos($n, 'football')  !== false || strpos($n, 'turf') !== false || strpos($n, 'futsal') !== false || strpos($n, 'athletic_field') !== false) return 'turf';
         if (strpos($n, 'boxing')    !== false || strpos($n, 'martial') !== false || strpos($n, 'mma') !== false) return 'boxing';
         if (strpos($n, 'gym')       !== false || strpos($n, 'fitness') !== false || strpos($n, 'crossfit') !== false) return 'gym';
+        if (strpos($n, 'dance')     !== false || strpos($n, 'zumba') !== false || strpos($n, 'dance_studio') !== false) return 'dance';
 
         return 'other';
     }
