@@ -379,16 +379,9 @@ const handleAvatarUpload = async (event) => {
 
             <!-- Section header -->
             <div class="flex items-center justify-between pt-4 pb-3">
-                <div class="flex items-center gap-2">
-                    <button v-if="activeNavTab === 'earnings' || activeNavTab === 'reviews'"
-                        @click="activeNavTab = 'profile'"
-                        class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center active:scale-90 transition-transform shrink-0">
-                        <ChevronLeft :size="18" class="text-slate-600" />
-                    </button>
-                    <h3 class="text-slate-900 text-xl font-bold tracking-tight">
-                        {{ activeNavTab === 'bookings' ? 'All Bookings' : activeNavTab === 'reviews' ? 'Reviews' : activeNavTab === 'earnings' ? 'Earnings' : activeNavTab === 'profile' ? 'Profile' : 'My Services' }}
-                    </h3>
-                </div>
+                <h3 class="text-slate-900 text-xl font-bold tracking-tight">
+                    {{ activeNavTab === 'bookings' ? 'All Bookings' : activeNavTab === 'reviews' ? 'Reviews' : activeNavTab === 'earnings' ? 'Earnings' : activeNavTab === 'profile' ? 'Profile' : 'My Services' }}
+                </h3>
                 <button v-if="activeNavTab === 'explore'"
                     @click="showAddForm = true"
                     class="text-primary text-sm font-semibold">
@@ -713,7 +706,7 @@ const handleAvatarUpload = async (event) => {
                         <span class="mt-2 bg-primary-light text-primary text-xs font-bold px-3 py-1 rounded-full">KoCourt Member</span>
                     </div>
                     <!-- Quick stats -->
-                    <div class="grid grid-cols-3 gap-3 mb-5">
+                    <div class="grid grid-cols-3 gap-3 mb-6">
                         <div class="bg-slate-50 rounded-xl p-3 text-center">
                             <p class="text-xl font-bold text-slate-900">{{ courts.length }}</p>
                             <p class="text-[11px] text-slate-500 font-medium">Services</p>
@@ -727,40 +720,10 @@ const handleAvatarUpload = async (event) => {
                             <p class="text-[11px] text-slate-500 font-medium">Revenue</p>
                         </div>
                     </div>
-                </div>
-
-                <!-- Menu items: Reviews & Earnings -->
-                <div class="bg-white rounded-2xl overflow-hidden ring-1 ring-slate-100 shadow-sm mb-4 divide-y divide-slate-50">
-                    <button
-                        @click="activeNavTab = 'reviews'; if (!ownerReviews.length) fetchOwnerReviews()"
-                        class="w-full flex items-center gap-3 px-4 py-4 hover:bg-slate-50 active:bg-slate-100 transition-colors">
-                        <div class="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center shrink-0">
-                            <Star :size="17" class="text-amber-500" />
-                        </div>
-                        <span class="flex-1 text-sm font-semibold text-slate-800 text-left">Reviews</span>
-                        <span v-if="ownerReviews.length" class="text-[11px] font-bold text-slate-400 mr-1">{{ ownerReviews.length }}</span>
-                        <ChevronRight :size="16" class="text-slate-300" />
-                    </button>
-                    <button
-                        @click="activeNavTab = 'earnings'; if (!earnings) fetchEarnings()"
-                        class="w-full flex items-center gap-3 px-4 py-4 hover:bg-slate-50 active:bg-slate-100 transition-colors">
-                        <div class="w-9 h-9 bg-primary-light rounded-xl flex items-center justify-center shrink-0">
-                            <Wallet :size="17" class="text-primary" />
-                        </div>
-                        <span class="flex-1 text-sm font-semibold text-slate-800 text-left">Earnings</span>
-                        <ChevronRight :size="16" class="text-slate-300" />
-                    </button>
-                </div>
-
-                <!-- Sign out -->
-                <div class="bg-white rounded-2xl overflow-hidden ring-1 ring-slate-100 shadow-sm">
                     <button
                         @click="auth.logout(); router.push('/')"
-                        class="w-full flex items-center gap-3 px-4 py-4 hover:bg-red-50 active:bg-red-100 transition-colors">
-                        <div class="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
-                            <X :size="17" class="text-red-500" />
-                        </div>
-                        <span class="flex-1 text-sm font-bold text-red-600 text-left">Sign Out</span>
+                        class="w-full py-3 rounded-xl bg-red-50 text-red-600 font-bold text-sm">
+                        Sign Out
                     </button>
                 </div>
             </template>
@@ -800,7 +763,7 @@ const handleAvatarUpload = async (event) => {
 
             <button
                 @click="activeNavTab = 'profile'"
-                :class="activeNavTab === 'profile' || activeNavTab === 'earnings' || activeNavTab === 'reviews' ? 'text-primary' : 'text-slate-400'"
+                :class="activeNavTab === 'profile' ? 'text-primary' : 'text-slate-400'"
                 class="flex flex-col items-center gap-1.5 px-2">
                 <User :size="20" :stroke-width="2.5" />
                 <span class="text-[10px] font-bold tracking-tight">Profile</span>
