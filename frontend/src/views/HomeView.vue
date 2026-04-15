@@ -245,12 +245,10 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
 
         <!-- Teleport contents to Global AppHeader -->
         <Teleport to="#header-subtitle">
-            <button @click="detectLocation" :disabled="locating"
-                class="flex items-center gap-1.5 text-slate-400 mt-0.5 active:opacity-70 transition-opacity">
-                <Loader2 v-if="locating" :size="11" class="animate-spin text-primary" />
-                <MapPin v-else :size="11" :stroke-width="2.5" class="text-primary/70 shrink-0" />
+            <div class="flex items-center gap-1.5 text-slate-400 mt-0.5">
+                <MapPin :size="11" :stroke-width="2.5" class="text-primary/70 shrink-0" />
                 <span class="text-[10px] font-bold uppercase tracking-wide truncate max-w-[150px]">{{ locationLabel }}</span>
-            </button>
+            </div>
         </Teleport>
 
         <Teleport to="#header-extra">
@@ -264,12 +262,20 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                         type="search"
                         placeholder="Search courts, gyms, clubs..."
                         class="flex-1 px-3 text-sm bg-transparent border-none focus:ring-0 placeholder:text-slate-400" />
+                    <!-- GPS locate button -->
+                    <button @click="detectLocation" :disabled="locating"
+                        class="flex items-center justify-center pl-2 text-slate-400 disabled:opacity-50">
+                        <Loader2 v-if="locating" :size="16" class="animate-spin text-primary" />
+                        <MapPin v-else :size="16" :class="userLat && userLng ? 'text-primary' : ''" />
+                    </button>
+                    <!-- Divider -->
+                    <div class="w-px bg-slate-100 my-2.5"></div>
                     <!-- Filter button -->
                     <button @click="openFilters"
-                        class="relative flex items-center justify-center pr-3.5 pl-2 text-slate-400">
+                        class="relative flex items-center justify-center px-3 text-slate-400">
                         <SlidersHorizontal :size="16" :class="activeFilterCount > 0 ? 'text-primary' : ''" />
                         <span v-if="activeFilterCount > 0"
-                            class="absolute top-2 right-3 w-3.5 h-3.5 bg-primary text-white text-[8px] font-black rounded-full flex items-center justify-center leading-none">
+                            class="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-primary text-white text-[8px] font-black rounded-full flex items-center justify-center leading-none">
                             {{ activeFilterCount }}
                         </span>
                     </button>
