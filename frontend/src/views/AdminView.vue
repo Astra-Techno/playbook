@@ -17,9 +17,22 @@ const loading      = ref(true)
 const expandedId   = ref(null)
 const contactingId = ref(null)
 
+// City extraction from Google formatted address
+const extractCity = (address) => {
+    if (!address) return ''
+    const parts = address.split(',').map(s => s.trim()).filter(s => s && s.toLowerCase() !== 'india')
+    // Walk from end: skip parts with digits (state+pincode) and return first clean city token
+    for (let i = parts.length - 1; i >= 0; i--) {
+        const p = parts[i]
+        if (!/\d/.test(p) && p.length > 2) return p
+    }
+    return parts[0] || ''
+}
+
 // Filters
 const filterStatus = ref('all')   // all | pending | contacted
 const filterType   = ref('all')
+const filterCity   = ref('all')
 
 const typeOptions = [
     { value: 'all',     label: 'All types' },
@@ -39,9 +52,15 @@ const typeOptions = [
     { value: 'other',   label: 'Other'     },
 ]
 
+const cityOptions = computed(() => {
+    const cities = [...new Set(places.value.map(p => extractCity(p.address)).filter(Boolean))].sort()
+    return cities
+})
+
 const filtered = computed(() => places.value.filter(p => {
     if (filterStatus.value !== 'all' && p.status !== filterStatus.value) return false
     if (filterType.value   !== 'all' && p.type   !== filterType.value)   return false
+    if (filterCity.value   !== 'all' && extractCity(p.address) !== filterCity.value) return false
     return true
 }))
 
@@ -50,7 +69,11 @@ const totalPlaces    = computed(() => places.value.length)
 const totalRequests  = computed(() => places.value.reduce((s, p) => s + (parseInt(p.request_count) || 0), 0))
 const contactedCount = computed(() => places.value.filter(p => p.status === 'contacted').length)
 
-const activeFilters = computed(() => (filterStatus.value !== 'all' ? 1 : 0) + (filterType.value !== 'all' ? 1 : 0))
+const activeFilters = computed(() =>
+    (filterStatus.value !== 'all' ? 1 : 0) +
+    (filterType.value   !== 'all' ? 1 : 0) +
+    (filterCity.value   !== 'all' ? 1 : 0)
+)
 
 const typeLabel = (t) => typeOptions.find(o => o.value === t)?.label || 'Other'
 
@@ -110,7 +133,7 @@ onMounted(fetchDemand)
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50 pb-28">
+    <div class="min-h-screen bg-slate-50 pb-32">
 
         <!-- Stats row -->
         <div class="px-4 pt-4 pb-2 grid grid-cols-3 gap-2">
@@ -140,7 +163,7 @@ onMounted(fetchDemand)
                 <span class="text-[10px] text-slate-400 font-medium ml-auto">{{ filtered.length }} venues</span>
             </div>
 
-            <!-- Row 2: status pills -->
+            <!-- Row 2: status pills + type filter -->
             <div class="flex gap-2">
                 <button v-for="s in [['all','All'],['pending','Pending'],['contacted','Contacted']]"
                     :key="s[0]"
@@ -159,6 +182,27 @@ onMounted(fetchDemand)
                     </select>
                     <Filter :size="11" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 </div>
+            </div>
+
+            <!-- Row 3: city chips (only when we have multiple cities) -->
+            <div v-if="cityOptions.length > 1" class="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
+                <button
+                    @click="filterCity = 'all'"
+                    class="shrink-0 text-[11px] font-bold px-3 py-1.5 rounded-full border transition-all"
+                    :class="filterCity === 'all'
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-white text-slate-500 border-slate-200'">
+                    All Cities
+                </button>
+                <button v-for="city in cityOptions" :key="city"
+                    @click="filterCity = city"
+                    class="shrink-0 flex items-center gap-1 text-[11px] font-bold px-3 py-1.5 rounded-full border transition-all"
+                    :class="filterCity === city
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-white text-slate-500 border-slate-200'">
+                    <MapPin :size="9" />
+                    {{ city }}
+                </button>
             </div>
         </div>
 
@@ -183,7 +227,7 @@ onMounted(fetchDemand)
             </div>
             <p class="font-bold text-slate-600">No venues found</p>
             <p class="text-sm text-slate-400 mt-1">Try changing the filters.</p>
-            <button v-if="activeFilters" @click="filterStatus='all'; filterType='all'"
+            <button v-if="activeFilters" @click="filterStatus='all'; filterType='all'; filterCity='all'"
                 class="mt-3 text-xs font-bold text-primary flex items-center gap-1">
                 <X :size="12" /> Clear filters
             </button>
@@ -212,12 +256,20 @@ onMounted(fetchDemand)
                             </span>
                         </div>
 
-                        <div class="flex items-center gap-1 text-slate-400 text-[11px] mt-1">
+                        <div class="flex items-center gap-1 text-slate-400 text-[11px] mt-0.5">
                             <MapPin :size="10" class="shrink-0" />
                             <span class="truncate">{{ place.address }}</span>
                         </div>
 
-                        <div class="flex items-center gap-3 mt-2">
+                        <div class="flex items-center gap-2 mt-1.5">
+                            <span v-if="extractCity(place.address)"
+                                class="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                <MapPin :size="9" class="text-primary" />
+                                {{ extractCity(place.address) }}
+                            </span>
+                        </div>
+
+                        <div class="flex items-center gap-3 mt-1.5">
                             <span class="text-[10px] font-bold bg-primary/5 text-primary px-2 py-0.5 rounded-full">
                                 {{ typeLabel(place.type) }}
                             </span>

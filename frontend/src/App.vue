@@ -140,13 +140,13 @@ const submitPromptRating = async () => {
         <main class="flex-1 min-h-0 scrollbar-hide"
             :class="[
                 route.meta.fullScreen ? 'overflow-hidden' : 'overflow-y-auto',
-                auth.isLoggedIn && !route.meta.fullScreen ? 'pb-20' : ''
+                auth.isLoggedIn && !route.meta.fullScreen && !route.meta.hideBottomNav ? 'pb-24' : ''
             ]">
             <RouterView />
         </main>
 
-        <!-- Bottom Nav — shown only when logged in -->
-        <nav v-if="auth.isLoggedIn"
+        <!-- Bottom Nav — shown only when logged in and not on owner dashboard routes -->
+        <nav v-if="auth.isLoggedIn && !route.meta.hideBottomNav"
             class="absolute bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-100 z-50 px-6 py-3 flex justify-between items-center"
             style="box-shadow: 0 -2px 20px rgba(0,0,0,0.07);">
 

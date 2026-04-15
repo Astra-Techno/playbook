@@ -57,19 +57,19 @@ const router = createRouter({
             path: '/my-services',
             name: 'my-services',
             component: () => import('../views/OwnerDashboard.vue'),
-            meta: { requiresAuth: true, title: 'My Services', showGreeting: true },
+            meta: { requiresAuth: true, title: 'My Services', showGreeting: true, hideBottomNav: true },
         },
         {
             path: '/my-services/:id/plans',
             name: 'manage-plans',
             component: () => import('../views/ManagePlansView.vue'),
-            meta: { requiresAuth: true, title: 'Manage Plans' },
+            meta: { requiresAuth: true, title: 'Manage Plans', hideBottomNav: true },
         },
         {
             path: '/my-services/:id/edit',
             name: 'edit-service',
             component: () => import('../views/EditServiceView.vue'),
-            meta: { requiresAuth: true, title: 'Edit Service' },
+            meta: { requiresAuth: true, title: 'Edit Service', hideBottomNav: true },
         },
         {
             path: '/feed/:id',
