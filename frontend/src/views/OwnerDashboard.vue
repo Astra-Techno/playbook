@@ -4,6 +4,7 @@ import axios from 'axios'
 import { useRouter, useRoute } from 'vue-router'
 import KoLogo from '@/components/KoLogo.vue'
 import ChatSheet from '../components/ChatSheet.vue'
+import ManageStaffSheet from '../components/ManageStaffSheet.vue'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import {
@@ -12,7 +13,7 @@ import {
     IndianRupee, LocateFixed, Loader2, Sun, Moon, Shield,
     Camera, Trash2, TrendingUp, CalendarDays, Search, MapPin,
     Flame, Map, Globe, Heart, User, Star, LayoutGrid, Wallet, ArrowDownToLine, MessageSquare,
-    ChevronLeft, ChevronRight
+    ChevronLeft, ChevronRight, Users
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -79,6 +80,33 @@ const editUploadLoading = ref(false) // kept for compat, unused
 const hasPeakHours = computed(() => newCourt.value.type !== 'turf' && newCourt.value.type !== 'cricket')
 const addLoading    = ref(false)
 const geoLoading    = ref(false)
+
+// ── Staff management ──────────────────────────────────────────────────────────
+const staffSheet      = ref({ show: false, court: null })
+const staffCourts     = ref([])   // courts where this user is a staff member
+const staffBookings   = ref([])
+const staffLoading    = ref(false)
+
+const fetchStaffData = async () => {
+    staffLoading.value = true
+    try {
+        const res = await axios.get(`/court-staff/my-courts?user_id=${auth.user?.id}`)
+        staffCourts.value = res.data.courts || []
+        if (staffCourts.value.length > 0) {
+            const bRes = await axios.get(`/bookings?staff_id=${auth.user?.id}`)
+            staffBookings.value = bRes.data.records || []
+        }
+    } catch { staffCourts.value = [] }
+    finally { staffLoading.value = false }
+}
+
+const openStaffSheet = (court) => { staffSheet.value = { show: true, court } }
+
+const hasStaffAccess = computed(() => staffCourts.value.length > 0)
+const isStaffManager = (court) => {
+    const s = staffCourts.value.find(c => c.id === court.id)
+    return s?.role === 'manager'
+}
 const editCourt     = ref(null)   // court being edited (null = closed)
 const editLoading   = ref(false)
 const deleteLoading = ref(null)   // court id being deleted
@@ -240,6 +268,8 @@ const fetchData = async () => {
     } finally {
         loading.value = false
     }
+    // Also load staff assignments in background
+    fetchStaffData()
 }
 
 onMounted(() => {
@@ -472,7 +502,7 @@ const handleAvatarUpload = async (event) => {
                                         ₹{{ court.hourly_rate }}<span class="text-sm font-normal text-slate-500">/hr</span>
                                     </span>
                                 </div>
-                                <div class="flex gap-2">
+                                <div class="flex gap-2 flex-wrap">
                                     <button @click.stop="openEdit(court)"
                                         class="bg-slate-100 text-slate-600 font-bold py-2.5 px-4 rounded-xl text-xs hover:bg-slate-200 transition-colors">
                                         Edit
@@ -486,6 +516,11 @@ const handleAvatarUpload = async (event) => {
                                         class="bg-primary hover:bg-primary-dark text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors">
                                         Plans
                                     </RouterLink>
+                                    <button @click.stop="openStaffSheet(court)"
+                                        class="flex items-center gap-1.5 bg-slate-800 text-white font-bold py-2.5 px-3 rounded-xl text-xs hover:bg-slate-700 transition-colors">
+                                        <Users :size="12" />
+                                        Staff
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -537,6 +572,69 @@ const handleAvatarUpload = async (event) => {
                         </div>
                     </div>
                 </div>
+            </template>
+
+            <!-- STAFF TAB -->
+            <template v-else-if="activeNavTab === 'staff'">
+                <div v-if="staffLoading" class="space-y-3">
+                    <div v-for="i in 3" :key="i" class="bg-white rounded-xl p-4 animate-pulse ring-1 ring-slate-100 h-20"></div>
+                </div>
+                <template v-else>
+                    <!-- Courts I manage -->
+                    <div class="mb-5">
+                        <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3 px-1">Courts I Manage</p>
+                        <div class="space-y-2">
+                            <div v-for="court in staffCourts" :key="court.id"
+                                class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3 ring-1 ring-slate-100 shadow-sm">
+                                <div class="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 shrink-0">
+                                    <img v-if="court.image_url" :src="court.image_url" class="w-full h-full object-cover" />
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-bold text-slate-800 text-sm truncate">{{ court.name }}</p>
+                                    <p class="text-xs text-slate-400 truncate">{{ court.location }}</p>
+                                </div>
+                                <span class="text-[10px] font-black px-2.5 py-1 rounded-full shrink-0"
+                                    :class="court.role === 'manager' ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'">
+                                    {{ court.role }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bookings for my courts -->
+                    <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3 px-1">Bookings to Manage</p>
+                    <div v-if="staffBookings.length === 0" class="text-center py-12 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-100">
+                        <CalendarDays :size="28" class="text-slate-300 mx-auto mb-2" />
+                        <p class="text-sm font-bold text-slate-500">No bookings yet</p>
+                    </div>
+                    <div v-else class="space-y-3">
+                        <div v-for="booking in staffBookings" :key="booking.id"
+                            class="flex flex-col bg-white rounded-xl ring-1 ring-slate-100 p-4">
+                            <div class="flex items-start gap-3">
+                                <div class="shrink-0 w-12 h-12 rounded-xl flex flex-col items-center justify-center text-white"
+                                    :class="booking.status === 'cancelled' ? 'bg-slate-300' : 'bg-primary'">
+                                    <span class="text-base font-bold leading-none">{{ new Date(booking.start_time).getDate() }}</span>
+                                    <span class="text-[9px] font-semibold uppercase">{{ new Date(booking.start_time).toLocaleDateString('en-IN', { month: 'short' }) }}</span>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="font-bold text-slate-900 text-sm truncate">{{ booking.court_name }}</p>
+                                    <p class="text-xs text-slate-500 truncate">{{ booking.user_name || 'Unknown player' }}</p>
+                                    <div class="flex items-center gap-1 text-xs text-slate-400 mt-0.5">
+                                        <Clock :size="10" />
+                                        {{ formatTime(booking.start_time) }} – {{ formatTime(booking.end_time) }}
+                                    </div>
+                                    <div class="flex items-center justify-between mt-2">
+                                        <span :class="booking.status === 'confirmed' ? 'text-primary bg-primary-light' : booking.status === 'cancelled' ? 'text-red-500 bg-red-50' : 'text-amber-600 bg-amber-50'"
+                                            class="text-[10px] font-bold px-2 py-1 rounded-full capitalize">
+                                            {{ booking.status }}
+                                        </span>
+                                        <span class="font-bold text-sm text-slate-800">₹{{ booking.total_price }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </template>
             </template>
 
             <!-- EARNINGS TAB -->
@@ -766,7 +864,16 @@ const handleAvatarUpload = async (event) => {
                 </button>
             </div>
 
-            <button
+            <!-- Staff tab — only visible when user has staff assignments -->
+            <button v-if="hasStaffAccess"
+                @click="activeNavTab = 'staff'"
+                :class="activeNavTab === 'staff' ? 'text-primary' : 'text-slate-400'"
+                class="flex flex-col items-center gap-1.5 px-2 relative">
+                <Users :size="20" :stroke-width="2.5" />
+                <span class="text-[10px] font-bold tracking-tight">Staff</span>
+            </button>
+
+            <button v-else
                 @click="activeNavTab = 'profile'"
                 :class="activeNavTab === 'profile' ? 'text-primary' : 'text-slate-400'"
                 class="flex flex-col items-center gap-1.5 px-2">
@@ -975,6 +1082,11 @@ const handleAvatarUpload = async (event) => {
             :receiver-id="ownerChat.playerId"
             :receiver-name="ownerChat.playerName"
             :court-name="ownerChat.courtName"
+        />
+
+        <ManageStaffSheet
+            v-model="staffSheet.show"
+            :court="staffSheet.court"
         />
     </div>
 </template>

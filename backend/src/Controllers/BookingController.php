@@ -21,17 +21,36 @@ class BookingController {
         return null;
     }
 
-    // DELETE /api/bookings/:id  body: { user_id }
+    // DELETE /api/bookings/:id  body: { user_id, staff_id? }
     public function cancel($id) {
-        $data    = json_decode(file_get_contents("php://input"));
-        $user_id = (int)($data->user_id ?? 0);
-        $booking = new Booking();
+        $data     = json_decode(file_get_contents("php://input"));
+        $user_id  = (int)($data->user_id  ?? 0);
+        $staff_id = (int)($data->staff_id ?? 0);
+        $booking  = new Booking();
 
-        $row = $booking->conn->prepare("SELECT * FROM bookings WHERE id=? AND user_id=?");
-        $row->execute([$id, $user_id]);
+        // Allow cancel if: booking owner OR court staff manager OR court owner
+        $row = $booking->conn->prepare("
+            SELECT b.*, c.owner_id FROM bookings b
+            JOIN courts c ON c.id = b.court_id
+            WHERE b.id = ?
+        ");
+        $row->execute([$id]);
         $b = $row->fetch(PDO::FETCH_ASSOC);
 
         if (!$b) { http_response_code(404); echo json_encode(["message" => "Booking not found"]); return; }
+
+        $isBookingOwner = $b['user_id'] === $user_id;
+        $isCourtOwner   = $b['owner_id'] === $user_id;
+        $isStaff        = false;
+        if ($staff_id) {
+            $sc = $booking->conn->prepare("SELECT id FROM court_staff WHERE court_id = ? AND user_id = ? AND role = 'manager'");
+            $sc->execute([$b['court_id'], $staff_id]);
+            $isStaff = (bool)$sc->fetch();
+        }
+
+        if (!$isBookingOwner && !$isCourtOwner && !$isStaff) {
+            http_response_code(403); echo json_encode(["message" => "Not authorised to cancel this booking"]); return;
+        }
         if ($b['status'] === 'cancelled') { http_response_code(400); echo json_encode(["message" => "Already cancelled"]); return; }
         if (strtotime($b['start_time']) <= time()) { http_response_code(400); echo json_encode(["message" => "Cannot cancel past bookings"]); return; }
 
@@ -67,9 +86,28 @@ class BookingController {
                       ORDER BY b.start_time DESC";
             $stmt = $booking->conn->prepare($query);
             $stmt->execute([(int)$_GET['owner_id']]);
+        } elseif (isset($_GET['staff_id'])) {
+            // Staff: fetch bookings for all courts they manage
+            $db      = Database::getConnection();
+            $cStmt   = $db->prepare("SELECT court_id FROM court_staff WHERE user_id = ?");
+            $cStmt->execute([(int)$_GET['staff_id']]);
+            $courtIds = $cStmt->fetchAll(PDO::FETCH_COLUMN);
+            if (empty($courtIds)) {
+                echo json_encode(["records" => []]); return;
+            }
+            $in    = implode(',', array_map('intval', $courtIds));
+            $query = "SELECT b.*, c.name as court_name, c.owner_id,
+                             u.name as user_name
+                      FROM bookings b
+                      JOIN courts c ON b.court_id = c.id
+                      LEFT JOIN users u ON b.user_id = u.id
+                      WHERE c.id IN ({$in})
+                      ORDER BY b.start_time DESC";
+            $stmt  = $db->prepare($query);
+            $stmt->execute();
         } else {
             http_response_code(400);
-            echo json_encode(["message" => "Provide user_id, or court_id+date, or owner_id."]);
+            echo json_encode(["message" => "Provide user_id, or court_id+date, or owner_id, or staff_id."]);
             return;
         }
 

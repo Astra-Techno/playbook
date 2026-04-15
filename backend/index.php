@@ -458,6 +458,16 @@ if (isset($seg[0]) && $seg[0] === 'service-requests' && $_SERVER['REQUEST_METHOD
     exit();
 }
 
+// Court Staff Routes
+if (isset($seg[0]) && $seg[0] === 'court-staff') {
+    require_once __DIR__ . '/src/Controllers/StaffController.php';
+    $sc = new StaffController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'my-courts') { $sc->myCourts(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET')                                               { $sc->list();              exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST')                                              { $sc->add();               exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1]))                          { $sc->remove((int)$seg[1]); exit(); }
+}
+
 // Admin Routes
 if (isset($seg[0]) && $seg[0] === 'admin') {
     require_once __DIR__ . '/src/Controllers/PlacesController.php';
