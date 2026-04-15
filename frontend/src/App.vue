@@ -1,6 +1,6 @@
 <script setup>
-import { ref, watch } from 'vue'
-import { RouterView, RouterLink, useRoute, useRouter } from 'vue-router'
+import { ref, watch, useTemplateRef } from 'vue'
+import { RouterView, RouterLink, useRoute } from 'vue-router'
 import {
     CalendarDays, User,
     CheckCircle2, XCircle, Info,
@@ -30,8 +30,12 @@ watch(() => auth.user?.id, async (uid) => {
     }
 }, { immediate: true })
 
-const route  = useRoute()
-const router = useRouter()
+const route   = useRoute()
+const mainEl  = useTemplateRef('mainEl')
+
+watch(() => route.path, () => {
+    if (mainEl.value) mainEl.value.scrollTop = 0
+})
 
 const isActive = (path) =>
     path === '/' ? route.path === '/' : route.path.startsWith(path)
@@ -137,7 +141,7 @@ const submitPromptRating = async () => {
         <AppHeader />
 
         <!-- Page content -->
-        <main class="flex-1 min-h-0 scrollbar-hide"
+        <main ref="mainEl" class="flex-1 min-h-0 scrollbar-hide"
             :class="[
                 route.meta.fullScreen ? 'overflow-hidden' : 'overflow-y-auto',
                 auth.isLoggedIn && !route.meta.fullScreen ? 'pb-24' : ''
