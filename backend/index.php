@@ -238,6 +238,10 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { $courtController->index(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') { $courtController->create(); exit(); }
+    // PUT /courts/:id/verify  (before generic update)
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'verify') {
+        $courtController->verify((int)$seg[1]); exit();
+    }
     if ($_SERVER['REQUEST_METHOD'] === 'PUT'    && isset($seg[1])) { $courtController->update((int)$seg[1]); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { $courtController->delete((int)$seg[1]); exit(); }
 }
@@ -300,6 +304,10 @@ if (isset($seg[0]) && $seg[0] === 'bookings') {
     require_once __DIR__ . '/src/Controllers/BookingController.php';
     $bookingController = new BookingController();
 
+    // GET /bookings/busy-days?court_id=X&month=YYYY-MM  (before generic index)
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'busy-days') {
+        $bookingController->busyDays(); exit();
+    }
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { $bookingController->index(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') { $bookingController->create(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) {
@@ -331,6 +339,10 @@ if (isset($seg[0]) && $seg[0] === 'reviews') {
     $reviewController = new ReviewController();
     if ($_SERVER['REQUEST_METHOD'] === 'GET')  { $reviewController->index();  exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') { $reviewController->create(); exit(); }
+    // PUT /reviews/:id/reply
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'reply') {
+        $reviewController->reply((int)$seg[1]); exit();
+    }
 }
 
 // Favorites Routes
@@ -621,6 +633,25 @@ if (isset($seg[0]) && $seg[0] === 'booking-players') {
         exit();
     }
     exit();
+}
+
+// Court Photos Routes
+if (isset($seg[0]) && $seg[0] === 'court-photos') {
+    require_once __DIR__ . '/src/Controllers/CourtPhotoController.php';
+    $photoCtrl = new CourtPhotoController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET')    { $photoCtrl->index();           exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST')   { $photoCtrl->create();          exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { $photoCtrl->delete((int)$seg[1]); exit(); }
+}
+
+// Messages Routes
+if (isset($seg[0]) && $seg[0] === 'messages') {
+    require_once __DIR__ . '/src/Controllers/MessageController.php';
+    $msgCtrl = new MessageController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'threads')      { $msgCtrl->threads();     exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'unread-count') { $msgCtrl->unreadCount(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET')  { $msgCtrl->index();  exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { $msgCtrl->create(); exit(); }
 }
 
 echo json_encode(["message" => "Welcome to Playbook API"]);

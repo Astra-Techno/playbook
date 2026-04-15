@@ -23,6 +23,7 @@ class Court {
     public $evening_peak_start;
     public $evening_peak_end;
     public $peak_members_only;
+    public $amenities;
     public $created_at;
 
     public function __construct() {
@@ -94,7 +95,7 @@ class Court {
                       open_time=:open_time, close_time=:close_time,
                       morning_peak_start=:mps, morning_peak_end=:mpe,
                       evening_peak_start=:eps, evening_peak_end=:epe,
-                      peak_members_only=:pmo";
+                      peak_members_only=:pmo, amenities=:amenities";
 
         $stmt = $this->conn->prepare($query);
 
@@ -131,6 +132,8 @@ class Court {
         $stmt->bindParam(":eps",         $eps);
         $stmt->bindParam(":epe",         $epe);
         $stmt->bindParam(":pmo",         $pmo);
+        $amenitiesVal = $this->amenities ?? null;
+        $stmt->bindParam(":amenities",   $amenitiesVal);
 
         return $stmt->execute();
     }

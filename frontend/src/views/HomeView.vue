@@ -17,11 +17,32 @@ const courts        = ref([])
 const loading       = ref(false)
 const searchText    = ref('')
 const selectedSport = ref('All')
+const selectedRadius = ref(25)
 const locating      = ref(false)
 const userLat       = ref(null)
 const userLng       = ref(null)
 const favorites     = ref(new Set())
 const favLoading    = ref(new Set())
+
+const RADIUS_OPTIONS = [5, 10, 25, 50]
+
+// ── GPS localStorage cache (30 min) ───────────────────────────
+const GPS_CACHE_KEY = 'kocourt_gps_cache'
+const GPS_TTL = 30 * 60 * 1000 // 30 minutes
+
+function saveGpsCache(lat, lng) {
+    localStorage.setItem(GPS_CACHE_KEY, JSON.stringify({ lat, lng, ts: Date.now() }))
+}
+function loadGpsCache() {
+    try {
+        const raw = localStorage.getItem(GPS_CACHE_KEY)
+        if (!raw) return null
+        const { lat, lng, ts } = JSON.parse(raw)
+        if (Date.now() - ts < GPS_TTL) return { lat, lng }
+        localStorage.removeItem(GPS_CACHE_KEY)
+    } catch { localStorage.removeItem(GPS_CACHE_KEY) }
+    return null
+}
 
 // Ghost listings
 const ghostPlaces     = ref([])
@@ -29,24 +50,30 @@ const ghostLoading    = ref(false)
 const requestingId    = ref(null)   // place id currently being requested
 
 // ── Location detection ────────────────────────────────────────
+const applyGps = async (latitude, longitude) => {
+    userLat.value = latitude; userLng.value = longitude
+    saveGpsCache(latitude, longitude)
+    try {
+        const res  = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { 'Accept-Language': 'en' } }
+        )
+        const data = await res.json()
+        const city = data.address?.city || data.address?.town
+            || data.address?.village || data.address?.suburb || data.address?.county
+        if (city) searchText.value = city
+    } catch { /* ignore */ }
+    fetchVenues()
+    fetchGhostPlaces(latitude, longitude)
+}
+
 const detectLocation = () => {
     if (!navigator.geolocation) return
     locating.value = true
     navigator.geolocation.getCurrentPosition(
         async (pos) => {
             try {
-                const { latitude, longitude } = pos.coords
-                userLat.value = latitude; userLng.value = longitude
-                const res  = await fetch(
-                    `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
-                    { headers: { 'Accept-Language': 'en' } }
-                )
-                const data = await res.json()
-                const city = data.address?.city || data.address?.town
-                    || data.address?.village || data.address?.suburb || data.address?.county
-                if (city) searchText.value = city
-                fetchVenues()
-                fetchGhostPlaces(latitude, longitude)
+                await applyGps(pos.coords.latitude, pos.coords.longitude)
             } catch { /* ignore */ }
             finally { locating.value = false }
         },
@@ -146,6 +173,7 @@ const fetchVenues = async () => {
         const p = new URLSearchParams()
         if (userLat.value && userLng.value) {
             p.set('lat', userLat.value); p.set('lng', userLng.value)
+            p.set('radius', selectedRadius.value)
         } else if (searchText.value) {
             p.set('location', searchText.value)
         }
@@ -157,7 +185,15 @@ const fetchVenues = async () => {
 }
 
 onMounted(async () => {
-    detectLocation()
+    // Try GPS cache first
+    const cached = loadGpsCache()
+    if (cached) {
+        userLat.value = cached.lat; userLng.value = cached.lng
+        fetchVenues()
+        fetchGhostPlaces(cached.lat, cached.lng)
+    } else {
+        detectLocation()
+    }
     if (auth.isLoggedIn) {
         try {
             const res = await axios.get(`/favorites?user_id=${auth.user?.id}`)
@@ -172,6 +208,7 @@ watch(searchText, () => {
     if (searchText.value.trim()) { timer = setTimeout(fetchVenues, 400) } else { courts.value = [] }
 })
 watch(selectedSport, () => { if (hasLocation.value) fetchVenues() })
+watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() })
 </script>
 
 <template>
@@ -205,12 +242,22 @@ watch(selectedSport, () => { if (hasLocation.value) fetchVenues() })
             </div>
 
             <!-- Category chips -->
-            <div class="flex gap-2.5 px-4 pb-4 overflow-x-auto scrollbar-hide">
+            <div class="flex gap-2.5 px-4 pb-3 overflow-x-auto scrollbar-hide">
                 <button v-for="c in categories" :key="c.id" @click="selectedSport = c.id"
                     class="flex h-9 shrink-0 items-center gap-2 rounded-full px-4 text-xs font-bold transition-all duration-200"
                     :class="selectedSport === c.id ? 'bg-primary text-white shadow-md shadow-primary/20' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
                     <component :is="c.icon" :size="14" :stroke-width="2.5" />
                     {{ c.label }}
+                </button>
+            </div>
+
+            <!-- Radius chips — only when using GPS -->
+            <div v-if="userLat && userLng" class="flex gap-2 px-4 pb-4 overflow-x-auto scrollbar-hide">
+                <span class="shrink-0 text-[10px] font-bold text-slate-400 self-center">Within:</span>
+                <button v-for="r in RADIUS_OPTIONS" :key="r" @click="selectedRadius = r"
+                    class="shrink-0 h-7 px-3 rounded-full text-[11px] font-bold transition-all duration-200"
+                    :class="selectedRadius === r ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'">
+                    {{ r }} km
                 </button>
             </div>
         </Teleport>
@@ -304,9 +351,13 @@ watch(selectedSport, () => { if (hasLocation.value) fetchVenues() })
                             </span>
                         </div>
 
-                        <!-- POPULAR badge (first card) -->
-                        <div v-if="idx === 0" class="absolute top-3 left-3 z-10">
-                            <span class="bg-primary text-white text-[10px] font-extrabold px-3 py-1.5 rounded-full tracking-wide flex items-center gap-1">
+                        <!-- POPULAR badge (first card) / Verified badge -->
+                        <div class="absolute top-3 left-3 z-10">
+                            <span v-if="venue.is_verified" class="bg-emerald-500 text-white text-[10px] font-extrabold px-3 py-1.5 rounded-full tracking-wide flex items-center gap-1">
+                                <svg viewBox="0 0 12 12" fill="none" class="w-2.5 h-2.5"><path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                VERIFIED
+                            </span>
+                            <span v-else-if="idx === 0" class="bg-primary text-white text-[10px] font-extrabold px-3 py-1.5 rounded-full tracking-wide flex items-center gap-1">
                                 <Flame :size="11" :stroke-width="3" />
                                 POPULAR
                             </span>

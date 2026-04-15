@@ -35,6 +35,8 @@ const avgRating = ref(null)
 const reviewCount = ref(0)
 const isFavorited = ref(false)
 const favLoading = ref(false)
+const courtPhotos = ref([])
+const busyDays = ref([])   // day numbers (1-31) with bookings this month
 
 // Review form
 const showReviewForm  = ref(false)
@@ -296,14 +298,21 @@ onMounted(async () => {
         const res = await axios.get('/courts')
         court.value = (res.data.records || []).find(c => c.id == route.params.id) || null
         if (court.value) {
-            const [plansRes, reviewsRes] = await Promise.all([
+            const [plansRes, reviewsRes, photosRes] = await Promise.all([
                 axios.get(`/plans?court_id=${court.value.id}`),
                 axios.get(`/reviews?court_id=${court.value.id}`),
+                axios.get(`/court-photos?court_id=${court.value.id}`).catch(() => ({ data: { photos: [] } })),
             ])
             plans.value = plansRes.data.records || []
             reviews.value = reviewsRes.data.records || []
             avgRating.value = reviewsRes.data.avg_rating || null
             reviewCount.value = reviewsRes.data.count || 0
+            courtPhotos.value = photosRes.data.photos || []
+            // Fetch busy days for current month
+            const month = new Date().toISOString().slice(0, 7)
+            axios.get(`/bookings/busy-days?court_id=${court.value.id}&month=${month}`)
+                .then(r => { busyDays.value = r.data.busy_days || [] })
+                .catch(() => {})
 
             // Check user's active subscription + favorites + past bookings
             if (auth.isLoggedIn) {
@@ -652,16 +661,33 @@ const subscribePlan = async (plan) => {
                 </div>
 
                 <!-- Sport badge -->
-                <div class="absolute bottom-4 left-4 flex items-center gap-2">
+                <div class="absolute bottom-4 left-4 flex items-center gap-2 flex-wrap">
                     <span :class="[getSport(court.type).cls, 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm']">
                         <component :is="getSport(court.type).icon" :size="12" />
                         {{ getSport(court.type).label }}
+                    </span>
+                    <!-- Verified badge -->
+                    <span v-if="court.is_verified" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-sm">
+                        <svg viewBox="0 0 12 12" fill="none" class="w-3 h-3"><path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Verified
                     </span>
                     <!-- Active subscription badge -->
                     <span v-if="activeSub" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-primary text-white shadow-sm">
                         <Crown :size="11" />
                         Member
                     </span>
+                </div>
+            </div>
+
+            <!-- Photo Gallery (if extra photos exist) -->
+            <div v-if="courtPhotos.length > 0" class="bg-white border-b border-slate-100 px-4 py-3">
+                <div class="flex gap-2 overflow-x-auto scrollbar-hide">
+                    <div v-for="photo in courtPhotos" :key="photo.id"
+                        class="shrink-0 w-28 h-20 rounded-xl overflow-hidden bg-slate-100">
+                        <img :src="photo.url" :alt="court.name"
+                            class="w-full h-full object-cover"
+                            onerror="this.style.display='none'" />
+                    </div>
                 </div>
             </div>
 
@@ -686,6 +712,14 @@ const subscribePlan = async (plan) => {
                     </span>
                     <span class="text-xl font-extrabold text-primary">
                         ₹{{ court.hourly_rate }}<span class="text-sm font-semibold text-slate-400">/hr</span>
+                    </span>
+                </div>
+
+                <!-- Amenities chips -->
+                <div v-if="court.amenities && court.amenities.length" class="mt-3 flex flex-wrap gap-1.5">
+                    <span v-for="tag in court.amenities" :key="tag"
+                        class="bg-slate-100 text-slate-600 text-[11px] font-semibold px-2.5 py-1 rounded-full">
+                        {{ tag }}
                     </span>
                 </div>
 
@@ -725,7 +759,7 @@ const subscribePlan = async (plan) => {
                         <button
                             v-for="d in dateOptions" :key="d.value"
                             @click="selectedDate = d.value"
-                            class="flex flex-col items-center px-3.5 py-3 rounded-2xl border-2 min-w-[58px] transition-all shrink-0"
+                            class="flex flex-col items-center px-3.5 py-3 rounded-2xl border-2 min-w-[58px] transition-all shrink-0 relative"
                             :class="selectedDate === d.value
                                 ? 'bg-primary border-primary text-white'
                                 : 'bg-white border-slate-200 text-slate-600'">
@@ -738,6 +772,11 @@ const subscribePlan = async (plan) => {
                                 class="text-[9px] font-bold mt-1 leading-none"
                                 :class="selectedDate === d.value ? 'text-white/70' : 'text-primary'">
                                 {{ d.isToday ? 'TODAY' : 'TMR' }}
+                            </span>
+                            <!-- Busy day dot -->
+                            <span v-else-if="busyDays.includes(d.day)"
+                                class="absolute bottom-1.5 w-1 h-1 rounded-full"
+                                :class="selectedDate === d.value ? 'bg-white/60' : 'bg-amber-400'">
                             </span>
                         </button>
                     </div>
@@ -983,6 +1022,11 @@ const subscribePlan = async (plan) => {
                                     </div>
                                 </div>
                                 <p v-if="review.comment" class="text-sm text-slate-500 leading-relaxed">{{ review.comment }}</p>
+                                <!-- Owner reply -->
+                                <div v-if="review.owner_reply" class="mt-2.5 bg-slate-50 rounded-xl px-3 py-2.5 border-l-2 border-primary/40">
+                                    <p class="text-[10px] font-bold text-primary mb-1">Owner's Response</p>
+                                    <p class="text-xs text-slate-600 leading-relaxed">{{ review.owner_reply }}</p>
+                                </div>
                             </div>
                         </div>
                     </div>

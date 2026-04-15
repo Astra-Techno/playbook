@@ -204,6 +204,49 @@ class Database {
             FOREIGN KEY (user_id)  REFERENCES users(id)  ON DELETE CASCADE,
             FOREIGN KEY (court_id) REFERENCES courts(id) ON DELETE CASCADE
         )");
+
+        // New feature columns — courts
+        foreach ([
+            "ALTER TABLE courts ADD COLUMN amenities    JSON          NULL",
+            "ALTER TABLE courts ADD COLUMN is_verified  TINYINT(1)    DEFAULT 0",
+        ] as $s) { try { $this->pdo->exec($s); } catch(\PDOException $e){} }
+
+        // New feature columns — users
+        foreach ([
+            "ALTER TABLE users ADD COLUMN bio               TEXT          NULL",
+            "ALTER TABLE users ADD COLUMN skill_level       ENUM('beginner','intermediate','advanced') NULL",
+            "ALTER TABLE users ADD COLUMN sport_preferences JSON          NULL",
+        ] as $s) { try { $this->pdo->exec($s); } catch(\PDOException $e){} }
+
+        // New feature columns — reviews
+        foreach ([
+            "ALTER TABLE reviews ADD COLUMN owner_reply    TEXT      NULL",
+            "ALTER TABLE reviews ADD COLUMN owner_reply_at TIMESTAMP NULL",
+        ] as $s) { try { $this->pdo->exec($s); } catch(\PDOException $e){} }
+
+        // court_photos table
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS court_photos (
+            id         INT AUTO_INCREMENT PRIMARY KEY,
+            court_id   INT NOT NULL,
+            url        VARCHAR(500) NOT NULL,
+            sort_order INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (court_id) REFERENCES courts(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // messages table
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS messages (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            booking_id  INT NOT NULL,
+            sender_id   INT NOT NULL,
+            receiver_id INT NOT NULL,
+            body        TEXT NOT NULL,
+            is_read     TINYINT(1) DEFAULT 0,
+            created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (booking_id)  REFERENCES bookings(id) ON DELETE CASCADE,
+            FOREIGN KEY (sender_id)   REFERENCES users(id)    ON DELETE CASCADE,
+            FOREIGN KEY (receiver_id) REFERENCES users(id)    ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     }
 
     public static function getConnection() {

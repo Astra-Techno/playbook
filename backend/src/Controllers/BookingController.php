@@ -75,6 +75,35 @@ class BookingController {
         echo json_encode(["records" => $records]);
     }
 
+    // GET /api/bookings/busy-days?court_id=X&month=YYYY-MM
+    // Returns array of days (1–31) that have at least one confirmed booking
+    public function busyDays() {
+        $court_id = (int)($_GET['court_id'] ?? 0);
+        $month    = $_GET['month'] ?? date('Y-m');
+        if (!$court_id) {
+            http_response_code(400);
+            echo json_encode(['message' => 'court_id required']);
+            return;
+        }
+        // Validate month format
+        if (!preg_match('/^\d{4}-\d{2}$/', $month)) $month = date('Y-m');
+        $start = $month . '-01';
+        $end   = date('Y-m-t', strtotime($start)); // last day of month
+
+        $db   = Database::getConnection();
+        $stmt = $db->prepare(
+            "SELECT DISTINCT DAY(start_time) AS day
+             FROM bookings
+             WHERE court_id = ? AND status != 'cancelled'
+               AND DATE(start_time) BETWEEN ? AND ?
+             ORDER BY day"
+        );
+        $stmt->execute([$court_id, $start, $end]);
+        $days = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        http_response_code(200);
+        echo json_encode(['busy_days' => array_map('intval', $days)]);
+    }
+
     // POST /api/bookings
     public function create() {
         $data = json_decode(file_get_contents("php://input"));

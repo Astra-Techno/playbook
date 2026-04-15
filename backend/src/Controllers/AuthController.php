@@ -163,30 +163,37 @@ class AuthController {
         }
     }
 
-    // PUT /api/auth/profile  { user_id, name?, avatar_url? }
+    // PUT /api/auth/profile  { user_id, name?, avatar_url?, bio?, skill_level?, sport_preferences? }
     public function updateProfile() {
-        $data       = json_decode(file_get_contents("php://input"));
-        $user_id    = (int)($data->user_id ?? 0);
-        $name       = trim($data->name ?? '');
-        $avatar_url = trim($data->avatar_url ?? '');
+        $data    = json_decode(file_get_contents("php://input"));
+        $user_id = (int)($data->user_id ?? 0);
         if (!$user_id) { http_response_code(400); echo json_encode(['message' => 'user_id required']); return; }
-        $db = Database::getConnection();
-        if ($name)       $db->prepare("UPDATE users SET name=? WHERE id=?")->execute([$name, $user_id]);
-        if ($avatar_url) $db->prepare("UPDATE users SET avatar_url=? WHERE id=?")->execute([$avatar_url, $user_id]);
-        $uStmt = $db->prepare("SELECT id, name, phone, role, avatar_url FROM users WHERE id=?");
+        $db     = Database::getConnection();
+        $fields = []; $vals = [];
+        if (!empty($data->name))       { $fields[] = "name=?";               $vals[] = trim($data->name); }
+        if (!empty($data->avatar_url)) { $fields[] = "avatar_url=?";         $vals[] = trim($data->avatar_url); }
+        if (isset($data->bio))         { $fields[] = "bio=?";                $vals[] = htmlspecialchars(strip_tags(trim($data->bio))); }
+        if (isset($data->skill_level)) { $fields[] = "skill_level=?";        $vals[] = $data->skill_level; }
+        if (isset($data->sport_preferences)) { $fields[] = "sport_preferences=?"; $vals[] = json_encode($data->sport_preferences); }
+        if ($fields) {
+            $vals[] = $user_id;
+            $db->prepare("UPDATE users SET " . implode(', ', $fields) . " WHERE id=?")->execute($vals);
+        }
+        $uStmt = $db->prepare("SELECT id, name, phone, role, avatar_url, bio, skill_level, sport_preferences FROM users WHERE id=?");
         $uStmt->execute([$user_id]);
         $user = $uStmt->fetch(PDO::FETCH_ASSOC);
+        if ($user && $user['sport_preferences']) $user['sport_preferences'] = json_decode($user['sport_preferences']);
         http_response_code(200);
         echo json_encode(['message' => 'Profile updated', 'user' => $user]);
     }
 
     private function sendTokenResponse($user) {
         $token = bin2hex(random_bytes(16));
-        // Fetch full user row to include avatar_url
         $db    = Database::getConnection();
-        $stmt  = $db->prepare("SELECT id, name, phone, role, avatar_url FROM users WHERE phone = ?");
+        $stmt  = $db->prepare("SELECT id, name, phone, role, avatar_url, bio, skill_level, sport_preferences FROM users WHERE phone = ?");
         $stmt->execute([$user->phone]);
-        $row   = $stmt->fetch(\PDO::FETCH_ASSOC) ?: [];
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC) ?: [];
+        if ($row && $row['sport_preferences']) $row['sport_preferences'] = json_decode($row['sport_preferences']);
         http_response_code(200);
         echo json_encode([
             "message" => "Success",

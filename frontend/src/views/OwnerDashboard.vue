@@ -10,7 +10,7 @@ import {
     Wind, Flag, Target, Activity, CircleDot, Layers3, Dumbbell, Waves, Swords,
     IndianRupee, LocateFixed, Loader2, Sun, Moon, Shield,
     Camera, Trash2, TrendingUp, CalendarDays, Search, MapPin,
-    Flame, Map, Globe, Heart, User, Star, LayoutGrid, Wallet, ArrowDownToLine
+    Flame, Map, Globe, Heart, User, Star, LayoutGrid, Wallet, ArrowDownToLine, MessageSquare
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -25,6 +25,8 @@ const loading = ref(true)
 const showAddForm = ref(false)
 const searchQuery = ref('')
 
+const AMENITIES_LIST = ['Parking', 'Floodlights', 'Changing Room', 'Shower', 'Equipment Rental', 'Cafeteria', 'WiFi', 'First Aid']
+
 const newCourt = ref({
     name: '', location: '', type: 'shuttle', hourly_rate: '', description: '',
     image_url: '',
@@ -33,6 +35,7 @@ const newCourt = ref({
     morning_peak_start: '05:00', morning_peak_end: '09:00',
     evening_peak_start: '17:00', evening_peak_end: '21:00',
     peak_members_only: false,
+    amenities: [],
 })
 
 const imagePreview = ref(null)
@@ -192,6 +195,35 @@ const todayBookings = computed(() => {
 
 const formatTime = (dt) => new Date(dt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
 
+// ── Owner Reviews ─────────────────────────────────────────────────────────────
+const ownerReviews   = ref([])
+const reviewsLoading = ref(false)
+const replyTexts     = ref({})    // { [review.id]: string }
+const replyLoading   = ref(null)  // review.id being submitted
+
+const fetchOwnerReviews = async () => {
+    reviewsLoading.value = true
+    try {
+        const res = await axios.get(`/reviews?owner_id=${auth.user?.id}`)
+        ownerReviews.value = res.data.records || []
+    } catch { ownerReviews.value = [] }
+    finally { reviewsLoading.value = false }
+}
+
+const submitReply = async (review) => {
+    const text = (replyTexts.value[review.id] || '').trim()
+    if (!text) return
+    replyLoading.value = review.id
+    try {
+        await axios.put(`/reviews/${review.id}/reply`, { owner_id: auth.user?.id, reply: text })
+        review.owner_reply = text
+        review.owner_reply_at = new Date().toISOString()
+        replyTexts.value[review.id] = ''
+        toast.success('Reply saved!')
+    } catch { toast.error('Could not save reply') }
+    finally { replyLoading.value = null }
+}
+
 // ── Earnings ──────────────────────────────────────────────────────────────────
 const earnings = ref(null)
 const earningsLoading = ref(false)
@@ -254,7 +286,7 @@ const addCourt = async () => {
             open_time: '06:00', close_time: '22:00',
             morning_peak_start: '05:00', morning_peak_end: '09:00',
             evening_peak_start: '17:00', evening_peak_end: '21:00',
-            peak_members_only: false,
+            peak_members_only: false, amenities: [],
         }
         imagePreview.value = null
         showAddForm.value = false
@@ -281,6 +313,7 @@ const openEdit = (court) => {
         evening_peak_start: court.evening_peak_start?.slice(0,5) || '17:00',
         evening_peak_end:   court.evening_peak_end?.slice(0,5)   || '21:00',
         peak_members_only: !!court.peak_members_only,
+        amenities: Array.isArray(court.amenities) ? [...court.amenities] : [],
     }
 }
 
@@ -380,9 +413,9 @@ const handleAvatarUpload = async (event) => {
             <!-- Section header -->
             <div class="flex items-center justify-between pt-4 pb-3">
                 <h3 class="text-slate-900 text-xl font-bold tracking-tight">
-                    {{ activeNavTab === 'bookings' ? 'All Bookings' : 'My Services' }}
+                    {{ activeNavTab === 'bookings' ? 'All Bookings' : activeNavTab === 'reviews' ? 'Reviews' : activeNavTab === 'earnings' ? 'Earnings' : activeNavTab === 'profile' ? 'Profile' : 'My Services' }}
                 </h3>
-                <button
+                <button v-if="activeNavTab === 'explore'"
                     @click="showAddForm = true"
                     class="text-primary text-sm font-semibold">
                     + Add Service
@@ -620,6 +653,62 @@ const handleAvatarUpload = async (event) => {
                 </div>
             </template>
 
+            <!-- REVIEWS TAB -->
+            <template v-else-if="activeNavTab === 'reviews'">
+                <div v-if="reviewsLoading" class="space-y-3">
+                    <div v-for="i in 3" :key="i" class="bg-white rounded-xl p-4 animate-pulse ring-1 ring-slate-100">
+                        <div class="h-3 bg-slate-200 rounded w-2/5 mb-2"></div>
+                        <div class="h-4 bg-slate-200 rounded w-4/5"></div>
+                    </div>
+                </div>
+                <div v-else-if="ownerReviews.length === 0"
+                    class="text-center py-20 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-100">
+                    <Star :size="36" class="text-slate-300 mx-auto mb-3" />
+                    <p class="font-bold text-slate-600">No reviews yet</p>
+                    <p class="text-sm text-slate-400 mt-1">Player reviews will appear here</p>
+                </div>
+                <div v-else class="space-y-4">
+                    <div v-for="review in ownerReviews" :key="review.id"
+                        class="bg-white rounded-2xl p-4 ring-1 ring-slate-100 shadow-sm">
+                        <!-- Court + date -->
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[11px] font-bold text-primary bg-primary-light px-2.5 py-1 rounded-full">{{ review.court_name }}</span>
+                            <span class="text-[10px] text-slate-400">{{ new Date(review.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) }}</span>
+                        </div>
+                        <!-- Reviewer + stars -->
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-sm font-semibold text-slate-800">{{ review.user_name }}</span>
+                            <div class="flex gap-0.5">
+                                <Star v-for="n in 5" :key="n" :size="11"
+                                    :class="n <= review.rating ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'" />
+                            </div>
+                        </div>
+                        <p v-if="review.comment" class="text-sm text-slate-500 leading-relaxed mb-3">{{ review.comment }}</p>
+
+                        <!-- Existing reply -->
+                        <div v-if="review.owner_reply"
+                            class="bg-slate-50 rounded-xl px-3 py-2.5 border-l-2 border-primary/40 mb-2">
+                            <p class="text-[10px] font-bold text-primary mb-1">Your Response</p>
+                            <p class="text-xs text-slate-600">{{ review.owner_reply }}</p>
+                        </div>
+
+                        <!-- Reply form -->
+                        <div v-if="!review.owner_reply" class="mt-2">
+                            <textarea v-model="replyTexts[review.id]" rows="2"
+                                placeholder="Write a reply..."
+                                class="w-full text-sm rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 resize-none focus:ring-2 focus:ring-primary/20 outline-none placeholder:text-slate-300 mb-2">
+                            </textarea>
+                            <button @click="submitReply(review)"
+                                :disabled="!replyTexts[review.id]?.trim() || replyLoading === review.id"
+                                class="w-full py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-40 flex items-center justify-center gap-1.5">
+                                <Loader2 v-if="replyLoading === review.id" :size="14" class="animate-spin" />
+                                <span v-else>Reply</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
             <!-- PROFILE TAB -->
             <template v-else-if="activeNavTab === 'profile'">
                 <div class="bg-white rounded-xl p-6 ring-1 ring-slate-100 shadow-sm">
@@ -697,6 +786,14 @@ const handleAvatarUpload = async (event) => {
                     <Plus :size="28" />
                 </button>
             </div>
+
+            <button
+                @click="activeNavTab = 'reviews'; if (!ownerReviews.length) fetchOwnerReviews()"
+                :class="activeNavTab === 'reviews' ? 'text-primary' : 'text-slate-400'"
+                class="flex flex-col items-center gap-1.5 px-2">
+                <MessageSquare :size="20" :stroke-width="2.5" />
+                <span class="text-[10px] font-bold tracking-tight">Reviews</span>
+            </button>
 
             <button
                 @click="activeNavTab = 'earnings'; if (!earnings) fetchEarnings()"
@@ -876,6 +973,20 @@ const handleAvatarUpload = async (event) => {
                             </label>
                         </div>
 
+                        <!-- Amenities -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Amenities</label>
+                            <div class="flex flex-wrap gap-2">
+                                <button v-for="tag in AMENITIES_LIST" :key="tag"
+                                    type="button"
+                                    @click="newCourt.amenities.includes(tag) ? newCourt.amenities.splice(newCourt.amenities.indexOf(tag),1) : newCourt.amenities.push(tag)"
+                                    class="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                                    :class="newCourt.amenities.includes(tag) ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'">
+                                    {{ tag }}
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- Submit Button -->
                         <button
                             @click="addCourt"
@@ -975,6 +1086,20 @@ const handleAvatarUpload = async (event) => {
                                 <div v-if="editUploadLoading" class="absolute inset-0 bg-white/80 flex items-center justify-center rounded-2xl">
                                     <Loader2 :size="24" class="animate-spin text-primary" />
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Amenities -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Amenities</label>
+                            <div class="flex flex-wrap gap-2">
+                                <button v-for="tag in AMENITIES_LIST" :key="tag"
+                                    type="button"
+                                    @click="editCourt.amenities.includes(tag) ? editCourt.amenities.splice(editCourt.amenities.indexOf(tag),1) : editCourt.amenities.push(tag)"
+                                    class="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+                                    :class="editCourt.amenities.includes(tag) ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'">
+                                    {{ tag }}
+                                </button>
                             </div>
                         </div>
 

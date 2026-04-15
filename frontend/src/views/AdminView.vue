@@ -80,6 +80,32 @@ const markContacted = async (place) => {
     }
 }
 
+// ── Court verification ─────────────────────────────────────────
+const allCourts   = ref([])
+const courtsLoading = ref(false)
+const verifyingId = ref(null)
+const showCourts  = ref(false)
+
+const fetchAllCourts = async () => {
+    courtsLoading.value = true
+    try {
+        const res = await axios.get('/courts')
+        allCourts.value = res.data.records || []
+    } catch { allCourts.value = [] }
+    finally { courtsLoading.value = false }
+}
+
+const toggleVerify = async (court) => {
+    verifyingId.value = court.id
+    const newVal = court.is_verified ? 0 : 1
+    try {
+        await axios.put(`/courts/${court.id}/verify`, { admin_id: auth.user.id, is_verified: newVal })
+        court.is_verified = !!newVal
+        toast.success(newVal ? 'Court verified!' : 'Verification removed')
+    } catch { toast.error('Could not update verification') }
+    finally { verifyingId.value = null }
+}
+
 onMounted(fetchDemand)
 </script>
 
@@ -288,6 +314,37 @@ onMounted(fetchDemand)
                     </div>
                 </Transition>
 
+            </div>
+        </div>
+
+        <!-- ── Court Verification Section ── -->
+        <div class="px-4 mt-6">
+            <button @click="showCourts = !showCourts; if (showCourts && !allCourts.length) fetchAllCourts()"
+                class="w-full flex items-center justify-between py-3 px-4 bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm">
+                <span class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <CheckCircle2 :size="16" class="text-emerald-500" />
+                    Court Verification
+                </span>
+                <ChevronDown :size="16" :class="['text-slate-400 transition-transform', showCourts ? 'rotate-180' : '']" />
+            </button>
+
+            <div v-if="showCourts" class="mt-2 space-y-2">
+                <div v-if="courtsLoading" class="text-center py-6 text-slate-400 text-sm">Loading courts…</div>
+                <div v-else v-for="court in allCourts" :key="court.id"
+                    class="bg-white rounded-xl p-4 ring-1 ring-slate-100 flex items-center gap-3">
+                    <div class="flex-1 min-w-0">
+                        <p class="font-bold text-sm text-slate-800 truncate">{{ court.name }}</p>
+                        <p class="text-xs text-slate-400 truncate">{{ court.location || 'No location' }}</p>
+                    </div>
+                    <button @click="toggleVerify(court)"
+                        :disabled="verifyingId === court.id"
+                        class="shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition-all"
+                        :class="court.is_verified ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'">
+                        <Loader2 v-if="verifyingId === court.id" :size="12" class="animate-spin" />
+                        <CheckCircle2 v-else :size="12" />
+                        {{ court.is_verified ? 'Verified' : 'Verify' }}
+                    </button>
+                </div>
             </div>
         </div>
     </div>

@@ -13,9 +13,10 @@ class CourtController {
         $owner_id = isset($_GET['owner_id']) ? (int)$_GET['owner_id'] : null;
         $lat      = isset($_GET['lat'])      ? (float)$_GET['lat']    : null;
         $lng      = isset($_GET['lng'])      ? (float)$_GET['lng']    : null;
+        $radius   = isset($_GET['radius'])   ? (int)$_GET['radius']   : 25;
 
         $court = new Court();
-        $stmt  = $court->read($location, $type, $owner_id, $lat, $lng);
+        $stmt  = $court->read($location, $type, $owner_id, $lat, $lng, $radius);
 
         $courts_arr = ["records" => []];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -37,6 +38,8 @@ class CourtController {
                 "evening_peak_start"  => $row["evening_peak_start"]  ?? "17:00:00",
                 "evening_peak_end"    => $row["evening_peak_end"]    ?? "21:00:00",
                 "peak_members_only"   => (bool)($row["peak_members_only"] ?? false),
+                "amenities"           => $row["amenities"] ? json_decode($row["amenities"], true) : [],
+                "is_verified"         => (bool)($row["is_verified"] ?? false),
             ];
             // Include distance (km) when GPS search was used
             if (isset($row["distance"])) {
@@ -70,6 +73,7 @@ class CourtController {
             $court->evening_peak_start  = $data->evening_peak_start ?? '17:00:00';
             $court->evening_peak_end    = $data->evening_peak_end   ?? '21:00:00';
             $court->peak_members_only   = !empty($data->peak_members_only) ? 1 : 0;
+            $court->amenities           = isset($data->amenities) ? json_encode($data->amenities) : null;
 
             if ($court->create()) {
                 $db    = Database::getConnection();
@@ -162,7 +166,8 @@ class CourtController {
             name=?, type=?, description=?, location=?, hourly_rate=?, image_url=?,
             lat=?, lng=?, open_time=?, close_time=?,
             morning_peak_start=?, morning_peak_end=?,
-            evening_peak_start=?, evening_peak_end=?, peak_members_only=?
+            evening_peak_start=?, evening_peak_end=?, peak_members_only=?,
+            amenities=?
             WHERE id=? AND owner_id=?")->execute([
             $data->name        ?? '', $data->type        ?? 'other',
             $data->description ?? '', $data->location    ?? '',
@@ -176,10 +181,25 @@ class CourtController {
             $data->evening_peak_start ?? '17:00:00',
             $data->evening_peak_end   ?? '21:00:00',
             !empty($data->peak_members_only) ? 1 : 0,
+            isset($data->amenities) ? json_encode($data->amenities) : null,
             $id, $owner_id
         ]);
         http_response_code(200);
         echo json_encode(['message' => 'Court updated.']);
+    }
+
+    // PUT /api/courts/:id/verify
+    public function verify($id) {
+        $data     = json_decode(file_get_contents("php://input"));
+        $admin_id = (int)($data->admin_id ?? 0);
+        $verified = isset($data->is_verified) ? (int)$data->is_verified : 1;
+        $db = Database::getConnection();
+        $chk = $db->prepare("SELECT id FROM users WHERE id=? AND role='admin'");
+        $chk->execute([$admin_id]);
+        if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Not authorised']); return; }
+        $db->prepare("UPDATE courts SET is_verified=? WHERE id=?")->execute([$verified, $id]);
+        http_response_code(200);
+        echo json_encode(['message' => 'Court verification updated.', 'is_verified' => (bool)$verified]);
     }
 
     // DELETE /api/courts/:id  body: { owner_id }

@@ -4,19 +4,39 @@ require_once __DIR__ . '/../../config/database.php';
 
 class ReviewController {
 
-    // GET /api/reviews?court_id=X
+    // GET /api/reviews?court_id=X  or  ?owner_id=X
     public function index() {
         $court_id = (int)($_GET['court_id'] ?? 0);
+        $owner_id = (int)($_GET['owner_id'] ?? 0);
+
+        $db = Database::getConnection();
+
+        // All reviews across owner's courts
+        if ($owner_id && !$court_id) {
+            $stmt = $db->prepare(
+                "SELECT r.id, r.court_id, r.rating, r.comment, r.created_at,
+                        r.owner_reply, r.owner_reply_at,
+                        u.name as user_name, c.name as court_name
+                 FROM reviews r
+                 JOIN users u  ON r.user_id  = u.id
+                 JOIN courts c ON r.court_id = c.id
+                 WHERE c.owner_id = ?
+                 ORDER BY r.created_at DESC LIMIT 50"
+            );
+            $stmt->execute([$owner_id]);
+            echo json_encode(["records" => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+            return;
+        }
+
         if (!$court_id) {
             http_response_code(400);
             echo json_encode(["message" => "court_id required"]);
             return;
         }
 
-        $db = Database::getConnection();
-
         $stmt = $db->prepare(
-            "SELECT r.id, r.rating, r.comment, r.created_at, u.name as user_name
+            "SELECT r.id, r.rating, r.comment, r.created_at,
+                    r.owner_reply, r.owner_reply_at, u.name as user_name
              FROM reviews r
              JOIN users u ON r.user_id = u.id
              WHERE r.court_id = ?
@@ -77,5 +97,24 @@ class ReviewController {
             http_response_code(409);
             echo json_encode(["message" => "Already reviewed this booking"]);
         }
+    }
+
+    // PUT /api/reviews/:id/reply  { owner_id, reply }
+    public function reply($id) {
+        $data     = json_decode(file_get_contents("php://input"));
+        $owner_id = (int)($data->owner_id ?? 0);
+        $reply    = htmlspecialchars(strip_tags(trim($data->reply ?? '')));
+        if (!$id || !$owner_id || !$reply) {
+            http_response_code(400); echo json_encode(['message' => 'owner_id and reply required']); return;
+        }
+        $db  = Database::getConnection();
+        $chk = $db->prepare(
+            "SELECT r.id FROM reviews r JOIN courts c ON c.id = r.court_id WHERE r.id=? AND c.owner_id=?"
+        );
+        $chk->execute([$id, $owner_id]);
+        if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Not authorised']); return; }
+        $db->prepare("UPDATE reviews SET owner_reply=?, owner_reply_at=NOW() WHERE id=?")->execute([$reply, $id]);
+        http_response_code(200);
+        echo json_encode(['message' => 'Reply saved.']);
     }
 }

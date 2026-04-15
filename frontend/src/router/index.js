@@ -12,6 +12,12 @@ const router = createRouter({
             meta: { title: 'Home', showGreeting: true }
         },
         {
+            path: '/onboarding',
+            name: 'onboarding',
+            component: () => import('../views/OnboardingView.vue'),
+            meta: { guestOnly: false, title: 'Welcome to KoCourt' },
+        },
+        {
             path: '/login',
             name: 'login',
             component: () => import('../views/LoginView.vue'),
@@ -134,6 +140,11 @@ router.beforeEach((to, from, next) => {
     const token = localStorage.getItem('token')
     const user = safeGetUser()
     const isLoggedIn = !!token && !!user
+
+    // Onboarding — show once per device, only for first visit to home/root
+    if (to.name === 'home' && !localStorage.getItem('kocourt_onboarding')) {
+        return next({ name: 'onboarding' })
+    }
 
     if (to.meta.requiresAdmin && (!isLoggedIn || user?.role !== 'admin')) {
         return next({ name: 'home' })
