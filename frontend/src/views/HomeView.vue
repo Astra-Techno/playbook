@@ -7,8 +7,9 @@ import {
     Search, MapPin, SlidersHorizontal, Heart,
     Wind, CircleDot, Target, Flag, Activity, Layers3,
     Dumbbell, Waves, Swords, Loader2, Star, Flame, Map,
-    Lock, Bell, X, RotateCcw
+    Lock, Bell, X, RotateCcw, KeyRound
 } from 'lucide-vue-next'
+import ClaimVenueSheet from '../components/ClaimVenueSheet.vue'
 
 const router = useRouter()
 const auth   = useAuthStore()
@@ -46,6 +47,13 @@ const applyFilters = () => {
 const resetFilters = () => {
     draftSport.value  = 'All'
     draftRadius.value = 25
+}
+
+// Claim sheet
+const claimSheet = ref({ show: false, place: null })
+const openClaim  = (place) => {
+    if (!auth.isLoggedIn) { router.push('/login'); return }
+    claimSheet.value = { show: true, place }
 }
 
 const activeFilterCount = computed(() => {
@@ -495,37 +503,42 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                                 <span class="truncate">{{ place.address }}</span>
                             </div>
 
-                            <!-- Interest count + CTA -->
-                            <div class="flex items-center justify-between gap-3">
-                                <!-- Interest count -->
-                                <div v-if="place.request_count > 0" class="flex items-center gap-1.5">
-                                    <div class="flex -space-x-1.5">
-                                        <div v-for="n in Math.min(place.request_count, 3)" :key="n"
-                                            class="w-5 h-5 rounded-full bg-primary/10 border-2 border-white flex items-center justify-center">
-                                            <span class="text-[7px] font-extrabold text-primary">{{ n }}</span>
-                                        </div>
+                            <!-- Interest count -->
+                            <div v-if="place.request_count > 0" class="flex items-center gap-1.5 mb-3">
+                                <div class="flex -space-x-1.5">
+                                    <div v-for="n in Math.min(place.request_count, 3)" :key="n"
+                                        class="w-5 h-5 rounded-full bg-primary/10 border-2 border-white flex items-center justify-center">
+                                        <span class="text-[7px] font-extrabold text-primary">{{ n }}</span>
                                     </div>
-                                    <span class="text-[11px] font-bold text-slate-500">
-                                        {{ place.request_count }} {{ place.request_count === 1 ? 'person' : 'people' }} interested
-                                    </span>
                                 </div>
-                                <div v-else class="text-[11px] text-slate-400 font-medium">Be the first to request</div>
+                                <span class="text-[11px] font-bold text-slate-500">
+                                    {{ place.request_count }} {{ place.request_count === 1 ? 'person' : 'people' }} interested
+                                </span>
+                            </div>
 
-                                <!-- Request / Requested button -->
+                            <!-- CTAs -->
+                            <div class="flex gap-2">
+                                <!-- Claim this Venue (primary) -->
+                                <button @click="openClaim(place)"
+                                    class="flex-1 flex items-center justify-center gap-2 bg-primary text-white text-xs font-extrabold px-4 py-2.5 rounded-xl active:scale-95 transition-all shadow-sm shadow-primary/20">
+                                    <KeyRound :size="13" :stroke-width="2.5" />
+                                    Claim Venue
+                                </button>
+                                <!-- Request / Requested (secondary) -->
                                 <button v-if="!place.user_requested"
                                     @click="requestService(place)"
                                     :disabled="requestingId === place.id"
-                                    class="flex items-center gap-2 bg-slate-800 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl active:scale-95 disabled:opacity-60 transition-all shrink-0">
+                                    class="flex items-center gap-1.5 bg-slate-100 text-slate-600 text-xs font-bold px-4 py-2.5 rounded-xl active:scale-95 disabled:opacity-60 transition-all shrink-0">
                                     <Loader2 v-if="requestingId === place.id" :size="12" class="animate-spin" />
                                     <Bell v-else :size="12" :stroke-width="2.5" />
-                                    Request Service
+                                    Notify Me
                                 </button>
                                 <div v-else
-                                    class="flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-extrabold px-4 py-2.5 rounded-xl shrink-0">
+                                    class="flex items-center gap-1.5 bg-green-50 text-green-700 text-xs font-bold px-4 py-2.5 rounded-xl shrink-0">
                                     <svg viewBox="0 0 12 12" fill="none" class="w-3 h-3">
                                         <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                                     </svg>
-                                    Requested
+                                    Notified
                                 </div>
                             </div>
                         </div>
@@ -535,6 +548,12 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
             </template>
         </main>
     </div>
+
+    <!-- ── Claim Venue Sheet ── -->
+    <ClaimVenueSheet
+        v-model="claimSheet.show"
+        :place="claimSheet.place"
+    />
 
     <!-- ── Filter Bottom Sheet ── -->
     <Teleport to="#app-root">

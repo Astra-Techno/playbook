@@ -93,6 +93,75 @@ class CourtController {
         }
     }
 
+    // POST /courts/claim  { owner_id, place_id, hourly_rate, description? }
+    public function claim() {
+        $data       = json_decode(file_get_contents("php://input"));
+        $owner_id   = (int)($data->owner_id   ?? 0);
+        $place_id   = (int)($data->place_id   ?? 0);
+        $hourly_rate = (float)($data->hourly_rate ?? 0);
+
+        if (!$owner_id || !$place_id || !$hourly_rate) {
+            http_response_code(400);
+            echo json_encode(['message' => 'owner_id, place_id and hourly_rate are required']);
+            return;
+        }
+
+        $db = Database::getConnection();
+
+        // Fetch the ghost place
+        $stmt = $db->prepare("SELECT * FROM places WHERE id = ? AND (court_id IS NULL OR court_id = 0)");
+        $stmt->execute([$place_id]);
+        $place = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$place) {
+            http_response_code(409);
+            echo json_encode(['message' => 'Venue already claimed or not found']);
+            return;
+        }
+
+        // Upgrade player to owner if needed
+        $db->prepare("UPDATE users SET role = 'owner' WHERE id = ? AND role = 'player'")->execute([$owner_id]);
+
+        // Create court from place data
+        $court              = new Court();
+        $court->owner_id    = $owner_id;
+        $court->name        = $place['name'];
+        $court->type        = $place['type']    ?? 'other';
+        $court->location    = $place['address'] ?? '';
+        $court->lat         = $place['lat']     ?? null;
+        $court->lng         = $place['lng']     ?? null;
+        $court->image_url   = $place['photo_reference'] ?? '';
+        $court->hourly_rate = $hourly_rate;
+        $court->description = trim($data->description ?? '');
+        $court->open_time         = '06:00:00';
+        $court->close_time        = '22:00:00';
+        $court->morning_peak_start = '05:00:00';
+        $court->morning_peak_end   = '09:00:00';
+        $court->evening_peak_start = '17:00:00';
+        $court->evening_peak_end   = '21:00:00';
+        $court->peak_members_only  = 0;
+        $court->amenities          = null;
+
+        if (!$court->create()) {
+            http_response_code(503);
+            echo json_encode(['message' => 'Failed to create court']);
+            return;
+        }
+
+        $newId = (int)$db->lastInsertId();
+
+        // Mark place as onboarded
+        $db->prepare("UPDATE places SET status = 'onboarded', court_id = ? WHERE id = ?")
+           ->execute([$newId, $place_id]);
+
+        // Fetch refreshed user (role may have changed)
+        $uStmt = $db->prepare("SELECT id, name, phone, role, avatar_url, bio, skill_level, sport_preferences FROM users WHERE id = ?");
+        $uStmt->execute([$owner_id]);
+        $user = $uStmt->fetch(PDO::FETCH_ASSOC);
+
+        http_response_code(201);
+        echo json_encode(['message' => 'Venue claimed successfully!', 'court_id' => $newId, 'user' => $user]);
+    }
+
     // Auto-link newly created court to a nearby ghost place (within ~200 m)
     private function autoLinkPlace(int $courtId, float $lat, float $lng, string $courtName, PDO $db): void
     {

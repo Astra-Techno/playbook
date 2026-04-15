@@ -240,6 +240,8 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
     $courtController = new CourtController();
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { $courtController->index(); exit(); }
+    // POST /courts/claim — must check before generic create
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'claim') { $courtController->claim(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') { $courtController->create(); exit(); }
     // PUT /courts/:id/verify  (before generic update)
     if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'verify') {
