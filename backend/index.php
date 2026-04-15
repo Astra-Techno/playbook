@@ -465,6 +465,26 @@ if (isset($seg[0]) && $seg[0] === 'admin') {
     if (isset($seg[1]) && $seg[1] === 'places' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'contact' && $_SERVER['REQUEST_METHOD'] === 'PUT') {
         $pc->adminContact((int)$seg[2]); exit();
     }
+    // GET /admin/users?admin_id=X
+    if (isset($seg[1]) && $seg[1] === 'users' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        $adminId = $_GET['admin_id'] ?? null;
+        $db = Database::getConnection();
+        $check = $db->prepare("SELECT role FROM users WHERE id = ?");
+        $check->execute([$adminId]);
+        $admin = $check->fetch(PDO::FETCH_ASSOC);
+        if (!$admin || $admin['role'] !== 'admin') {
+            http_response_code(403); echo json_encode(['message' => 'Forbidden']); exit();
+        }
+        $search = $_GET['search'] ?? '';
+        if ($search) {
+            $stmt = $db->prepare("SELECT id, name, phone, role, avatar_url, created_at FROM users WHERE name LIKE ? OR phone LIKE ? ORDER BY created_at DESC LIMIT 200");
+            $stmt->execute(["%$search%", "%$search%"]);
+        } else {
+            $stmt = $db->prepare("SELECT id, name, phone, role, avatar_url, created_at FROM users ORDER BY created_at DESC LIMIT 200");
+            $stmt->execute();
+        }
+        echo json_encode(['users' => $stmt->fetchAll(PDO::FETCH_ASSOC)]); exit();
+    }
     http_response_code(404); echo json_encode(['message' => 'Admin endpoint not found']); exit();
 }
 

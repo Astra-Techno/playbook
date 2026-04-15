@@ -7,7 +7,8 @@ import { useToastStore } from '../stores/toast'
 import {
     User, Phone, LogOut, ChevronRight,
     Shield, HelpCircle, FileText, Camera,
-    LayoutGrid, CalendarDays, Award, Pencil, Check, X, Loader2
+    LayoutGrid, CalendarDays, Award, Pencil, Check, X, Loader2,
+    Wallet, Star
 } from 'lucide-vue-next'
 import KoLogo from '@/components/KoLogo.vue'
 
@@ -111,13 +112,19 @@ const logout = () => {
     router.push('/')
 }
 
-const menuGroups = [
+const isOwner = computed(() => auth.user?.role === 'owner')
+
+const menuGroups = computed(() => [
     {
         group: 'Activity',
         items: [
             { label: 'My Bookings',    icon: CalendarDays, action: () => router.push('/bookings') },
             { label: 'My Services',    icon: LayoutGrid,   action: () => router.push('/my-services') },
-            { label: 'My Memberships', icon: Award,        action: () => router.push('/subscriptions') },
+            ...(isOwner.value ? [
+                { label: 'Earnings', icon: Wallet, action: () => router.push('/my-services?tab=earnings') },
+                { label: 'Reviews',  icon: Star,   action: () => router.push('/my-services?tab=reviews') },
+            ] : []),
+            { label: 'My Memberships', icon: Award, action: () => router.push('/subscriptions') },
         ],
     },
     {
@@ -128,7 +135,7 @@ const menuGroups = [
             { label: 'Privacy Policy',     icon: Shield,     action: () => router.push('/privacy') },
         ],
     },
-]
+])
 </script>
 
 <template>

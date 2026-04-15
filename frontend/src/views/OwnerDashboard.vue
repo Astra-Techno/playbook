@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import KoLogo from '@/components/KoLogo.vue'
 import ChatSheet from '../components/ChatSheet.vue'
 import { useAuthStore } from '../stores/auth'
@@ -16,6 +16,7 @@ import {
 } from 'lucide-vue-next'
 
 const router = useRouter()
+const route  = useRoute()
 const auth = useAuthStore()
 const toast = useToastStore()
 
@@ -246,6 +247,10 @@ onMounted(() => {
         router.push('/login')
         return
     }
+    // Support ?tab=earnings or ?tab=reviews deep-link from Profile page
+    const tab = route.query.tab
+    if (tab === 'earnings') { activeNavTab.value = 'earnings'; fetchEarnings() }
+    else if (tab === 'reviews') { activeNavTab.value = 'reviews'; fetchOwnerReviews() }
     fetchData()
 })
 
