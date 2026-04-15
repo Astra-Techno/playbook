@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 import KoLogo from '@/components/KoLogo.vue'
+import ChatSheet from '../components/ChatSheet.vue'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import {
@@ -295,6 +296,18 @@ const deleteCourt = async (court) => {
     finally { deleteLoading.value = null }
 }
 
+// ── Owner Chat ────────────────────────────────────────────────────────────────
+const ownerChat = ref({ show: false, bookingId: null, playerId: null, playerName: '', courtName: '' })
+const openOwnerChat = (booking) => {
+    ownerChat.value = {
+        show: true,
+        bookingId: booking.id,
+        playerId: booking.user_id,
+        playerName: booking.user_name || 'Player',
+        courtName: booking.court_name || '',
+    }
+}
+
 const firstName = computed(() => auth.user?.name?.split(' ')[0] || 'there')
 const userInitials = computed(() => {
     const parts = (auth.user?.name || 'User').split(' ')
@@ -505,7 +518,14 @@ const handleAvatarUpload = async (event) => {
                                         class="text-[10px] font-bold px-2 py-1 rounded-full capitalize">
                                         {{ booking.status }}
                                     </span>
-                                    <span class="font-bold text-sm text-slate-800">₹{{ booking.total_price }}</span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="font-bold text-sm text-slate-800">₹{{ booking.total_price }}</span>
+                                        <button v-if="booking.user_id" @click="openOwnerChat(booking)"
+                                            class="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-600 active:bg-slate-200 transition-colors">
+                                            <MessageSquare :size="11" />
+                                            Chat
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -957,5 +977,14 @@ const handleAvatarUpload = async (event) => {
         </Transition>
 
         <!-- Edit now navigates to /my-services/:id/edit (EditServiceView) -->
+
+        <!-- Owner Chat Sheet -->
+        <ChatSheet
+            v-model="ownerChat.show"
+            :booking-id="ownerChat.bookingId"
+            :receiver-id="ownerChat.playerId"
+            :receiver-name="ownerChat.playerName"
+            :court-name="ownerChat.courtName"
+        />
     </div>
 </template>

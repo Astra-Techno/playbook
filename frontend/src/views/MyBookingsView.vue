@@ -7,8 +7,9 @@ import { useToastStore } from '../stores/toast'
 import {
     CalendarDays, Clock,
     CheckCircle2, XCircle, AlertCircle,
-    Trophy, Star, X, Loader2, Share2
+    Trophy, Star, X, Loader2, Share2, MessageCircle
 } from 'lucide-vue-next'
+import ChatSheet from '../components/ChatSheet.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -139,6 +140,18 @@ const dismissModal = () => {
     if (booking) saveDismissed(String(booking.id))
     ratingModal.value.show = false
 }
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+const chat = ref({ show: false, bookingId: null, ownerId: null, ownerName: '', courtName: '' })
+const openChat = (booking) => {
+    chat.value = {
+        show: true,
+        bookingId: booking.id,
+        ownerId: booking.owner_id,
+        ownerName: booking.owner_name || 'Owner',
+        courtName: booking.court_name || '',
+    }
+}
 </script>
 
 <template>
@@ -233,7 +246,7 @@ const dismissModal = () => {
                             </div>
 
                             <!-- Action row -->
-                            <div v-if="booking.status !== 'cancelled'" class="flex gap-2 mt-3">
+                            <div v-if="booking.status !== 'cancelled'" class="flex gap-2 mt-3 flex-wrap">
                                 <!-- Cancel upcoming -->
                                 <button v-if="activeFilter === 'upcoming'"
                                     @click="cancelBooking(booking)"
@@ -261,6 +274,13 @@ const dismissModal = () => {
                                         Share Experience
                                     </button>
                                 </template>
+                                <!-- Message owner — shown on all non-cancelled bookings -->
+                                <button v-if="booking.owner_id"
+                                    @click="openChat(booking)"
+                                    class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+                                    <MessageCircle :size="11" />
+                                    Message
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -269,6 +289,15 @@ const dismissModal = () => {
         </div>
 
     </div>
+
+    <!-- Chat Sheet -->
+    <ChatSheet
+        v-model="chat.show"
+        :booking-id="chat.bookingId"
+        :receiver-id="chat.ownerId"
+        :receiver-name="chat.ownerName"
+        :court-name="chat.courtName"
+    />
 
     <!-- Rating Bottom Sheet — teleported into app-root so it respects the 430px container -->
     <Teleport to="#app-root">

@@ -58,8 +58,11 @@ class BookingController {
         } elseif (isset($_GET['court_id']) && isset($_GET['date'])) {
             $stmt = $booking->readByCourtAndDate((int)$_GET['court_id'], $_GET['date']);
         } elseif (isset($_GET['owner_id'])) {
-            $query = "SELECT b.*, c.name as court_name FROM bookings b
+            $query = "SELECT b.*, c.name as court_name, c.owner_id,
+                             u.name as user_name
+                      FROM bookings b
                       JOIN courts c ON b.court_id = c.id
+                      LEFT JOIN users u ON b.user_id = u.id
                       WHERE c.owner_id = ?
                       ORDER BY b.start_time DESC";
             $stmt = $booking->conn->prepare($query);
