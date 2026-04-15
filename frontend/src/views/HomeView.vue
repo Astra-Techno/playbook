@@ -7,7 +7,7 @@ import {
     Search, MapPin, SlidersHorizontal, Heart,
     Wind, CircleDot, Target, Flag, Activity, Layers3,
     Dumbbell, Waves, Swords, Loader2, Star, Flame, Map,
-    Lock, Bell
+    Lock, Bell, X, RotateCcw
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -25,6 +25,35 @@ const favorites     = ref(new Set())
 const favLoading    = ref(new Set())
 
 const RADIUS_OPTIONS = [5, 10, 25, 50]
+const filterSheet = ref(false)
+
+// draft state inside the sheet (applied on "Apply")
+const draftSport  = ref('All')
+const draftRadius = ref(25)
+
+const openFilters = () => {
+    draftSport.value  = selectedSport.value
+    draftRadius.value = selectedRadius.value
+    filterSheet.value = true
+}
+
+const applyFilters = () => {
+    selectedSport.value  = draftSport.value
+    selectedRadius.value = draftRadius.value
+    filterSheet.value    = false
+}
+
+const resetFilters = () => {
+    draftSport.value  = 'All'
+    draftRadius.value = 25
+}
+
+const activeFilterCount = computed(() => {
+    let n = 0
+    if (selectedSport.value  !== 'All') n++
+    if (selectedRadius.value !== 25)    n++
+    return n
+})
 
 // ── GPS localStorage cache (30 min) ───────────────────────────
 const GPS_CACHE_KEY = 'kocourt_gps_cache'
@@ -216,10 +245,12 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
 
         <!-- Teleport contents to Global AppHeader -->
         <Teleport to="#header-subtitle">
-            <div class="flex items-center gap-1.5 text-slate-400 mt-0.5">
-                <MapPin :size="11" :stroke-width="2.5" class="text-primary/70 shrink-0" />
+            <button @click="detectLocation" :disabled="locating"
+                class="flex items-center gap-1.5 text-slate-400 mt-0.5 active:opacity-70 transition-opacity">
+                <Loader2 v-if="locating" :size="11" class="animate-spin text-primary" />
+                <MapPin v-else :size="11" :stroke-width="2.5" class="text-primary/70 shrink-0" />
                 <span class="text-[10px] font-bold uppercase tracking-wide truncate max-w-[150px]">{{ locationLabel }}</span>
-            </div>
+            </button>
         </Teleport>
 
         <Teleport to="#header-extra">
@@ -233,32 +264,16 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                         type="search"
                         placeholder="Search courts, gyms, clubs..."
                         class="flex-1 px-3 text-sm bg-transparent border-none focus:ring-0 placeholder:text-slate-400" />
-                    <button @click="detectLocation" :disabled="locating"
-                        class="flex items-center justify-center pr-3.5 text-slate-400 disabled:opacity-50">
-                        <Loader2 v-if="locating" :size="16" class="animate-spin text-primary" />
-                        <SlidersHorizontal v-else :size="16" />
+                    <!-- Filter button -->
+                    <button @click="openFilters"
+                        class="relative flex items-center justify-center pr-3.5 pl-2 text-slate-400">
+                        <SlidersHorizontal :size="16" :class="activeFilterCount > 0 ? 'text-primary' : ''" />
+                        <span v-if="activeFilterCount > 0"
+                            class="absolute top-2 right-3 w-3.5 h-3.5 bg-primary text-white text-[8px] font-black rounded-full flex items-center justify-center leading-none">
+                            {{ activeFilterCount }}
+                        </span>
                     </button>
                 </div>
-            </div>
-
-            <!-- Category chips -->
-            <div class="flex gap-2.5 px-4 pb-3 overflow-x-auto scrollbar-hide">
-                <button v-for="c in categories" :key="c.id" @click="selectedSport = c.id"
-                    class="flex h-9 shrink-0 items-center gap-2 rounded-full px-4 text-xs font-bold transition-all duration-200"
-                    :class="selectedSport === c.id ? 'bg-primary text-white shadow-md shadow-primary/20' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
-                    <component :is="c.icon" :size="14" :stroke-width="2.5" />
-                    {{ c.label }}
-                </button>
-            </div>
-
-            <!-- Radius chips — only when using GPS -->
-            <div v-if="userLat && userLng" class="flex gap-2 px-4 pb-4 overflow-x-auto scrollbar-hide">
-                <span class="shrink-0 text-[10px] font-bold text-slate-400 self-center">Within:</span>
-                <button v-for="r in RADIUS_OPTIONS" :key="r" @click="selectedRadius = r"
-                    class="shrink-0 h-7 px-3 rounded-full text-[11px] font-bold transition-all duration-200"
-                    :class="selectedRadius === r ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'">
-                    {{ r }} km
-                </button>
             </div>
         </Teleport>
 
@@ -514,4 +529,86 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
             </template>
         </main>
     </div>
+
+    <!-- ── Filter Bottom Sheet ── -->
+    <Teleport to="#app-root">
+        <Transition
+            enter-active-class="transition duration-300 ease-out"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition duration-200 ease-in"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0">
+            <div v-if="filterSheet" class="absolute inset-0 bg-black/40 z-[150]" @click.self="filterSheet = false">
+                <Transition
+                    enter-active-class="transition duration-300 ease-out"
+                    enter-from-class="translate-y-full"
+                    enter-to-class="translate-y-0"
+                    leave-active-class="transition duration-200 ease-in"
+                    leave-from-class="translate-y-0"
+                    leave-to-class="translate-y-full">
+                    <div v-if="filterSheet" class="absolute bottom-0 inset-x-0 bg-white rounded-t-3xl pb-10 max-h-[85vh] overflow-y-auto">
+
+                        <!-- Handle + Header -->
+                        <div class="sticky top-0 bg-white pt-3 pb-4 px-5 border-b border-slate-100 z-10">
+                            <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4"></div>
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-base font-extrabold text-slate-900">Filters</h3>
+                                <div class="flex items-center gap-2">
+                                    <button @click="resetFilters"
+                                        class="flex items-center gap-1.5 text-xs font-bold text-slate-400 px-3 py-1.5 rounded-full bg-slate-100">
+                                        <RotateCcw :size="12" />
+                                        Reset
+                                    </button>
+                                    <button @click="filterSheet = false"
+                                        class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100">
+                                        <X :size="16" class="text-slate-500" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="px-5 pt-5 space-y-6">
+
+                            <!-- Sport Type -->
+                            <div>
+                                <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3">Sport Type</p>
+                                <div class="flex flex-wrap gap-2">
+                                    <button v-for="c in categories" :key="c.id"
+                                        @click="draftSport = c.id"
+                                        class="flex items-center gap-2 h-9 px-4 rounded-full text-xs font-bold transition-all"
+                                        :class="draftSport === c.id ? 'bg-primary text-white shadow-md shadow-primary/20' : 'bg-slate-100 text-slate-600'">
+                                        <component :is="c.icon" :size="13" :stroke-width="2.5" />
+                                        {{ c.label }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Distance -->
+                            <div>
+                                <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3">Search Radius</p>
+                                <div class="flex gap-2 flex-wrap">
+                                    <button v-for="r in RADIUS_OPTIONS" :key="r"
+                                        @click="draftRadius = r"
+                                        class="h-9 px-5 rounded-full text-xs font-bold transition-all"
+                                        :class="draftRadius === r ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'">
+                                        {{ r }} km
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Apply -->
+                            <button @click="applyFilters"
+                                class="w-full bg-primary text-white font-extrabold py-3.5 rounded-2xl text-sm active:scale-[0.98] transition-transform">
+                                Apply Filters
+                                <span v-if="draftSport !== 'All' || draftRadius !== 25" class="ml-1 opacity-70">
+                                    ({{ (draftSport !== 'All' ? 1 : 0) + (draftRadius !== 25 ? 1 : 0) }} active)
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+                </Transition>
+            </div>
+        </Transition>
+    </Teleport>
 </template>
