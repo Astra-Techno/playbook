@@ -229,6 +229,9 @@ if (isset($seg[0]) && $seg[0] === 'auth') {
     if (isset($seg[1]) && $seg[1] === 'profile' && $_SERVER['REQUEST_METHOD'] === 'PUT') {
         $authController->updateProfile(); exit();
     }
+    if (isset($seg[1]) && $seg[1] === 'profile' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        $authController->getProfile(); exit();
+    }
 }
 
 // Court Routes

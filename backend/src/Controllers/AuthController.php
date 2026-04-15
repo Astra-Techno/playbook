@@ -187,6 +187,19 @@ class AuthController {
         echo json_encode(['message' => 'Profile updated', 'user' => $user]);
     }
 
+    // GET /api/auth/profile?user_id=X
+    public function getProfile() {
+        $user_id = (int)($_GET['user_id'] ?? 0);
+        if (!$user_id) { http_response_code(400); echo json_encode(['message' => 'user_id required']); return; }
+        $db    = Database::getConnection();
+        $uStmt = $db->prepare("SELECT id, name, phone, role, avatar_url, bio, skill_level, sport_preferences FROM users WHERE id=?");
+        $uStmt->execute([$user_id]);
+        $user = $uStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$user) { http_response_code(404); echo json_encode(['message' => 'User not found']); return; }
+        if ($user['sport_preferences']) $user['sport_preferences'] = json_decode($user['sport_preferences']);
+        echo json_encode(['user' => $user]);
+    }
+
     private function sendTokenResponse($user) {
         $token = bin2hex(random_bytes(16));
         $db    = Database::getConnection();

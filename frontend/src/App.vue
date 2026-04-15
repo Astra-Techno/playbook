@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, useTemplateRef } from 'vue'
+import { ref, watch, useTemplateRef, onMounted } from 'vue'
 import { RouterView, RouterLink, useRoute } from 'vue-router'
 import {
     CalendarDays, User,
@@ -32,6 +32,10 @@ watch(() => auth.user?.id, async (uid) => {
 
 const route   = useRoute()
 const mainEl  = useTemplateRef('mainEl')
+
+// Refresh user data from server on load so avatar/profile changes made on
+// other devices are picked up immediately (localStorage is device-local)
+onMounted(() => { if (auth.isLoggedIn) auth.refreshUser() })
 
 watch(() => route.path, () => {
     if (mainEl.value) mainEl.value.scrollTop = 0

@@ -44,5 +44,17 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem('user', JSON.stringify(user.value))
     }
 
-    return { user, token, isLoggedIn, isAdmin, isOwner, isPlayer, setAuth, logout, updateAvatar }
+    async function refreshUser() {
+        if (!user.value?.id) return
+        try {
+            const res = await axios.get(`/auth/profile?user_id=${user.value.id}`)
+            const fresh = res.data.user
+            if (fresh) {
+                user.value = fresh
+                localStorage.setItem('user', JSON.stringify(fresh))
+            }
+        } catch { /* silent — use cached user on failure */ }
+    }
+
+    return { user, token, isLoggedIn, isAdmin, isOwner, isPlayer, setAuth, logout, updateAvatar, refreshUser }
 })
