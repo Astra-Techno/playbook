@@ -69,29 +69,9 @@ const clearImage = () => {
     newCourt.value.image_url = ''
 }
 
-// Edit court photo upload
-const editImagePreview = ref(null)
-const editUploadLoading = ref(false)
-
-const handleEditImageSelect = async (event) => {
-    const file = event.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (e) => { editImagePreview.value = e.target.result }
-    reader.readAsDataURL(file)
-    editUploadLoading.value = true
-    try {
-        const formData = new FormData()
-        formData.append('image', file)
-        const res = await axios.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
-        editCourt.value.image_url = res.data.url
-    } catch {
-        toast.error('Photo upload failed')
-        editImagePreview.value = null
-    } finally {
-        editUploadLoading.value = false
-    }
-}
+// Edit court — navigate to dedicated page
+const editImagePreview = ref(null)   // kept for compat, unused
+const editUploadLoading = ref(false) // kept for compat, unused
 
 const hasPeakHours = computed(() => newCourt.value.type !== 'turf' && newCourt.value.type !== 'cricket')
 const addLoading    = ref(false)
@@ -299,37 +279,10 @@ const addCourt = async () => {
 }
 
 const openEdit = (court) => {
-    editImagePreview.value = null
-    editCourt.value = {
-        id: court.id, owner_id: auth.user?.id,
-        name: court.name, location: court.location || '', type: court.type,
-        hourly_rate: court.hourly_rate, description: court.description || '',
-        image_url: court.image_url || '',
-        lat: court.lat || null, lng: court.lng || null,
-        open_time: court.open_time?.slice(0,5) || '06:00',
-        close_time: court.close_time?.slice(0,5) || '22:00',
-        morning_peak_start: court.morning_peak_start?.slice(0,5) || '05:00',
-        morning_peak_end:   court.morning_peak_end?.slice(0,5)   || '09:00',
-        evening_peak_start: court.evening_peak_start?.slice(0,5) || '17:00',
-        evening_peak_end:   court.evening_peak_end?.slice(0,5)   || '21:00',
-        peak_members_only: !!court.peak_members_only,
-        amenities: Array.isArray(court.amenities) ? [...court.amenities] : [],
-    }
+    router.push(`/my-services/${court.id}/edit`)
 }
 
-const saveEdit = async () => {
-    if (!editCourt.value.name || !editCourt.value.hourly_rate) {
-        toast.error('Name and rate are required'); return
-    }
-    editLoading.value = true
-    try {
-        await axios.put(`/courts/${editCourt.value.id}`, editCourt.value)
-        toast.success('Service updated!')
-        editCourt.value = null
-        fetchData()
-    } catch { toast.error('Update failed') }
-    finally { editLoading.value = false }
-}
+const saveEdit = async () => {} // unused — handled by EditServiceView
 
 const deleteCourt = async (court) => {
     if (!confirm(`Delete "${court.name}"? This cannot be undone.`)) return
@@ -1003,114 +956,6 @@ const handleAvatarUpload = async (event) => {
             </div>
         </Transition>
 
-        <!-- ── EDIT VENUE MODAL ── -->
-        <Transition
-            enter-active-class="transition duration-300 ease-out"
-            enter-from-class="opacity-0"
-            enter-to-class="opacity-100"
-            leave-active-class="transition duration-200 ease-in"
-            leave-from-class="opacity-100"
-            leave-to-class="opacity-0">
-            <div v-if="editCourt" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end">
-                <div class="bg-white w-full rounded-t-3xl max-h-[92vh] overflow-y-auto">
-                    <div class="sticky top-0 bg-white px-5 py-4 border-b border-slate-100 flex items-center justify-between rounded-t-3xl">
-                        <h2 class="text-base font-bold text-slate-900">Edit Service</h2>
-                        <button @click="editCourt = null" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                            <X :size="18" class="text-slate-500" />
-                        </button>
-                    </div>
-                    <div class="px-5 py-5 space-y-4 pb-10">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Service Name *</label>
-                            <input v-model="editCourt.name" type="text"
-                                class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Location</label>
-                            <input v-model="editCourt.location" type="text"
-                                class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Sport Type</label>
-                            <div class="grid grid-cols-3 gap-2">
-                                <button v-for="sport in sportOptions" :key="sport.id" @click="editCourt.type = sport.id"
-                                    :class="editCourt.type === sport.id ? 'border-primary bg-primary-light text-primary' : 'border-slate-200 text-slate-600'"
-                                    class="flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 transition-all text-xs font-semibold">
-                                    <component :is="sport.icon" :size="18" />
-                                    {{ sport.label }}
-                                </button>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Rate per Hour (₹) *</label>
-                            <input v-model="editCourt.hourly_rate" type="number"
-                                class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Description</label>
-                            <textarea v-model="editCourt.description" rows="2"
-                                class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Operating Hours</label>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <p class="text-[11px] text-slate-400 mb-1">Opens</p>
-                                    <input v-model="editCourt.open_time" type="time"
-                                        class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                                </div>
-                                <div>
-                                    <p class="text-[11px] text-slate-400 mb-1">Closes</p>
-                                    <input v-model="editCourt.close_time" type="time"
-                                        class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Photo upload -->
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Service Photo</label>
-                            <div class="relative h-40 rounded-2xl border-2 border-dashed border-slate-200 overflow-hidden flex items-center justify-center bg-slate-50 cursor-pointer">
-                                <img v-if="editImagePreview || editCourt.image_url"
-                                    :src="editImagePreview || editCourt.image_url"
-                                    class="w-full h-full object-cover absolute inset-0" />
-                                <div v-if="!editImagePreview && !editCourt.image_url" class="flex flex-col items-center gap-2 text-slate-400 pointer-events-none">
-                                    <Camera :size="28" class="text-slate-300" />
-                                    <p class="text-sm font-medium text-slate-500">Tap to change photo</p>
-                                </div>
-                                <div v-else class="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-                                    <p class="text-white text-xs font-bold">Tap to change</p>
-                                </div>
-                                <input type="file" accept="image/jpeg,image/png,image/webp"
-                                    @change="handleEditImageSelect"
-                                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                <div v-if="editUploadLoading" class="absolute inset-0 bg-white/80 flex items-center justify-center rounded-2xl">
-                                    <Loader2 :size="24" class="animate-spin text-primary" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Amenities -->
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Amenities</label>
-                            <div class="flex flex-wrap gap-2">
-                                <button v-for="tag in AMENITIES_LIST" :key="tag"
-                                    type="button"
-                                    @click="editCourt.amenities.includes(tag) ? editCourt.amenities.splice(editCourt.amenities.indexOf(tag),1) : editCourt.amenities.push(tag)"
-                                    class="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-                                    :class="editCourt.amenities.includes(tag) ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'">
-                                    {{ tag }}
-                                </button>
-                            </div>
-                        </div>
-
-                        <button @click="saveEdit" :disabled="editLoading || editUploadLoading"
-                            class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-fab">
-                            <span v-if="editLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                            <template v-else><Check :size="17" /> Save Changes</template>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </Transition>
+        <!-- Edit now navigates to /my-services/:id/edit (EditServiceView) -->
     </div>
 </template>

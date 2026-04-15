@@ -66,6 +66,12 @@ const router = createRouter({
             meta: { requiresAuth: true, title: 'Manage Plans' },
         },
         {
+            path: '/my-services/:id/edit',
+            name: 'edit-service',
+            component: () => import('../views/EditServiceView.vue'),
+            meta: { requiresAuth: true, title: 'Edit Service' },
+        },
+        {
             path: '/feed/:id',
             name: 'post-detail',
             component: () => import('../views/PostDetailView.vue'),
