@@ -6,14 +6,15 @@ import { useToastStore } from '../stores/toast'
 import {
     MapPin, Users, Star, ChevronDown, ChevronUp, ChevronRight, ChevronLeft,
     Phone, Globe, CheckCircle2, Loader2, TrendingUp,
-    Building2, Filter, X, ShieldCheck, UserCheck, BarChart2
+    Building2, Filter, X, ShieldCheck, UserCheck, BarChart2,
+    ClipboardCheck, Clock, XCircle, FileImage
 } from 'lucide-vue-next'
 
 const auth  = useAuthStore()
 const toast = useToastStore()
 
 // ── Section navigation ────────────────────────────────────────────
-const section = ref('home')   // 'home' | 'demand' | 'users' | 'verification'
+const section = ref('home')   // 'home' | 'demand' | 'users' | 'verification' | 'claims'
 
 // ── Demand Signals ────────────────────────────────────────────────
 const places       = ref([])
@@ -162,17 +163,67 @@ const toggleVerify = async (court) => {
     finally { verifyingId.value = null }
 }
 
+// ── Claim Reviews ─────────────────────────────────────────────────
+const claims        = ref([])
+const claimsLoaded  = ref(false)
+const claimsLoading = ref(false)
+const actionId      = ref(null)
+const rejectModal   = ref({ show: false, claim: null, reason: '' })
+
+const pendingClaimsCount = computed(() => claims.value.filter(c => c.claim_status === 'pending').length)
+
+const fetchClaims = async () => {
+    if (claimsLoaded.value) return
+    claimsLoading.value = true
+    try {
+        const res = await axios.get('/courts/claims')
+        claims.value = res.data.claims || []
+        claimsLoaded.value = true
+    } catch { claims.value = [] }
+    finally { claimsLoading.value = false }
+}
+
+const approveClaim = async (claim) => {
+    actionId.value = claim.id
+    try {
+        await axios.put(`/courts/claims/${claim.id}/approve`, { admin_id: auth.user.id })
+        claim.claim_status = 'approved'
+        toast.success('Claim approved — court is now live!')
+    } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to approve')
+    } finally { actionId.value = null }
+}
+
+const openRejectModal = (claim) => {
+    rejectModal.value = { show: true, claim, reason: '' }
+}
+
+const submitReject = async () => {
+    const { claim, reason } = rejectModal.value
+    if (!reason.trim()) { toast.error('Enter a rejection reason'); return }
+    actionId.value = claim.id
+    try {
+        await axios.put(`/courts/claims/${claim.id}/reject`, { admin_id: auth.user.id, reason: reason.trim() })
+        claim.claim_status = 'rejected'
+        claim.claim_rejection_reason = reason.trim()
+        rejectModal.value.show = false
+        toast.success('Claim rejected')
+    } catch { toast.error('Failed to reject') }
+    finally { actionId.value = null }
+}
+
 // ── Navigate to section ───────────────────────────────────────────
 const goTo = (s) => {
     section.value = s
     if (s === 'demand')       fetchDemand()
     if (s === 'users')        fetchUsers()
     if (s === 'verification') fetchAllCourts()
+    if (s === 'claims')       fetchClaims()
 }
 
 const roleBadge = { admin: 'bg-primary-light text-primary', owner: 'bg-amber-50 text-amber-700', player: 'bg-slate-100 text-slate-600' }
 
-onMounted(() => fetchDemand()) // pre-load demand for stats
+onMounted(() => { fetchDemand(); fetchClaims() }) // pre-load for stats + claim badge
 </script>
 
 <template>
@@ -236,6 +287,21 @@ onMounted(() => fetchDemand()) // pre-load demand for stats
                         </div>
                         <ChevronRight :size="16" class="text-slate-300" />
                     </button>
+                    <button @click="goTo('claims')"
+                        class="w-full flex items-center gap-3 px-4 py-4 hover:bg-slate-50 active:bg-slate-100 transition-colors relative">
+                        <div class="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center shrink-0">
+                            <ClipboardCheck :size="17" class="text-amber-600" />
+                        </div>
+                        <div class="flex-1 text-left">
+                            <p class="text-sm font-semibold text-slate-800">Claim Reviews</p>
+                            <p class="text-[11px] text-slate-400">Verify venue ownership claims</p>
+                        </div>
+                        <div v-if="pendingClaimsCount > 0"
+                            class="w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center mr-1">
+                            {{ pendingClaimsCount }}
+                        </div>
+                        <ChevronRight :size="16" class="text-slate-300" />
+                    </button>
                     <button @click="goTo('verification')"
                         class="w-full flex items-center gap-3 px-4 py-4 hover:bg-slate-50 active:bg-slate-100 transition-colors">
                         <div class="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center shrink-0">
@@ -260,7 +326,7 @@ onMounted(() => fetchDemand()) // pre-load demand for stats
                     <ChevronLeft :size="20" class="text-slate-600" />
                 </button>
                 <h1 class="flex-1 font-extrabold text-slate-900 text-base">
-                    {{ section === 'demand' ? 'Demand Signals' : section === 'users' ? 'Users' : 'Court Verification' }}
+                    {{ section === 'demand' ? 'Demand Signals' : section === 'users' ? 'Users' : section === 'claims' ? 'Claim Reviews' : 'Court Verification' }}
                 </h1>
             </div>
         </template>
@@ -457,6 +523,123 @@ onMounted(() => fetchDemand()) // pre-load demand for stats
                     </div>
                 </div>
             </div>
+        </template>
+
+        <!-- ── CLAIM REVIEWS ── -->
+        <template v-if="section === 'claims'">
+            <div class="px-4 pt-3 space-y-3">
+                <div v-if="claimsLoading" class="space-y-3">
+                    <div v-for="i in 3" :key="i" class="bg-white rounded-2xl p-4 animate-pulse ring-1 ring-slate-100 h-32"></div>
+                </div>
+                <div v-else-if="!claims.length" class="text-center py-16 text-slate-400 text-sm">
+                    No claim requests yet
+                </div>
+                <div v-else class="space-y-3">
+                    <div v-for="claim in claims" :key="claim.id"
+                        class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm overflow-hidden">
+
+                        <!-- Status strip -->
+                        <div class="px-4 py-2 flex items-center gap-2 text-xs font-bold"
+                            :class="claim.claim_status === 'pending' ? 'bg-amber-50 text-amber-700' :
+                                    claim.claim_status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
+                                    'bg-red-50 text-red-600'">
+                            <Clock v-if="claim.claim_status === 'pending'" :size="12" />
+                            <CheckCircle2 v-else-if="claim.claim_status === 'approved'" :size="12" />
+                            <XCircle v-else :size="12" />
+                            {{ claim.claim_status === 'pending' ? 'Pending Review' : claim.claim_status === 'approved' ? 'Approved' : 'Rejected' }}
+                            <span class="ml-auto font-normal text-[10px] opacity-70">
+                                {{ new Date(claim.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) }}
+                            </span>
+                        </div>
+
+                        <div class="p-4 space-y-3">
+                            <!-- Venue info -->
+                            <div>
+                                <p class="font-extrabold text-slate-900 text-sm">{{ claim.name }}</p>
+                                <p class="text-xs text-slate-400 mt-0.5">{{ claim.location }}</p>
+                                <p class="text-xs text-primary font-bold mt-0.5">₹{{ claim.hourly_rate }}/hr · {{ claim.type }}</p>
+                            </div>
+
+                            <!-- Claimant -->
+                            <div class="flex items-center gap-3 bg-slate-50 rounded-xl px-3 py-2.5">
+                                <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                    {{ claim.owner_name?.charAt(0).toUpperCase() }}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-bold text-slate-800 truncate">{{ claim.owner_name }}</p>
+                                    <p class="text-xs text-slate-400">{{ claim.owner_phone }}</p>
+                                </div>
+                            </div>
+
+                            <!-- Proof image -->
+                            <div v-if="claim.claim_proof_url">
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                                    <FileImage :size="10" />Proof Submitted
+                                </p>
+                                <a :href="claim.claim_proof_url" target="_blank" rel="noopener"
+                                    class="block relative rounded-xl overflow-hidden ring-1 ring-slate-200">
+                                    <img :src="claim.claim_proof_url"
+                                        class="w-full h-36 object-cover"
+                                        onerror="this.parentElement.innerHTML='<div class=\'flex items-center justify-center h-12 text-slate-400 text-xs\'>View document ↗</div>'" />
+                                    <div class="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center">
+                                        <span class="opacity-0 hover:opacity-100 bg-black/60 text-white text-xs px-3 py-1 rounded-full font-bold transition-opacity">
+                                            Open full size ↗
+                                        </span>
+                                    </div>
+                                </a>
+                            </div>
+                            <div v-else class="text-[11px] text-red-400 font-semibold flex items-center gap-1">
+                                <XCircle :size="11" />No proof uploaded
+                            </div>
+
+                            <!-- Rejection reason (if rejected) -->
+                            <div v-if="claim.claim_status === 'rejected' && claim.claim_rejection_reason"
+                                class="bg-red-50 rounded-xl px-3 py-2 text-xs text-red-600">
+                                <span class="font-bold">Reason:</span> {{ claim.claim_rejection_reason }}
+                            </div>
+
+                            <!-- Action buttons (only for pending) -->
+                            <div v-if="claim.claim_status === 'pending'" class="flex gap-2 pt-1">
+                                <button @click="openRejectModal(claim)" :disabled="actionId === claim.id"
+                                    class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-red-50 text-red-500 flex items-center justify-center gap-1.5 active:scale-95 transition disabled:opacity-50">
+                                    <XCircle :size="13" />
+                                    Reject
+                                </button>
+                                <button @click="approveClaim(claim)" :disabled="actionId === claim.id"
+                                    class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-emerald-500 text-white flex items-center justify-center gap-1.5 active:scale-95 transition disabled:opacity-50">
+                                    <Loader2 v-if="actionId === claim.id" :size="13" class="animate-spin" />
+                                    <CheckCircle2 v-else :size="13" />
+                                    Approve
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reject reason modal -->
+            <Transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100"
+                        leave-active-class="transition duration-150 ease-in"  leave-from-class="opacity-100" leave-to-class="opacity-0">
+                <div v-if="rejectModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-end" @click.self="rejectModal.show = false">
+                    <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-10 space-y-4">
+                        <h3 class="text-base font-extrabold text-slate-900">Reject Claim</h3>
+                        <p class="text-sm text-slate-500">Tell the claimant why their submission was rejected. This message will be shown on their dashboard.</p>
+                        <textarea v-model="rejectModal.reason" rows="3" placeholder="e.g. Photo was unclear, please upload a readable GST certificate or shop license..."
+                            class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-red-400 focus:outline-none resize-none"></textarea>
+                        <div class="flex gap-2">
+                            <button @click="rejectModal.show = false"
+                                class="flex-1 py-3 rounded-2xl text-sm font-bold bg-slate-100 text-slate-600">
+                                Cancel
+                            </button>
+                            <button @click="submitReject" :disabled="actionId !== null"
+                                class="flex-1 py-3 rounded-2xl text-sm font-bold bg-red-500 text-white flex items-center justify-center gap-1.5 disabled:opacity-50">
+                                <Loader2 v-if="actionId !== null" :size="14" class="animate-spin" />
+                                <span v-else>Reject Claim</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
         </template>
 
         <!-- ── COURT VERIFICATION ── -->

@@ -525,6 +525,16 @@ const handleAvatarUpload = async (event) => {
 
                         <!-- Card body -->
                         <div class="p-4">
+                            <!-- Claim status banners -->
+                            <div v-if="court.claim_status === 'pending'" class="mb-3 flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+                                <Loader2 :size="12" class="text-amber-500 animate-spin shrink-0" />
+                                <p class="text-xs font-bold text-amber-700">Pending admin verification · not visible to players yet</p>
+                            </div>
+                            <div v-else-if="court.claim_status === 'rejected'" class="mb-3 flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
+                                <X :size="12" class="text-red-500 shrink-0" />
+                                <p class="text-xs font-bold text-red-600">Claim rejected · please contact support</p>
+                            </div>
+
                             <!-- Name + Rating -->
                             <div class="flex justify-between items-start mb-1">
                                 <h4 class="text-slate-900 font-bold text-lg">{{ court.name }}</h4>

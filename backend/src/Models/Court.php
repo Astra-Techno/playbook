@@ -40,7 +40,8 @@ class Court {
 
         // GPS proximity search (player discovering courts)
         if ($lat !== null && $lng !== null && !$owner_id) {
-            $conditions = ["lat IS NOT NULL", "lng IS NOT NULL"];
+            $conditions = ["lat IS NOT NULL", "lng IS NOT NULL",
+                           "(claim_status IS NULL OR claim_status = 'approved')"];
             if ($type && $type !== 'All') $conditions[] = "type = ?";
 
             $where = implode(" AND ", $conditions);
@@ -68,6 +69,8 @@ class Court {
 
         // Text / owner filter search
         $conditions = [];
+        // Only exclude pending courts for public searches (not owner's own dashboard)
+        if (!$owner_id) $conditions[] = "(claim_status IS NULL OR claim_status = 'approved')";
         if ($location && $location !== 'All') $conditions[] = "location LIKE ?";
         if ($type     && $type     !== 'All') $conditions[] = "type = ?";
         if ($owner_id)                        $conditions[] = "owner_id = ?";

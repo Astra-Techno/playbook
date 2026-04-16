@@ -240,6 +240,12 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
     $courtController = new CourtController();
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { $courtController->index(); exit(); }
+    // GET  /courts/claims          — list all claims (admin)
+    if ($_SERVER['REQUEST_METHOD'] === 'GET'  && isset($seg[1]) && $seg[1] === 'claims') { $courtController->listClaims(); exit(); }
+    // PUT  /courts/claims/:id/approve
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT'  && isset($seg[1]) && $seg[1] === 'claims' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'approve') { $courtController->approveClaim((int)$seg[2]); exit(); }
+    // PUT  /courts/claims/:id/reject
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT'  && isset($seg[1]) && $seg[1] === 'claims' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'reject')  { $courtController->rejectClaim((int)$seg[2]); exit(); }
     // POST /courts/claim — must check before generic create
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'claim') { $courtController->claim(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') { $courtController->create(); exit(); }

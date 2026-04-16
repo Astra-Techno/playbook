@@ -93,12 +93,13 @@ class CourtController {
         }
     }
 
-    // POST /courts/claim  { owner_id, place_id, hourly_rate, description? }
+    // POST /courts/claim  { owner_id, place_id, hourly_rate, description?, proof_url? }
     public function claim() {
-        $data       = json_decode(file_get_contents("php://input"));
-        $owner_id   = (int)($data->owner_id   ?? 0);
-        $place_id   = (int)($data->place_id   ?? 0);
+        $data        = json_decode(file_get_contents("php://input"));
+        $owner_id    = (int)($data->owner_id    ?? 0);
+        $place_id    = (int)($data->place_id    ?? 0);
         $hourly_rate = (float)($data->hourly_rate ?? 0);
+        $proof_url   = trim($data->proof_url ?? '');
 
         if (!$owner_id || !$place_id || !$hourly_rate) {
             http_response_code(400);
@@ -108,20 +109,41 @@ class CourtController {
 
         $db = Database::getConnection();
 
-        // Fetch the ghost place
-        $stmt = $db->prepare("SELECT * FROM places WHERE id = ? AND (court_id IS NULL OR court_id = 0)");
+        // Ensure claim columns exist
+        try {
+            $db->exec("ALTER TABLE courts
+                ADD COLUMN claim_status ENUM('pending','approved','rejected') NULL DEFAULT NULL AFTER peak_members_only,
+                ADD COLUMN claim_proof_url TEXT NULL AFTER claim_status,
+                ADD COLUMN claim_rejection_reason TEXT NULL AFTER claim_proof_url");
+        } catch (Exception $e) { /* columns already exist */ }
+
+        // Fetch the ghost place (allow re-claim only if previous court was rejected)
+        $stmt = $db->prepare(
+            "SELECT p.*, c.id as existing_court_id, c.claim_status as existing_status
+             FROM places p
+             LEFT JOIN courts c ON c.id = p.court_id
+             WHERE p.id = ?"
+        );
         $stmt->execute([$place_id]);
         $place = $stmt->fetch(PDO::FETCH_ASSOC);
+
         if (!$place) {
-            http_response_code(409);
-            echo json_encode(['message' => 'Venue already claimed or not found']);
+            http_response_code(404);
+            echo json_encode(['message' => 'Venue not found']);
             return;
         }
 
-        // Upgrade player to owner if needed
-        $db->prepare("UPDATE users SET role = 'owner' WHERE id = ? AND role = 'player'")->execute([$owner_id]);
+        // Block if already claimed (pending or approved)
+        if ($place['existing_court_id'] && in_array($place['existing_status'], ['pending', 'approved'])) {
+            http_response_code(409);
+            $msg = $place['existing_status'] === 'approved'
+                ? 'This venue has already been claimed and approved.'
+                : 'A claim for this venue is already under review.';
+            echo json_encode(['message' => $msg]);
+            return;
+        }
 
-        // Create court from place data
+        // Create court — starts as pending (hidden from public listings)
         $court              = new Court();
         $court->owner_id    = $owner_id;
         $court->name        = $place['name'];
@@ -149,17 +171,98 @@ class CourtController {
 
         $newId = (int)$db->lastInsertId();
 
-        // Mark place as onboarded
-        $db->prepare("UPDATE places SET status = 'onboarded', court_id = ? WHERE id = ?")
+        // Set claim_status = pending + proof url
+        $db->prepare("UPDATE courts SET claim_status = 'pending', claim_proof_url = ? WHERE id = ?")
+           ->execute([$proof_url ?: null, $newId]);
+
+        // Link place to this court (but NOT mark as 'onboarded' yet — wait for approval)
+        $db->prepare("UPDATE places SET status = 'contacted', court_id = ? WHERE id = ?")
            ->execute([$newId, $place_id]);
 
-        // Fetch refreshed user (role may have changed)
+        // Fetch user (role not yet upgraded — happens on approval)
         $uStmt = $db->prepare("SELECT id, name, phone, role, avatar_url, bio, skill_level, sport_preferences FROM users WHERE id = ?");
         $uStmt->execute([$owner_id]);
         $user = $uStmt->fetch(PDO::FETCH_ASSOC);
 
         http_response_code(201);
-        echo json_encode(['message' => 'Venue claimed successfully!', 'court_id' => $newId, 'user' => $user]);
+        echo json_encode([
+            'message'   => 'Claim submitted! Our team will verify and approve within 24–48 hours.',
+            'court_id'  => $newId,
+            'status'    => 'pending',
+            'user'      => $user,
+        ]);
+    }
+
+    // GET  /courts/claims?admin_id=X
+    // PUT  /courts/claims/:id/approve { admin_id }
+    // PUT  /courts/claims/:id/reject  { admin_id, reason }
+    public function listClaims() {
+        $db = Database::getConnection();
+        $stmt = $db->query(
+            "SELECT c.id, c.name, c.type, c.location, c.hourly_rate,
+                    c.claim_status, c.claim_proof_url, c.claim_rejection_reason,
+                    c.created_at, c.owner_id,
+                    u.name AS owner_name, u.phone AS owner_phone, u.avatar_url AS owner_avatar
+             FROM courts c
+             JOIN users u ON u.id = c.owner_id
+             WHERE c.claim_status IS NOT NULL
+             ORDER BY FIELD(c.claim_status,'pending','rejected','approved'), c.created_at DESC"
+        );
+        echo json_encode(['claims' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    }
+
+    public function approveClaim($court_id) {
+        $data     = json_decode(file_get_contents("php://input"));
+        $admin_id = (int)($data->admin_id ?? 0);
+        $db = Database::getConnection();
+
+        // Verify requester is admin
+        $aStmt = $db->prepare("SELECT role FROM users WHERE id = ?");
+        $aStmt->execute([$admin_id]);
+        $admin = $aStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$admin || $admin['role'] !== 'admin') {
+            http_response_code(403); echo json_encode(['message' => 'Not authorised']); return;
+        }
+
+        // Get court + owner
+        $cStmt = $db->prepare("SELECT owner_id, claim_status FROM courts WHERE id = ?");
+        $cStmt->execute([$court_id]);
+        $court = $cStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$court) { http_response_code(404); echo json_encode(['message' => 'Court not found']); return; }
+
+        // Approve: update court status, upgrade owner role, mark place onboarded
+        $db->prepare("UPDATE courts SET claim_status = 'approved' WHERE id = ?")
+           ->execute([$court_id]);
+        $db->prepare("UPDATE users SET role = 'owner' WHERE id = ? AND role = 'player'")
+           ->execute([$court['owner_id']]);
+        $db->prepare("UPDATE places SET status = 'onboarded' WHERE court_id = ?")
+           ->execute([$court_id]);
+
+        http_response_code(200);
+        echo json_encode(['message' => 'Claim approved. Court is now live.']);
+    }
+
+    public function rejectClaim($court_id) {
+        $data     = json_decode(file_get_contents("php://input"));
+        $admin_id = (int)($data->admin_id ?? 0);
+        $reason   = trim($data->reason ?? 'Claim rejected by admin.');
+        $db = Database::getConnection();
+
+        $aStmt = $db->prepare("SELECT role FROM users WHERE id = ?");
+        $aStmt->execute([$admin_id]);
+        $admin = $aStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$admin || $admin['role'] !== 'admin') {
+            http_response_code(403); echo json_encode(['message' => 'Not authorised']); return;
+        }
+
+        $db->prepare("UPDATE courts SET claim_status = 'rejected', claim_rejection_reason = ? WHERE id = ?")
+           ->execute([$reason, $court_id]);
+        // Free up the place for re-claiming
+        $db->prepare("UPDATE places SET status = 'pending', court_id = NULL WHERE court_id = ?")
+           ->execute([$court_id]);
+
+        http_response_code(200);
+        echo json_encode(['message' => 'Claim rejected.']);
     }
 
     // Auto-link newly created court to a nearby ghost place (within ~200 m)
