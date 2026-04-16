@@ -404,7 +404,8 @@ const handleAvatarUpload = async (event) => {
                     <div
                         v-for="(court, idx) in filteredCourts"
                         :key="court.id"
-                        class="flex flex-col bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow ring-1 ring-slate-100">
+                        @click="router.push(`/my-venues/${court.id}`)"
+                        class="flex flex-col bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow ring-1 ring-slate-100 cursor-pointer active:scale-[0.99]">
 
                         <!-- Image section -->
                         <div class="relative h-48 w-full bg-slate-200">
@@ -413,15 +414,12 @@ const handleAvatarUpload = async (event) => {
                                 :src="court.image_url"
                                 class="w-full h-full object-cover"
                                 onerror="this.style.display='none'" />
-                            <!-- Placeholder gradient when no image -->
                             <div v-else class="w-full h-full flex items-center justify-center bg-slate-100">
                                 <component :is="sportOptions.find(s => s.id === court.type)?.icon || LayoutGrid" :size="48" :stroke-width="1.5" class="text-slate-300" />
                             </div>
-                            <!-- Favorite heart button -->
                             <div class="absolute top-3 right-3 bg-white/95 backdrop-blur rounded-full p-2 shadow-sm border border-slate-100">
                                 <Heart :size="16" :stroke-width="2.5" class="text-slate-400" />
                             </div>
-                            <!-- POPULAR badge for first court or high-revenue courts -->
                             <div v-if="idx === 0" class="absolute bottom-3 left-3 bg-primary text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-lg shadow-primary/30 tracking-wider">
                                 <Flame :size="10" :stroke-width="3" />
                                 POPULAR
@@ -449,59 +447,19 @@ const handleAvatarUpload = async (event) => {
                                 </div>
                             </div>
                             <!-- Location -->
-                            <div class="flex items-center gap-1.5 text-slate-500 text-sm mb-4">
+                            <div class="flex items-center gap-1.5 text-slate-500 text-sm mb-3">
                                 <MapPin :size="12" :stroke-width="2.5" class="text-slate-400" />
                                 <span>{{ court.location || 'Location not set' }}</span>
                             </div>
-                            <!-- Price row -->
-                            <div class="flex items-center justify-between mb-3">
+                            <!-- Price + manage hint -->
+                            <div class="flex items-center justify-between">
                                 <div class="flex flex-col">
                                     <span class="text-xs text-slate-400 font-medium">Starting at</span>
                                     <span class="text-primary font-bold text-lg">
                                         ₹{{ court.hourly_rate }}<span class="text-sm font-normal text-slate-500">/hr</span>
                                     </span>
                                 </div>
-                                <button @click.stop="deleteCourt(court)" :disabled="deleteLoading === court.id"
-                                    class="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center active:scale-95 transition-all disabled:opacity-40">
-                                    <span v-if="deleteLoading === court.id" class="w-3 h-3 border-2 border-red-300 border-t-red-500 rounded-full animate-spin block"></span>
-                                    <Trash2 v-else :size="14" class="text-red-400" />
-                                </button>
-                            </div>
-                            <!-- Primary actions -->
-                            <div class="grid grid-cols-3 gap-2 mb-2">
-                                <button @click.stop="openEdit(court)"
-                                    class="flex items-center justify-center gap-1.5 bg-slate-100 text-slate-700 font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
-                                    <Pencil :size="12" />
-                                    Edit
-                                </button>
-                                <RouterLink :to="`/my-venues/${court.id}/plans`"
-                                    class="flex items-center justify-center gap-1.5 bg-primary text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
-                                    <Award :size="12" />
-                                    Plans
-                                </RouterLink>
-                                <button @click.stop="openSubCourtSheet(court)"
-                                    class="flex items-center justify-center gap-1.5 bg-indigo-50 text-indigo-600 font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
-                                    <LayoutGrid :size="12" />
-                                    Services
-                                </button>
-                            </div>
-                            <!-- Secondary actions -->
-                            <div class="grid grid-cols-3 gap-2">
-                                <button @click.stop="openStaffSheet(court)"
-                                    class="flex items-center justify-center gap-1.5 bg-slate-800 text-white font-bold py-2 rounded-xl text-xs active:scale-95 transition-all">
-                                    <Users :size="11" />
-                                    Staff
-                                </button>
-                                <button @click.stop="openPricingSheet(court)"
-                                    class="flex items-center justify-center gap-1.5 bg-amber-50 text-amber-600 font-bold py-2 rounded-xl text-xs active:scale-95 transition-all">
-                                    <Tag :size="11" />
-                                    Pricing
-                                </button>
-                                <button @click.stop="openBlockSheet(court)"
-                                    class="flex items-center justify-center gap-1.5 bg-red-50 text-red-500 font-bold py-2 rounded-xl text-xs active:scale-95 transition-all">
-                                    <Ban :size="11" />
-                                    Block
-                                </button>
+                                <span class="text-xs font-semibold text-primary bg-primary-light px-3 py-1.5 rounded-full">Manage →</span>
                             </div>
                         </div>
                     </div>

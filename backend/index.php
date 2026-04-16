@@ -239,6 +239,7 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
     require_once __DIR__ . '/src/Controllers/CourtController.php';
     $courtController = new CourtController();
 
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1]) && !isset($seg[2])) { $courtController->show((int)$seg[1]); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { $courtController->index(); exit(); }
     // GET  /courts/claims          — list all claims (admin)
     if ($_SERVER['REQUEST_METHOD'] === 'GET'  && isset($seg[1]) && $seg[1] === 'claims') { $courtController->listClaims(); exit(); }

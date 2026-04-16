@@ -51,6 +51,18 @@ class CourtController {
         echo json_encode($courts_arr);
     }
 
+    // GET /api/courts/:id
+    public function show($id) {
+        $db   = Database::getConnection();
+        $stmt = $db->prepare("SELECT * FROM courts WHERE id = ? LIMIT 1");
+        $stmt->execute([$id]);
+        $row  = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) { http_response_code(404); echo json_encode(['message' => 'Not found']); return; }
+        $row['amenities'] = $row['amenities'] ? json_decode($row['amenities'], true) : [];
+        http_response_code(200);
+        echo json_encode(['court' => $row]);
+    }
+
     // POST /api/courts
     public function create() {
         $data = json_decode(file_get_contents("php://input"));

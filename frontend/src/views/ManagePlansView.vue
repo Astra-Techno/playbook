@@ -1,15 +1,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import axios from 'axios'
 import { useToastStore } from '../stores/toast'
 import {
-    ChevronLeft, Plus, Tag, Calendar,
+    Plus, Tag, Calendar,
     IndianRupee, Check, Trash2, Info, Sun, Moon, Layers3, Infinity
 } from 'lucide-vue-next'
 
 const route = useRoute()
-const router = useRouter()
 const toast = useToastStore()
 
 const courtId = route.params.id
@@ -101,18 +100,9 @@ const addPlan = async () => {
     <div class="min-h-screen bg-slate-50">
 
         <!-- Header -->
-        <div class="bg-white px-5 pt-12 pb-5 border-b border-slate-100">
-            <div class="flex items-center gap-3 mb-1">
-                <button
-                    @click="router.back()"
-                    class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                    <ChevronLeft :size="20" :stroke-width="2.5" class="text-slate-600" />
-                </button>
-                <div>
-                    <h1 class="text-lg font-bold text-slate-900">Membership Plans</h1>
-                    <p class="text-xs text-slate-500">Create & manage subscription plans for your court</p>
-                </div>
-            </div>
+        <div class="bg-white px-5 pt-5 pb-5 border-b border-slate-100">
+            <h1 class="text-lg font-bold text-slate-900">Membership Plans</h1>
+            <p class="text-xs text-slate-500">Create & manage subscription plans for your court</p>
         </div>
 
         <!-- Content -->
