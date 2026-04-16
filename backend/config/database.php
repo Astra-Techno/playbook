@@ -120,6 +120,8 @@ class Database {
             "ALTER TABLE courts ADD COLUMN evening_peak_start TIME DEFAULT '17:00:00'",
             "ALTER TABLE courts ADD COLUMN evening_peak_end   TIME DEFAULT '21:00:00'",
             "ALTER TABLE courts ADD COLUMN peak_members_only  TINYINT(1) DEFAULT 0",
+            "ALTER TABLE courts ADD COLUMN claim_status       VARCHAR(20) DEFAULT NULL",
+            "ALTER TABLE courts ADD COLUMN amenities          TEXT DEFAULT NULL",
         ] as $s) { try { $this->pdo->exec($s); } catch(\PDOException $e){} }
 
         // slot_type on plans (morning / evening / full_day / unlimited)
