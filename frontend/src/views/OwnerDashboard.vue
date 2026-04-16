@@ -17,7 +17,7 @@ import {
     IndianRupee, Loader2,
     Camera, TrendingUp, CalendarDays, Search, MapPin,
     Flame, Map, Globe, Heart, User, Star, LayoutGrid, Wallet, ArrowDownToLine, MessageSquare,
-    ChevronLeft, ChevronRight, Users, Ban, Tag, BarChart3, TrendingDown, UserPlus
+    ChevronLeft, ChevronRight, Users, Ban, Tag, BarChart3, TrendingDown, UserPlus, Pencil, Trash2, Award
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -453,49 +453,55 @@ const handleAvatarUpload = async (event) => {
                                 <MapPin :size="12" :stroke-width="2.5" class="text-slate-400" />
                                 <span>{{ court.location || 'Location not set' }}</span>
                             </div>
-                            <!-- Price + Action -->
-                            <div class="flex items-center justify-between">
+                            <!-- Price row -->
+                            <div class="flex items-center justify-between mb-3">
                                 <div class="flex flex-col">
                                     <span class="text-xs text-slate-400 font-medium">Starting at</span>
                                     <span class="text-primary font-bold text-lg">
                                         ₹{{ court.hourly_rate }}<span class="text-sm font-normal text-slate-500">/hr</span>
                                     </span>
                                 </div>
-                                <div class="flex gap-2 flex-wrap">
-                                    <button @click.stop="openEdit(court)"
-                                        class="bg-slate-100 text-slate-600 font-bold py-2.5 px-4 rounded-xl text-xs hover:bg-slate-200 transition-colors">
-                                        Edit
-                                    </button>
-                                    <button @click.stop="deleteCourt(court)" :disabled="deleteLoading === court.id"
-                                        class="bg-red-50 text-red-500 font-bold py-2.5 px-4 rounded-xl text-xs hover:bg-red-100 transition-colors disabled:opacity-50">
-                                        <span v-if="deleteLoading === court.id" class="w-3 h-3 border-2 border-red-300 border-t-red-500 rounded-full animate-spin inline-block"></span>
-                                        <span v-else>Del</span>
-                                    </button>
-                                    <RouterLink :to="`/my-venues/${court.id}/plans`"
-                                        class="bg-primary hover:bg-primary-dark text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors">
-                                        Plans
-                                    </RouterLink>
-                                    <button @click.stop="openStaffSheet(court)"
-                                        class="flex items-center gap-1.5 bg-slate-800 text-white font-bold py-2.5 px-3 rounded-xl text-xs hover:bg-slate-700 transition-colors">
-                                        <Users :size="12" />
-                                        Staff
-                                    </button>
-                                    <button @click.stop="openBlockSheet(court)"
-                                        class="flex items-center gap-1.5 bg-red-50 text-red-500 font-bold py-2.5 px-3 rounded-xl text-xs hover:bg-red-100 transition-colors">
-                                        <Ban :size="12" />
-                                        Block
-                                    </button>
-                                    <button @click.stop="openSubCourtSheet(court)"
-                                        class="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 font-bold py-2.5 px-3 rounded-xl text-xs hover:bg-indigo-100 transition-colors">
-                                        <LayoutGrid :size="12" />
-                                        Courts
-                                    </button>
-                                    <button @click.stop="openPricingSheet(court)"
-                                        class="flex items-center gap-1.5 bg-amber-50 text-amber-600 font-bold py-2.5 px-3 rounded-xl text-xs hover:bg-amber-100 transition-colors">
-                                        <Tag :size="12" />
-                                        Pricing
-                                    </button>
-                                </div>
+                                <button @click.stop="deleteCourt(court)" :disabled="deleteLoading === court.id"
+                                    class="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center active:scale-95 transition-all disabled:opacity-40">
+                                    <span v-if="deleteLoading === court.id" class="w-3 h-3 border-2 border-red-300 border-t-red-500 rounded-full animate-spin block"></span>
+                                    <Trash2 v-else :size="14" class="text-red-400" />
+                                </button>
+                            </div>
+                            <!-- Primary actions -->
+                            <div class="grid grid-cols-3 gap-2 mb-2">
+                                <button @click.stop="openEdit(court)"
+                                    class="flex items-center justify-center gap-1.5 bg-slate-100 text-slate-700 font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
+                                    <Pencil :size="12" />
+                                    Edit
+                                </button>
+                                <RouterLink :to="`/my-venues/${court.id}/plans`"
+                                    class="flex items-center justify-center gap-1.5 bg-primary text-white font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
+                                    <Award :size="12" />
+                                    Plans
+                                </RouterLink>
+                                <button @click.stop="openSubCourtSheet(court)"
+                                    class="flex items-center justify-center gap-1.5 bg-indigo-50 text-indigo-600 font-bold py-2.5 rounded-xl text-xs active:scale-95 transition-all">
+                                    <LayoutGrid :size="12" />
+                                    Services
+                                </button>
+                            </div>
+                            <!-- Secondary actions -->
+                            <div class="grid grid-cols-3 gap-2">
+                                <button @click.stop="openStaffSheet(court)"
+                                    class="flex items-center justify-center gap-1.5 bg-slate-800 text-white font-bold py-2 rounded-xl text-xs active:scale-95 transition-all">
+                                    <Users :size="11" />
+                                    Staff
+                                </button>
+                                <button @click.stop="openPricingSheet(court)"
+                                    class="flex items-center justify-center gap-1.5 bg-amber-50 text-amber-600 font-bold py-2 rounded-xl text-xs active:scale-95 transition-all">
+                                    <Tag :size="11" />
+                                    Pricing
+                                </button>
+                                <button @click.stop="openBlockSheet(court)"
+                                    class="flex items-center justify-center gap-1.5 bg-red-50 text-red-500 font-bold py-2 rounded-xl text-xs active:scale-95 transition-all">
+                                    <Ban :size="11" />
+                                    Block
+                                </button>
                             </div>
                         </div>
                     </div>
