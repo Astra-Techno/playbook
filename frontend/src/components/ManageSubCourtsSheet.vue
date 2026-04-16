@@ -55,7 +55,7 @@ const addSubCourt = async () => {
         adding.value = false
         await fetchSubCourts()
         emit('changed')
-        toast.success('Sub-court added')
+        toast.success('Space added')
     } catch (err) {
         toast.error(err.response?.data?.message || 'Failed to add')
     } finally { saving.value = false }
@@ -88,7 +88,7 @@ const removeSubCourt = async (sc) => {
                             <div class="flex items-center justify-between px-5 pb-4 border-b border-slate-100">
                                 <div>
                                     <p class="text-[10px] font-black text-primary uppercase tracking-wider">{{ court.name }}</p>
-                                    <h3 class="text-base font-extrabold text-slate-900">Sub-Courts</h3>
+                                    <h3 class="text-base font-extrabold text-slate-900">Spaces</h3>
                                 </div>
                                 <button @click="close" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
                                     <X :size="16" class="text-slate-500" />
@@ -100,7 +100,7 @@ const removeSubCourt = async (sc) => {
 
                             <!-- Info banner -->
                             <div class="bg-blue-50 rounded-xl px-4 py-3 text-xs text-blue-700 leading-relaxed">
-                                Sub-courts let players book specific courts (Court A, B, C) independently — no more double-bookings.
+                                Add individual bookable spaces inside this venue — e.g. Court A/B, Lane 1/2, Table 1, Dance Room. Players can pick a specific space when booking.
                             </div>
 
                             <!-- Sub-court list -->
@@ -125,12 +125,12 @@ const removeSubCourt = async (sc) => {
                                     </button>
                                 </div>
                             </div>
-                            <p v-else class="text-center text-slate-400 text-sm py-4">No sub-courts yet</p>
+                            <p v-else class="text-center text-slate-400 text-sm py-4">No spaces added yet</p>
 
                             <!-- Add form -->
                             <div v-if="adding" class="bg-slate-50 rounded-2xl p-4 space-y-3">
-                                <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider">New Sub-Court</p>
-                                <input v-model="newName" type="text" placeholder="Name (e.g. Court A) *"
+                                <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider">New Space</p>
+                                <input v-model="newName" type="text" placeholder="Name (e.g. Court A, Lane 1, Table 2) *"
                                     class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:outline-none bg-white" />
                                 <input v-model="newRate" type="number" placeholder="Hourly rate (leave blank to use venue rate)"
                                     class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:outline-none bg-white" />
@@ -152,7 +152,7 @@ const removeSubCourt = async (sc) => {
                             <button v-else @click="adding = true"
                                 class="w-full py-3 rounded-2xl text-sm font-bold border-2 border-dashed border-slate-200 text-slate-500 flex items-center justify-center gap-2 hover:border-primary hover:text-primary transition-all">
                                 <Plus :size="14" />
-                                Add Sub-Court
+                                Add Space
                             </button>
 
                         </div>
