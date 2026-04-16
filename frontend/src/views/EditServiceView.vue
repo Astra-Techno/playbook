@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
@@ -7,7 +7,7 @@ import { useToastStore } from '../stores/toast'
 import {
     ChevronLeft, Check, Camera, Loader2, LocateFixed,
     Wind, Flag, Target, Activity, CircleDot, Layers3, Dumbbell, Waves, Swords,
-    Sun, Moon, Lock
+    Sun, Moon, Lock, ChevronDown
 } from 'lucide-vue-next'
 
 const route  = useRoute()
@@ -15,12 +15,14 @@ const router = useRouter()
 const auth   = useAuthStore()
 const toast  = useToastStore()
 
-const courtId = parseInt(route.params.id)
-const loading  = ref(true)
+const isCreate   = route.params.id === 'new' || !route.params.id
+const courtId    = isCreate ? null : parseInt(route.params.id)
+const loading    = ref(isCreate ? false : true)
 const saving   = ref(false)
 const geoLoading = ref(false)
 const uploadLoading = ref(false)
 const imagePreview = ref(null)
+const showPeakHours = ref(false)
 
 const form = ref({
     name: '', location: '', type: 'shuttle', hourly_rate: '',
@@ -47,11 +49,15 @@ const sportOptions = [
     { id: 'other',    label: 'Other',      icon: Layers3 },
 ]
 
+const pageTitle = computed(() => isCreate ? 'Add Venue' : 'Edit Venue')
+const saveLabel = computed(() => isCreate ? 'Add Venue' : 'Save Changes')
+
 onMounted(async () => {
+    if (isCreate) return
     try {
         const res = await axios.get('/courts')
         const court = (res.data.records || []).find(c => c.id == courtId)
-        if (!court) { router.replace('/my-services'); return }
+        if (!court) { router.replace('/my-venues'); return }
         Object.assign(form.value, {
             name:               court.name,
             location:           court.location || '',
@@ -130,7 +136,7 @@ const save = async () => {
     try {
         await axios.put(`/courts/${courtId}`, { ...form.value, owner_id: auth.user?.id })
         toast.success('Service updated!')
-        router.replace('/my-services')
+        router.replace('/my-venues')
     } catch { toast.error('Update failed') }
     finally { saving.value = false }
 }
@@ -146,7 +152,7 @@ const save = async () => {
                 class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center active:scale-90 transition-transform shrink-0">
                 <ChevronLeft :size="20" class="text-slate-600" />
             </button>
-            <h1 class="flex-1 font-extrabold text-slate-900 text-base truncate">Edit Service</h1>
+            <h1 class="flex-1 font-extrabold text-slate-900 text-base truncate">{{ pageTitle }}</h1>
             <button @click="save" :disabled="saving || uploadLoading"
                 class="flex items-center gap-1.5 bg-primary text-white font-bold text-sm px-4 py-2 rounded-xl disabled:opacity-50 active:scale-95 transition-all">
                 <Loader2 v-if="saving" :size="14" class="animate-spin" />
@@ -198,18 +204,19 @@ const save = async () => {
             <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm divide-y divide-slate-50">
                 <div class="px-4 py-3">
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">Basic Info</p>
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">Service Name *</label>
-                    <input v-model="form.name" type="text" placeholder="e.g. GS Badminton Academy"
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Venue Name *</label>
+                    <input v-model="form.name" type="text" placeholder="e.g. GS Sports Arena"
                         class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-slate-50" />
                 </div>
                 <div class="px-4 py-3">
                     <label class="block text-xs font-semibold text-slate-500 mb-1">Description</label>
-                    <textarea v-model="form.description" rows="3" placeholder="Describe your court, facilities, etc."
+                    <textarea v-model="form.description" rows="3" placeholder="Describe your venue, facilities, etc."
                         class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 bg-slate-50">
                     </textarea>
                 </div>
                 <div class="px-4 py-3">
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">Rate per Hour (₹) *</label>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1">Base Rate per Hour (₹) *</label>
+                    <p class="text-[11px] text-slate-400 mt-1.5">You can set per-court rates from the Services section</p>
                     <input v-model="form.hourly_rate" type="number" placeholder="500"
                         class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-slate-50" />
                 </div>
@@ -217,7 +224,7 @@ const save = async () => {
 
             <!-- ── Sport Type ── -->
             <div class="bg-white rounded-2xl px-4 py-4 ring-1 ring-slate-100 shadow-sm">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Sport Type</p>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Primary Sport</p>
                 <div class="grid grid-cols-3 gap-2">
                     <button v-for="sport in sportOptions" :key="sport.id"
                         @click="form.type = sport.id"
@@ -266,17 +273,21 @@ const save = async () => {
             </div>
 
             <!-- ── Peak Hours ── -->
-            <div class="bg-white rounded-2xl px-4 py-4 ring-1 ring-slate-100 shadow-sm">
-                <div class="flex items-center justify-between mb-3">
+            <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm overflow-hidden">
+                <button @click="showPeakHours = !showPeakHours"
+                    class="w-full flex items-center justify-between px-4 py-4">
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Peak Hours</p>
-                    <!-- Toggle -->
-                    <label class="relative flex items-center gap-2 cursor-pointer">
-                        <span class="text-xs font-semibold text-slate-500">Members only</span>
-                        <div class="relative">
-                            <input type="checkbox" v-model="form.peak_members_only" class="sr-only peer" />
-                            <div class="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:bg-primary transition-colors"></div>
-                            <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
-                        </div>
+                    <ChevronDown :size="16" class="text-slate-400 transition-transform"
+                        :class="showPeakHours ? 'rotate-180' : ''" />
+                </button>
+
+                <div v-if="showPeakHours" class="px-4 pb-4 space-y-3">
+                <div class="flex items-center justify-between mb-1">
+                    <p class="text-xs text-slate-500">Restrict peak slots to members only</p>
+                    <label class="relative flex items-center cursor-pointer">
+                        <input type="checkbox" v-model="form.peak_members_only" class="sr-only peer" />
+                        <div class="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:bg-primary transition-colors"></div>
+                        <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
                     </label>
                 </div>
 
@@ -326,6 +337,7 @@ const save = async () => {
                     <Lock :size="13" class="text-amber-600 shrink-0" />
                     <p class="text-[11px] text-amber-700 font-medium">Walk-in bookings will be blocked during these windows</p>
                 </div>
+                </div>
             </div>
 
             <!-- ── Amenities ── -->
@@ -349,7 +361,7 @@ const save = async () => {
                 class="w-full bg-primary text-white font-extrabold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all disabled:opacity-50">
                 <Loader2 v-if="saving" :size="18" class="animate-spin" />
                 <Check v-else :size="18" />
-                Save Changes
+                {{ saveLabel }}
             </button>
 
         </div>

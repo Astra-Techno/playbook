@@ -54,22 +54,28 @@ const router = createRouter({
             meta: { title: 'DB Connection Test' }
         },
         {
-            path: '/my-services',
-            name: 'my-services',
+            path: '/my-venues',
+            name: 'my-venues',
             component: () => import('../views/OwnerDashboard.vue'),
-            meta: { requiresAuth: true, title: 'My Services', showGreeting: true },
+            meta: { requiresAuth: true, title: 'My Venues', showGreeting: true },
         },
         {
-            path: '/my-services/:id/plans',
+            path: '/my-venues/new',
+            name: 'add-venue',
+            component: () => import('../views/EditServiceView.vue'),
+            meta: { requiresAuth: true, title: 'Add Venue' },
+        },
+        {
+            path: '/my-venues/:id/plans',
             name: 'manage-plans',
             component: () => import('../views/ManagePlansView.vue'),
             meta: { requiresAuth: true, title: 'Manage Plans' },
         },
         {
-            path: '/my-services/:id/edit',
-            name: 'edit-service',
+            path: '/my-venues/:id/edit',
+            name: 'edit-venue',
             component: () => import('../views/EditServiceView.vue'),
-            meta: { requiresAuth: true, title: 'Edit Service' },
+            meta: { requiresAuth: true, title: 'Edit Venue' },
         },
         {
             path: '/feed/:id',
@@ -126,8 +132,11 @@ const router = createRouter({
             meta: { requiresAdmin: true, title: 'Admin Panel' },
         },
         // legacy redirects
-        { path: '/owner/dashboard', redirect: '/my-services' },
-        { path: '/owner/court/:id/plans', redirect: to => `/my-services/${to.params.id}/plans` },
+        { path: '/my-services', redirect: '/my-venues' },
+        { path: '/my-services/:id/plans', redirect: to => `/my-venues/${to.params.id}/plans` },
+        { path: '/my-services/:id/edit', redirect: to => `/my-venues/${to.params.id}/edit` },
+        { path: '/owner/dashboard', redirect: '/my-venues' },
+        { path: '/owner/court/:id/plans', redirect: to => `/my-venues/${to.params.id}/plans` },
     ],
 })
 

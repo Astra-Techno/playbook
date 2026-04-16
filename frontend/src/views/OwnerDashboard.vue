@@ -14,8 +14,8 @@ import { useToastStore } from '../stores/toast'
 import {
     Plus, X, Check, Clock,
     Wind, Flag, Target, Activity, CircleDot, Layers3, Dumbbell, Waves, Swords,
-    IndianRupee, LocateFixed, Loader2, Sun, Moon, Shield,
-    Camera, Trash2, TrendingUp, CalendarDays, Search, MapPin,
+    IndianRupee, Loader2,
+    Camera, TrendingUp, CalendarDays, Search, MapPin,
     Flame, Map, Globe, Heart, User, Star, LayoutGrid, Wallet, ArrowDownToLine, MessageSquare,
     ChevronLeft, ChevronRight, Users, Ban, Tag, BarChart3, TrendingDown, UserPlus
 } from 'lucide-vue-next'
@@ -30,24 +30,8 @@ const activeNavTab = ref('explore')
 const courts = ref([])
 const bookings = ref([])
 const loading = ref(true)
-const showAddForm = ref(false)
 const searchQuery = ref('')
 
-const AMENITIES_LIST = ['Parking', 'Floodlights', 'Changing Room', 'Shower', 'Equipment Rental', 'Cafeteria', 'WiFi', 'First Aid']
-
-const newCourt = ref({
-    name: '', location: '', type: 'shuttle', hourly_rate: '', description: '',
-    image_url: '',
-    lat: null, lng: null,
-    open_time: '06:00', close_time: '22:00',
-    morning_peak_start: '05:00', morning_peak_end: '09:00',
-    evening_peak_start: '17:00', evening_peak_end: '21:00',
-    peak_members_only: false,
-    amenities: [],
-})
-
-const imagePreview = ref(null)
-const uploadLoading = ref(false)
 
 const handleImageSelect = async (event) => {
     const file = event.target.files[0]
@@ -77,13 +61,6 @@ const clearImage = () => {
     newCourt.value.image_url = ''
 }
 
-// Edit court — navigate to dedicated page
-const editImagePreview = ref(null)   // kept for compat, unused
-const editUploadLoading = ref(false) // kept for compat, unused
-
-const hasPeakHours = computed(() => newCourt.value.type !== 'turf' && newCourt.value.type !== 'cricket')
-const addLoading    = ref(false)
-const geoLoading    = ref(false)
 
 // ── Staff management ──────────────────────────────────────────────────────────
 const staffSheet      = ref({ show: false, court: null })
@@ -153,45 +130,6 @@ const isStaffManager = (court) => {
 const editCourt     = ref(null)   // court being edited (null = closed)
 const editLoading   = ref(false)
 const deleteLoading = ref(null)   // court id being deleted
-
-const geocodeLocation = async (text) => {
-    if (!text.trim()) return null
-    try {
-        const res = await fetch(
-            `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&limit=1`,
-            { headers: { 'Accept-Language': 'en' } }
-        )
-        const data = await res.json()
-        if (data.length > 0) return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
-    } catch {}
-    return null
-}
-
-const detectCourtLocation = () => {
-    if (!navigator.geolocation) { toast.error('Geolocation not supported'); return }
-    geoLoading.value = true
-    navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-            const { latitude, longitude } = pos.coords
-            newCourt.value.lat = latitude
-            newCourt.value.lng = longitude
-            try {
-                const res = await fetch(
-                    `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
-                    { headers: { 'Accept-Language': 'en' } }
-                )
-                const d = await res.json()
-                const suburb = d.address?.suburb || d.address?.neighbourhood || ''
-                const city   = d.address?.city   || d.address?.town || d.address?.village || ''
-                newCourt.value.location = [suburb, city].filter(Boolean).join(', ')
-            } catch {}
-            geoLoading.value = false
-            toast.success('Location pinned!')
-        },
-        () => { geoLoading.value = false; toast.error('Location permission denied') },
-        { timeout: 8000 }
-    )
-}
 
 const sportFilters = [
     { id: 'all',      label: 'All',        icon: LayoutGrid },
@@ -328,42 +266,9 @@ onMounted(() => {
     fetchData()
 })
 
-const addCourt = async () => {
-    if (!newCourt.value.name || !newCourt.value.hourly_rate) {
-        toast.error('Service name and rate are required')
-        return
-    }
-    addLoading.value = true
-    try {
-        if (!newCourt.value.lat && newCourt.value.location) {
-            const coords = await geocodeLocation(newCourt.value.location)
-            if (coords) { newCourt.value.lat = coords.lat; newCourt.value.lng = coords.lng }
-        }
-        await axios.post('/courts', { ...newCourt.value, owner_id: auth.user?.id })
-        toast.success('Service listed successfully!')
-        newCourt.value = {
-            name: '', location: '', type: 'shuttle', hourly_rate: '', description: '',
-            image_url: '', lat: null, lng: null,
-            open_time: '06:00', close_time: '22:00',
-            morning_peak_start: '05:00', morning_peak_end: '09:00',
-            evening_peak_start: '17:00', evening_peak_end: '21:00',
-            peak_members_only: false, amenities: [],
-        }
-        imagePreview.value = null
-        showAddForm.value = false
-        fetchData()
-    } catch {
-        toast.error('Failed to add service. Please try again.')
-    } finally {
-        addLoading.value = false
-    }
-}
-
 const openEdit = (court) => {
-    router.push(`/my-services/${court.id}/edit`)
+    router.push(`/my-venues/${court.id}/edit`)
 }
-
-const saveEdit = async () => {} // unused — handled by EditServiceView
 
 const deleteCourt = async (court) => {
     if (!confirm(`Delete "${court.name}"? This cannot be undone.`)) return
@@ -459,12 +364,12 @@ const handleAvatarUpload = async (event) => {
             <!-- Section header -->
             <div class="flex items-center justify-between pt-4 pb-3">
                 <h3 class="text-slate-900 text-xl font-bold tracking-tight">
-                    {{ activeNavTab === 'bookings' ? 'All Bookings' : activeNavTab === 'reviews' ? 'Reviews' : activeNavTab === 'earnings' ? 'Earnings' : activeNavTab === 'analytics' ? 'Analytics' : activeNavTab === 'profile' ? 'Profile' : 'My Services' }}
+                    {{ activeNavTab === 'bookings' ? 'All Bookings' : activeNavTab === 'reviews' ? 'Reviews' : activeNavTab === 'earnings' ? 'Earnings' : activeNavTab === 'analytics' ? 'Analytics' : activeNavTab === 'profile' ? 'Profile' : 'My Venues' }}
                 </h3>
                 <button v-if="activeNavTab === 'explore'"
-                    @click="showAddForm = true"
+                    @click="router.push('/my-venues/new')"
                     class="text-primary text-sm font-semibold">
-                    + Add Service
+                    + Add Venue
                 </button>
             </div>
 
@@ -486,9 +391,9 @@ const handleAvatarUpload = async (event) => {
                     <div class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
                         <Map :size="32" :stroke-width="2" class="text-slate-300" />
                     </div>
-                    <p class="font-extrabold text-slate-700 text-lg">No services yet</p>
-                    <p class="text-sm text-slate-400 mt-1 mb-6">Services you list will appear here</p>
-                    <button @click="showAddForm = true"
+                    <p class="font-extrabold text-slate-700 text-lg">No venues yet</p>
+                    <p class="text-sm text-slate-400 mt-1 mb-6">Venues you list will appear here</p>
+                    <button @click="router.push('/my-venues/new')"
                         class="bg-primary text-white font-bold py-3 px-8 rounded-xl shadow-fab">
                         Add Service
                     </button>
@@ -566,7 +471,7 @@ const handleAvatarUpload = async (event) => {
                                         <span v-if="deleteLoading === court.id" class="w-3 h-3 border-2 border-red-300 border-t-red-500 rounded-full animate-spin inline-block"></span>
                                         <span v-else>Del</span>
                                     </button>
-                                    <RouterLink :to="`/my-services/${court.id}/plans`"
+                                    <RouterLink :to="`/my-venues/${court.id}/plans`"
                                         class="bg-primary hover:bg-primary-dark text-white font-bold py-2.5 px-4 rounded-xl text-xs transition-colors">
                                         Plans
                                     </RouterLink>
@@ -1052,7 +957,7 @@ const handleAvatarUpload = async (event) => {
             <!-- Centre FAB -->
             <div class="flex flex-col items-center -mt-8">
                 <button
-                    @click="showAddForm = true"
+                    @click="router.push('/my-venues/new')"
                     class="bg-primary text-white size-14 rounded-full shadow-fab flex items-center justify-center border-4 border-white">
                     <Plus :size="28" />
                 </button>
@@ -1072,199 +977,6 @@ const handleAvatarUpload = async (event) => {
                 <span class="text-[10px] font-bold tracking-tight">Profile</span>
             </button>
         </nav>
-
-        <!-- ── ADD COURT MODAL (bottom sheet) ── -->
-        <Transition
-            enter-active-class="transition duration-300 ease-out"
-            enter-from-class="opacity-0"
-            enter-to-class="opacity-100"
-            leave-active-class="transition duration-200 ease-in"
-            leave-from-class="opacity-100"
-            leave-to-class="opacity-0">
-            <div v-if="showAddForm" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end">
-                <div class="bg-white w-full rounded-t-3xl max-h-[92vh] overflow-y-auto">
-                    <!-- Sheet header -->
-                    <div class="sticky top-0 bg-white px-5 py-4 border-b border-slate-100 flex items-center justify-between rounded-t-3xl">
-                        <h2 class="text-base font-bold text-slate-900">Add New Service</h2>
-                        <button @click="showAddForm = false" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                            <X :size="18" class="text-slate-500" />
-                        </button>
-                    </div>
-
-                    <div class="px-5 py-5 space-y-4 pb-10">
-                        <!-- Court Name -->
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Service Name *</label>
-                            <input v-model="newCourt.name" type="text" placeholder="e.g. Champions Badminton Arena"
-                                class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                        </div>
-                        <!-- Location -->
-                        <div>
-                            <div class="flex items-center justify-between mb-2">
-                                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Location</label>
-                                <button @click="detectCourtLocation" :disabled="geoLoading"
-                                    class="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors"
-                                    :class="newCourt.lat ? 'bg-primary-light text-primary' : 'bg-slate-100 text-slate-500 hover:bg-primary-light hover:text-primary'">
-                                    <Loader2 v-if="geoLoading" :size="12" class="animate-spin" />
-                                    <LocateFixed v-else :size="12" />
-                                    {{ newCourt.lat ? 'GPS pinned ✓' : 'Use GPS' }}
-                                </button>
-                            </div>
-                            <input v-model="newCourt.location" type="text" placeholder="e.g. Velachery, Chennai"
-                                class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                            <p v-if="newCourt.lat" class="text-[11px] text-primary mt-1.5 font-medium">
-                                📍 Coordinates saved — players can find this court by proximity
-                            </p>
-                        </div>
-                        <!-- Sport Type -->
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Sport Type</label>
-                            <div class="grid grid-cols-3 gap-2">
-                                <button
-                                    v-for="sport in sportOptions"
-                                    :key="sport.id"
-                                    @click="newCourt.type = sport.id"
-                                    :class="newCourt.type === sport.id
-                                        ? 'border-primary bg-primary-light text-primary'
-                                        : 'border-slate-200 text-slate-600'"
-                                    class="flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 transition-all text-xs font-semibold">
-                                    <component :is="sport.icon" :size="18" />
-                                    {{ sport.label }}
-                                </button>
-                            </div>
-                        </div>
-                        <!-- Rate -->
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Rate per Hour (₹) *</label>
-                            <input v-model="newCourt.hourly_rate" type="number" placeholder="e.g. 300"
-                                class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                        </div>
-                        <!-- Court Photo -->
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Service Photo</label>
-                            <div class="relative rounded-2xl overflow-hidden"
-                                :class="imagePreview ? '' : 'border-2 border-dashed border-slate-200 p-6'">
-                                <img v-if="imagePreview" :src="imagePreview" class="w-full h-40 object-cover rounded-2xl" />
-                                <div v-else class="flex flex-col items-center gap-2 text-slate-400 pointer-events-none">
-                                    <Camera :size="28" class="text-slate-300" />
-                                    <p class="text-sm font-medium text-slate-500">Tap to add a photo</p>
-                                    <p class="text-xs">JPG, PNG, WebP · Max 5 MB</p>
-                                </div>
-                                <input type="file" accept="image/jpeg,image/png,image/webp"
-                                    @change="handleImageSelect"
-                                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                <div v-if="uploadLoading" class="absolute inset-0 bg-white/80 flex items-center justify-center rounded-2xl">
-                                    <Loader2 :size="24" class="animate-spin text-primary" />
-                                </div>
-                                <button v-if="imagePreview && !uploadLoading"
-                                    @click.stop="clearImage" type="button"
-                                    class="absolute top-2 right-2 w-7 h-7 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/70 transition-colors">
-                                    <Trash2 :size="13" class="text-white" />
-                                </button>
-                            </div>
-                        </div>
-                        <!-- Description -->
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Description</label>
-                            <textarea v-model="newCourt.description" rows="2" placeholder="Amenities, rules, notes..."
-                                class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
-                        </div>
-                        <!-- Operating Hours -->
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Operating Hours</label>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <p class="text-[11px] text-slate-400 mb-1">Opens</p>
-                                    <input v-model="newCourt.open_time" type="time"
-                                        class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                                </div>
-                                <div>
-                                    <p class="text-[11px] text-slate-400 mb-1">Closes</p>
-                                    <input v-model="newCourt.close_time" type="time"
-                                        class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Peak Hours -->
-                        <div v-if="hasPeakHours" class="bg-amber-50 border border-amber-100 rounded-2xl p-4 space-y-3">
-                            <div class="flex items-center gap-2">
-                                <div class="w-7 h-7 bg-amber-100 rounded-lg flex items-center justify-center">
-                                    <Shield :size="14" class="text-amber-600" />
-                                </div>
-                                <div>
-                                    <p class="text-sm font-bold text-slate-800">Peak Hour Settings</p>
-                                    <p class="text-[11px] text-slate-500">Set member-only access windows</p>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="flex items-center gap-1.5 mb-2">
-                                    <Sun :size="13" class="text-amber-500" />
-                                    <span class="text-xs font-semibold text-slate-600">Morning Peak</span>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <input v-model="newCourt.morning_peak_start" type="time"
-                                        class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                                    <input v-model="newCourt.morning_peak_end" type="time"
-                                        class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                                </div>
-                            </div>
-                            <div>
-                                <div class="flex items-center gap-1.5 mb-2">
-                                    <Moon :size="13" class="text-indigo-500" />
-                                    <span class="text-xs font-semibold text-slate-600">Evening Peak</span>
-                                </div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <input v-model="newCourt.evening_peak_start" type="time"
-                                        class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                                    <input v-model="newCourt.evening_peak_end" type="time"
-                                        class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                                </div>
-                            </div>
-                            <!-- Members-only toggle -->
-                            <label class="flex items-center justify-between cursor-pointer py-1">
-                                <div>
-                                    <p class="text-sm font-semibold text-slate-800">Peak hours: members only</p>
-                                    <p class="text-[11px] text-slate-500">Block walk-in bookings during peak windows</p>
-                                </div>
-                                <div class="relative ml-3">
-                                    <input type="checkbox" v-model="newCourt.peak_members_only" class="sr-only peer" />
-                                    <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-primary transition-colors"></div>
-                                    <div class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
-                                </div>
-                            </label>
-                        </div>
-
-                        <!-- Amenities -->
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Amenities</label>
-                            <div class="flex flex-wrap gap-2">
-                                <button v-for="tag in AMENITIES_LIST" :key="tag"
-                                    type="button"
-                                    @click="newCourt.amenities.includes(tag) ? newCourt.amenities.splice(newCourt.amenities.indexOf(tag),1) : newCourt.amenities.push(tag)"
-                                    class="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
-                                    :class="newCourt.amenities.includes(tag) ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'">
-                                    {{ tag }}
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Submit Button -->
-                        <button
-                            @click="addCourt"
-                            :disabled="addLoading"
-                            class="w-full bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-xl transition-colors flex items-center justify-center gap-2 shadow-fab">
-                            <span v-if="addLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                            <template v-else>
-                                <Check :size="17" />
-                                List Service
-                            </template>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </Transition>
-
-        <!-- Edit now navigates to /my-services/:id/edit (EditServiceView) -->
 
         <!-- Owner Chat Sheet -->
         <ChatSheet

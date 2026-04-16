@@ -119,10 +119,10 @@ const menuGroups = computed(() => [
         group: 'Activity',
         items: [
             { label: 'My Bookings',    icon: CalendarDays, action: () => router.push('/bookings') },
-            { label: 'My Services',    icon: LayoutGrid,   action: () => router.push('/my-services') },
+            { label: 'My Venues',      icon: LayoutGrid,   action: () => router.push('/my-venues') },
             ...(isOwner.value ? [
-                { label: 'Earnings', icon: Wallet, action: () => router.push('/my-services?tab=earnings') },
-                { label: 'Reviews',  icon: Star,   action: () => router.push('/my-services?tab=reviews') },
+                { label: 'Earnings', icon: Wallet, action: () => router.push('/my-venues?tab=earnings') },
+                { label: 'Reviews',  icon: Star,   action: () => router.push('/my-venues?tab=reviews') },
             ] : []),
             { label: 'My Memberships', icon: Award, action: () => router.push('/subscriptions') },
         ],
