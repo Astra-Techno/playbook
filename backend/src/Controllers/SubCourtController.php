@@ -29,6 +29,7 @@ class SubCourtController
         try { $this->db->exec("ALTER TABLE bookings ADD COLUMN guest_name VARCHAR(100) DEFAULT NULL"); } catch (Exception $e) {}
         try { $this->db->exec("ALTER TABLE bookings ADD COLUMN guest_phone VARCHAR(20) DEFAULT NULL"); } catch (Exception $e) {}
         try { $this->db->exec("ALTER TABLE bookings ADD COLUMN notes TEXT DEFAULT NULL"); } catch (Exception $e) {}
+        try { $this->db->exec("ALTER TABLE sub_courts ADD COLUMN image_url VARCHAR(500) DEFAULT NULL"); } catch (Exception $e) {}
     }
 
     // GET /sub-courts?court_id=X
@@ -55,11 +56,12 @@ class SubCourtController
         $chk->execute([$court_id, $owner_id]);
         if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
 
-        $ins = $this->db->prepare("INSERT INTO sub_courts (court_id, name, description, hourly_rate) VALUES (?,?,?,?)");
+        $ins = $this->db->prepare("INSERT INTO sub_courts (court_id, name, description, hourly_rate, image_url) VALUES (?,?,?,?,?)");
         $ins->execute([
             $court_id, $name,
             trim($data->description ?? '') ?: null,
             isset($data->hourly_rate) && $data->hourly_rate !== '' ? (float)$data->hourly_rate : null,
+            trim($data->image_url ?? '') ?: null,
         ]);
         $newId = (int)$this->db->lastInsertId();
         $row   = $this->db->prepare("SELECT * FROM sub_courts WHERE id=?");
@@ -81,6 +83,7 @@ class SubCourtController
         if (isset($data->name))        { $fields[] = 'name=?';        $vals[] = trim($data->name); }
         if (isset($data->description)) { $fields[] = 'description=?'; $vals[] = trim($data->description) ?: null; }
         if (isset($data->hourly_rate)) { $fields[] = 'hourly_rate=?'; $vals[] = $data->hourly_rate !== '' ? (float)$data->hourly_rate : null; }
+        if (isset($data->image_url))   { $fields[] = 'image_url=?';   $vals[] = trim($data->image_url) ?: null; }
         if ($fields) { $vals[] = $id; $this->db->prepare("UPDATE sub_courts SET ".implode(',',$fields)." WHERE id=?")->execute($vals); }
         echo json_encode(['message' => 'Updated']);
     }

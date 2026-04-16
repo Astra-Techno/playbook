@@ -98,10 +98,12 @@ const formatBlockTime = (b) => {
 </script>
 
 <template>
+    <Teleport to="#header-subject">{{ courtName || 'Block Slots' }}</Teleport>
+    <Teleport to="#header-subtitle">Block Slots</Teleport>
+
     <div class="min-h-screen bg-slate-50">
         <!-- Header -->
         <div class="bg-white px-5 pt-5 pb-5 border-b border-slate-100">
-            <p v-if="courtName" class="text-[10px] font-black text-primary uppercase tracking-wider mb-0.5">{{ courtName }}</p>
             <h1 class="text-lg font-bold text-slate-900">Block Slots</h1>
             <p class="text-xs text-slate-500">Mark time slots as unavailable</p>
         </div>

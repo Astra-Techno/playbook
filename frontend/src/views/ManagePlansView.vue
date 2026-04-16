@@ -11,7 +11,8 @@ import {
 const route = useRoute()
 const toast = useToastStore()
 
-const courtId = route.params.id
+const courtId   = route.params.id
+const courtName = ref('')
 const plans = ref([])
 const loading = ref(true)
 const addLoading = ref(false)
@@ -57,7 +58,10 @@ const fetchPlans = async () => {
     }
 }
 
-onMounted(fetchPlans)
+onMounted(async () => {
+    fetchPlans()
+    try { const r = await axios.get(`/courts/${courtId}`); courtName.value = r.data.court?.name ?? '' } catch {}
+})
 
 const deletingId = ref(null)
 
@@ -97,6 +101,9 @@ const addPlan = async () => {
 </script>
 
 <template>
+    <Teleport to="#header-subject">{{ courtName || 'Plans' }}</Teleport>
+    <Teleport to="#header-subtitle">Membership Plans</Teleport>
+
     <div class="min-h-screen bg-slate-50">
 
         <!-- Header -->

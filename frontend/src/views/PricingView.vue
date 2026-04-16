@@ -97,10 +97,12 @@ const hourLabel    = (h)  => HOURS[h]?.label ?? h
 </script>
 
 <template>
+    <Teleport to="#header-subject">{{ courtName || 'Pricing' }}</Teleport>
+    <Teleport to="#header-subtitle">Dynamic Pricing</Teleport>
+
     <div class="min-h-screen bg-slate-50">
         <!-- Header -->
         <div class="bg-white px-5 pt-5 pb-5 border-b border-slate-100">
-            <p v-if="courtName" class="text-[10px] font-black text-primary uppercase tracking-wider mb-0.5">{{ courtName }}</p>
             <h1 class="text-lg font-bold text-slate-900">Dynamic Pricing</h1>
             <p class="text-xs text-slate-500">Set time-based pricing rules for this venue</p>
         </div>
