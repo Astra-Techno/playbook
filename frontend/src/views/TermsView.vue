@@ -1,6 +1,6 @@
 <script setup>
 import { useRouter } from 'vue-router'
-import { ChevronLeft } from 'lucide-vue-next'
+import { ArrowLeft } from 'lucide-vue-next'
 const router = useRouter()
 </script>
 
@@ -8,10 +8,10 @@ const router = useRouter()
     <div class="min-h-screen bg-white">
 
         <!-- Header -->
-        <div class="sticky top-0 z-10 bg-white border-b border-slate-100 px-5 pt-12 pb-4 flex items-center gap-3">
+        <div class="sticky top-0 z-10 bg-white border-b border-slate-100 px-5 pt-5 pb-4 flex items-center gap-3">
             <button @click="router.back()"
                 class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                <ChevronLeft :size="20" :stroke-width="2.5" class="text-slate-600" />
+                <ArrowLeft :size="20" :stroke-width="2.5" class="text-slate-600" />
             </button>
             <div>
                 <h1 class="text-lg font-bold text-slate-900">Terms & Conditions</h1>

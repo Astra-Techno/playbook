@@ -84,6 +84,30 @@ const router = createRouter({
             meta: { requiresAuth: true, title: 'Edit Venue' },
         },
         {
+            path: '/my-venues/:id/spaces',
+            name: 'venue-spaces',
+            component: () => import('../views/SpacesView.vue'),
+            meta: { requiresAuth: true, title: 'Spaces' },
+        },
+        {
+            path: '/my-venues/:id/staff',
+            name: 'venue-staff',
+            component: () => import('../views/StaffView.vue'),
+            meta: { requiresAuth: true, title: 'Staff' },
+        },
+        {
+            path: '/my-venues/:id/pricing',
+            name: 'venue-pricing',
+            component: () => import('../views/PricingView.vue'),
+            meta: { requiresAuth: true, title: 'Pricing' },
+        },
+        {
+            path: '/my-venues/:id/block',
+            name: 'venue-block',
+            component: () => import('../views/BlockSlotsView.vue'),
+            meta: { requiresAuth: true, title: 'Block Slots' },
+        },
+        {
             path: '/feed/:id',
             name: 'post-detail',
             component: () => import('../views/PostDetailView.vue'),

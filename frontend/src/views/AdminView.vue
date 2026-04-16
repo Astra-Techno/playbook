@@ -4,7 +4,7 @@ import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import {
-    MapPin, Users, Star, ChevronDown, ChevronUp, ChevronRight, ChevronLeft,
+    MapPin, Users, Star, ChevronDown, ChevronUp, ChevronRight, ArrowLeft,
     Phone, Globe, CheckCircle2, Loader2, TrendingUp,
     Building2, Filter, X, ShieldCheck, UserCheck, BarChart2,
     ClipboardCheck, Clock, XCircle, FileImage
@@ -323,7 +323,7 @@ onMounted(() => { fetchDemand(); fetchClaims() }) // pre-load for stats + claim 
                 style="box-shadow:0 1px 6px rgba(0,0,0,0.06)">
                 <button @click="section = 'home'"
                     class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center active:scale-90 transition-transform shrink-0">
-                    <ChevronLeft :size="20" class="text-slate-600" />
+                    <ArrowLeft :size="20" class="text-slate-600" />
                 </button>
                 <h1 class="flex-1 font-extrabold text-slate-900 text-base">
                     {{ section === 'demand' ? 'Demand Signals' : section === 'users' ? 'Users' : section === 'claims' ? 'Claim Reviews' : 'Court Verification' }}

@@ -5,26 +5,16 @@ import axios from 'axios'
 import { useToastStore } from '../stores/toast'
 import {
     Pencil, Award, LayoutGrid, Users, Tag, Ban, Trash2,
-    MapPin, ChevronRight, Star, Flame, Loader2, X,
-    BarChart3, CalendarDays
+    MapPin, ChevronRight, Star, Flame, Loader2, X
 } from 'lucide-vue-next'
-import ManageStaffSheet from '../components/ManageStaffSheet.vue'
-import SlotBlockSheet from '../components/SlotBlockSheet.vue'
-import ManageSubCourtsSheet from '../components/ManageSubCourtsSheet.vue'
-import ManagePricingSheet from '../components/ManagePricingSheet.vue'
 
 const route  = useRoute()
 const router = useRouter()
 const toast  = useToastStore()
 
-const court        = ref(null)
-const loading      = ref(true)
+const court         = ref(null)
+const loading       = ref(true)
 const deleteLoading = ref(false)
-
-const showStaff    = ref(false)
-const showBlock    = ref(false)
-const showSpaces   = ref(false)
-const showPricing  = ref(false)
 
 onMounted(async () => {
     try {
@@ -56,17 +46,17 @@ const menuGroups = computed(() => [
     {
         group: 'Manage',
         items: [
-            { label: 'Edit Venue', desc: 'Update name, location, rate & amenities', icon: Pencil, action: () => router.push(`/my-venues/${court.value.id}/edit`) },
-            { label: 'Membership Plans', desc: 'Create & manage subscription plans', icon: Award, action: () => router.push(`/my-venues/${court.value.id}/plans`) },
-            { label: 'Spaces', desc: 'Manage courts, lanes, tables, rooms', icon: LayoutGrid, action: () => { showSpaces.value = true } },
+            { label: 'Edit Venue',        desc: 'Update name, location, rate & amenities', icon: Pencil,     to: `/my-venues/${route.params.id}/edit` },
+            { label: 'Membership Plans',  desc: 'Create & manage subscription plans',       icon: Award,      to: `/my-venues/${route.params.id}/plans` },
+            { label: 'Spaces',            desc: 'Manage courts, lanes, tables, rooms',      icon: LayoutGrid, to: `/my-venues/${route.params.id}/spaces` },
         ]
     },
     {
         group: 'Operations',
         items: [
-            { label: 'Staff', desc: 'Manage staff and permissions', icon: Users, action: () => { showStaff.value = true } },
-            { label: 'Pricing', desc: 'Peak hour rates and special pricing', icon: Tag, action: () => { showPricing.value = true } },
-            { label: 'Block Slots', desc: 'Mark time slots as unavailable', icon: Ban, action: () => { showBlock.value = true } },
+            { label: 'Staff',             desc: 'Manage staff and permissions',             icon: Users,      to: `/my-venues/${route.params.id}/staff` },
+            { label: 'Pricing',           desc: 'Peak hour rates and special pricing',      icon: Tag,        to: `/my-venues/${route.params.id}/pricing` },
+            { label: 'Block Slots',       desc: 'Mark time slots as unavailable',           icon: Ban,        to: `/my-venues/${route.params.id}/block` },
         ]
     }
 ])
@@ -89,12 +79,10 @@ const menuGroups = computed(() => [
                 <div v-else class="w-full h-full flex items-center justify-center bg-slate-100">
                     <LayoutGrid :size="56" :stroke-width="1.5" class="text-slate-300" />
                 </div>
-                <!-- Back button -->
                 <button @click="router.back()"
                     class="absolute top-5 left-4 w-9 h-9 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-sm">
                     <ChevronRight :size="18" class="text-slate-700 rotate-180" />
                 </button>
-                <!-- Popular badge -->
                 <div class="absolute bottom-3 left-4 bg-primary text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-lg shadow-primary/30 tracking-wider">
                     <Flame :size="10" :stroke-width="3" />
                     POPULAR
@@ -103,7 +91,6 @@ const menuGroups = computed(() => [
 
             <!-- Venue info card -->
             <div class="mx-4 -mt-4 relative z-10 bg-white rounded-2xl p-4 shadow-sm ring-1 ring-slate-100 mb-5">
-                <!-- Claim status -->
                 <div v-if="court.claim_status === 'pending'" class="mb-3 flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
                     <Loader2 :size="12" class="text-amber-500 animate-spin shrink-0" />
                     <p class="text-xs font-bold text-amber-700">Pending admin verification · not visible to players yet</p>
@@ -144,7 +131,7 @@ const menuGroups = computed(() => [
                         <button
                             v-for="item in group.items"
                             :key="item.label"
-                            @click="item.action"
+                            @click="router.push(item.to)"
                             class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 active:bg-slate-100 transition-colors">
                             <div class="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center shrink-0">
                                 <component :is="item.icon" :size="17" class="text-slate-600" />
@@ -171,11 +158,5 @@ const menuGroups = computed(() => [
                 </div>
             </div>
         </template>
-
-        <!-- Sheets -->
-        <ManageStaffSheet   v-model="showStaff"   :court="court" />
-        <ManageSubCourtsSheet v-model="showSpaces" :court="court" />
-        <ManagePricingSheet v-model="showPricing"  :court="court" />
-        <SlotBlockSheet     v-model="showBlock"    :court="court" />
     </div>
 </template>

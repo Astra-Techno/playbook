@@ -5,7 +5,7 @@ import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import {
-    ChevronLeft, Check, Camera, Loader2, LocateFixed,
+    ArrowLeft, Check, Camera, Loader2, LocateFixed,
     Wind, Flag, Target, Activity, CircleDot, Layers3, Dumbbell, Waves, Swords,
     Sun, Moon, Lock, ChevronDown
 } from 'lucide-vue-next'
@@ -150,7 +150,7 @@ const save = async () => {
             style="box-shadow: 0 1px 6px rgba(0,0,0,0.06)">
             <button @click="router.back()"
                 class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center active:scale-90 transition-transform shrink-0">
-                <ChevronLeft :size="20" class="text-slate-600" />
+                <ArrowLeft :size="20" class="text-slate-600" />
             </button>
             <h1 class="flex-1 font-extrabold text-slate-900 text-base truncate">{{ pageTitle }}</h1>
             <button @click="save" :disabled="saving || uploadLoading"

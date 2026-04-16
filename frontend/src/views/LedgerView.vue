@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
-import { ChevronLeft, TrendingUp, TrendingDown, Wallet, IndianRupee, ArrowDownToLine, CalendarDays, Filter } from 'lucide-vue-next'
+import { ArrowLeft, TrendingUp, TrendingDown, Wallet, IndianRupee, ArrowDownToLine, CalendarDays, Filter } from 'lucide-vue-next'
 
 const router = useRouter()
 const auth   = useAuthStore()
@@ -71,11 +71,11 @@ const hasDateFilter = computed(() => fromDate.value || toDate.value)
     <div class="min-h-screen bg-slate-50 pb-20">
 
         <!-- Header -->
-        <div class="bg-white px-5 pt-12 pb-4 border-b border-slate-100 sticky top-0 z-10">
+        <div class="bg-white px-5 pt-5 pb-4 border-b border-slate-100 sticky top-0 z-10">
             <div class="flex items-center gap-3 mb-3">
                 <button @click="router.back()"
                     class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                    <ChevronLeft :size="20" :stroke-width="2.5" class="text-slate-600" />
+                    <ArrowLeft :size="20" :stroke-width="2.5" class="text-slate-600" />
                 </button>
                 <div class="flex-1">
                     <h1 class="text-lg font-bold text-slate-900">Ledger</h1>
