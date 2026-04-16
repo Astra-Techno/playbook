@@ -458,6 +458,53 @@ if (isset($seg[0]) && $seg[0] === 'service-requests' && $_SERVER['REQUEST_METHOD
     exit();
 }
 
+// Blocked Slots Routes
+if (isset($seg[0]) && $seg[0] === 'blocked-slots') {
+    require_once __DIR__ . '/src/Controllers/BlockController.php';
+    $bc2 = new BlockController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET')                      { $bc2->index();              exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST')                     { $bc2->create();             exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { $bc2->delete((int)$seg[1]); exit(); }
+}
+
+// Sub-Courts Routes
+if (isset($seg[0]) && $seg[0] === 'sub-courts') {
+    require_once __DIR__ . '/src/Controllers/SubCourtController.php';
+    $scc = new SubCourtController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET')                      { $scc->index();              exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST')                     { $scc->create();             exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT'    && isset($seg[1])) { $scc->update((int)$seg[1]); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { $scc->delete((int)$seg[1]); exit(); }
+}
+
+// Pricing Rules Routes
+if (isset($seg[0]) && $seg[0] === 'pricing-rules') {
+    require_once __DIR__ . '/src/Controllers/PricingController.php';
+    $prc = new PricingController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'calculate') { $prc->calculate(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET')                      { $prc->index();              exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST')                     { $prc->create();             exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { $prc->delete((int)$seg[1]); exit(); }
+}
+
+// Match Requests Routes
+if (isset($seg[0]) && $seg[0] === 'match-requests') {
+    require_once __DIR__ . '/src/Controllers/MatchController.php';
+    $mrc = new MatchController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET')                                                               { $mrc->index();             exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($seg[1]))                                           { $mrc->create();            exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST'   && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'join')  { $mrc->join((int)$seg[1]);  exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'leave') { $mrc->leave((int)$seg[1]); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1]))                                          { $mrc->cancel((int)$seg[1]);exit(); }
+}
+
+// Analytics Routes
+if (isset($seg[0]) && $seg[0] === 'analytics') {
+    require_once __DIR__ . '/src/Controllers/AnalyticsController.php';
+    $anc = new AnalyticsController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') { $anc->index(); exit(); }
+}
+
 // Court Staff Routes
 if (isset($seg[0]) && $seg[0] === 'court-staff') {
     require_once __DIR__ . '/src/Controllers/StaffController.php';

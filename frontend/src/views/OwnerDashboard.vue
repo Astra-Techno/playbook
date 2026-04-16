@@ -5,6 +5,10 @@ import { useRouter, useRoute } from 'vue-router'
 import KoLogo from '@/components/KoLogo.vue'
 import ChatSheet from '../components/ChatSheet.vue'
 import ManageStaffSheet from '../components/ManageStaffSheet.vue'
+import SlotBlockSheet from '../components/SlotBlockSheet.vue'
+import WalkInSheet from '../components/WalkInSheet.vue'
+import ManageSubCourtsSheet from '../components/ManageSubCourtsSheet.vue'
+import ManagePricingSheet from '../components/ManagePricingSheet.vue'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import {
@@ -13,7 +17,7 @@ import {
     IndianRupee, LocateFixed, Loader2, Sun, Moon, Shield,
     Camera, Trash2, TrendingUp, CalendarDays, Search, MapPin,
     Flame, Map, Globe, Heart, User, Star, LayoutGrid, Wallet, ArrowDownToLine, MessageSquare,
-    ChevronLeft, ChevronRight, Users
+    ChevronLeft, ChevronRight, Users, Ban, Tag, BarChart3, TrendingDown, UserPlus
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -101,6 +105,45 @@ const fetchStaffData = async () => {
 }
 
 const openStaffSheet = (court) => { staffSheet.value = { show: true, court } }
+
+// ── Slot blocking ──────────────────────────────────────────────────────────────
+const blockSheet   = ref({ show: false, court: null })
+const openBlockSheet = (court) => { blockSheet.value = { show: true, court } }
+
+// ── Walk-in booking ────────────────────────────────────────────────────────────
+const walkInSheet = ref({ show: false, court: null, subCourts: [] })
+const subCourtsByCourtId = ref({})
+
+const openWalkIn = async (court) => {
+    if (!subCourtsByCourtId.value[court.id]) {
+        try {
+            const res = await axios.get(`/sub-courts?court_id=${court.id}`)
+            subCourtsByCourtId.value[court.id] = res.data.sub_courts || []
+        } catch { subCourtsByCourtId.value[court.id] = [] }
+    }
+    walkInSheet.value = { show: true, court, subCourts: subCourtsByCourtId.value[court.id] }
+}
+
+// ── Sub-courts management ──────────────────────────────────────────────────────
+const subCourtSheet = ref({ show: false, court: null })
+const openSubCourtSheet = (court) => { subCourtSheet.value = { show: true, court } }
+
+// ── Pricing rules management ───────────────────────────────────────────────────
+const pricingSheet = ref({ show: false, court: null })
+const openPricingSheet = (court) => { pricingSheet.value = { show: true, court } }
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+const analytics     = ref(null)
+const analyticsLoading = ref(false)
+
+const fetchAnalytics = async () => {
+    analyticsLoading.value = true
+    try {
+        const res = await axios.get(`/analytics?owner_id=${auth.user?.id}&period=30`)
+        analytics.value = res.data
+    } catch { analytics.value = null }
+    finally { analyticsLoading.value = false }
+}
 
 const hasStaffAccess = computed(() => staffCourts.value.length > 0)
 const isStaffManager = (court) => {
@@ -279,8 +322,9 @@ onMounted(() => {
     }
     // Support ?tab=earnings or ?tab=reviews deep-link from Profile page
     const tab = route.query.tab
-    if (tab === 'earnings') { activeNavTab.value = 'earnings'; fetchEarnings() }
-    else if (tab === 'reviews') { activeNavTab.value = 'reviews'; fetchOwnerReviews() }
+    if (tab === 'earnings')   { activeNavTab.value = 'earnings';   fetchEarnings() }
+    else if (tab === 'reviews')   { activeNavTab.value = 'reviews';   fetchOwnerReviews() }
+    else if (tab === 'analytics') { activeNavTab.value = 'analytics'; fetchAnalytics() }
     fetchData()
 })
 
@@ -415,7 +459,7 @@ const handleAvatarUpload = async (event) => {
             <!-- Section header -->
             <div class="flex items-center justify-between pt-4 pb-3">
                 <h3 class="text-slate-900 text-xl font-bold tracking-tight">
-                    {{ activeNavTab === 'bookings' ? 'All Bookings' : activeNavTab === 'reviews' ? 'Reviews' : activeNavTab === 'earnings' ? 'Earnings' : activeNavTab === 'profile' ? 'Profile' : 'My Services' }}
+                    {{ activeNavTab === 'bookings' ? 'All Bookings' : activeNavTab === 'reviews' ? 'Reviews' : activeNavTab === 'earnings' ? 'Earnings' : activeNavTab === 'analytics' ? 'Analytics' : activeNavTab === 'profile' ? 'Profile' : 'My Services' }}
                 </h3>
                 <button v-if="activeNavTab === 'explore'"
                     @click="showAddForm = true"
@@ -521,6 +565,21 @@ const handleAvatarUpload = async (event) => {
                                         <Users :size="12" />
                                         Staff
                                     </button>
+                                    <button @click.stop="openBlockSheet(court)"
+                                        class="flex items-center gap-1.5 bg-red-50 text-red-500 font-bold py-2.5 px-3 rounded-xl text-xs hover:bg-red-100 transition-colors">
+                                        <Ban :size="12" />
+                                        Block
+                                    </button>
+                                    <button @click.stop="openSubCourtSheet(court)"
+                                        class="flex items-center gap-1.5 bg-indigo-50 text-indigo-600 font-bold py-2.5 px-3 rounded-xl text-xs hover:bg-indigo-100 transition-colors">
+                                        <LayoutGrid :size="12" />
+                                        Courts
+                                    </button>
+                                    <button @click.stop="openPricingSheet(court)"
+                                        class="flex items-center gap-1.5 bg-amber-50 text-amber-600 font-bold py-2.5 px-3 rounded-xl text-xs hover:bg-amber-100 transition-colors">
+                                        <Tag :size="12" />
+                                        Pricing
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -598,6 +657,19 @@ const handleAvatarUpload = async (event) => {
                                     {{ court.role }}
                                 </span>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Walk-in booking for managed courts -->
+                    <div v-if="staffCourts.some(c => c.role === 'manager')" class="mb-5">
+                        <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3 px-1">Quick Actions</p>
+                        <div class="flex gap-2 flex-wrap">
+                            <button v-for="sc in staffCourts.filter(c => c.role === 'manager')" :key="'wi-'+sc.id"
+                                @click="openWalkIn(sc)"
+                                class="flex items-center gap-1.5 bg-primary text-white font-bold py-2.5 px-4 rounded-xl text-xs">
+                                <UserPlus :size="12" />
+                                Walk-in · {{ sc.name }}
+                            </button>
                         </div>
                     </div>
 
@@ -786,6 +858,118 @@ const handleAvatarUpload = async (event) => {
                 </div>
             </template>
 
+            <!-- ANALYTICS TAB -->
+            <template v-else-if="activeNavTab === 'analytics'">
+                <div v-if="analyticsLoading" class="space-y-3">
+                    <div v-for="i in 4" :key="i" class="bg-white rounded-xl p-4 animate-pulse ring-1 ring-slate-100">
+                        <div class="h-4 bg-slate-200 rounded w-1/2 mb-2"></div>
+                        <div class="h-6 bg-slate-200 rounded w-1/3"></div>
+                    </div>
+                </div>
+                <template v-else-if="analytics">
+                    <!-- Summary cards -->
+                    <div class="grid grid-cols-2 gap-3 mb-5">
+                        <div class="col-span-2 bg-gradient-to-r from-primary to-blue-600 rounded-2xl p-4 text-white">
+                            <p class="text-xs font-semibold opacity-80 mb-1">Total Revenue (30 days)</p>
+                            <p class="text-3xl font-extrabold">₹{{ Number(analytics.summary?.total_revenue || 0).toLocaleString('en-IN') }}</p>
+                            <p class="text-xs opacity-70 mt-1">{{ analytics.summary?.total_bookings || 0 }} bookings · {{ analytics.summary?.unique_players || 0 }} players</p>
+                        </div>
+                        <div class="bg-white rounded-2xl p-4 ring-1 ring-slate-100">
+                            <p class="text-[11px] font-semibold text-slate-400 mb-1">Avg Booking</p>
+                            <p class="text-xl font-bold text-slate-800">₹{{ Number(analytics.summary?.avg_booking_value || 0).toFixed(0) }}</p>
+                        </div>
+                        <div class="bg-white rounded-2xl p-4 ring-1 ring-slate-100">
+                            <p class="text-[11px] font-semibold text-slate-400 mb-1">Cancel Rate</p>
+                            <p class="text-xl font-bold" :class="analytics.cancel_rate > 20 ? 'text-red-500' : 'text-emerald-600'">
+                                {{ analytics.cancel_rate }}%
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Revenue by day chart (simple bar) -->
+                    <div v-if="analytics.revenue_by_day?.length" class="bg-white rounded-2xl p-4 ring-1 ring-slate-100 mb-4">
+                        <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3">Revenue – Last 30 Days</p>
+                        <div class="flex items-end gap-1 h-20">
+                            <div v-for="day in analytics.revenue_by_day.slice(-20)" :key="day.day"
+                                class="flex-1 bg-primary/20 rounded-t hover:bg-primary/40 transition-colors relative group"
+                                :style="`height: ${Math.max(4, (day.revenue / Math.max(...analytics.revenue_by_day.map(d=>d.revenue))) * 80)}px`">
+                                <div class="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                    ₹{{ Number(day.revenue).toLocaleString('en-IN') }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top courts -->
+                    <div v-if="analytics.top_courts?.length" class="bg-white rounded-2xl p-4 ring-1 ring-slate-100 mb-4">
+                        <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3">Top Courts</p>
+                        <div class="space-y-2">
+                            <div v-for="(court, i) in analytics.top_courts" :key="court.id"
+                                class="flex items-center gap-3">
+                                <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black shrink-0"
+                                    :class="i === 0 ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'">
+                                    {{ i + 1 }}
+                                </span>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-bold text-slate-800 truncate">{{ court.name }}</p>
+                                    <p class="text-[11px] text-slate-400">{{ court.booking_count }} bookings</p>
+                                </div>
+                                <p class="text-sm font-extrabold text-primary shrink-0">₹{{ Number(court.revenue).toLocaleString('en-IN') }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Peak hours -->
+                    <div v-if="analytics.peak_hours?.length" class="bg-white rounded-2xl p-4 ring-1 ring-slate-100 mb-4">
+                        <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3">Busiest Hours</p>
+                        <div class="space-y-2">
+                            <div v-for="ph in analytics.peak_hours" :key="ph.hour" class="flex items-center gap-3">
+                                <span class="text-xs font-bold text-slate-500 w-16 shrink-0">
+                                    {{ ph.hour > 12 ? ph.hour - 12 : ph.hour }}:00 {{ ph.hour >= 12 ? 'PM' : 'AM' }}
+                                </span>
+                                <div class="flex-1 bg-slate-100 rounded-full h-2">
+                                    <div class="bg-primary h-2 rounded-full transition-all"
+                                        :style="`width: ${(ph.count / analytics.peak_hours[0].count) * 100}%`"></div>
+                                </div>
+                                <span class="text-xs font-bold text-slate-600 shrink-0 w-8 text-right">{{ ph.count }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Heatmap (day × hour) -->
+                    <div v-if="analytics.heatmap && Object.keys(analytics.heatmap).length" class="bg-white rounded-2xl p-4 ring-1 ring-slate-100">
+                        <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3">Occupancy Heatmap</p>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-[9px]">
+                                <thead>
+                                    <tr>
+                                        <th class="w-8 text-slate-300"></th>
+                                        <th v-for="h in [6,8,10,12,14,16,18,20,22]" :key="h" class="text-slate-400 font-medium pb-1 text-center">
+                                            {{ h > 12 ? h - 12 : h }}{{ h >= 12 ? 'p' : 'a' }}
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="(dayLabel, dow) in ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']" :key="dow">
+                                        <td class="text-[9px] text-slate-400 font-bold pr-1">{{ dayLabel }}</td>
+                                        <td v-for="h in [6,8,10,12,14,16,18,20,22]" :key="h" class="p-0.5">
+                                            <div class="w-5 h-5 rounded"
+                                                :style="`background: rgba(43,108,238,${Math.min(1, (analytics.heatmap[dow]?.[h] || 0) / 5) * 0.8 + 0.05})`">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </template>
+                <div v-else class="text-center py-20 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-100">
+                    <BarChart3 :size="36" class="text-slate-300 mx-auto mb-3" />
+                    <p class="font-bold text-slate-500">No analytics data yet</p>
+                    <p class="text-sm text-slate-400 mt-1">Data appears once you have bookings</p>
+                </div>
+            </template>
+
             <!-- PROFILE TAB -->
             <template v-else-if="activeNavTab === 'profile'">
                 <div class="bg-white rounded-xl p-6 ring-1 ring-slate-100 shadow-sm">
@@ -864,17 +1048,14 @@ const handleAvatarUpload = async (event) => {
                 </button>
             </div>
 
-            <!-- Staff tab — only visible when user has staff assignments -->
-            <button v-if="hasStaffAccess"
-                @click="activeNavTab = 'staff'"
-                :class="activeNavTab === 'staff' ? 'text-primary' : 'text-slate-400'"
-                class="flex flex-col items-center gap-1.5 px-2 relative">
-                <Users :size="20" :stroke-width="2.5" />
-                <span class="text-[10px] font-bold tracking-tight">Staff</span>
+            <button @click="activeNavTab = 'analytics'; if (!analytics) fetchAnalytics()"
+                :class="activeNavTab === 'analytics' ? 'text-primary' : 'text-slate-400'"
+                class="flex flex-col items-center gap-1.5 px-2">
+                <BarChart3 :size="20" :stroke-width="2.5" />
+                <span class="text-[10px] font-bold tracking-tight">Stats</span>
             </button>
 
-            <button v-else
-                @click="activeNavTab = 'profile'"
+            <button @click="activeNavTab = 'profile'"
                 :class="activeNavTab === 'profile' ? 'text-primary' : 'text-slate-400'"
                 class="flex flex-col items-center gap-1.5 px-2">
                 <User :size="20" :stroke-width="2.5" />
@@ -1087,6 +1268,29 @@ const handleAvatarUpload = async (event) => {
         <ManageStaffSheet
             v-model="staffSheet.show"
             :court="staffSheet.court"
+        />
+
+        <SlotBlockSheet
+            v-model="blockSheet.show"
+            :court="blockSheet.court"
+            @blocked="fetchData"
+        />
+
+        <WalkInSheet
+            v-model="walkInSheet.show"
+            :court="walkInSheet.court"
+            :sub-courts="walkInSheet.subCourts"
+            @booked="fetchData"
+        />
+
+        <ManageSubCourtsSheet
+            v-model="subCourtSheet.show"
+            :court="subCourtSheet.court"
+        />
+
+        <ManagePricingSheet
+            v-model="pricingSheet.show"
+            :court="pricingSheet.court"
         />
     </div>
 </template>

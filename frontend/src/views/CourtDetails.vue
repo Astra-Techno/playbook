@@ -11,6 +11,7 @@ import {
     Share2, Heart, Lock, Sun, Moon, Crown, Infinity, BadgeCheck,
     UserPlus, X, Search, Loader2, Users
 } from 'lucide-vue-next'
+import MatchSheet from '../components/MatchSheet.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -27,7 +28,9 @@ const paymentDemo = ref(false)   // true when Cashfree is not configured
 
 const selectedDate  = ref('')
 const selectedSlots = ref([]) // multi-select
-const bookedSlots = ref([])
+const bookedSlots   = ref([])
+const blockedSlots  = ref([])
+const matchSheet    = ref(false)
 const activeSub = ref(null)     // user's active subscription for this court
 const lockedSlotPeak = ref(null) // 'morning' | 'evening' when user taps a locked slot
 const reviews = ref([])
@@ -219,8 +222,15 @@ const isBooked = (slot) => {
     return bookedSlots.value.some(b => s < b.end_time && e > b.start_time)
 }
 
+const isBlocked = (slot) => {
+    const s = `${selectedDate.value} ${slot.pad}:00`
+    const e = `${selectedDate.value} ${String(slot.hour + 1).padStart(2, '0')}:00:00`
+    return blockedSlots.value.some(b => s < b.end_time && e > b.start_time)
+}
+
 const slotState = (slot) => {
     if (!selectedDate.value) return 'idle'
+    if (isBlocked(slot)) return 'blocked'
     if (isBooked(slot)) return 'booked'
     if (selectedSlots.value.some(s => s.hour === slot.hour)) return 'selected'
     if (isPeakLocked(slot)) {
@@ -342,12 +352,17 @@ onMounted(async () => {
 watch(selectedDate, async (date) => {
     selectedSlots.value = []
     lockedSlotPeak.value = null
-    bookedSlots.value = []
+    bookedSlots.value  = []
+    blockedSlots.value = []
     if (date && court.value) {
         try {
-            const r = await axios.get(`/bookings?court_id=${court.value.id}&date=${date}`)
-            bookedSlots.value = r.data.records || []
-        } catch { bookedSlots.value = [] }
+            const [bRes, blkRes] = await Promise.all([
+                axios.get(`/bookings?court_id=${court.value.id}&date=${date}`),
+                axios.get(`/blocked-slots?court_id=${court.value.id}&date=${date}`),
+            ])
+            bookedSlots.value  = bRes.data.records || []
+            blockedSlots.value = blkRes.data.blocks || []
+        } catch { bookedSlots.value = []; blockedSlots.value = [] }
     }
 })
 
@@ -461,7 +476,7 @@ const openCashfree = async (amount, type, payload, onSuccess) => {
 
 const handleSlotClick = (slot) => {
     const state = slotState(slot)
-    if (state === 'booked') return
+    if (state === 'booked' || state === 'blocked') return
 
     if (state === 'peak_morning' || state === 'peak_evening') {
         const pt = slotPeakType(slot)
@@ -746,6 +761,11 @@ const subscribePlan = async (plan) => {
                     Memberships
                     <span v-if="activeSub" class="absolute top-2.5 right-3 w-2 h-2 bg-primary-light0 rounded-full"></span>
                 </button>
+                <button @click="activeTab = 'players'"
+                    class="flex-1 py-3.5 text-sm font-bold border-b-2 transition-colors"
+                    :class="activeTab === 'players' ? 'border-primary text-primary' : 'border-transparent text-slate-400'">
+                    Players
+                </button>
             </div>
 
             <!-- Tab Content -->
@@ -817,6 +837,7 @@ const subscribePlan = async (plan) => {
                                     :class="{
                                         'bg-primary border-primary text-white shadow-sm': slotState(slot) === 'selected',
                                         'bg-slate-100 border-slate-100 text-slate-300 cursor-not-allowed': slotState(slot) === 'booked',
+                                        'bg-red-50 border-red-200 text-red-300 cursor-not-allowed': slotState(slot) === 'blocked',
                                         'bg-white border-slate-200 text-slate-700 hover:border-primary/40 hover:bg-primary-light active:scale-95 cursor-pointer': slotState(slot) === 'free',
                                     }">
                                     {{ slot.short }}
@@ -841,6 +862,7 @@ const subscribePlan = async (plan) => {
                                         :class="{
                                             'bg-primary border-primary text-white shadow-sm': slotState(slot) === 'selected',
                                             'bg-slate-100 border-slate-100 text-slate-300 cursor-not-allowed': slotState(slot) === 'booked',
+                                            'bg-red-50 border-red-200 text-red-300 cursor-not-allowed': slotState(slot) === 'blocked',
                                             'bg-amber-100 border-amber-200 text-amber-700 cursor-pointer': slotState(slot) === 'peak_morning',
                                             'bg-white border-slate-200 text-slate-700 hover:border-primary/40 hover:bg-primary-light active:scale-95 cursor-pointer': slotState(slot) === 'free',
                                         }">
@@ -865,6 +887,7 @@ const subscribePlan = async (plan) => {
                                         :class="{
                                             'bg-primary border-primary text-white shadow-sm': slotState(slot) === 'selected',
                                             'bg-slate-100 border-slate-100 text-slate-300 cursor-not-allowed': slotState(slot) === 'booked',
+                                            'bg-red-50 border-red-200 text-red-300 cursor-not-allowed': slotState(slot) === 'blocked',
                                             'bg-indigo-100 border-indigo-200 text-indigo-700 cursor-pointer': slotState(slot) === 'peak_evening',
                                             'bg-white border-slate-200 text-slate-700 hover:border-primary/40 hover:bg-primary-light active:scale-95 cursor-pointer': slotState(slot) === 'free',
                                         }">
@@ -1125,6 +1148,22 @@ const subscribePlan = async (plan) => {
                 </div>
             </div>
 
+            <!-- PLAYERS TAB -->
+            <div v-if="activeTab === 'players'" class="py-4">
+                <div class="text-center py-6 px-4">
+                    <div class="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                        <Users :size="28" class="text-primary" />
+                    </div>
+                    <p class="font-extrabold text-slate-800 text-base">Find Players</p>
+                    <p class="text-sm text-slate-400 mt-1 mb-5">See who's looking for game partners at this venue</p>
+                    <button @click="auth.isLoggedIn ? matchSheet = true : router.push('/login')"
+                        class="bg-primary text-white font-bold px-8 py-3 rounded-2xl text-sm flex items-center gap-2 mx-auto">
+                        <Users :size="14" />
+                        Open Match Board
+                    </button>
+                </div>
+            </div>
+
             <!-- Sticky Bottom Button -->
             <div class="fixed bottom-[72px] left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-slate-100 px-4 py-3 z-40"
                 style="box-shadow: 0 -4px 20px rgba(0,0,0,0.06)">
@@ -1290,5 +1329,7 @@ const subscribePlan = async (plan) => {
             </div>
         </div>
     </Transition>
+
+    <MatchSheet v-if="court" v-model="matchSheet" :court="court" />
 
 </template>

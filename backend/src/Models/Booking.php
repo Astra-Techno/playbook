@@ -9,12 +9,16 @@ class Booking {
     public $id;
     public $user_id;
     public $court_id;
+    public $sub_court_id;
     public $start_time;
     public $end_time;
     public $type;
     public $total_price;
     public $status;
     public $payment_status;
+    public $guest_name;
+    public $guest_phone;
+    public $notes;
 
     public function __construct() {
         $this->conn = Database::getConnection();
@@ -22,24 +26,30 @@ class Booking {
 
     // Create booking
     public function create() {
-        $query = "INSERT INTO " . $this->table_name . " 
-                  SET user_id=:user_id, court_id=:court_id, start_time=:start_time, 
-                      end_time=:end_time, type=:type, total_price=:total_price, 
-                      status='confirmed', payment_status='paid'"; // Simplified for MVP
+        $query = "INSERT INTO " . $this->table_name . "
+                  SET user_id=:user_id, court_id=:court_id, start_time=:start_time,
+                      end_time=:end_time, type=:type, total_price=:total_price,
+                      status='confirmed', payment_status='paid',
+                      sub_court_id=:sub_court_id, guest_name=:guest_name,
+                      guest_phone=:guest_phone, notes=:notes";
 
         $stmt = $this->conn->prepare($query);
 
-        $this->start_time = htmlspecialchars(strip_tags($this->start_time));
-        $this->end_time = htmlspecialchars(strip_tags($this->end_time));
-        $this->type = htmlspecialchars(strip_tags($this->type));
+        $this->start_time  = htmlspecialchars(strip_tags($this->start_time));
+        $this->end_time    = htmlspecialchars(strip_tags($this->end_time));
+        $this->type        = htmlspecialchars(strip_tags($this->type));
         $this->total_price = htmlspecialchars(strip_tags($this->total_price));
 
-        $stmt->bindParam(":user_id", $this->user_id);
-        $stmt->bindParam(":court_id", $this->court_id);
-        $stmt->bindParam(":start_time", $this->start_time);
-        $stmt->bindParam(":end_time", $this->end_time);
-        $stmt->bindParam(":type", $this->type);
-        $stmt->bindParam(":total_price", $this->total_price);
+        $stmt->bindParam(":user_id",      $this->user_id);
+        $stmt->bindParam(":court_id",     $this->court_id);
+        $stmt->bindParam(":start_time",   $this->start_time);
+        $stmt->bindParam(":end_time",     $this->end_time);
+        $stmt->bindParam(":type",         $this->type);
+        $stmt->bindParam(":total_price",  $this->total_price);
+        $stmt->bindParam(":sub_court_id", $this->sub_court_id);
+        $stmt->bindParam(":guest_name",   $this->guest_name);
+        $stmt->bindParam(":guest_phone",  $this->guest_phone);
+        $stmt->bindParam(":notes",        $this->notes);
 
         if ($stmt->execute()) {
             return true;
@@ -77,20 +87,43 @@ class Booking {
     }
 
     /**
-     * Check if the desired time slot is available (no overlapping confirmed booking).
-     * Returns true when available.
+     * Check if the desired time slot is available.
+     * Checks both confirmed bookings and blocked_slots.
+     * If sub_court_id is provided, only checks that sub-court's bookings.
      */
-    public function isSlotAvailable($court_id, $start_time, $end_time) {
-        $query = "SELECT COUNT(*) as cnt FROM " . $this->table_name .
-                 " WHERE court_id = :court_id" .
-                 " AND (start_time < :end_time AND end_time > :start_time)" .
-                 " AND status = 'confirmed'";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(':court_id', $court_id);
-        $stmt->bindParam(':start_time', $start_time);
-        $stmt->bindParam(':end_time', $end_time);
+    public function isSlotAvailable($court_id, $start_time, $end_time, $sub_court_id = null) {
+        // Check bookings
+        if ($sub_court_id !== null) {
+            $query = "SELECT COUNT(*) as cnt FROM " . $this->table_name .
+                     " WHERE court_id = :court_id AND sub_court_id = :sub_court_id" .
+                     " AND (start_time < :end_time AND end_time > :start_time)" .
+                     " AND status = 'confirmed'";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':court_id',    $court_id);
+            $stmt->bindParam(':sub_court_id',$sub_court_id);
+            $stmt->bindParam(':start_time',  $start_time);
+            $stmt->bindParam(':end_time',    $end_time);
+        } else {
+            $query = "SELECT COUNT(*) as cnt FROM " . $this->table_name .
+                     " WHERE court_id = :court_id" .
+                     " AND (start_time < :end_time AND end_time > :start_time)" .
+                     " AND status = 'confirmed'";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(':court_id',   $court_id);
+            $stmt->bindParam(':start_time', $start_time);
+            $stmt->bindParam(':end_time',   $end_time);
+        }
         $stmt->execute();
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $row['cnt'] == 0;
+        if ($row['cnt'] > 0) return false;
+
+        // Check blocked slots
+        $blk = $this->conn->prepare(
+            "SELECT COUNT(*) as cnt FROM blocked_slots
+             WHERE court_id = ? AND (start_time < ? AND end_time > ?)"
+        );
+        $blk->execute([$court_id, $end_time, $start_time]);
+        $blkRow = $blk->fetch(PDO::FETCH_ASSOC);
+        return $blkRow['cnt'] == 0;
     }
 }

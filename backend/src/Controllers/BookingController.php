@@ -149,15 +149,19 @@ class BookingController {
     public function create() {
         $data = json_decode(file_get_contents("php://input"));
 
+        $isWalkIn   = !empty($data->guest_name);
+        $hasUser    = !empty($data->user_id);
+        $sub_court_id = isset($data->sub_court_id) ? (int)$data->sub_court_id : null;
+
         if (
-            !empty($data->user_id) &&
+            ($hasUser || $isWalkIn) &&
             !empty($data->court_id) &&
             !empty($data->start_time) &&
             !empty($data->end_time)
         ) {
             $booking = new Booking();
 
-            if (!$booking->isSlotAvailable($data->court_id, $data->start_time, $data->end_time)) {
+            if (!$booking->isSlotAvailable($data->court_id, $data->start_time, $data->end_time, $sub_court_id)) {
                 http_response_code(409);
                 echo json_encode(["message" => "Time slot not available."]);
                 return;
@@ -186,16 +190,22 @@ class BookingController {
                 }
             }
 
-            $booking->user_id    = (int)$data->user_id;
-            $booking->court_id   = (int)$data->court_id;
-            $booking->start_time = $data->start_time;
-            $booking->end_time   = $data->end_time;
-            $booking->type       = $data->type ?? 'hourly';
+            $booking->user_id     = $hasUser ? (int)$data->user_id : 0;
+            $booking->court_id    = (int)$data->court_id;
+            $booking->start_time  = $data->start_time;
+            $booking->end_time    = $data->end_time;
+            $booking->type        = $data->type ?? 'hourly';
             $booking->total_price = $data->total_price ?? 0;
+            $booking->sub_court_id = $sub_court_id;
+            $booking->guest_name  = $isWalkIn ? trim($data->guest_name) : null;
+            $booking->guest_phone = $isWalkIn && !empty($data->guest_phone) ? trim($data->guest_phone) : null;
+            $booking->notes       = !empty($data->notes) ? trim($data->notes) : null;
 
             if ($booking->create()) {
                 http_response_code(201);
-                echo json_encode(["message" => "Booking confirmed.", "id" => (int)$booking->conn->lastInsertId()]);
+                $newId = (int)$booking->conn->lastInsertId();
+                $msg   = $isWalkIn ? "Walk-in booking created." : "Booking confirmed.";
+                echo json_encode(["message" => $msg, "id" => $newId]);
             } else {
                 http_response_code(503);
                 echo json_encode(["message" => "Unable to create booking."]);
