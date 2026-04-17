@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
-import { Plus, Trash2, Loader2, LayoutGrid, Camera, X } from 'lucide-vue-next'
+import { Plus, Trash2, Loader2, LayoutGrid, Camera, X, Lock, Users } from 'lucide-vue-next'
 
 const route  = useRoute()
 const router = useRouter()
@@ -25,6 +25,8 @@ const newImageUrl = ref('')
 const imagePreview = ref('')
 const uploadLoading = ref(false)
 const adding      = ref(false)
+const newMode     = ref('exclusive')
+const newCapacity = ref(1)
 
 onMounted(async () => {
     try {
@@ -61,14 +63,16 @@ const addSpace = async () => {
     saving.value = true
     try {
         await axios.post('/sub-courts', {
-            court_id:    courtId,
-            owner_id:    auth.user.id,
-            name:        newName.value.trim(),
-            description: newDesc.value.trim() || null,
-            hourly_rate: newRate.value ? parseFloat(newRate.value) : null,
-            image_url:   newImageUrl.value || null,
+            court_id:     courtId,
+            owner_id:     auth.user.id,
+            name:         newName.value.trim(),
+            description:  newDesc.value.trim() || null,
+            hourly_rate:  newRate.value ? parseFloat(newRate.value) : null,
+            image_url:    newImageUrl.value || null,
+            booking_mode: newMode.value,
+            capacity:     newMode.value === 'shared' ? Math.max(1, parseInt(newCapacity.value) || 1) : 1,
         })
-        newName.value = ''; newRate.value = ''; newDesc.value = ''; clearImage()
+        newName.value = ''; newRate.value = ''; newDesc.value = ''; clearImage(); newMode.value = 'exclusive'; newCapacity.value = 1
         adding.value = false
         const res = await axios.get(`/sub-courts?court_id=${courtId}`)
         spaces.value = res.data.sub_courts || []
@@ -123,6 +127,14 @@ const removeSpace = async (sc) => {
                             {{ sc.hourly_rate ? `₹${sc.hourly_rate}/hr` : 'Inherits venue rate' }}
                             <span v-if="sc.description"> · {{ sc.description }}</span>
                         </p>
+                        <div class="flex items-center gap-1.5 mt-1">
+                            <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                :class="sc.booking_mode === 'shared' ? 'bg-cyan-50 text-cyan-600' : 'bg-slate-100 text-slate-500'">
+                                <Users v-if="sc.booking_mode === 'shared'" :size="10" />
+                                <Lock v-else :size="10" />
+                                {{ sc.booking_mode === 'shared' ? `Shared · ${sc.capacity} spots` : 'Exclusive' }}
+                            </span>
+                        </div>
                     </div>
                     <button @click="removeSpace(sc)" :disabled="removingId === sc.id"
                         class="w-10 h-10 flex items-center justify-center shrink-0 mr-2 active:scale-90 transition">
@@ -162,8 +174,34 @@ const removeSpace = async (sc) => {
                         class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:outline-none bg-slate-50" />
                     <input v-model="newDesc" type="text" placeholder="Description (optional)"
                         class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:outline-none bg-slate-50" />
+                    <!-- Booking mode toggle -->
+                    <div>
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">Booking Type</p>
+                        <div class="flex gap-2">
+                            <button @click="newMode = 'exclusive'; newCapacity = 1"
+                                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all"
+                                :class="newMode === 'exclusive' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'">
+                                <Lock :size="12" /> Exclusive
+                            </button>
+                            <button @click="newMode = 'shared'"
+                                class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all"
+                                :class="newMode === 'shared' ? 'bg-cyan-500 text-white' : 'bg-slate-100 text-slate-500'">
+                                <Users :size="12" /> Shared
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-slate-400 mt-1 px-1">
+                            <template v-if="newMode === 'exclusive'">One booking at a time (courts, turfs)</template>
+                            <template v-else>Multiple simultaneous bookings (pool, gym)</template>
+                        </p>
+                    </div>
+                    <!-- Capacity (shared only) -->
+                    <div v-if="newMode === 'shared'">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">Max Capacity</p>
+                        <input v-model.number="newCapacity" type="number" min="2" placeholder="e.g. 20 (max simultaneous users)"
+                            class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:outline-none bg-slate-50" />
+                    </div>
                     <div class="flex gap-2">
-                        <button @click="adding = false; clearImage()"
+                        <button @click="adding = false; clearImage(); newMode = 'exclusive'; newCapacity = 1"
                             class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-slate-100 text-slate-600">Cancel</button>
                         <button @click="addSpace" :disabled="saving || uploadLoading"
                             class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-primary text-white flex items-center justify-center gap-1.5 disabled:opacity-50">

@@ -9,7 +9,7 @@ import {
     Calendar, CheckCircle2, XCircle, Info,
     Wind, Flag, Target, Activity, CircleDot, Layers3, Dumbbell, Waves, Swords,
     Share2, Heart, Lock, Sun, Moon, Crown, Infinity, BadgeCheck,
-    UserPlus, X, Search, Loader2, Users
+    UserPlus, X, Search, Loader2, Users, LayoutGrid
 } from 'lucide-vue-next'
 import MatchSheet from '../components/MatchSheet.vue'
 
@@ -19,6 +19,8 @@ const auth = useAuthStore()
 const toast = useToastStore()
 
 const court = ref(null)
+const spaces = ref([])
+const selectedSpace = ref(null)
 const plans = ref([])
 const activeTab = ref('booking')
 const loading = ref(true)
@@ -219,7 +221,26 @@ const isPeakLocked = (slot) => {
 const isBooked = (slot) => {
     const s = `${selectedDate.value} ${slot.pad}:00`
     const e = `${selectedDate.value} ${String(slot.hour + 1).padStart(2, '0')}:00:00`
+    if (selectedSpace.value) {
+        const sp = selectedSpace.value
+        const overlapping = bookedSlots.value.filter(b =>
+            String(b.sub_court_id) === String(sp.id) && s < b.end_time && e > b.start_time
+        )
+        if (sp.booking_mode === 'shared') return overlapping.length >= parseInt(sp.capacity || 1)
+        return overlapping.length > 0
+    }
     return bookedSlots.value.some(b => s < b.end_time && e > b.start_time)
+}
+
+const slotRemainingCapacity = (slot) => {
+    if (!selectedSpace.value || selectedSpace.value.booking_mode !== 'shared') return null
+    const s = `${selectedDate.value} ${slot.pad}:00`
+    const e = `${selectedDate.value} ${String(slot.hour + 1).padStart(2, '0')}:00:00`
+    const count = bookedSlots.value.filter(b =>
+        String(b.sub_court_id) === String(selectedSpace.value.id) &&
+        s < b.end_time && e > b.start_time
+    ).length
+    return Math.max(0, parseInt(selectedSpace.value.capacity || 1) - count)
 }
 
 const isBlocked = (slot) => {
@@ -268,7 +289,10 @@ const heroImg = computed(() =>
     court.value?.image_url || sportImages[court.value?.type] || sportImages.turf
 )
 
-const price      = computed(() => court.value ? parseFloat(court.value.hourly_rate) : 0)
+const price      = computed(() => {
+    if (selectedSpace.value?.hourly_rate) return parseFloat(selectedSpace.value.hourly_rate)
+    return court.value ? parseFloat(court.value.hourly_rate) : 0
+})
 const totalPrice = computed(() => price.value * selectedSlots.value.length)
 
 // Computed slot groups for clean template rendering
@@ -308,11 +332,13 @@ onMounted(async () => {
         const res = await axios.get('/courts')
         court.value = (res.data.records || []).find(c => c.id == route.params.id) || null
         if (court.value) {
-            const [plansRes, reviewsRes, photosRes] = await Promise.all([
+            const [plansRes, reviewsRes, photosRes, spacesRes] = await Promise.all([
                 axios.get(`/plans?court_id=${court.value.id}`),
                 axios.get(`/reviews?court_id=${court.value.id}`),
                 axios.get(`/court-photos?court_id=${court.value.id}`).catch(() => ({ data: { photos: [] } })),
+                axios.get(`/sub-courts?court_id=${court.value.id}`).catch(() => ({ data: { sub_courts: [] } })),
             ])
+            spaces.value = spacesRes.data.sub_courts || []
             plans.value = plansRes.data.records || []
             reviews.value = reviewsRes.data.records || []
             avgRating.value = reviewsRes.data.avg_rating || null
@@ -347,6 +373,10 @@ onMounted(async () => {
         }
     } catch { court.value = null }
     finally { loading.value = false }
+})
+
+watch(selectedSpace, () => {
+    selectedSlots.value = []
 })
 
 watch(selectedDate, async (date) => {
@@ -514,7 +544,7 @@ const confirmBooking = async () => {
         return acc
     }, [])
 
-    const hourPrice = parseFloat(court.value.hourly_rate) || 0
+    const hourPrice = price.value
     const slots = groups.map(group => ({
         start_time:  `${selectedDate.value} ${group[0].pad}:00`,
         end_time:    `${selectedDate.value} ${String(group[group.length - 1].hour + 1).padStart(2, '0')}:00:00`,
@@ -528,12 +558,13 @@ const confirmBooking = async () => {
         try {
             const results = await Promise.all(slots.map(s =>
                 axios.post('/bookings', {
-                    user_id:     auth.user?.id,
-                    court_id:    court.value.id,
-                    start_time:  s.start_time,
-                    end_time:    s.end_time,
-                    type:        'hourly',
-                    total_price: s.total_price,
+                    user_id:      auth.user?.id,
+                    court_id:     court.value.id,
+                    sub_court_id: selectedSpace.value?.id || null,
+                    start_time:   s.start_time,
+                    end_time:     s.end_time,
+                    type:         'hourly',
+                    total_price:  s.total_price,
                 })
             ))
             const bookingIds = results.map(r => r.data.id).filter(Boolean)
@@ -557,6 +588,7 @@ const confirmBooking = async () => {
         'booking',
         {
             user_id: auth.user?.id, court_id: court.value.id,
+            sub_court_id: selectedSpace.value?.id || null,
             slots, type: 'hourly', total_price: totalPrice.value,
         },
         async ({ order_id }) => {
@@ -801,6 +833,41 @@ const subscribePlan = async (plan) => {
                         </button>
                     </div>
 
+                    <!-- Space Picker (only when venue has defined spaces) -->
+                    <div v-if="spaces.length > 0" class="mb-5">
+                        <div class="flex items-center justify-between mb-2.5">
+                            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Space</h3>
+                            <button v-if="selectedSpace" @click="selectedSpace = null"
+                                class="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                                <X :size="11" /> Clear
+                            </button>
+                        </div>
+                        <div class="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1">
+                            <button v-for="sp in spaces" :key="sp.id"
+                                @click="selectedSpace = (selectedSpace?.id === sp.id ? null : sp)"
+                                class="shrink-0 flex flex-col items-start rounded-2xl border-2 overflow-hidden w-36 transition-all active:scale-[0.97]"
+                                :class="selectedSpace?.id === sp.id ? 'border-primary shadow-md shadow-primary/10' : 'border-slate-200 bg-white'">
+                                <!-- Space thumbnail -->
+                                <div class="w-full h-20 bg-slate-100 flex items-center justify-center overflow-hidden">
+                                    <img v-if="sp.image_url" :src="sp.image_url" class="w-full h-full object-cover" onerror="this.style.display='none'" />
+                                    <LayoutGrid v-else :size="22" class="text-slate-300" />
+                                </div>
+                                <div class="p-2.5 w-full" :class="selectedSpace?.id === sp.id ? 'bg-primary text-white' : 'bg-white'">
+                                    <p class="text-xs font-extrabold truncate">{{ sp.name }}</p>
+                                    <p class="text-[11px] mt-0.5" :class="selectedSpace?.id === sp.id ? 'text-white/70' : 'text-slate-400'">
+                                        {{ sp.hourly_rate ? `₹${sp.hourly_rate}/hr` : 'Venue rate' }}
+                                    </p>
+                                    <div class="flex items-center gap-1 mt-1 text-[10px] font-bold"
+                                        :class="selectedSpace?.id === sp.id ? 'text-white/70' : (sp.booking_mode === 'shared' ? 'text-cyan-500' : 'text-slate-400')">
+                                        <Users v-if="sp.booking_mode === 'shared'" :size="10" />
+                                        <Lock v-else :size="10" />
+                                        {{ sp.booking_mode === 'shared' ? `${sp.capacity} spots` : 'Exclusive' }}
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+
                     <!-- Slot Grid -->
                     <div class="flex items-center justify-between mb-3 flex-wrap gap-1">
                         <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Time</h3>
@@ -824,6 +891,12 @@ const subscribePlan = async (plan) => {
                         <p class="text-sm text-slate-400 font-medium">Select a date first</p>
                     </div>
 
+                    <div v-else-if="spaces.length > 0 && !selectedSpace"
+                        class="bg-slate-100 rounded-2xl flex flex-col items-center py-10 mb-6">
+                        <LayoutGrid :size="30" class="text-slate-300 mb-2" />
+                        <p class="text-sm text-slate-400 font-medium">Select a space above</p>
+                    </div>
+
                     <!-- Slot Grid -->
                     <div v-else class="mb-6 space-y-4">
 
@@ -833,7 +906,7 @@ const subscribePlan = async (plan) => {
                                 <button
                                     v-for="slot in TIME_SLOTS" :key="slot.hour"
                                     @click="handleSlotClick(slot)"
-                                    class="py-3 rounded-xl text-xs font-bold border-2 transition-all text-center"
+                                    class="py-2.5 rounded-xl text-xs font-bold border-2 transition-all text-center flex flex-col items-center justify-center gap-0.5"
                                     :class="{
                                         'bg-primary border-primary text-white shadow-sm': slotState(slot) === 'selected',
                                         'bg-slate-100 border-slate-100 text-slate-300 cursor-not-allowed': slotState(slot) === 'booked',
@@ -841,6 +914,11 @@ const subscribePlan = async (plan) => {
                                         'bg-white border-slate-200 text-slate-700 hover:border-primary/40 hover:bg-primary-light active:scale-95 cursor-pointer': slotState(slot) === 'free',
                                     }">
                                     {{ slot.short }}
+                                    <span v-if="slotRemainingCapacity(slot) !== null && slotState(slot) !== 'booked'"
+                                        class="text-[9px] font-normal leading-none"
+                                        :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-cyan-500'">
+                                        {{ slotRemainingCapacity(slot) }} left
+                                    </span>
                                 </button>
                             </div>
                         </template>
@@ -924,6 +1002,10 @@ const subscribePlan = async (plan) => {
                             <span class="text-sm font-bold text-primary">Booking Summary</span>
                         </div>
                         <div class="space-y-1.5 text-sm">
+                            <div v-if="selectedSpace" class="flex justify-between">
+                                <span class="text-slate-500">Space</span>
+                                <span class="font-semibold text-slate-800">{{ selectedSpace.name }}</span>
+                            </div>
                             <div class="flex justify-between">
                                 <span class="text-slate-500">Date</span>
                                 <span class="font-semibold text-slate-800">

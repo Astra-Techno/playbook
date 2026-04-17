@@ -30,6 +30,8 @@ class SubCourtController
         try { $this->db->exec("ALTER TABLE bookings ADD COLUMN guest_phone VARCHAR(20) DEFAULT NULL"); } catch (Exception $e) {}
         try { $this->db->exec("ALTER TABLE bookings ADD COLUMN notes TEXT DEFAULT NULL"); } catch (Exception $e) {}
         try { $this->db->exec("ALTER TABLE sub_courts ADD COLUMN image_url VARCHAR(500) DEFAULT NULL"); } catch (Exception $e) {}
+        try { $this->db->exec("ALTER TABLE sub_courts ADD COLUMN capacity INT DEFAULT 1"); } catch (Exception $e) {}
+        try { $this->db->exec("ALTER TABLE sub_courts ADD COLUMN booking_mode VARCHAR(20) DEFAULT 'exclusive'"); } catch (Exception $e) {}
     }
 
     // GET /sub-courts?court_id=X
@@ -56,12 +58,17 @@ class SubCourtController
         $chk->execute([$court_id, $owner_id]);
         if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
 
-        $ins = $this->db->prepare("INSERT INTO sub_courts (court_id, name, description, hourly_rate, image_url) VALUES (?,?,?,?,?)");
+        $capacity     = max(1, (int)($data->capacity ?? 1));
+        $booking_mode = in_array($data->booking_mode ?? '', ['exclusive', 'shared']) ? $data->booking_mode : 'exclusive';
+
+        $ins = $this->db->prepare("INSERT INTO sub_courts (court_id, name, description, hourly_rate, image_url, capacity, booking_mode) VALUES (?,?,?,?,?,?,?)");
         $ins->execute([
             $court_id, $name,
             trim($data->description ?? '') ?: null,
             isset($data->hourly_rate) && $data->hourly_rate !== '' ? (float)$data->hourly_rate : null,
             trim($data->image_url ?? '') ?: null,
+            $capacity,
+            $booking_mode,
         ]);
         $newId = (int)$this->db->lastInsertId();
         $row   = $this->db->prepare("SELECT * FROM sub_courts WHERE id=?");
@@ -84,6 +91,8 @@ class SubCourtController
         if (isset($data->description)) { $fields[] = 'description=?'; $vals[] = trim($data->description) ?: null; }
         if (isset($data->hourly_rate)) { $fields[] = 'hourly_rate=?'; $vals[] = $data->hourly_rate !== '' ? (float)$data->hourly_rate : null; }
         if (isset($data->image_url))   { $fields[] = 'image_url=?';   $vals[] = trim($data->image_url) ?: null; }
+        if (isset($data->capacity))    { $fields[] = 'capacity=?';    $vals[] = max(1, (int)$data->capacity); }
+        if (isset($data->booking_mode)){ $fields[] = 'booking_mode=?';$vals[] = in_array($data->booking_mode, ['exclusive','shared']) ? $data->booking_mode : 'exclusive'; }
         if ($fields) { $vals[] = $id; $this->db->prepare("UPDATE sub_courts SET ".implode(',',$fields)." WHERE id=?")->execute($vals); }
         echo json_encode(['message' => 'Updated']);
     }

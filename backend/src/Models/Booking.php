@@ -94,6 +94,13 @@ class Booking {
     public function isSlotAvailable($court_id, $start_time, $end_time, $sub_court_id = null) {
         // Check bookings
         if ($sub_court_id !== null) {
+            // Look up booking_mode and capacity for this space
+            $scStmt = $this->conn->prepare("SELECT booking_mode, capacity FROM sub_courts WHERE id = ?");
+            $scStmt->execute([$sub_court_id]);
+            $sc = $scStmt->fetch(PDO::FETCH_ASSOC);
+            $booking_mode = $sc ? ($sc['booking_mode'] ?? 'exclusive') : 'exclusive';
+            $capacity     = $sc ? max(1, (int)($sc['capacity'] ?? 1)) : 1;
+
             $query = "SELECT COUNT(*) as cnt FROM " . $this->table_name .
                      " WHERE court_id = :court_id AND sub_court_id = :sub_court_id" .
                      " AND (start_time < :end_time AND end_time > :start_time)" .
@@ -103,6 +110,14 @@ class Booking {
             $stmt->bindParam(':sub_court_id',$sub_court_id);
             $stmt->bindParam(':start_time',  $start_time);
             $stmt->bindParam(':end_time',    $end_time);
+            $stmt->execute();
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($booking_mode === 'shared') {
+                if ((int)$row['cnt'] >= $capacity) return false;
+            } else {
+                if ((int)$row['cnt'] > 0) return false;
+            }
         } else {
             $query = "SELECT COUNT(*) as cnt FROM " . $this->table_name .
                      " WHERE court_id = :court_id" .
@@ -112,10 +127,10 @@ class Booking {
             $stmt->bindParam(':court_id',   $court_id);
             $stmt->bindParam(':start_time', $start_time);
             $stmt->bindParam(':end_time',   $end_time);
+            $stmt->execute();
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ((int)$row['cnt'] > 0) return false;
         }
-        $stmt->execute();
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($row['cnt'] > 0) return false;
 
         // Check blocked slots
         $blk = $this->conn->prepare(
