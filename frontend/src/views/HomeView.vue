@@ -85,6 +85,18 @@ function loadGpsCache() {
 const ghostPlaces     = ref([])
 const ghostLoading    = ref(false)
 const requestingId    = ref(null)   // place id currently being requested
+const fetched         = ref(false)  // true after first fetchVenues completes
+
+// Location picker sheet
+const locPicker = ref(false)
+const locInput  = ref('')
+const openLocPicker = () => { locInput.value = searchText.value; locPicker.value = true }
+const applyLocInput = () => {
+    const v = locInput.value.trim()
+    if (v) { userLat.value = null; userLng.value = null; searchText.value = v }
+    locPicker.value = false
+}
+const useGpsFromPicker = () => { locPicker.value = false; detectLocation() }
 
 // ── Location detection ────────────────────────────────────────
 const applyGps = async (latitude, longitude) => {
@@ -219,7 +231,7 @@ const fetchVenues = async () => {
         const res = await axios.get('/courts' + (p.toString() ? '?' + p : ''))
         courts.value = res.data.records || []
     } catch { courts.value = [] }
-    finally { loading.value = false }
+    finally { loading.value = false; fetched.value = true }
 }
 
 onMounted(async () => {
@@ -245,7 +257,7 @@ watch(searchText, () => {
     clearTimeout(timer)
     if (searchText.value.trim()) { timer = setTimeout(fetchVenues, 400) } else { courts.value = [] }
 })
-watch(selectedSport, () => { if (hasLocation.value) fetchVenues() })
+watch(selectedSport, () => { if (fetched.value) fetchVenues() })
 watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() })
 </script>
 
@@ -254,10 +266,12 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
 
         <!-- Teleport contents to Global AppHeader -->
         <Teleport to="#header-subtitle">
-            <div class="flex items-center gap-1.5 text-slate-400 mt-0.5">
+            <button @click="openLocPicker"
+                class="flex items-center gap-1 text-slate-400 mt-0.5 active:opacity-60 transition-opacity">
                 <MapPin :size="11" :stroke-width="2.5" class="text-primary/70 shrink-0" />
                 <span class="text-[10px] font-bold uppercase tracking-wide truncate max-w-[150px]">{{ locationLabel }}</span>
-            </div>
+                <svg width="8" height="5" viewBox="0 0 8 5" class="text-slate-400 shrink-0"><path d="M1 1l3 3 3-3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+            </button>
         </Teleport>
 
         <Teleport to="#header-extra">
@@ -295,8 +309,8 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
         <!-- ── Main content (scrollable) ── -->
         <main class="flex-1 px-4 py-4 pb-28">
 
-            <!-- No location yet -->
-            <div v-if="!hasLocation && !locating" class="flex flex-col items-center py-20 text-center px-6">
+            <!-- No location yet (only shown before any fetch has run) -->
+            <div v-if="!fetched && !hasLocation && !locating" class="flex flex-col items-center py-20 text-center px-6">
                 <div class="w-20 h-20 bg-primary-light rounded-full flex items-center justify-center mb-5">
                     <MapPin :size="36" class="text-primary" :stroke-width="1.8" />
                 </div>
@@ -311,7 +325,7 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                 </button>
             </div>
 
-            <template v-else>
+            <template v-else-if="fetched || hasLocation || locating">
             <!-- Section title -->
             <div class="flex items-center justify-between mb-4">
                 <h2 class="text-[17px] font-extrabold text-slate-900">{{ sectionTitle }}</h2>
@@ -632,6 +646,59 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                                 </span>
                             </button>
                         </div>
+                    </div>
+                </Transition>
+            </div>
+        </Transition>
+    </Teleport>
+
+    <!-- ── Location Picker Sheet ── -->
+    <Teleport to="#app-root">
+        <Transition
+            enter-active-class="transition duration-300 ease-out"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition duration-200 ease-in"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0">
+            <div v-if="locPicker" class="absolute inset-0 bg-black/40 z-[150]" @click.self="locPicker = false">
+                <Transition
+                    enter-active-class="transition duration-300 ease-out"
+                    enter-from-class="translate-y-full"
+                    enter-to-class="translate-y-0"
+                    leave-active-class="transition duration-200 ease-in"
+                    leave-from-class="translate-y-0"
+                    leave-to-class="translate-y-full">
+                    <div v-if="locPicker" class="absolute bottom-0 inset-x-0 bg-white rounded-t-3xl px-5 pt-4 pb-10">
+                        <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5"></div>
+                        <div class="flex items-center justify-between mb-5">
+                            <h3 class="text-base font-extrabold text-slate-900">Change Location</h3>
+                            <button @click="locPicker = false"
+                                class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100">
+                                <X :size="16" class="text-slate-500" />
+                            </button>
+                        </div>
+                        <!-- City input -->
+                        <div class="relative mb-3">
+                            <MapPin :size="16" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                v-model="locInput"
+                                @keyup.enter="applyLocInput"
+                                type="text"
+                                placeholder="Enter city or area…"
+                                autofocus
+                                class="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                        </div>
+                        <button @click="applyLocInput" :disabled="!locInput.trim()"
+                            class="w-full bg-primary text-white font-bold py-3 rounded-2xl text-sm mb-3 disabled:opacity-40 active:scale-[0.98] transition-transform">
+                            Search This Location
+                        </button>
+                        <!-- GPS option -->
+                        <button @click="useGpsFromPicker"
+                            class="w-full flex items-center justify-center gap-2 bg-slate-50 border border-slate-200 text-slate-700 font-bold py-3 rounded-2xl text-sm active:bg-slate-100 transition-colors">
+                            <MapPin :size="15" class="text-primary" />
+                            Use My GPS Location
+                        </button>
                     </div>
                 </Transition>
             </div>
