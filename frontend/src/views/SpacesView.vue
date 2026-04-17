@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
-import { Plus, Trash2, Loader2, LayoutGrid, Camera, X, Lock, Users } from 'lucide-vue-next'
+import { Plus, Trash2, Loader2, LayoutGrid, Camera, X, Lock, Users, Pencil, Check } from 'lucide-vue-next'
 
 const route  = useRoute()
 const router = useRouter()
@@ -27,6 +27,65 @@ const uploadLoading = ref(false)
 const adding      = ref(false)
 const newMode     = ref('exclusive')
 const newCapacity = ref(1)
+
+// Edit state
+const editingId       = ref(null)
+const editSaving      = ref(false)
+const editUploadLoading = ref(false)
+const editForm        = ref({ name: '', hourly_rate: '', description: '', booking_mode: 'exclusive', capacity: 1, image_url: '', imagePreview: '' })
+
+const startEdit = (sc) => {
+    editingId.value = sc.id
+    editForm.value  = {
+        name:         sc.name,
+        hourly_rate:  sc.hourly_rate ?? '',
+        description:  sc.description ?? '',
+        booking_mode: sc.booking_mode || 'exclusive',
+        capacity:     sc.capacity || 1,
+        image_url:    sc.image_url || '',
+        imagePreview: sc.image_url || '',
+    }
+}
+
+const cancelEdit = () => { editingId.value = null }
+
+const handleEditImageSelect = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => { editForm.value.imagePreview = ev.target.result }
+    reader.readAsDataURL(file)
+    editUploadLoading.value = true
+    try {
+        const formData = new FormData()
+        formData.append('image', file)
+        const res = await axios.post('/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+        editForm.value.image_url = res.data.url
+    } catch { toast.error('Image upload failed') }
+    finally { editUploadLoading.value = false }
+}
+
+const saveEdit = async () => {
+    if (!editForm.value.name.trim()) { toast.error('Enter a name'); return }
+    editSaving.value = true
+    try {
+        await axios.put(`/sub-courts/${editingId.value}`, {
+            owner_id:     auth.user.id,
+            name:         editForm.value.name.trim(),
+            description:  editForm.value.description.trim() || null,
+            hourly_rate:  editForm.value.hourly_rate !== '' ? parseFloat(editForm.value.hourly_rate) : null,
+            image_url:    editForm.value.image_url || null,
+            booking_mode: editForm.value.booking_mode,
+            capacity:     editForm.value.booking_mode === 'shared' ? Math.max(1, parseInt(editForm.value.capacity) || 1) : 1,
+        })
+        const res = await axios.get(`/sub-courts?court_id=${courtId}`)
+        spaces.value = res.data.sub_courts || []
+        editingId.value = null
+        toast.success('Space updated')
+    } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to update')
+    } finally { editSaving.value = false }
+}
 
 onMounted(async () => {
     try {
@@ -115,32 +174,103 @@ const removeSpace = async (sc) => {
             <!-- Spaces list -->
             <div v-else-if="spaces.length" class="space-y-3">
                 <div v-for="sc in spaces" :key="sc.id"
-                    class="flex items-center gap-3 bg-white rounded-2xl overflow-hidden shadow-sm ring-1 ring-slate-100">
-                    <!-- Photo -->
-                    <div class="w-20 h-20 shrink-0 bg-slate-100 flex items-center justify-center overflow-hidden">
-                        <img v-if="sc.image_url" :src="sc.image_url" class="w-full h-full object-cover" onerror="this.style.display='none'" />
-                        <LayoutGrid v-else :size="22" :stroke-width="1.5" class="text-slate-300" />
-                    </div>
-                    <div class="flex-1 min-w-0 py-3 pr-1">
-                        <p class="text-sm font-bold text-slate-800">{{ sc.name }}</p>
-                        <p class="text-[11px] text-slate-400 mt-0.5">
-                            {{ sc.hourly_rate ? `₹${sc.hourly_rate}/hr` : 'Inherits venue rate' }}
-                            <span v-if="sc.description"> · {{ sc.description }}</span>
-                        </p>
-                        <div class="flex items-center gap-1.5 mt-1">
-                            <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                                :class="sc.booking_mode === 'shared' ? 'bg-cyan-50 text-cyan-600' : 'bg-slate-100 text-slate-500'">
-                                <Users v-if="sc.booking_mode === 'shared'" :size="10" />
-                                <Lock v-else :size="10" />
-                                {{ sc.booking_mode === 'shared' ? `Shared · ${sc.capacity} spots` : 'Exclusive' }}
-                            </span>
+                    class="bg-white rounded-2xl overflow-hidden shadow-sm ring-1 ring-slate-100">
+
+                    <!-- Compact view -->
+                    <div v-if="editingId !== sc.id" class="flex items-center gap-3">
+                        <div class="w-20 h-20 shrink-0 bg-slate-100 flex items-center justify-center overflow-hidden">
+                            <img v-if="sc.image_url" :src="sc.image_url" class="w-full h-full object-cover" onerror="this.style.display='none'" />
+                            <LayoutGrid v-else :size="22" :stroke-width="1.5" class="text-slate-300" />
+                        </div>
+                        <div class="flex-1 min-w-0 py-3 pr-1">
+                            <p class="text-sm font-bold text-slate-800">{{ sc.name }}</p>
+                            <p class="text-[11px] text-slate-400 mt-0.5">
+                                {{ sc.hourly_rate ? `₹${sc.hourly_rate}/hr` : 'Inherits venue rate' }}
+                                <span v-if="sc.description"> · {{ sc.description }}</span>
+                            </p>
+                            <div class="flex items-center gap-1.5 mt-1">
+                                <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                    :class="sc.booking_mode === 'shared' ? 'bg-cyan-50 text-cyan-600' : 'bg-slate-100 text-slate-500'">
+                                    <Users v-if="sc.booking_mode === 'shared'" :size="10" />
+                                    <Lock v-else :size="10" />
+                                    {{ sc.booking_mode === 'shared' ? `Shared · ${sc.capacity} spots` : 'Exclusive' }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1 mr-2 shrink-0">
+                            <button @click="startEdit(sc)"
+                                class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-50 active:scale-90 transition">
+                                <Pencil :size="14" class="text-slate-400" />
+                            </button>
+                            <button @click="removeSpace(sc)" :disabled="removingId === sc.id"
+                                class="w-9 h-9 flex items-center justify-center active:scale-90 transition">
+                                <Loader2 v-if="removingId === sc.id" :size="14" class="animate-spin text-red-400" />
+                                <Trash2 v-else :size="14" class="text-red-400" />
+                            </button>
                         </div>
                     </div>
-                    <button @click="removeSpace(sc)" :disabled="removingId === sc.id"
-                        class="w-10 h-10 flex items-center justify-center shrink-0 mr-2 active:scale-90 transition">
-                        <Loader2 v-if="removingId === sc.id" :size="14" class="animate-spin text-red-400" />
-                        <Trash2 v-else :size="15" class="text-red-400" />
-                    </button>
+
+                    <!-- Inline edit form -->
+                    <div v-else>
+                        <!-- Image picker -->
+                        <div class="relative h-36 bg-slate-100">
+                            <img v-if="editForm.imagePreview" :src="editForm.imagePreview" class="w-full h-full object-cover" />
+                            <div v-else class="w-full h-full flex flex-col items-center justify-center gap-2">
+                                <Camera :size="24" class="text-slate-300" />
+                                <p class="text-xs text-slate-400">Change photo</p>
+                            </div>
+                            <label class="absolute inset-0 cursor-pointer">
+                                <input type="file" accept="image/*" class="hidden" @change="handleEditImageSelect" />
+                            </label>
+                            <div v-if="editUploadLoading" class="absolute inset-0 bg-white/70 flex items-center justify-center">
+                                <Loader2 :size="20" class="animate-spin text-primary" />
+                            </div>
+                            <button v-if="editForm.imagePreview" @click.stop="editForm.imagePreview = ''; editForm.image_url = ''"
+                                class="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 flex items-center justify-center">
+                                <X :size="13" class="text-white" />
+                            </button>
+                        </div>
+                        <div class="p-4 space-y-3">
+                            <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider">Edit Space</p>
+                            <input v-model="editForm.name" type="text" placeholder="Name *"
+                                class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:outline-none bg-slate-50" />
+                            <input v-model="editForm.hourly_rate" type="number" placeholder="Hourly rate (blank = venue rate)"
+                                class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:outline-none bg-slate-50" />
+                            <input v-model="editForm.description" type="text" placeholder="Description (optional)"
+                                class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:outline-none bg-slate-50" />
+                            <div>
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">Booking Type</p>
+                                <div class="flex gap-2">
+                                    <button @click="editForm.booking_mode = 'exclusive'; editForm.capacity = 1"
+                                        class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all"
+                                        :class="editForm.booking_mode === 'exclusive' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'">
+                                        <Lock :size="12" /> Exclusive
+                                    </button>
+                                    <button @click="editForm.booking_mode = 'shared'"
+                                        class="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold transition-all"
+                                        :class="editForm.booking_mode === 'shared' ? 'bg-cyan-500 text-white' : 'bg-slate-100 text-slate-500'">
+                                        <Users :size="12" /> Shared
+                                    </button>
+                                </div>
+                            </div>
+                            <div v-if="editForm.booking_mode === 'shared'">
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">Max Capacity</p>
+                                <input v-model.number="editForm.capacity" type="number" min="2"
+                                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:outline-none bg-slate-50" />
+                            </div>
+                            <div class="flex gap-2">
+                                <button @click="cancelEdit"
+                                    class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-slate-100 text-slate-600">Cancel</button>
+                                <button @click="saveEdit" :disabled="editSaving || editUploadLoading"
+                                    class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-primary text-white flex items-center justify-center gap-1.5 disabled:opacity-50">
+                                    <Loader2 v-if="editSaving" :size="13" class="animate-spin" />
+                                    <Check v-else :size="13" />
+                                    Save
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
             <p v-else-if="!loading" class="text-center text-slate-400 text-sm py-6">No spaces added yet</p>
