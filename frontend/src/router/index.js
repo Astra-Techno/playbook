@@ -90,6 +90,36 @@ const router = createRouter({
             meta: { requiresAuth: true, title: 'Spaces' },
         },
         {
+            path: '/my-venues/:id/spaces/:spaceId',
+            name: 'space-detail',
+            component: () => import('../views/SpaceDetailView.vue'),
+            meta: { requiresAuth: true, title: 'Space Settings' },
+        },
+        {
+            path: '/my-venues/:id/spaces/:spaceId/pricing',
+            name: 'space-pricing',
+            component: () => import('../views/PricingView.vue'),
+            meta: { requiresAuth: true, title: 'Space Pricing' },
+        },
+        {
+            path: '/my-venues/:id/spaces/:spaceId/plans',
+            name: 'space-plans',
+            component: () => import('../views/ManagePlansView.vue'),
+            meta: { requiresAuth: true, title: 'Space Plans' },
+        },
+        {
+            path: '/my-venues/:id/spaces/:spaceId/block',
+            name: 'space-block',
+            component: () => import('../views/BlockSlotsView.vue'),
+            meta: { requiresAuth: true, title: 'Block Space Slots' },
+        },
+        {
+            path: '/my-venues/:id/spaces/:spaceId/bookings',
+            name: 'space-bookings',
+            component: () => import('../views/SpaceBookingsView.vue'),
+            meta: { requiresAuth: true, title: 'Space Bookings' },
+        },
+        {
             path: '/my-venues/:id/staff',
             name: 'venue-staff',
             component: () => import('../views/StaffView.vue'),

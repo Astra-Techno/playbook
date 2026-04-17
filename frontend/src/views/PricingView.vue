@@ -11,6 +11,8 @@ const auth  = useAuthStore()
 const toast = useToastStore()
 
 const courtId    = route.params.id
+const spaceId    = route.params.spaceId || null
+const spaceName  = ref('')
 const courtName  = ref('')
 const baseRate   = ref(0)
 const rules      = ref([])
@@ -38,14 +40,18 @@ const HOURS = Array.from({ length: 24 }, (_, i) => {
     return { value: i, label: `${h12}:00 ${ampm}` }
 })
 
+const rulesUrl = () => spaceId
+    ? `/pricing-rules?court_id=${courtId}&sub_court_id=${spaceId}`
+    : `/pricing-rules?court_id=${courtId}`
+
 onMounted(async () => {
     try {
-        const [courtRes, rulesRes] = await Promise.all([
-            axios.get(`/courts/${courtId}`),
-            axios.get(`/pricing-rules?court_id=${courtId}`)
-        ])
+        const reqs = [axios.get(`/courts/${courtId}`), axios.get(rulesUrl())]
+        if (spaceId) reqs.push(axios.get(`/sub-courts/${spaceId}`))
+        const [courtRes, rulesRes, spaceRes] = await Promise.all(reqs)
         courtName.value = courtRes.data.court?.name ?? ''
-        baseRate.value  = courtRes.data.court?.hourly_rate ?? 0
+        baseRate.value  = spaceRes?.data.space?.hourly_rate ?? courtRes.data.court?.hourly_rate ?? 0
+        spaceName.value = spaceRes?.data.space?.name ?? ''
         rules.value     = rulesRes.data.rules || []
     } catch { toast.error('Failed to load') }
     finally { loading.value = false }
@@ -64,17 +70,18 @@ const addRule = async () => {
     saving.value = true
     try {
         await axios.post('/pricing-rules', {
-            court_id:   courtId,
-            owner_id:   auth.user.id,
-            name:       newName.value.trim(),
-            day_type:   newDayType.value,
-            start_hour: newStartHour.value,
-            end_hour:   newEndHour.value,
-            price:      parseFloat(newPrice.value),
-            priority:   newPriority.value,
+            court_id:     courtId,
+            sub_court_id: spaceId || undefined,
+            owner_id:     auth.user.id,
+            name:         newName.value.trim(),
+            day_type:     newDayType.value,
+            start_hour:   newStartHour.value,
+            end_hour:     newEndHour.value,
+            price:        parseFloat(newPrice.value),
+            priority:     newPriority.value,
         })
         resetForm(); adding.value = false
-        const res = await axios.get(`/pricing-rules?court_id=${courtId}`)
+        const res = await axios.get(rulesUrl())
         rules.value = res.data.rules || []
         toast.success('Pricing rule added')
     } catch (err) {
@@ -97,14 +104,14 @@ const hourLabel    = (h)  => HOURS[h]?.label ?? h
 </script>
 
 <template>
-    <Teleport to="#header-subject">{{ courtName || 'Pricing' }}</Teleport>
-    <Teleport to="#header-subtitle">Dynamic Pricing</Teleport>
+    <Teleport to="#header-subject">{{ spaceName || courtName || 'Pricing' }}</Teleport>
+    <Teleport to="#header-subtitle">{{ spaceId ? spaceName + ' · Pricing' : 'Dynamic Pricing' }}</Teleport>
 
     <div class="min-h-screen bg-slate-50">
         <!-- Header -->
         <div class="bg-white px-5 pt-5 pb-5 border-b border-slate-100">
             <h1 class="text-lg font-bold text-slate-900">Dynamic Pricing</h1>
-            <p class="text-xs text-slate-500">Set time-based pricing rules for this venue</p>
+            <p class="text-xs text-slate-500">{{ spaceId ? `Pricing rules for ${spaceName || 'this space'}` : 'Set time-based pricing rules for this venue' }}</p>
         </div>
 
         <div class="px-5 py-5 pb-8 space-y-5">

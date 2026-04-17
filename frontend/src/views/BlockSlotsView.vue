@@ -11,6 +11,8 @@ const auth  = useAuthStore()
 const toast = useToastStore()
 
 const courtId   = route.params.id
+const spaceId   = route.params.spaceId || null
+const spaceName = ref('')
 const courtName = ref('')
 const blocks    = ref([])
 const loading   = ref(true)
@@ -36,13 +38,17 @@ const dateOptions = computed(() =>
     })
 )
 
+const blocksUrl = () => spaceId
+    ? `/blocked-slots?court_id=${courtId}&sub_court_id=${spaceId}`
+    : `/blocked-slots?court_id=${courtId}`
+
 onMounted(async () => {
     try {
-        const [courtRes, blocksRes] = await Promise.all([
-            axios.get(`/courts/${courtId}`),
-            axios.get(`/blocked-slots?court_id=${courtId}`)
-        ])
+        const reqs = [axios.get(`/courts/${courtId}`), axios.get(blocksUrl())]
+        if (spaceId) reqs.push(axios.get(`/sub-courts/${spaceId}`))
+        const [courtRes, blocksRes, spaceRes] = await Promise.all(reqs)
         courtName.value = courtRes.data.court?.name ?? ''
+        spaceName.value = spaceRes?.data.space?.name ?? ''
         blocks.value    = blocksRes.data.blocks || []
     } catch { toast.error('Failed to load') }
     finally { loading.value = false }
@@ -66,15 +72,16 @@ const save = async () => {
     saving.value = true
     try {
         await axios.post('/blocked-slots', {
-            court_id:   courtId,
-            blocked_by: auth.user.id,
-            date:       selectedDate.value,
-            hours:      selectedHours.value,
-            reason:     reason.value.trim(),
+            court_id:     courtId,
+            sub_court_id: spaceId || undefined,
+            blocked_by:   auth.user.id,
+            date:         selectedDate.value,
+            hours:        selectedHours.value,
+            reason:       reason.value.trim(),
         })
         toast.success(`${selectedHours.value.length} slot(s) blocked`)
         selectedHours.value = []; reason.value = ''
-        const res = await axios.get(`/blocked-slots?court_id=${courtId}`)
+        const res = await axios.get(blocksUrl())
         blocks.value = res.data.blocks || []
     } catch (err) {
         toast.error(err.response?.data?.message || 'Failed to block slots')
@@ -98,14 +105,14 @@ const formatBlockTime = (b) => {
 </script>
 
 <template>
-    <Teleport to="#header-subject">{{ courtName || 'Block Slots' }}</Teleport>
-    <Teleport to="#header-subtitle">Block Slots</Teleport>
+    <Teleport to="#header-subject">{{ spaceName || courtName || 'Block Slots' }}</Teleport>
+    <Teleport to="#header-subtitle">{{ spaceId ? spaceName + ' · Block Slots' : 'Block Slots' }}</Teleport>
 
     <div class="min-h-screen bg-slate-50">
         <!-- Header -->
         <div class="bg-white px-5 pt-5 pb-5 border-b border-slate-100">
             <h1 class="text-lg font-bold text-slate-900">Block Slots</h1>
-            <p class="text-xs text-slate-500">Mark time slots as unavailable</p>
+            <p class="text-xs text-slate-500">{{ spaceId ? `Block slots for ${spaceName || 'this space'}` : 'Mark time slots as unavailable' }}</p>
         </div>
 
         <div class="px-5 py-5 pb-8 space-y-5">

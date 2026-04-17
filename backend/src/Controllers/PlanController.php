@@ -4,19 +4,20 @@ require_once __DIR__ . '/../Models/Plan.php';
 
 class PlanController {
     
-    // GET /api/plans?court_id=X
+    // GET /api/plans?court_id=X[&sub_court_id=Y]
     public function index() {
-        $court_id = isset($_GET['court_id']) ? $_GET['court_id'] : die();
+        $court_id     = isset($_GET['court_id']) ? $_GET['court_id'] : die();
+        $sub_court_id = isset($_GET['sub_court_id']) ? (int)$_GET['sub_court_id'] : null;
 
         $plan = new Plan();
-        $stmt = $plan->readByCourt($court_id);
-        $num = $stmt->rowCount();
+        $stmt = $plan->readByCourt($court_id, $sub_court_id);
 
         $plans_arr = ["records" => []];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
             $plans_arr["records"][] = [
                 "id"            => $row["id"],
                 "court_id"      => $row["court_id"],
+                "sub_court_id"  => $row["sub_court_id"] ?? null,
                 "name"          => $row["name"],
                 "description"   => $row["description"],
                 "slot_type"     => $row["slot_type"] ?? "unlimited",
@@ -39,12 +40,13 @@ class PlanController {
             !empty($data->duration_days)
         ) {
             $plan = new Plan();
-            $plan->court_id     = $data->court_id;
-            $plan->name         = $data->name;
-            $plan->description  = $data->description ?? '';
-            $plan->slot_type    = $data->slot_type ?? 'unlimited';
+            $plan->court_id      = $data->court_id;
+            $plan->sub_court_id  = isset($data->sub_court_id) && $data->sub_court_id !== '' ? (int)$data->sub_court_id : null;
+            $plan->name          = $data->name;
+            $plan->description   = $data->description ?? '';
+            $plan->slot_type     = $data->slot_type ?? 'unlimited';
             $plan->duration_days = $data->duration_days;
-            $plan->price        = $data->price;
+            $plan->price         = $data->price;
 
             if($plan->create()) {
                 http_response_code(201);

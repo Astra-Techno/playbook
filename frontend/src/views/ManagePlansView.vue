@@ -12,6 +12,8 @@ const route = useRoute()
 const toast = useToastStore()
 
 const courtId   = route.params.id
+const spaceId   = route.params.spaceId || null
+const spaceName = ref('')
 const courtName = ref('')
 const plans = ref([])
 const loading = ref(true)
@@ -47,9 +49,13 @@ const durationPresets = [
     { label: '1 Year', days: 365 },
 ]
 
+const plansUrl = () => spaceId
+    ? `/plans?court_id=${courtId}&sub_court_id=${spaceId}`
+    : `/plans?court_id=${courtId}`
+
 const fetchPlans = async () => {
     try {
-        const res = await axios.get(`/plans?court_id=${courtId}`)
+        const res = await axios.get(plansUrl())
         plans.value = res.data.records || []
     } catch {
         plans.value = []
@@ -60,7 +66,13 @@ const fetchPlans = async () => {
 
 onMounted(async () => {
     fetchPlans()
-    try { const r = await axios.get(`/courts/${courtId}`); courtName.value = r.data.court?.name ?? '' } catch {}
+    try {
+        const reqs = [axios.get(`/courts/${courtId}`)]
+        if (spaceId) reqs.push(axios.get(`/sub-courts/${spaceId}`))
+        const [courtRes, spaceRes] = await Promise.all(reqs)
+        courtName.value = courtRes.data.court?.name ?? ''
+        spaceName.value = spaceRes?.data.space?.name ?? ''
+    } catch {}
 })
 
 const deletingId = ref(null)
@@ -87,7 +99,7 @@ const addPlan = async () => {
     }
     addLoading.value = true
     try {
-        await axios.post('/plans', { ...newPlan.value, court_id: courtId })
+        await axios.post('/plans', { ...newPlan.value, court_id: courtId, sub_court_id: spaceId || undefined })
         toast.success('Membership plan created!')
         newPlan.value = { name: '', description: '', slot_type: 'unlimited', duration_days: 30, price: '' }
         showForm.value = false
@@ -101,15 +113,15 @@ const addPlan = async () => {
 </script>
 
 <template>
-    <Teleport to="#header-subject">{{ courtName || 'Plans' }}</Teleport>
-    <Teleport to="#header-subtitle">Membership Plans</Teleport>
+    <Teleport to="#header-subject">{{ spaceName || courtName || 'Plans' }}</Teleport>
+    <Teleport to="#header-subtitle">{{ spaceId ? spaceName + ' · Plans' : 'Membership Plans' }}</Teleport>
 
     <div class="min-h-screen bg-slate-50">
 
         <!-- Header -->
         <div class="bg-white px-5 pt-5 pb-5 border-b border-slate-100">
             <h1 class="text-lg font-bold text-slate-900">Membership Plans</h1>
-            <p class="text-xs text-slate-500">Create & manage subscription plans for your court</p>
+            <p class="text-xs text-slate-500">{{ spaceId ? `Plans for ${spaceName || 'this space'}` : 'Create & manage subscription plans for your court' }}</p>
         </div>
 
         <!-- Content -->

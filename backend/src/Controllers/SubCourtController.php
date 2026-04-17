@@ -34,6 +34,17 @@ class SubCourtController
         try { $this->db->exec("ALTER TABLE sub_courts ADD COLUMN booking_mode VARCHAR(20) DEFAULT 'exclusive'"); } catch (Exception $e) {}
     }
 
+    // GET /sub-courts/:id
+    public function show(int $id): void
+    {
+        $stmt = $this->db->prepare("SELECT * FROM sub_courts WHERE id = ? LIMIT 1");
+        $stmt->execute([$id]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) { http_response_code(404); echo json_encode(['message' => 'Not found']); return; }
+        http_response_code(200);
+        echo json_encode(['space' => $row]);
+    }
+
     // GET /sub-courts?court_id=X
     public function index(): void
     {

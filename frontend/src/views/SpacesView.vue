@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
-import { Plus, Trash2, Loader2, LayoutGrid, Camera, X, Lock, Users, Pencil, Check } from 'lucide-vue-next'
+import { Plus, Trash2, Loader2, LayoutGrid, Camera, X, Lock, Users, Pencil, Check, Settings2 } from 'lucide-vue-next'
 
 const route  = useRoute()
 const router = useRouter()
@@ -198,6 +198,11 @@ const removeSpace = async (sc) => {
                             </div>
                         </div>
                         <div class="flex items-center gap-1 mr-2 shrink-0">
+                            <button @click="router.push(`/my-venues/${courtId}/spaces/${sc.id}`)"
+                                class="w-9 h-9 flex items-center justify-center rounded-xl bg-primary/10 active:scale-90 transition"
+                                title="Space settings">
+                                <Settings2 :size="14" class="text-primary" />
+                            </button>
                             <button @click="startEdit(sc)"
                                 class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-50 active:scale-90 transition">
                                 <Pencil :size="14" class="text-slate-400" />

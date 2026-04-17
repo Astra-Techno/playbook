@@ -24,41 +24,47 @@ class BlockController
                 INDEX idx_court_date (court_id, start_time)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
+        try { $this->db->exec("ALTER TABLE blocked_slots ADD COLUMN sub_court_id INT DEFAULT NULL"); } catch (Exception $e) {}
     }
 
-    // GET /blocked-slots?court_id=X&date=YYYY-MM-DD
+    // GET /blocked-slots?court_id=X[&sub_court_id=Y][&date=YYYY-MM-DD]
     public function index(): void
     {
-        $court_id = (int)($_GET['court_id'] ?? 0);
-        $date     = $_GET['date'] ?? '';
+        $court_id     = (int)($_GET['court_id'] ?? 0);
+        $sub_court_id = isset($_GET['sub_court_id']) ? (int)$_GET['sub_court_id'] : null;
+        $date         = $_GET['date'] ?? '';
         if (!$court_id) { http_response_code(400); echo json_encode(['message' => 'court_id required']); return; }
+
+        $spaceFilter = $sub_court_id !== null ? ' AND sub_court_id = ?' : ' AND sub_court_id IS NULL';
+        $params      = $sub_court_id !== null ? [$court_id, $sub_court_id] : [$court_id];
 
         if ($date) {
             $stmt = $this->db->prepare("
                 SELECT * FROM blocked_slots
-                WHERE court_id = ? AND DATE(start_time) = ?
+                WHERE court_id = ?{$spaceFilter} AND DATE(start_time) = ?
                 ORDER BY start_time
             ");
-            $stmt->execute([$court_id, $date]);
+            $stmt->execute(array_merge($params, [$date]));
         } else {
             $stmt = $this->db->prepare("
                 SELECT * FROM blocked_slots
-                WHERE court_id = ? AND end_time >= NOW()
+                WHERE court_id = ?{$spaceFilter} AND end_time >= NOW()
                 ORDER BY start_time LIMIT 200
             ");
-            $stmt->execute([$court_id]);
+            $stmt->execute($params);
         }
         echo json_encode(['blocks' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
     }
 
-    // POST /blocked-slots  { court_id, blocked_by, date, hours: [6,7,8], reason? }
-    // OR  { court_id, blocked_by, start_time, end_time, reason? }  for range block
+    // POST /blocked-slots  { court_id, blocked_by, sub_court_id?, date, hours: [6,7,8], reason? }
+    // OR  { court_id, blocked_by, sub_court_id?, start_time, end_time, reason? }  for range block
     public function create(): void
     {
-        $data       = json_decode(file_get_contents('php://input'));
-        $court_id   = (int)($data->court_id  ?? 0);
-        $blocked_by = (int)($data->blocked_by ?? 0);
-        $reason     = trim($data->reason ?? '');
+        $data         = json_decode(file_get_contents('php://input'));
+        $court_id     = (int)($data->court_id  ?? 0);
+        $blocked_by   = (int)($data->blocked_by ?? 0);
+        $sub_court_id = isset($data->sub_court_id) && $data->sub_court_id !== '' ? (int)$data->sub_court_id : null;
+        $reason       = trim($data->reason ?? '');
 
         if (!$court_id || !$blocked_by) {
             http_response_code(400); echo json_encode(['message' => 'court_id and blocked_by required']); return;
@@ -78,23 +84,23 @@ class BlockController
         // Block individual hours on a date
         if (!empty($data->date) && !empty($data->hours) && is_array($data->hours)) {
             $ins = $this->db->prepare("
-                INSERT IGNORE INTO blocked_slots (court_id, start_time, end_time, reason, blocked_by)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT IGNORE INTO blocked_slots (court_id, sub_court_id, start_time, end_time, reason, blocked_by)
+                VALUES (?, ?, ?, ?, ?, ?)
             ");
             foreach ($data->hours as $hour) {
                 $h   = (int)$hour;
                 $st  = $data->date . ' ' . str_pad($h,     2, '0', STR_PAD_LEFT) . ':00:00';
                 $et  = $data->date . ' ' . str_pad($h + 1, 2, '0', STR_PAD_LEFT) . ':00:00';
-                $ins->execute([$court_id, $st, $et, $reason, $blocked_by]);
+                $ins->execute([$court_id, $sub_court_id, $st, $et, $reason, $blocked_by]);
                 $created[] = ['start_time' => $st, 'end_time' => $et];
             }
         } elseif (!empty($data->start_time) && !empty($data->end_time)) {
             // Block a continuous range
             $ins = $this->db->prepare("
-                INSERT INTO blocked_slots (court_id, start_time, end_time, reason, blocked_by)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO blocked_slots (court_id, sub_court_id, start_time, end_time, reason, blocked_by)
+                VALUES (?, ?, ?, ?, ?, ?)
             ");
-            $ins->execute([$court_id, $data->start_time, $data->end_time, $reason, $blocked_by]);
+            $ins->execute([$court_id, $sub_court_id, $data->start_time, $data->end_time, $reason, $blocked_by]);
             $created[] = ['start_time' => $data->start_time, 'end_time' => $data->end_time];
         } else {
             http_response_code(400); echo json_encode(['message' => 'Provide date+hours or start_time+end_time']); return;

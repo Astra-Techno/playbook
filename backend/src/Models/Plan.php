@@ -8,6 +8,7 @@ class Plan {
 
     public $id;
     public $court_id;
+    public $sub_court_id;
     public $name;
     public $description;
     public $slot_type;    // morning | evening | full_day | unlimited
@@ -16,20 +17,28 @@ class Plan {
 
     public function __construct() {
         $this->conn = Database::getConnection();
+        try { $this->conn->exec("ALTER TABLE plans ADD COLUMN sub_court_id INT DEFAULT NULL"); } catch (Exception $e) {}
     }
 
-    public function readByCourt($court_id) {
-        $stmt = $this->conn->prepare(
-            "SELECT * FROM {$this->table_name} WHERE court_id = ? ORDER BY price ASC"
-        );
-        $stmt->execute([$court_id]);
+    public function readByCourt($court_id, $sub_court_id = null) {
+        if ($sub_court_id !== null) {
+            $stmt = $this->conn->prepare(
+                "SELECT * FROM {$this->table_name} WHERE court_id = ? AND sub_court_id = ? ORDER BY price ASC"
+            );
+            $stmt->execute([$court_id, $sub_court_id]);
+        } else {
+            $stmt = $this->conn->prepare(
+                "SELECT * FROM {$this->table_name} WHERE court_id = ? AND sub_court_id IS NULL ORDER BY price ASC"
+            );
+            $stmt->execute([$court_id]);
+        }
         return $stmt;
     }
 
     public function create() {
         $stmt = $this->conn->prepare(
             "INSERT INTO {$this->table_name}
-             SET court_id=:court_id, name=:name, description=:description,
+             SET court_id=:court_id, sub_court_id=:sub_court_id, name=:name, description=:description,
                  slot_type=:slot_type, duration_days=:duration_days, price=:price"
         );
         $this->name        = htmlspecialchars(strip_tags($this->name));
@@ -37,6 +46,7 @@ class Plan {
         $this->slot_type   = in_array($this->slot_type, ['morning','evening','full_day','unlimited'])
                              ? $this->slot_type : 'unlimited';
         $stmt->bindParam(":court_id",      $this->court_id);
+        $stmt->bindParam(":sub_court_id",  $this->sub_court_id);
         $stmt->bindParam(":name",          $this->name);
         $stmt->bindParam(":description",   $this->description);
         $stmt->bindParam(":slot_type",     $this->slot_type);

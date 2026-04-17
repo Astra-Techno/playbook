@@ -478,6 +478,7 @@ if (isset($seg[0]) && $seg[0] === 'blocked-slots') {
 if (isset($seg[0]) && $seg[0] === 'sub-courts') {
     require_once __DIR__ . '/src/Controllers/SubCourtController.php';
     $scc = new SubCourtController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1])) { $scc->show((int)$seg[1]); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'GET')                      { $scc->index();              exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST')                     { $scc->create();             exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'PUT'    && isset($seg[1])) { $scc->update((int)$seg[1]); exit(); }
