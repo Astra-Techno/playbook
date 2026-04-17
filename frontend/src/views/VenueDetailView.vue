@@ -112,9 +112,10 @@ const menuGroups = computed(() => {
 
                 <div class="flex items-start justify-between mb-1">
                     <h1 class="text-xl font-bold text-slate-900">{{ court.name }}</h1>
-                    <div class="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg text-amber-700 font-bold text-[11px] border border-amber-100/50">
+                    <div v-if="court.avg_rating" class="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg text-amber-700 font-bold text-[11px] border border-amber-100/50">
                         <Star :size="11" :stroke-width="2.5" class="fill-amber-500 text-amber-500" />
-                        4.8
+                        {{ court.avg_rating }}
+                        <span class="font-normal opacity-60">({{ court.review_count }})</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-1.5 text-slate-500 text-sm mb-3">

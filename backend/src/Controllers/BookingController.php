@@ -203,12 +203,20 @@ class BookingController {
                 }
             }
 
+            // Recalculate total_price server-side using pricing rules (don't trust frontend)
+            $serverPrice = $this->calculateBookingPrice(
+                (int)$data->court_id,
+                $sub_court_id,
+                $data->start_time,
+                $data->end_time
+            );
+
             $booking->user_id     = $hasUser ? (int)$data->user_id : 0;
             $booking->court_id    = (int)$data->court_id;
             $booking->start_time  = $data->start_time;
             $booking->end_time    = $data->end_time;
             $booking->type        = $data->type ?? 'hourly';
-            $booking->total_price = $data->total_price ?? 0;
+            $booking->total_price = $serverPrice > 0 ? $serverPrice : ($data->total_price ?? 0);
             $booking->sub_court_id = $sub_court_id;
             $booking->guest_name  = $isWalkIn ? trim($data->guest_name) : null;
             $booking->guest_phone = $isWalkIn && !empty($data->guest_phone) ? trim($data->guest_phone) : null;
@@ -227,5 +235,79 @@ class BookingController {
             http_response_code(400);
             echo json_encode(["message" => "Incomplete booking data."]);
         }
+    }
+
+    /**
+     * Calculate booking price using pricing rules (30-min slots × hourly rate / 2).
+     * Falls back to court/space base hourly_rate if no rules match.
+     */
+    private function calculateBookingPrice(int $court_id, ?int $sub_court_id, string $start, string $end): float
+    {
+        $db = Database::getConnection();
+
+        // Get base rates
+        $cStmt = $db->prepare("SELECT hourly_rate FROM courts WHERE id=?");
+        $cStmt->execute([$court_id]);
+        $court     = $cStmt->fetch(PDO::FETCH_ASSOC);
+        $basePrice = (float)($court['hourly_rate'] ?? 0);
+
+        if ($sub_court_id) {
+            $scStmt = $db->prepare("SELECT hourly_rate FROM sub_courts WHERE id=?");
+            $scStmt->execute([$sub_court_id]);
+            $sc = $scStmt->fetch(PDO::FETCH_ASSOC);
+            if ($sc && (float)$sc['hourly_rate'] > 0) $basePrice = (float)$sc['hourly_rate'];
+        }
+
+        $startTs = strtotime($start);
+        $endTs   = strtotime($end);
+        if ($endTs <= $startTs) return $basePrice;
+
+        $date      = date('Y-m-d', $startTs);
+        $dow       = (int)date('N', $startTs);
+        $isWeekend = $dow >= 6;
+        $dayType   = $isWeekend ? 'weekend' : 'weekday';
+
+        // Walk 30-min slots and sum prices
+        $total = 0.0;
+        $cursor = $startTs;
+        while ($cursor < $endTs) {
+            $hour = (int)date('H', $cursor);
+            $slotDate = date('Y-m-d', $cursor);
+
+            $rule = null;
+            // Space-specific rule first
+            if ($sub_court_id) {
+                $stmt = $db->prepare("
+                    SELECT price FROM pricing_rules
+                    WHERE court_id=? AND sub_court_id=?
+                      AND start_hour<=? AND end_hour>?
+                      AND (day_type='all' OR day_type=?)
+                      AND (valid_from IS NULL OR valid_from<=?)
+                      AND (valid_to IS NULL OR valid_to>=?)
+                    ORDER BY priority DESC, id DESC LIMIT 1
+                ");
+                $stmt->execute([$court_id, $sub_court_id, $hour, $hour, $dayType, $slotDate, $slotDate]);
+                $rule = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+            // Venue-level fallback
+            if (!$rule) {
+                $stmt = $db->prepare("
+                    SELECT price FROM pricing_rules
+                    WHERE court_id=? AND sub_court_id IS NULL
+                      AND start_hour<=? AND end_hour>?
+                      AND (day_type='all' OR day_type=?)
+                      AND (valid_from IS NULL OR valid_from<=?)
+                      AND (valid_to IS NULL OR valid_to>=?)
+                    ORDER BY priority DESC, id DESC LIMIT 1
+                ");
+                $stmt->execute([$court_id, $hour, $hour, $dayType, $slotDate, $slotDate]);
+                $rule = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+
+            $hourlyRate = $rule ? (float)$rule['price'] : $basePrice;
+            $total += $hourlyRate / 2;  // 30-min slot = half an hour
+            $cursor += 1800;            // advance 30 minutes
+        }
+        return round($total, 2);
     }
 }

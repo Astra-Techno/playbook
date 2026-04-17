@@ -40,6 +40,8 @@ class CourtController {
                 "peak_members_only"   => (bool)($row["peak_members_only"] ?? false),
                 "amenities"           => $row["amenities"] ? json_decode($row["amenities"], true) : [],
                 "is_verified"         => (bool)($row["is_verified"] ?? false),
+                "avg_rating"          => isset($row["avg_rating"]) && $row["avg_rating"] !== null ? round((float)$row["avg_rating"], 1) : null,
+                "review_count"        => (int)($row["review_count"] ?? 0),
             ];
             // Include distance (km) when GPS search was used
             if (isset($row["distance"])) {
@@ -54,11 +56,20 @@ class CourtController {
     // GET /api/courts/:id
     public function show($id) {
         $db   = Database::getConnection();
-        $stmt = $db->prepare("SELECT * FROM courts WHERE id = ? LIMIT 1");
+        $stmt = $db->prepare("
+            SELECT c.*,
+                   AVG(r.rating) AS avg_rating,
+                   COUNT(r.id)   AS review_count
+            FROM courts c
+            LEFT JOIN reviews r ON r.court_id = c.id
+            WHERE c.id = ? LIMIT 1
+        ");
         $stmt->execute([$id]);
         $row  = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$row) { http_response_code(404); echo json_encode(['message' => 'Not found']); return; }
-        $row['amenities'] = $row['amenities'] ? json_decode($row['amenities'], true) : [];
+        $row['amenities']    = $row['amenities'] ? json_decode($row['amenities'], true) : [];
+        $row['avg_rating']   = $row['avg_rating']   !== null ? round((float)$row['avg_rating'], 1) : null;
+        $row['review_count'] = (int)$row['review_count'];
         http_response_code(200);
         echo json_encode(['court' => $row]);
     }

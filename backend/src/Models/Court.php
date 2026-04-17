@@ -40,19 +40,23 @@ class Court {
 
         // GPS proximity search (player discovering courts)
         if ($lat !== null && $lng !== null && !$owner_id) {
-            $conditions = ["lat IS NOT NULL", "lng IS NOT NULL",
-                           "(claim_status IS NULL OR claim_status = 'approved')"];
-            if ($type && $type !== 'All') $conditions[] = "type = ?";
+            $conditions = ["c.lat IS NOT NULL", "c.lng IS NOT NULL",
+                           "(c.claim_status IS NULL OR c.claim_status = 'approved')"];
+            if ($type && $type !== 'All') $conditions[] = "c.type = ?";
 
             $where = implode(" AND ", $conditions);
 
-            $query = "SELECT *,
+            $query = "SELECT c.*,
+                AVG(r.rating) AS avg_rating,
+                COUNT(r.id)   AS review_count,
                 (6371 * acos(LEAST(1.0,
-                    cos(radians(?)) * cos(radians(lat)) * cos(radians(lng) - radians(?)) +
-                    sin(radians(?)) * sin(radians(lat))
+                    cos(radians(?)) * cos(radians(c.lat)) * cos(radians(c.lng) - radians(?)) +
+                    sin(radians(?)) * sin(radians(c.lat))
                 ))) AS distance
-                FROM {$this->table_name}
+                FROM {$this->table_name} c
+                LEFT JOIN reviews r ON r.court_id = c.id
                 WHERE {$where}
+                GROUP BY c.id
                 HAVING distance < ?
                 ORDER BY distance ASC";
 
@@ -70,14 +74,16 @@ class Court {
         // Text / owner filter search
         $conditions = [];
         // Only exclude pending courts for public searches (not owner's own dashboard)
-        if (!$owner_id) $conditions[] = "(claim_status IS NULL OR claim_status = 'approved')";
-        if ($location && $location !== 'All') $conditions[] = "location LIKE ?";
-        if ($type     && $type     !== 'All') $conditions[] = "type = ?";
-        if ($owner_id)                        $conditions[] = "owner_id = ?";
+        if (!$owner_id) $conditions[] = "(c.claim_status IS NULL OR c.claim_status = 'approved')";
+        if ($location && $location !== 'All') $conditions[] = "c.location LIKE ?";
+        if ($type     && $type     !== 'All') $conditions[] = "c.type = ?";
+        if ($owner_id)                        $conditions[] = "c.owner_id = ?";
 
-        $query = "SELECT * FROM {$this->table_name}";
+        $query = "SELECT c.*, AVG(r.rating) AS avg_rating, COUNT(r.id) AS review_count
+                  FROM {$this->table_name} c
+                  LEFT JOIN reviews r ON r.court_id = c.id";
         if ($conditions) $query .= " WHERE " . implode(" AND ", $conditions);
-        $query .= " ORDER BY created_at DESC";
+        $query .= " GROUP BY c.id ORDER BY c.created_at DESC";
 
         $stmt = $this->conn->prepare($query);
 

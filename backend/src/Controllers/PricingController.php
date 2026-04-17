@@ -96,44 +96,96 @@ class PricingController
         echo json_encode(['message' => 'Deleted']);
     }
 
-    // GET /pricing-rules/calculate?court_id=X&date=YYYY-MM-DD&hour=H
+    // GET /pricing-rules/calculate?court_id=X&date=YYYY-MM-DD&hour=H[&sub_court_id=Y]
     // Returns the effective price for a given slot
     public function calculate(): void
     {
-        $court_id = (int)($_GET['court_id'] ?? 0);
-        $date     = $_GET['date'] ?? date('Y-m-d');
-        $hour     = (int)($_GET['hour'] ?? 0);
-        if (!$court_id) { http_response_code(400); echo json_encode(['message' => 'court_id required']); return;  }
+        $court_id     = (int)($_GET['court_id'] ?? 0);
+        $sub_court_id = isset($_GET['sub_court_id']) ? (int)$_GET['sub_court_id'] : null;
+        $date         = $_GET['date'] ?? date('Y-m-d');
+        $hour         = (int)($_GET['hour'] ?? 0);
+        if (!$court_id) { http_response_code(400); echo json_encode(['message' => 'court_id required']); return; }
 
-        $dow = (int)date('N', strtotime($date)); // 1=Mon…7=Sun
+        echo json_encode($this->getSlotPrice($court_id, $sub_court_id, $date, $hour));
+    }
+
+    // GET /pricing-rules/calculate-day?court_id=X&date=YYYY-MM-DD[&sub_court_id=Y]
+    // Returns effective_price for every hour 0-23 in one call
+    public function calculateDay(): void
+    {
+        $court_id     = (int)($_GET['court_id'] ?? 0);
+        $sub_court_id = isset($_GET['sub_court_id']) ? (int)$_GET['sub_court_id'] : null;
+        $date         = $_GET['date'] ?? date('Y-m-d');
+        if (!$court_id) { http_response_code(400); echo json_encode(['message' => 'court_id required']); return; }
+
+        $prices = [];
+        for ($h = 0; $h <= 23; $h++) {
+            $prices[$h] = $this->getSlotPrice($court_id, $sub_court_id, $date, $h)['effective_price'];
+        }
+        http_response_code(200);
+        echo json_encode(['prices' => $prices, 'date' => $date]);
+    }
+
+    // Internal: resolve effective price for one hour
+    private function getSlotPrice(int $court_id, ?int $sub_court_id, string $date, int $hour): array
+    {
+        $dow       = (int)date('N', strtotime($date));
         $isWeekend = $dow >= 6;
         $dayType   = $isWeekend ? 'weekend' : 'weekday';
 
-        // Fetch base rate
+        // Base rate from court
         $cStmt = $this->db->prepare("SELECT hourly_rate FROM courts WHERE id=?");
         $cStmt->execute([$court_id]);
-        $court = $cStmt->fetch(PDO::FETCH_ASSOC);
+        $court     = $cStmt->fetch(PDO::FETCH_ASSOC);
         $basePrice = (float)($court['hourly_rate'] ?? 0);
 
-        // Find best matching rule (highest priority)
-        $stmt = $this->db->prepare("
-            SELECT * FROM pricing_rules
-            WHERE court_id = ?
-              AND start_hour <= ? AND end_hour > ?
-              AND (day_type = 'all' OR day_type = ?)
-              AND (valid_from IS NULL OR valid_from <= ?)
-              AND (valid_to   IS NULL OR valid_to   >= ?)
-            ORDER BY priority DESC, id DESC
-            LIMIT 1
-        ");
-        $stmt->execute([$court_id, $hour, $hour, $dayType, $date, $date]);
-        $rule = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Override base with space hourly_rate if space exists
+        if ($sub_court_id) {
+            $scStmt = $this->db->prepare("SELECT hourly_rate FROM sub_courts WHERE id=?");
+            $scStmt->execute([$sub_court_id]);
+            $sc = $scStmt->fetch(PDO::FETCH_ASSOC);
+            if ($sc && $sc['hourly_rate'] !== null && $sc['hourly_rate'] > 0) {
+                $basePrice = (float)$sc['hourly_rate'];
+            }
+        }
+
+        $rule = null;
+
+        // 1. Try space-specific rule first
+        if ($sub_court_id) {
+            $stmt = $this->db->prepare("
+                SELECT * FROM pricing_rules
+                WHERE court_id = ? AND sub_court_id = ?
+                  AND start_hour <= ? AND end_hour > ?
+                  AND (day_type = 'all' OR day_type = ?)
+                  AND (valid_from IS NULL OR valid_from <= ?)
+                  AND (valid_to   IS NULL OR valid_to   >= ?)
+                ORDER BY priority DESC, id DESC LIMIT 1
+            ");
+            $stmt->execute([$court_id, $sub_court_id, $hour, $hour, $dayType, $date, $date]);
+            $rule = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+
+        // 2. Fall back to venue-level rule
+        if (!$rule) {
+            $stmt = $this->db->prepare("
+                SELECT * FROM pricing_rules
+                WHERE court_id = ? AND sub_court_id IS NULL
+                  AND start_hour <= ? AND end_hour > ?
+                  AND (day_type = 'all' OR day_type = ?)
+                  AND (valid_from IS NULL OR valid_from <= ?)
+                  AND (valid_to   IS NULL OR valid_to   >= ?)
+                ORDER BY priority DESC, id DESC LIMIT 1
+            ");
+            $stmt->execute([$court_id, $hour, $hour, $dayType, $date, $date]);
+            $rule = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
 
         $effectivePrice = $rule ? (float)$rule['price'] : $basePrice;
-        echo json_encode([
+        return [
             'base_price'      => $basePrice,
             'effective_price' => $effectivePrice,
-            'rule'            => $rule ?: null,
-        ]);
+            'rule'            => $rule,
+        ];
     }
 }

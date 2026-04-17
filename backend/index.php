@@ -493,6 +493,7 @@ if (isset($seg[0]) && $seg[0] === 'sub-courts') {
 if (isset($seg[0]) && $seg[0] === 'pricing-rules') {
     require_once __DIR__ . '/src/Controllers/PricingController.php';
     $prc = new PricingController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'calculate-day') { $prc->calculateDay(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'calculate') { $prc->calculate(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'GET')                      { $prc->index();              exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST')                     { $prc->create();             exit(); }

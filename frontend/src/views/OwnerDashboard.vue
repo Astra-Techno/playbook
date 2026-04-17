@@ -155,11 +155,6 @@ const sportOptions = [
     { id: 'other',    label: 'Other',      icon: Layers3 },
 ]
 
-const sportRating = {
-    shuttle: '4.8', turf: '4.9', gym: '4.7', cricket: '4.6',
-    tennis: '4.8', swimming: '4.7', boxing: '4.6', basket: '4.7', other: '4.5'
-}
-
 const filteredCourts = computed(() => {
     let list = courts.value
     if (activeFilter.value !== 'all') {
@@ -442,8 +437,14 @@ const handleAvatarUpload = async (event) => {
                             <div class="flex justify-between items-start mb-1">
                                 <h4 class="text-slate-900 font-bold text-lg">{{ court.name }}</h4>
                                 <div class="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg text-amber-700 font-bold text-[11px] border border-amber-100/50">
-                                    <Star :size="11" :stroke-width="2.5" class="fill-amber-500 text-amber-500" />
-                                    {{ sportRating[court.type] || '4.8' }}
+                                    <template v-if="court.avg_rating">
+                                        <Star :size="11" class="fill-amber-400 text-amber-400" />
+                                        <span>{{ court.avg_rating }}</span>
+                                    </template>
+                                    <template v-else>
+                                        <Star :size="11" class="text-slate-300" />
+                                        <span class="text-slate-400">New</span>
+                                    </template>
                                 </div>
                             </div>
                             <!-- Location -->
