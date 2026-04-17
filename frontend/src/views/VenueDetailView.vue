@@ -6,7 +6,7 @@ import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import {
     Pencil, LayoutGrid, Users, Ban, Trash2, TrendingUp,
-    MapPin, ChevronRight, Star, Flame, Loader2, X, IndianRupee
+    MapPin, ChevronRight, Star, Flame, Loader2, X, IndianRupee, UserCheck, ShieldCheck
 } from 'lucide-vue-next'
 
 const route  = useRoute()
@@ -35,6 +35,9 @@ onMounted(async () => {
     }
 })
 
+// Is the logged-in user the owner of this venue?
+const isVenueOwner = computed(() => court.value && String(court.value.owner_id) === String(auth.user?.id))
+
 const deleteCourt = async () => {
     if (!confirm(`Delete "${court.value.name}"? This cannot be undone.`)) return
     deleteLoading.value = true
@@ -49,23 +52,24 @@ const deleteCourt = async () => {
     }
 }
 
-const menuGroups = computed(() => [
-    {
-        group: 'Manage',
-        items: [
-            { label: 'Edit Venue',  desc: 'Update name, location, rate & amenities', icon: Pencil,     to: `/my-venues/${route.params.id}/edit` },
-            { label: 'Spaces',      desc: 'Manage courts, lanes, tables, rooms',      icon: LayoutGrid, to: `/my-venues/${route.params.id}/spaces` },
-        ]
-    },
-    {
-        group: 'Operations',
-        items: [
-            { label: 'Staff',       desc: 'Manage staff and permissions',             icon: Users,      to: `/my-venues/${route.params.id}/staff` },
-            { label: 'Block Slots', desc: 'Block the entire venue for a period',      icon: Ban,        to: `/my-venues/${route.params.id}/block` },
-            { label: 'Earnings',    desc: 'Revenue, reports & transaction history',   icon: TrendingUp, to: `/my-venues/${route.params.id}/earnings` },
-        ]
-    }
-])
+const menuGroups = computed(() => {
+    const vid = route.params.id
+    const manage = []
+    const ops = []
+
+    if (isVenueOwner.value) manage.push({ label: 'Edit Venue', desc: 'Update name, location, rate & amenities', icon: Pencil, to: `/my-venues/${vid}/edit` })
+    manage.push({ label: 'Spaces', desc: 'Manage courts, lanes, tables, rooms', icon: LayoutGrid, to: `/my-venues/${vid}/spaces` })
+
+    if (isVenueOwner.value) ops.push({ label: 'Staff', desc: 'Manage staff and permissions', icon: Users, to: `/my-venues/${vid}/staff` })
+    ops.push({ label: 'Members', desc: 'All active subscribers for this venue', icon: UserCheck, to: `/my-venues/${vid}/members` })
+    ops.push({ label: 'Block Slots', desc: 'Block the entire venue for a period', icon: Ban, to: `/my-venues/${vid}/block` })
+    ops.push({ label: 'Earnings', desc: 'Revenue, reports & transaction history', icon: TrendingUp, to: `/my-venues/${vid}/earnings` })
+
+    return [
+        { group: 'Manage', items: manage },
+        { group: 'Operations', items: ops },
+    ]
+})
 </script>
 
 <template>
@@ -122,10 +126,16 @@ const menuGroups = computed(() => [
                         <span class="text-xs text-slate-400 font-medium block">Starting at</span>
                         <span class="text-primary font-bold text-xl">₹{{ court.hourly_rate }}<span class="text-sm font-normal text-slate-500">/hr</span></span>
                     </div>
-                    <button @click="router.push(`/my-venues/${court.id}/edit`)"
-                        class="text-xs font-bold text-primary bg-primary-light px-3 py-1.5 rounded-full">
-                        Edit
-                    </button>
+                    <div class="flex items-center gap-2">
+                        <div v-if="!isVenueOwner" class="flex items-center gap-1 bg-amber-50 border border-amber-100 text-amber-700 text-[10px] font-bold px-2.5 py-1.5 rounded-full">
+                            <ShieldCheck :size="11" />
+                            Staff Access
+                        </div>
+                        <button v-if="isVenueOwner" @click="router.push(`/my-venues/${court.id}/edit`)"
+                            class="text-xs font-bold text-primary bg-primary-light px-3 py-1.5 rounded-full">
+                            Edit
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -181,8 +191,8 @@ const menuGroups = computed(() => [
                     </div>
                 </div>
 
-                <!-- Delete -->
-                <div class="bg-white rounded-2xl overflow-hidden" style="box-shadow:0 1px 6px rgba(0,0,0,0.06)">
+                <!-- Delete — owner only -->
+                <div v-if="isVenueOwner" class="bg-white rounded-2xl overflow-hidden" style="box-shadow:0 1px 6px rgba(0,0,0,0.06)">
                     <button @click="deleteCourt" :disabled="deleteLoading"
                         class="w-full flex items-center gap-3 px-4 py-4 hover:bg-red-50 active:bg-red-100 transition-colors disabled:opacity-50">
                         <div class="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center shrink-0">

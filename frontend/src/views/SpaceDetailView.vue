@@ -5,7 +5,7 @@ import axios from 'axios'
 import { useToastStore } from '../stores/toast'
 import {
     Tag, Award, Ban, CalendarCheck, Users, Lock,
-    ChevronRight, Loader2, LayoutGrid
+    ChevronRight, Loader2, LayoutGrid, UserCheck
 } from 'lucide-vue-next'
 
 const route  = useRoute()
@@ -54,6 +54,12 @@ const menuItems = computed(() => [
         desc:  'View all bookings for this space',
         icon:  CalendarCheck,
         to:    `/my-venues/${venueId}/spaces/${spaceId}/bookings`,
+    },
+    {
+        label: 'Members',
+        desc:  'Active subscribers for this space',
+        icon:  UserCheck,
+        to:    `/my-venues/${venueId}/spaces/${spaceId}/members`,
     },
 ])
 </script>

@@ -126,6 +126,18 @@ const router = createRouter({
             meta: { requiresAuth: true, title: 'Space Bookings' },
         },
         {
+            path: '/my-venues/:id/spaces/:spaceId/members',
+            name: 'space-members',
+            component: () => import('../views/SpaceMembersView.vue'),
+            meta: { requiresAuth: true, title: 'Space Members' },
+        },
+        {
+            path: '/my-venues/:id/members',
+            name: 'venue-members',
+            component: () => import('../views/VenueMembersView.vue'),
+            meta: { requiresAuth: true, title: 'Members' },
+        },
+        {
             path: '/my-venues/:id/staff',
             name: 'venue-staff',
             component: () => import('../views/StaffView.vue'),

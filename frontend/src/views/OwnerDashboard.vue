@@ -520,21 +520,29 @@ const handleAvatarUpload = async (event) => {
                 <template v-else>
                     <!-- Courts I manage -->
                     <div class="mb-5">
-                        <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3 px-1">Courts I Manage</p>
+                        <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3 px-1">Venues I Manage</p>
                         <div class="space-y-2">
                             <div v-for="court in staffCourts" :key="court.id"
-                                class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3 ring-1 ring-slate-100 shadow-sm">
+                                @click="court.role === 'manager' ? router.push(`/my-venues/${court.id}`) : null"
+                                :class="court.role === 'manager' ? 'cursor-pointer active:scale-[0.98]' : ''"
+                                class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3 ring-1 ring-slate-100 shadow-sm transition-transform">
                                 <div class="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 shrink-0">
                                     <img v-if="court.image_url" :src="court.image_url" class="w-full h-full object-cover" />
+                                    <div v-else class="w-full h-full flex items-center justify-center">
+                                        <Globe :size="16" class="text-slate-300" />
+                                    </div>
                                 </div>
                                 <div class="flex-1 min-w-0">
                                     <p class="font-bold text-slate-800 text-sm truncate">{{ court.name }}</p>
                                     <p class="text-xs text-slate-400 truncate">{{ court.location }}</p>
                                 </div>
-                                <span class="text-[10px] font-black px-2.5 py-1 rounded-full shrink-0"
-                                    :class="court.role === 'manager' ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'">
-                                    {{ court.role }}
-                                </span>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span class="text-[10px] font-black px-2.5 py-1 rounded-full"
+                                        :class="court.role === 'manager' ? 'bg-primary/10 text-primary' : 'bg-slate-100 text-slate-500'">
+                                        {{ court.role }}
+                                    </span>
+                                    <ChevronRight v-if="court.role === 'manager'" :size="14" class="text-slate-300" />
+                                </div>
                             </div>
                         </div>
                     </div>

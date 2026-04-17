@@ -284,6 +284,7 @@ if (isset($seg[0]) && $seg[0] === 'subscriptions') {
     require_once __DIR__ . '/src/Controllers/SubscriptionController.php';
     $subController = new SubscriptionController();
 
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'members') { $subController->members(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { $subController->index(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($seg[1])) { $subController->create(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'cancel') {

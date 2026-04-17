@@ -30,6 +30,46 @@ class SubscriptionController {
         }
     }
 
+    // GET /subscriptions/members?court_id=X[&sub_court_id=Y]
+    // Returns all active subscribers for a venue or specific space's plans
+    public function members() {
+        $court_id     = (int)($_GET['court_id'] ?? 0);
+        $sub_court_id = isset($_GET['sub_court_id']) ? (int)$_GET['sub_court_id'] : null;
+        if (!$court_id) { http_response_code(400); echo json_encode(['message' => 'court_id required']); return; }
+
+        $db = Database::getConnection();
+
+        if ($sub_court_id !== null) {
+            $stmt = $db->prepare("
+                SELECT us.id, us.user_id, us.plan_id, us.status, us.start_date, us.end_date,
+                       us.slot_type, u.name AS user_name, u.phone AS user_phone,
+                       p.name AS plan_name, p.price AS plan_price
+                FROM user_subscriptions us
+                JOIN users u  ON u.id  = us.user_id
+                JOIN plans p  ON p.id  = us.plan_id
+                WHERE us.court_id = ? AND p.sub_court_id = ? AND us.status = 'active'
+                ORDER BY us.end_date ASC
+            ");
+            $stmt->execute([$court_id, $sub_court_id]);
+        } else {
+            $stmt = $db->prepare("
+                SELECT us.id, us.user_id, us.plan_id, us.status, us.start_date, us.end_date,
+                       us.slot_type, u.name AS user_name, u.phone AS user_phone,
+                       p.name AS plan_name, p.price AS plan_price, p.sub_court_id
+                FROM user_subscriptions us
+                JOIN users u  ON u.id  = us.user_id
+                JOIN plans p  ON p.id  = us.plan_id
+                WHERE us.court_id = ? AND us.status = 'active'
+                ORDER BY us.end_date ASC
+            ");
+            $stmt->execute([$court_id]);
+        }
+
+        $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        http_response_code(200);
+        echo json_encode(['members' => $members, 'count' => count($members)]);
+    }
+
     // PUT /subscriptions/:id/cancel  { user_id }
     public function cancel($id) {
         $data    = json_decode(file_get_contents("php://input"));
