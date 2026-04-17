@@ -105,7 +105,7 @@ const applyGps = async (latitude, longitude) => {
 }
 
 const detectLocation = () => {
-    if (!navigator.geolocation) return
+    if (!navigator.geolocation) { fetchVenues(); return }
     locating.value = true
     navigator.geolocation.getCurrentPosition(
         async (pos) => {
@@ -114,7 +114,7 @@ const detectLocation = () => {
             } catch { /* ignore */ }
             finally { locating.value = false }
         },
-        () => { locating.value = false },
+        () => { locating.value = false; fetchVenues() },  // denied/timeout → still load all venues
         { timeout: 8000 }
     )
 }
@@ -180,7 +180,8 @@ const hasLocation = computed(() => !!searchText.value.trim() || (!!userLat.value
 const locationLabel = computed(() => {
     if (locating.value) return 'Detecting...'
     if (searchText.value) return (userLat.value ? 'Near ' : '') + searchText.value
-    return 'Your Location'
+    if (userLat.value && userLng.value) return 'Near You'
+    return 'All Venues'
 })
 const sectionTitle = computed(() => {
     if (selectedSport.value === 'All') return 'Top Venues Near You'
