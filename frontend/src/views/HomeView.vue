@@ -88,15 +88,60 @@ const requestingId    = ref(null)   // place id currently being requested
 const fetched         = ref(false)  // true after first fetchVenues completes
 
 // Location picker sheet
-const locPicker = ref(false)
-const locInput  = ref('')
-const openLocPicker = () => { locInput.value = searchText.value; locPicker.value = true }
-const applyLocInput = () => {
-    const v = locInput.value.trim()
-    if (v) { userLat.value = null; userLng.value = null; searchText.value = v }
-    locPicker.value = false
+const locPicker      = ref(false)
+const locInput       = ref('')
+const locSuggestions = ref([])
+const locLoading     = ref(false)
+let   locTimer       = null
+
+const openLocPicker = () => {
+    locInput.value = searchText.value
+    locSuggestions.value = []
+    locPicker.value = true
 }
-const useGpsFromPicker = () => { locPicker.value = false; detectLocation() }
+
+const applyLocInput = (label, lat, lng) => {
+    const v = (label || locInput.value).trim()
+    if (!v) return
+    userLat.value = lat ?? null
+    userLng.value = lng ?? null
+    if (lat && lng) saveGpsCache(lat, lng)
+    searchText.value = v
+    locSuggestions.value = []
+    locPicker.value = false
+    fetchVenues()
+}
+
+const onLocInputChange = () => {
+    clearTimeout(locTimer)
+    locSuggestions.value = []
+    const q = locInput.value.trim()
+    if (q.length < 2) return
+    locLoading.value = true
+    locTimer = setTimeout(async () => {
+        try {
+            const res  = await fetch(
+                `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&addressdetails=1&limit=6&featuretype=city`,
+                { headers: { 'Accept-Language': 'en' } }
+            )
+            const data = await res.json()
+            locSuggestions.value = data
+                .filter(r => ['city','town','village','suburb','county','state_district','municipality'].includes(r.type) || r.class === 'place' || r.class === 'boundary')
+                .slice(0, 5)
+                .map(r => {
+                    const a = r.address || {}
+                    const city = a.city || a.town || a.village || a.suburb || a.county || r.name
+                    const state = a.state || ''
+                    const country = a.country || ''
+                    const label = [city, state, country].filter(Boolean).join(', ')
+                    return { label, lat: parseFloat(r.lat), lng: parseFloat(r.lon) }
+                })
+        } catch { locSuggestions.value = [] }
+        finally { locLoading.value = false }
+    }, 350)
+}
+
+const useGpsFromPicker = () => { locSuggestions.value = []; locPicker.value = false; detectLocation() }
 
 // ── Location detection ────────────────────────────────────────
 const applyGps = async (latitude, longitude) => {
@@ -680,16 +725,30 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                         </div>
                         <!-- City input -->
                         <div class="relative mb-3">
-                            <MapPin :size="16" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <MapPin :size="16" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 z-10" />
                             <input
                                 v-model="locInput"
-                                @keyup.enter="applyLocInput"
+                                @input="onLocInputChange"
+                                @keyup.enter="applyLocInput(null, null, null)"
                                 type="text"
                                 placeholder="Enter city or area…"
                                 autofocus
-                                class="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                                class="w-full pl-10 pr-10 py-3 rounded-2xl bg-slate-50 border border-slate-200 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                            <Loader2 v-if="locLoading" :size="15" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-primary animate-spin" />
                         </div>
-                        <button @click="applyLocInput" :disabled="!locInput.trim()"
+
+                        <!-- Autocomplete suggestions -->
+                        <div v-if="locSuggestions.length" class="mb-3 bg-white rounded-2xl overflow-hidden ring-1 ring-slate-100 shadow-sm">
+                            <button
+                                v-for="(s, i) in locSuggestions" :key="i"
+                                @click="applyLocInput(s.label, s.lat, s.lng)"
+                                class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 active:bg-slate-100 transition-colors border-b border-slate-50 last:border-0">
+                                <MapPin :size="14" class="text-primary/60 shrink-0" />
+                                <span class="text-sm text-slate-700 truncate">{{ s.label }}</span>
+                            </button>
+                        </div>
+
+                        <button @click="applyLocInput(null, null, null)" :disabled="!locInput.trim()"
                             class="w-full bg-primary text-white font-bold py-3 rounded-2xl text-sm mb-3 disabled:opacity-40 active:scale-[0.98] transition-transform">
                             Search This Location
                         </button>
