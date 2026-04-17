@@ -2,24 +2,31 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
+import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import {
-    Pencil, Award, LayoutGrid, Users, Tag, Ban, Trash2,
-    MapPin, ChevronRight, Star, Flame, Loader2, X
+    Pencil, LayoutGrid, Users, Ban, Trash2, TrendingUp,
+    MapPin, ChevronRight, Star, Flame, Loader2, X, IndianRupee
 } from 'lucide-vue-next'
 
 const route  = useRoute()
 const router = useRouter()
+const auth   = useAuthStore()
 const toast  = useToastStore()
 
 const court         = ref(null)
 const loading       = ref(true)
 const deleteLoading = ref(false)
+const earnings      = ref(null)
 
 onMounted(async () => {
     try {
         const res = await axios.get(`/courts/${route.params.id}`)
         court.value = res.data.court ?? res.data
+        // Load earnings in background
+        axios.get(`/earnings/venue?court_id=${route.params.id}&owner_id=${auth.user?.id}`)
+            .then(r => { earnings.value = r.data.summary })
+            .catch(() => {})
     } catch {
         toast.error('Failed to load venue')
         router.replace('/my-venues')
@@ -46,17 +53,16 @@ const menuGroups = computed(() => [
     {
         group: 'Manage',
         items: [
-            { label: 'Edit Venue',        desc: 'Update name, location, rate & amenities', icon: Pencil,     to: `/my-venues/${route.params.id}/edit` },
-            { label: 'Membership Plans',  desc: 'Create & manage subscription plans',       icon: Award,      to: `/my-venues/${route.params.id}/plans` },
-            { label: 'Spaces',            desc: 'Manage courts, lanes, tables, rooms',      icon: LayoutGrid, to: `/my-venues/${route.params.id}/spaces` },
+            { label: 'Edit Venue',  desc: 'Update name, location, rate & amenities', icon: Pencil,     to: `/my-venues/${route.params.id}/edit` },
+            { label: 'Spaces',      desc: 'Manage courts, lanes, tables, rooms',      icon: LayoutGrid, to: `/my-venues/${route.params.id}/spaces` },
         ]
     },
     {
         group: 'Operations',
         items: [
-            { label: 'Staff',             desc: 'Manage staff and permissions',             icon: Users,      to: `/my-venues/${route.params.id}/staff` },
-            { label: 'Pricing',           desc: 'Peak hour rates and special pricing',      icon: Tag,        to: `/my-venues/${route.params.id}/pricing` },
-            { label: 'Block Slots',       desc: 'Mark time slots as unavailable',           icon: Ban,        to: `/my-venues/${route.params.id}/block` },
+            { label: 'Staff',       desc: 'Manage staff and permissions',             icon: Users,      to: `/my-venues/${route.params.id}/staff` },
+            { label: 'Block Slots', desc: 'Block the entire venue for a period',      icon: Ban,        to: `/my-venues/${route.params.id}/block` },
+            { label: 'Earnings',    desc: 'Revenue, reports & transaction history',   icon: TrendingUp, to: `/my-venues/${route.params.id}/earnings` },
         ]
     }
 ])
@@ -120,6 +126,36 @@ const menuGroups = computed(() => [
                         class="text-xs font-bold text-primary bg-primary-light px-3 py-1.5 rounded-full">
                         Edit
                     </button>
+                </div>
+            </div>
+
+            <!-- Earnings summary card -->
+            <div v-if="earnings" class="mx-4 mb-5 cursor-pointer"
+                @click="router.push(`/my-venues/${court.id}/earnings`)">
+                <div class="bg-gradient-to-r from-primary to-blue-600 rounded-2xl p-4 text-white shadow-lg shadow-primary/30">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <TrendingUp :size="16" />
+                            <span class="text-sm font-bold opacity-90">Earnings</span>
+                        </div>
+                        <div class="flex items-center gap-1 text-xs font-bold opacity-75">
+                            View Report <ChevronRight :size="13" />
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <p class="text-[10px] opacity-70 mb-0.5">Today</p>
+                            <p class="text-base font-extrabold">₹{{ Number(earnings.today).toLocaleString('en-IN') }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] opacity-70 mb-0.5">This Month</p>
+                            <p class="text-base font-extrabold">₹{{ Number(earnings.this_month).toLocaleString('en-IN') }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[10px] opacity-70 mb-0.5">All Time</p>
+                            <p class="text-base font-extrabold">₹{{ Number(earnings.total).toLocaleString('en-IN') }}</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 

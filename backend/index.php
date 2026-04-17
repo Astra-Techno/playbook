@@ -335,6 +335,9 @@ if (isset($seg[0]) && $seg[0] === 'earnings') {
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'ledger') {
         $earningsController->ledger(); exit();
     }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'venue') {
+        $earningsController->venue(); exit();
+    }
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { $earningsController->index(); exit(); }
 }
 

@@ -84,6 +84,12 @@ const router = createRouter({
             meta: { requiresAuth: true, title: 'Edit Venue' },
         },
         {
+            path: '/my-venues/:id/earnings',
+            name: 'venue-earnings',
+            component: () => import('../views/VenueEarningsView.vue'),
+            meta: { requiresAuth: true, title: 'Earnings' },
+        },
+        {
             path: '/my-venues/:id/spaces',
             name: 'venue-spaces',
             component: () => import('../views/SpacesView.vue'),

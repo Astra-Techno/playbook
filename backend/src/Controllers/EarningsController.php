@@ -190,6 +190,77 @@ class EarningsController {
         ]);
     }
 
+    // GET /earnings/venue?court_id=X&owner_id=Y
+    // Returns booking-based earnings summary + transaction list for a single venue
+    public function venue(): void {
+        $court_id = (int)($_GET['court_id'] ?? 0);
+        $owner_id = (int)($_GET['owner_id'] ?? 0);
+        if (!$court_id || !$owner_id) {
+            http_response_code(400);
+            echo json_encode(['message' => 'court_id and owner_id required']);
+            return;
+        }
+
+        $db = Database::getConnection();
+
+        // Verify ownership
+        $chk = $db->prepare("SELECT id FROM courts WHERE id = ? AND owner_id = ?");
+        $chk->execute([$court_id, $owner_id]);
+        if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
+
+        $monthStart = date('Y-m-01');
+        $weekStart  = date('Y-m-d', strtotime('monday this week'));
+        $today      = date('Y-m-d');
+
+        $sum = function($from, $to = null) use ($db, $court_id) {
+            $sql = "SELECT COALESCE(SUM(total_price), 0) FROM bookings
+                    WHERE court_id = ? AND status = 'confirmed'
+                    AND DATE(start_time) >= ?";
+            $params = [$court_id, $from];
+            if ($to) { $sql .= " AND DATE(start_time) <= ?"; $params[] = $to; }
+            $s = $db->prepare($sql); $s->execute($params);
+            return (float)$s->fetchColumn();
+        };
+
+        // Monthly breakdown (last 6 months)
+        $monthly = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $ms  = date('Y-m-01', strtotime("-{$i} months"));
+            $me  = date('Y-m-t', strtotime($ms));
+            $lbl = date('M Y', strtotime($ms));
+            $s   = $db->prepare("SELECT COALESCE(SUM(total_price),0) FROM bookings WHERE court_id=? AND status='confirmed' AND DATE(start_time) BETWEEN ? AND ?");
+            $s->execute([$court_id, $ms, $me]);
+            $monthly[] = ['month' => $lbl, 'amount' => (float)$s->fetchColumn()];
+        }
+
+        // Recent bookings (last 50)
+        $stmt = $db->prepare("
+            SELECT b.id, b.start_time, b.end_time, b.total_price, b.status,
+                   b.guest_name, b.sub_court_id,
+                   u.name AS user_name,
+                   sc.name AS space_name
+            FROM bookings b
+            LEFT JOIN users u ON b.user_id = u.id
+            LEFT JOIN sub_courts sc ON b.sub_court_id = sc.id
+            WHERE b.court_id = ? AND b.status = 'confirmed'
+            ORDER BY b.start_time DESC LIMIT 50
+        ");
+        $stmt->execute([$court_id]);
+        $transactions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        http_response_code(200);
+        echo json_encode([
+            'summary' => [
+                'total'      => $sum('2000-01-01'),
+                'this_month' => $sum($monthStart),
+                'this_week'  => $sum($weekStart),
+                'today'      => $sum($today),
+            ],
+            'monthly'      => $monthly,
+            'transactions' => $transactions,
+        ]);
+    }
+
     // ── Private helpers ────────────────────────────────────────────────────────
 
     private function sumEarnings($db, int $owner_id, ?string $from, ?string $to): float {
