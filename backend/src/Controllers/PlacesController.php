@@ -641,6 +641,7 @@ class PlacesController
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
              ON DUPLICATE KEY UPDATE
                 name            = VALUES(name),
+                type            = VALUES(type),
                 address         = VALUES(address),
                 phone           = COALESCE(VALUES(phone), phone),
                 website         = COALESCE(VALUES(website), website),

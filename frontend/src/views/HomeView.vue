@@ -65,7 +65,7 @@ const activeFilterCount = computed(() => {
 
 // ── GPS localStorage cache (30 min) ───────────────────────────
 const GPS_CACHE_KEY = 'kocourt_gps_cache'
-const GPS_TTL = 30 * 60 * 1000 // 30 minutes
+const GPS_TTL = 6 * 60 * 60 * 1000 // 6 hours
 
 function saveGpsCache(lat, lng) {
     localStorage.setItem(GPS_CACHE_KEY, JSON.stringify({ lat, lng, ts: Date.now() }))
@@ -303,7 +303,12 @@ watch(searchText, () => {
     clearTimeout(timer)
     if (searchText.value.trim()) { timer = setTimeout(fetchVenues, 400) } else { courts.value = [] }
 })
-watch(selectedSport, () => { if (fetched.value) fetchVenues() })
+watch(selectedSport, () => {
+    if (fetched.value) {
+        fetchVenues()
+        if (userLat.value && userLng.value) fetchGhostPlaces(userLat.value, userLng.value)
+    }
+})
 watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() })
 </script>
 
@@ -459,9 +464,13 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                         <!-- Name + Rating -->
                         <div class="flex items-start justify-between gap-2 mb-1.5">
                             <h3 class="font-extrabold text-slate-900 text-[15px] leading-tight flex-1">{{ venue.name }}</h3>
-                            <div class="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-lg shrink-0">
+                            <div v-if="venue.avg_rating" class="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-lg shrink-0">
                                 <Star :size="11" class="fill-amber-400 text-amber-400" />
-                                <span class="text-xs font-extrabold text-amber-700">4.8</span>
+                                <span class="text-xs font-extrabold text-amber-700">{{ venue.avg_rating }}</span>
+                            </div>
+                            <div v-else class="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-lg shrink-0">
+                                <Star :size="11" class="text-slate-300" />
+                                <span class="text-xs font-bold text-slate-400">New</span>
                             </div>
                         </div>
 

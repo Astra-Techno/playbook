@@ -201,8 +201,10 @@ class AuthController {
     }
 
     private function sendTokenResponse($user) {
-        $token = bin2hex(random_bytes(16));
+        $token = bin2hex(random_bytes(32)); // 64-char hex token
         $db    = Database::getConnection();
+        // Persist token so backend can validate it on every request
+        $db->prepare("UPDATE users SET auth_token = ? WHERE phone = ?")->execute([$token, $user->phone]);
         $stmt  = $db->prepare("SELECT id, name, phone, role, avatar_url, bio, skill_level, sport_preferences FROM users WHERE phone = ?");
         $stmt->execute([$user->phone]);
         $row = $stmt->fetch(\PDO::FETCH_ASSOC) ?: [];

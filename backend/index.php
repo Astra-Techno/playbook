@@ -79,6 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
 }
 
 require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/src/Auth.php';
 
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
@@ -227,9 +228,12 @@ if (isset($seg[0]) && $seg[0] === 'auth') {
         $authController->verifyOtp(); exit();
     }
     if (isset($seg[1]) && $seg[1] === 'profile' && $_SERVER['REQUEST_METHOD'] === 'PUT') {
+        $data = json_decode(file_get_contents('php://input'), true) ?? [];
+        Auth::requireSelf((int)($data['user_id'] ?? 0));
         $authController->updateProfile(); exit();
     }
     if (isset($seg[1]) && $seg[1] === 'profile' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        Auth::requireSelf((int)($_GET['user_id'] ?? 0));
         $authController->getProfile(); exit();
     }
 }
@@ -248,14 +252,14 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
     // PUT  /courts/claims/:id/reject
     if ($_SERVER['REQUEST_METHOD'] === 'PUT'  && isset($seg[1]) && $seg[1] === 'claims' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'reject')  { $courtController->rejectClaim((int)$seg[2]); exit(); }
     // POST /courts/claim — must check before generic create
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'claim') { $courtController->claim(); exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') { $courtController->create(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'claim') { Auth::require(); $courtController->claim(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::requireOwner(); $courtController->create(); exit(); }
     // PUT /courts/:id/verify  (before generic update)
     if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'verify') {
-        $courtController->verify((int)$seg[1]); exit();
+        Auth::requireAdmin(); $courtController->verify((int)$seg[1]); exit();
     }
-    if ($_SERVER['REQUEST_METHOD'] === 'PUT'    && isset($seg[1])) { $courtController->update((int)$seg[1]); exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { $courtController->delete((int)$seg[1]); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT'    && isset($seg[1])) { Auth::requireOwner(); $courtController->update((int)$seg[1]); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { Auth::requireOwner(); $courtController->delete((int)$seg[1]); exit(); }
 }
 
 // Plan Routes
@@ -269,11 +273,13 @@ if (isset($seg[0]) && $seg[0] === 'plans') {
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        Auth::requireOwner();
         $planController->create();
         exit();
     }
 
     if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) {
+        Auth::requireOwner();
         $planController->delete((int)$seg[1]);
         exit();
     }
@@ -284,12 +290,12 @@ if (isset($seg[0]) && $seg[0] === 'subscriptions') {
     require_once __DIR__ . '/src/Controllers/SubscriptionController.php';
     $subController = new SubscriptionController();
 
-    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'members') { $subController->members(); exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'GET') { $subController->index(); exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'renew') { $subController->renew(); exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($seg[1])) { $subController->create(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'members') { Auth::requireOwner(); $subController->members(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::require(); $subController->index(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'renew') { Auth::require(); $subController->renew(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($seg[1])) { Auth::require(); $subController->create(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'cancel') {
-        $subController->cancel((int)$seg[1]); exit();
+        Auth::require(); $subController->cancel((int)$seg[1]); exit();
     }
 }
 
@@ -336,17 +342,16 @@ if (isset($seg[0]) && $seg[0] === 'bookings') {
     }
     // POST /bookings/recurring
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'recurring') {
-        $bookingController->createRecurring(); exit();
+        Auth::require(); $bookingController->createRecurring(); exit();
     }
     // GET /bookings/:id  — single booking detail (before generic index)
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1])) {
-        $bookingController->show((int)$seg[1]); exit();
+        Auth::require(); $bookingController->show((int)$seg[1]); exit();
     }
-    if ($_SERVER['REQUEST_METHOD'] === 'GET') { $bookingController->index(); exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') { $bookingController->create(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::require(); $bookingController->index(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $bookingController->create(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) {
-        $bookingController->cancel((int)$seg[1]);
-        exit();
+        Auth::require(); $bookingController->cancel((int)$seg[1]); exit();
     }
 }
 
@@ -355,22 +360,22 @@ if (isset($seg[0]) && $seg[0] === 'earnings') {
     require_once __DIR__ . '/src/Controllers/EarningsController.php';
     $earningsController = new EarningsController();
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'ledger') {
-        $earningsController->ledger(); exit();
+        Auth::requireOwner(); $earningsController->ledger(); exit();
     }
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'venue') {
-        $earningsController->venue(); exit();
+        Auth::requireOwner(); $earningsController->venue(); exit();
     }
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'export') {
-        $earningsController->export(); exit();
+        Auth::requireOwner(); $earningsController->export(); exit();
     }
-    if ($_SERVER['REQUEST_METHOD'] === 'GET') { $earningsController->index(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::requireOwner(); $earningsController->index(); exit(); }
 }
 
 // Payouts Routes (admin records manual transfers)
 if (isset($seg[0]) && $seg[0] === 'payouts') {
     require_once __DIR__ . '/src/Controllers/EarningsController.php';
     $earningsController = new EarningsController();
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') { $earningsController->createPayout(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::requireAdmin(); $earningsController->createPayout(); exit(); }
 }
 
 // Review Routes
@@ -378,10 +383,10 @@ if (isset($seg[0]) && $seg[0] === 'reviews') {
     require_once __DIR__ . '/src/Controllers/ReviewController.php';
     $reviewController = new ReviewController();
     if ($_SERVER['REQUEST_METHOD'] === 'GET')  { $reviewController->index();  exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') { $reviewController->create(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $reviewController->create(); exit(); }
     // PUT /reviews/:id/reply
     if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'reply') {
-        $reviewController->reply((int)$seg[1]); exit();
+        Auth::requireOwner(); $reviewController->reply((int)$seg[1]); exit();
     }
 }
 
@@ -389,8 +394,8 @@ if (isset($seg[0]) && $seg[0] === 'reviews') {
 if (isset($seg[0]) && $seg[0] === 'favorites') {
     require_once __DIR__ . '/src/Controllers/FavoriteController.php';
     $favController = new FavoriteController();
-    if ($_SERVER['REQUEST_METHOD'] === 'GET')  { $favController->index();  exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') { $favController->toggle(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET')  { Auth::require(); $favController->index();  exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $favController->toggle(); exit(); }
 }
 
 // Posts Routes
@@ -781,9 +786,9 @@ if (isset($seg[0]) && $seg[0] === 'messages') {
 if (isset($seg[0]) && $seg[0] === 'waitlist') {
     require_once __DIR__ . '/src/Controllers/WaitlistController.php';
     $wlCtrl = new WaitlistController();
-    if ($_SERVER['REQUEST_METHOD'] === 'GET')                      { $wlCtrl->index();           exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'POST')                     { $wlCtrl->create();          exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { $wlCtrl->delete((int)$seg[1]); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET')                      { Auth::require(); $wlCtrl->index();           exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST')                     { Auth::require(); $wlCtrl->create();          exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { Auth::require(); $wlCtrl->delete((int)$seg[1]); exit(); }
 }
 
 echo json_encode(["message" => "Welcome to Playbook API"]);

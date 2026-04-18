@@ -6,6 +6,9 @@ class Database {
     private static $instance = null;
     private $pdo;
 
+    // Bump this number whenever migrate() adds new tables/columns/indexes
+    private const SCHEMA_VERSION = 13;
+
     private function __construct() {
         $host    = getenv('DB_HOST') ?: 'localhost';
         $port    = getenv('DB_PORT') ?: '3306';
@@ -31,6 +34,11 @@ class Database {
     }
 
     private function migrate() {
+        // Version guard — create version table and skip if already current
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS schema_version (version INT NOT NULL DEFAULT 0) ENGINE=InnoDB");
+        $current = (int)$this->pdo->query("SELECT COALESCE(MAX(version),0) FROM schema_version")->fetchColumn();
+        if ($current >= self::SCHEMA_VERSION) return;
+
         // Create tables if they don't exist
         $this->pdo->exec("
             CREATE TABLE IF NOT EXISTS users (
@@ -236,6 +244,20 @@ class Database {
             FOREIGN KEY (court_id) REFERENCES courts(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
+        // ── Indexes on high-traffic columns ──────────────────────────────────────
+        foreach ([
+            "ALTER TABLE bookings          ADD INDEX idx_bookings_user   (user_id)",
+            "ALTER TABLE bookings          ADD INDEX idx_bookings_court  (court_id)",
+            "ALTER TABLE bookings          ADD INDEX idx_bookings_time   (start_time)",
+            "ALTER TABLE user_subscriptions ADD INDEX idx_usub_user      (user_id)",
+            "ALTER TABLE user_subscriptions ADD INDEX idx_usub_court     (court_id)",
+            "ALTER TABLE courts            ADD INDEX idx_courts_owner    (owner_id)",
+            "ALTER TABLE courts            ADD INDEX idx_courts_latng    (lat, lng)",
+            "ALTER TABLE reviews           ADD INDEX idx_reviews_court   (court_id)",
+            "ALTER TABLE reviews           ADD INDEX idx_reviews_user    (user_id)",
+            "ALTER TABLE favorites         ADD INDEX idx_fav_user        (user_id)",
+        ] as $s) { try { $this->pdo->exec($s); } catch(\PDOException $e){} }
+
         // messages table
         $this->pdo->exec("CREATE TABLE IF NOT EXISTS messages (
             id          INT AUTO_INCREMENT PRIMARY KEY,
@@ -249,6 +271,14 @@ class Database {
             FOREIGN KEY (sender_id)   REFERENCES users(id)    ON DELETE CASCADE,
             FOREIGN KEY (receiver_id) REFERENCES users(id)    ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // auth_token column for server-side token validation
+        try { $this->pdo->exec("ALTER TABLE users ADD COLUMN auth_token VARCHAR(64) DEFAULT NULL"); } catch(\PDOException $e){}
+        try { $this->pdo->exec("ALTER TABLE users ADD INDEX idx_auth_token (auth_token)"); } catch(\PDOException $e){}
+
+        // Stamp schema version
+        $this->pdo->exec("DELETE FROM schema_version");
+        $this->pdo->exec("INSERT INTO schema_version (version) VALUES (" . self::SCHEMA_VERSION . ")");
     }
 
     public static function getConnection() {
