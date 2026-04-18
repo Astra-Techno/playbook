@@ -55,8 +55,8 @@ class PlacesController
 
         $places = $this->getFromCache($lat, $lng);
 
-        // Re-fetch if cache is empty OR stale (< 30 results means old single-strategy fetch)
-        if (count($places) < 30 && $this->hasApiKey() && !$this->isQuotaExceeded()) {
+        // Re-fetch only when cache is empty (getFromCache already excludes entries older than 30 days)
+        if (count($places) === 0 && $this->hasApiKey() && !$this->isQuotaExceeded()) {
             $raw = $this->fetchFromGoogle($lat, $lng);
             if (!empty($raw)) {
                 $this->storePlaces($raw);
@@ -183,6 +183,27 @@ class PlacesController
         echo json_encode(['success' => true]);
     }
 
+    // ── Prefetch / seeding ───────────────────────────────────────────────────
+
+    /**
+     * Pre-seed the cache for a specific lat/lng (used by CLI scripts).
+     * Returns the number of places stored (0 if quota exceeded or no API key).
+     */
+    public function prefetchCity(float $lat, float $lng): int
+    {
+        if (!$this->hasApiKey() || $this->isQuotaExceeded()) return 0;
+
+        // Skip if already freshly cached (avoid wasting quota)
+        $existing = $this->getFromCache($lat, $lng);
+        if (count($existing) > 0) return count($existing);
+
+        $raw = $this->fetchFromGoogle($lat, $lng);
+        if (!empty($raw)) {
+            $this->storePlaces($raw);
+        }
+        return count($raw);
+    }
+
     // ── Google Places API (New) ───────────────────────────────────────────────
 
     private function hasApiKey(): bool
@@ -190,41 +211,66 @@ class PlacesController
         return !empty($this->apiKey) && $this->apiKey !== 'your_google_places_api_key';
     }
 
-    private const FIELD_MASK = 'places.id,places.displayName,places.formattedAddress,places.location,places.types,places.internationalPhoneNumber,places.websiteUri,places.rating,places.photos';
+    // Added primaryType + userRatingCount to detect quality venues & filter fake listings
+    private const FIELD_MASK = 'places.id,places.displayName,places.formattedAddress,places.location,places.types,places.primaryType,places.internationalPhoneNumber,places.websiteUri,places.rating,places.userRatingCount,places.photos';
 
     /**
-     * Fetch all sports venues near a location using two complementary strategies:
-     *  1. Nearby Search  — finds formally-typed venues (gyms, complexes, pools…)
-     *  2. Text Search ×3 — finds venues by name (turf courts, academies…) that
-     *                       have no specific Google type tag; supports pagination
-     *                       → up to 20 per page × 3 pages = 60 per keyword batch
-     * Total: 4 quota calls per fresh location (up from 2), returning ~80–120 unique places.
+     * Fetch sports venues near a location — optimised for Indian cities.
+     *
+     * Strategy (5 quota calls per fresh location):
+     *  1. Nearby Search  — formally-typed venues (gym, badminton_court, cricket_ground…)
+     *  2. Text Search × 4 — ONE query per sport so Google's AI doesn't dilute relevance.
+     *
+     * Why single-sport queries beat mixed keyword strings for India:
+     *  Most turf grounds, box-cricket nets, badminton halls are stored in Google as plain
+     *  "establishment" with no formal type. Text Search finds them by name/description.
+     *  Mixed queries (e.g. "turf football futsal cricket badminton") cause Google to pick
+     *  only the dominant signal and miss the rest.
      */
     private function fetchFromGoogle(float $lat, float $lng): array
     {
         $seen = [];
         $out  = [];
 
-        // ── 1. Nearby Search — all formal sports types in one call ───────────
+        // ── 1. Nearby Search — officially-typed sports venues ─────────────────
+        // Uses Google Place Types (Table A). Returns formal gyms, courts, stadiums.
+        // squash_court added — official type, commonly available in Indian clubs.
         if (!$this->isQuotaExceeded()) {
             $allTypes = [
-                'sports_complex', 'sports_club', 'stadium', 'gym', 'fitness_center',
-                'swimming_pool', 'athletic_field', 'basketball_court', 'cricket_ground',
-                'tennis_court', 'volleyball_court', 'badminton_court', 'dance_studio',
-                'yoga_studio', 'martial_arts_school', 'golf_course', 'bowling_alley',
-                'recreation_center',
+                'gym', 'fitness_center',
+                'badminton_court', 'tennis_court', 'basketball_court',
+                'volleyball_court', 'squash_court',
+                'cricket_ground', 'athletic_field', 'stadium',
+                'sports_complex', 'sports_club', 'recreation_center',
+                'swimming_pool', 'dance_studio', 'yoga_studio',
+                'martial_arts_school', 'golf_course', 'bowling_alley',
             ];
             $this->runNearbySearch($lat, $lng, $allTypes, $seen, $out);
         }
 
-        // ── 2. Text Search by keyword — catches venues Google doesn't type ────
-        // Most Indian turf courts, cricket grounds, badminton halls etc. are
-        // stored as plain "establishment" in Google; text search finds them by name.
+        // ── 2. Text Search — focused single-sport queries ────────────────────
+        //
+        // Indian-specific terms explained:
+        //   turf        — synthetic grass football ground (universal term across India)
+        //   box cricket — enclosed cricket net arenas, hugely popular in Tamil Nadu/AP/KA
+        //   shuttle     — common South Indian shorthand for badminton
+        //   futsal      — indoor football, growing in Tamil Nadu/Kerala metros
+        //   sports hub  — common multi-sport venue brand name
+        //   academy     — used by almost every coaching centre in India
         $textQueries = [
-            'turf football futsal ground court',          // turf/football venues
-            'badminton court cricket ground tennis club', // racket/ball sports
-            'gym fitness yoga dance studio sports academy', // fitness & arts
+            // Football / Turf — most common unlisted venue type in India
+            'turf futsal football ground sports arena',
+
+            // Badminton — largest indoor sport by venue count
+            'badminton court shuttle indoor academy',
+
+            // Cricket — box cricket nets & grounds
+            'box cricket ground nets coaching academy',
+
+            // Fitness, Yoga, Swimming — catches small unlisted centres
+            'gym fitness centre yoga swimming sports academy hub',
         ];
+
         foreach ($textQueries as $query) {
             if ($this->isQuotaExceeded()) break;
             $this->runTextSearch($lat, $lng, $query, $seen, $out);
@@ -241,7 +287,8 @@ class PlacesController
         $body = json_encode([
             'includedTypes'       => $types,
             'locationRestriction' => [
-                'circle' => ['center' => ['latitude' => $lat, 'longitude' => $lng], 'radius' => 10000.0],
+                // 15 km radius — more appropriate for Tier-2/3 Indian cities
+                'circle' => ['center' => ['latitude' => $lat, 'longitude' => $lng], 'radius' => 15000.0],
             ],
             'maxResultCount' => 20,
             'rankPreference' => 'DISTANCE',
@@ -253,38 +300,25 @@ class PlacesController
     }
 
     /**
-     * Text Search (New) — keyword query with locationBias.
-     * Paginates automatically up to 3 pages (60 results max per query).
-     * Text Search costs $0.017/call vs $0.032 for Nearby — cheaper per result.
+     * Text Search (New) — single focused query, no pagination.
+     * Uses locationBias (soft) so venues just outside 15 km still surface.
+     * rankPreference DISTANCE ensures nearest venues appear first.
      */
     private function runTextSearch(
         float $lat, float $lng, string $query, array &$seen, array &$out
     ): void {
-        $pageToken = null;
-        $pages     = 0;
+        $payload = [
+            'textQuery'      => $query,
+            'locationBias'   => [
+                'circle' => ['center' => ['latitude' => $lat, 'longitude' => $lng], 'radius' => 15000.0],
+            ],
+            'pageSize'       => 20,
+            'rankPreference' => 'DISTANCE',
+        ];
 
-        do {
-            if ($this->isQuotaExceeded()) break;
-
-            $payload = [
-                'textQuery'    => $query,
-                'locationBias' => [
-                    'circle' => ['center' => ['latitude' => $lat, 'longitude' => $lng], 'radius' => 10000.0],
-                ],
-                'pageSize' => 20,  // Text Search uses pageSize, not maxResultCount
-            ];
-            if ($pageToken) {
-                $payload['pageToken'] = $pageToken;
-            }
-
-            $resp = $this->postPlaces('https://places.googleapis.com/v1/places:searchText', json_encode($payload));
-            $this->incrementQuota();
-            $this->parsePlacesResponse($resp, $lat, $lng, $seen, $out);
-
-            $data      = json_decode($resp, true);
-            $pageToken = $data['nextPageToken'] ?? null;
-            $pages++;
-        } while ($pageToken && $pages < 3); // max 3 pages = 60 results per query
+        $resp = $this->postPlaces('https://places.googleapis.com/v1/places:searchText', json_encode($payload));
+        $this->incrementQuota();
+        $this->parsePlacesResponse($resp, $lat, $lng, $seen, $out);
     }
 
     /** Shared cURL POST helper for Places API (New) */
@@ -410,23 +444,81 @@ class PlacesController
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
+    /**
+     * Infer the app's sport type from a venue name + Google place types.
+     * Order matters — check most-specific first before falling through to gym/other.
+     * Indian-specific terms are marked with (IN).
+     */
     private function inferType(string $name, array $types = []): string
     {
         $n = strtolower($name . ' ' . implode(' ', $types));
 
-        if (strpos($n, 'badminton') !== false || strpos($n, 'shuttle') !== false || strpos($n, 'badminton_court') !== false) return 'shuttle';
-        if (strpos($n, 'cricket')   !== false || strpos($n, 'cricket_ground') !== false)  return 'cricket';
-        if (strpos($n, 'tennis')    !== false || strpos($n, 'tennis_court') !== false)     return 'tennis';
-        if (strpos($n, 'swim')      !== false || strpos($n, 'pool') !== false || strpos($n, 'aqua') !== false || strpos($n, 'swimming_pool') !== false) return 'swimming';
-        if (strpos($n, 'basket')    !== false || strpos($n, 'basketball_court') !== false) return 'basket';
-        if (strpos($n, 'football')  !== false || strpos($n, 'turf') !== false || strpos($n, 'futsal') !== false || strpos($n, 'athletic_field') !== false) return 'turf';
-        if (strpos($n, 'boxing')    !== false || strpos($n, 'martial') !== false || strpos($n, 'mma') !== false) return 'boxing';
-        if (strpos($n, 'gym')       !== false || strpos($n, 'fitness') !== false || strpos($n, 'crossfit') !== false) return 'gym';
-        if (strpos($n, 'dance')    !== false || strpos($n, 'zumba') !== false) return 'dance';
-        if (strpos($n, 'yoga')     !== false || strpos($n, 'meditation') !== false || strpos($n, 'pilates') !== false) return 'yoga';
-        if (strpos($n, 'martial')  !== false || strpos($n, 'karate') !== false || strpos($n, 'taekwondo') !== false || strpos($n, 'mma') !== false || strpos($n, 'martial_arts') !== false) return 'martial';
-        if (strpos($n, 'golf')     !== false) return 'golf';
-        if (strpos($n, 'bowling')  !== false) return 'bowling';
+        // Badminton — check before "shuttle" which can be ambiguous
+        if (strpos($n, 'badminton')     !== false) return 'shuttle';
+        if (strpos($n, 'shuttle')       !== false) return 'shuttle'; // (IN) South Indian term
+        if (strpos($n, 'badminton_court')!== false) return 'shuttle';
+
+        // Cricket — box cricket must match before generic "cricket"
+        if (strpos($n, 'box cricket')   !== false) return 'cricket'; // (IN) enclosed cricket nets
+        if (strpos($n, 'cricket')       !== false) return 'cricket';
+        if (strpos($n, 'cricket_ground')!== false) return 'cricket';
+
+        // Tennis
+        if (strpos($n, 'tennis')        !== false) return 'tennis';
+        if (strpos($n, 'squash')        !== false) return 'tennis'; // group squash with tennis
+
+        // Swimming
+        if (strpos($n, 'swim')          !== false) return 'swimming';
+        if (strpos($n, 'pool')          !== false) return 'swimming';
+        if (strpos($n, 'aqua')          !== false) return 'swimming';
+        if (strpos($n, 'swimming_pool') !== false) return 'swimming';
+
+        // Basketball / Volleyball
+        if (strpos($n, 'basket')        !== false) return 'basket';
+        if (strpos($n, 'basketball_court')!== false) return 'basket';
+        if (strpos($n, 'volleyball')    !== false) return 'basket'; // group with basket
+
+        // Football / Turf — check turf BEFORE generic football to catch "XYZ Turf" names
+        if (strpos($n, 'turf')          !== false) return 'turf'; // (IN) most common name
+        if (strpos($n, 'futsal')        !== false) return 'turf'; // (IN) indoor football
+        if (strpos($n, 'football')      !== false) return 'turf';
+        if (strpos($n, 'soccer')        !== false) return 'turf';
+        if (strpos($n, 'athletic_field')!== false) return 'turf';
+
+        // Martial arts / Combat sports
+        if (strpos($n, 'karate')        !== false) return 'martial';
+        if (strpos($n, 'taekwondo')     !== false) return 'martial';
+        if (strpos($n, 'judo')          !== false) return 'martial';
+        if (strpos($n, 'mma')           !== false) return 'martial';
+        if (strpos($n, 'boxing')        !== false) return 'martial';
+        if (strpos($n, 'martial')       !== false) return 'martial';
+        if (strpos($n, 'martial_arts')  !== false) return 'martial';
+        if (strpos($n, 'kabaddi')       !== false) return 'martial'; // (IN)
+        if (strpos($n, 'kho kho')       !== false) return 'martial'; // (IN)
+        if (strpos($n, 'wrestling')     !== false) return 'martial';
+
+        // Yoga / Meditation
+        if (strpos($n, 'yoga')          !== false) return 'yoga';
+        if (strpos($n, 'meditation')    !== false) return 'yoga';
+        if (strpos($n, 'pilates')       !== false) return 'yoga';
+        if (strpos($n, 'zumba')         !== false) return 'yoga';
+
+        // Dance
+        if (strpos($n, 'dance')         !== false) return 'dance';
+        if (strpos($n, 'dance_studio')  !== false) return 'dance';
+
+        // Golf
+        if (strpos($n, 'golf')          !== false) return 'golf';
+
+        // Bowling
+        if (strpos($n, 'bowling')       !== false) return 'bowling';
+
+        // Gym / Fitness — last before 'other' so sports academies with gym don't fall here
+        if (strpos($n, 'gym')           !== false) return 'gym';
+        if (strpos($n, 'fitness')       !== false) return 'gym';
+        if (strpos($n, 'crossfit')      !== false) return 'gym';
+        if (strpos($n, 'fitness_center')!== false) return 'gym';
+        if (strpos($n, 'workout')       !== false) return 'gym';
 
         return 'other';
     }
@@ -457,7 +549,7 @@ class PlacesController
                AND court_id IS NULL
                AND lat BETWEEN ? AND ?
                AND lng BETWEEN ? AND ?
-               AND cached_at > DATE_SUB(NOW(), INTERVAL 30 DAY)
+               AND cached_at > DATE_SUB(NOW(), INTERVAL 60 DAY)
              ORDER BY request_count DESC"
         );
         $stmt->execute([$lat - $delta, $lat + $delta, $lng - $delta, $lng + $delta]);
