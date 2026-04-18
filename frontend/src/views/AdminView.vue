@@ -231,7 +231,8 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="min-h-full bg-slate-50">
+    <!-- Home fits in one screen — overflow-hidden prevents rubber-band scroll into blank space -->
+    <div :class="section === 'home' ? 'h-full overflow-hidden' : 'min-h-full'" class="bg-slate-50">
 
         <!-- ── HOME ── -->
         <template v-if="section === 'home'">
