@@ -110,6 +110,7 @@ const applyLocInput = (label, lat, lng) => {
     locSuggestions.value = []
     locPicker.value = false
     fetchVenues()
+    if (lat && lng) fetchGhostPlaces(lat, lng)
 }
 
 const onLocInputChange = () => {
