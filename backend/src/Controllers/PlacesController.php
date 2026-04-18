@@ -340,6 +340,13 @@ class PlacesController
 
             // Fitness, Yoga, Swimming — catches small unlisted centres
             'gym fitness centre yoga swimming sports academy hub',
+
+            // Multi-sport clubs & academies — common in small Indian cities;
+            // venues often have no sport keyword in name (e.g. "City Sports Club")
+            'sports club recreation center indoor stadium multiplex',
+
+            // Court sports not well-covered by other queries
+            'tennis court volleyball court basketball court squash court sports complex',
         ];
 
         foreach ($textQueries as $query) {
@@ -613,7 +620,7 @@ class PlacesController
 
     private function getFromCache(float $lat, float $lng): array
     {
-        $delta = 0.09; // ~10 km
+        $delta = 0.15; // ~15 km — matches the 15,000 m search radius
         $stmt  = $this->db->prepare(
             "SELECT * FROM places
              WHERE status IN ('unregistered','contacted')

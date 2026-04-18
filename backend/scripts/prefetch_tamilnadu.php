@@ -6,7 +6,7 @@
  *   php scripts/prefetch_tamilnadu.php
  *
  * Quota cost: up to 5 API calls per city (1 Nearby + 4 Text Search).
- * ~81 cities = ~405 calls — well within the 6,000/month free tier.
+ * ~81 cities = ~567 calls (7 API calls/city) — well within the 6,000/month free tier.
  *
  * Already-cached cities are skipped automatically.
  * A 1.5 s sleep between cities keeps us under Google's per-second rate limit.
