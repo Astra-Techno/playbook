@@ -228,12 +228,11 @@ if (isset($seg[0]) && $seg[0] === 'auth') {
         $authController->verifyOtp(); exit();
     }
     if (isset($seg[1]) && $seg[1] === 'profile' && $_SERVER['REQUEST_METHOD'] === 'PUT') {
-        $data = json_decode(file_get_contents('php://input'), true) ?? [];
-        Auth::requireSelf((int)($data['user_id'] ?? 0));
+        Auth::require();
         $authController->updateProfile(); exit();
     }
     if (isset($seg[1]) && $seg[1] === 'profile' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-        Auth::requireSelf((int)($_GET['user_id'] ?? 0));
+        Auth::require();
         $authController->getProfile(); exit();
     }
 }
