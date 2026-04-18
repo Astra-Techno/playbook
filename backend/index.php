@@ -560,8 +560,8 @@ if (isset($seg[0]) && $seg[0] === 'admin') {
     if (isset($seg[1]) && $seg[1] === 'demand' && $_SERVER['REQUEST_METHOD'] === 'GET') {
         $pc->adminDemand(); exit();
     }
-    // POST /admin/prefetch-tamilnadu?admin_id=X
-    if (isset($seg[1]) && $seg[1] === 'prefetch-tamilnadu' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    // GET /admin/prefetch-tamilnadu?admin_id=X
+    if (isset($seg[1]) && $seg[1] === 'prefetch-tamilnadu' && $_SERVER['REQUEST_METHOD'] === 'GET') {
         $pc->prefetchTamilnadu(); exit();
     }
     // PUT /admin/places/:id/contact

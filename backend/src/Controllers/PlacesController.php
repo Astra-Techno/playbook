@@ -186,7 +186,7 @@ class PlacesController
     // ── Prefetch / seeding ───────────────────────────────────────────────────
 
     /**
-     * POST /admin/prefetch-tamilnadu?admin_id=X
+     * GET /admin/prefetch-tamilnadu?admin_id=X
      * Streams a plain-text progress log as it seeds each city.
      */
     public function prefetchTamilnadu(): void
