@@ -186,6 +186,76 @@ class PlacesController
     // ── Prefetch / seeding ───────────────────────────────────────────────────
 
     /**
+     * POST /admin/prefetch-tamilnadu?admin_id=X
+     * Streams a plain-text progress log as it seeds each city.
+     */
+    public function prefetchTamilnadu(): void
+    {
+        $adminId = (int)($_GET['admin_id'] ?? 0);
+        if (!$this->isAdmin($adminId)) {
+            http_response_code(403);
+            echo json_encode(['error' => 'Forbidden']);
+            return;
+        }
+
+        $cities = [
+            ['Chennai',13.0827,80.2707],['Coimbatore',11.0168,76.9558],['Madurai',9.9252,78.1198],
+            ['Trichy',10.7905,78.7047],['Salem',11.6643,78.1460],['Tirunelveli',8.7139,77.7567],
+            ['Vellore',12.9165,79.1325],['Erode',11.3410,77.7172],['Tiruppur',11.1085,77.3411],
+            ['Thoothukudi',8.7642,78.1348],['Nagercoil',8.1833,77.4119],['Hosur',12.7409,77.8253],
+            ['Kancheepuram',12.8394,79.7000],['Thanjavur',10.7870,79.1378],['Dindigul',10.3673,77.9803],
+            ['Cuddalore',11.7480,79.7714],['Kumbakonam',10.9602,79.3845],['Namakkal',11.2196,78.1671],
+            ['Karur',10.9601,78.0766],['Pudukkottai',10.3797,78.8201],['Villupuram',11.9401,79.4861],
+            ['Krishnagiri',12.5186,78.2137],['Dharmapuri',12.1281,78.1582],['Tiruvallur',13.1437,79.9093],
+            ['Chengalpattu',12.6922,79.9759],['Ranipet',12.9283,79.3328],['Tiruvannamalai',12.2253,79.0747],
+            ['Tirupattur',12.4960,78.5730],['Kallakurichi',11.7354,78.9602],['Ariyalur',11.1390,79.0771],
+            ['Perambalur',11.2330,78.8804],['Mayiladuthurai',11.1033,79.6533],['Nagapattinam',10.7672,79.8449],
+            ['Tiruvarur',10.7726,79.6356],['Sivaganga',9.8438,78.4828],['Ramanathapuram',9.3639,78.8395],
+            ['Virudhunagar',9.5872,77.9622],['Tenkasi',8.9594,77.3153],['Theni',10.0104,77.4770],
+            ['Ooty',11.4102,76.6950],['Kodaikanal',10.2381,77.4892],['Pollachi',10.6554,77.0070],
+            ['Palani',10.4476,77.5230],['Gobichettipalayam',11.4547,77.3572],['Bhavani',11.4451,77.6831],
+            ['Mettur',11.7925,77.8011],['Sathyamangalam',11.5011,77.2340],['Sivakasi',9.4533,77.7997],
+            ['Rajapalayam',9.4880,77.5527],['Ambur',12.7933,78.7185],['Gudiyatham',12.9483,78.8742],
+            ['Chidambaram',11.3995,79.6913],['Rasipuram',11.4612,78.1767],['Yercaud',11.7720,78.2092],
+            ['Kanyakumari',8.0883,77.5385],['Rameswaram',9.2876,79.3129],['Tiruchendur',8.4973,78.1218],
+            ['Velankanni',10.6874,79.8537],['Mahabalipuram',12.6269,80.1927],['Karaikudi',10.0757,78.7734],
+            ['Coonoor',11.3530,76.7959],['Mettupalayam',11.2964,76.9431],['Valparai',10.3269,76.9550],
+            ['Kovilpatti',9.1706,77.8680],['Aruppukkottai',9.5091,78.0972],['Srivilliputhur',9.5117,77.6369],
+            ['Sankarankovil',9.1701,77.5536],['Sattur',9.3479,77.9098],['Paramakudi',9.5197,78.5912],
+            ['Periyakulam',10.1148,77.5540],['Bodinayakanur',10.0108,77.3530],['Udumalpet',10.5852,77.2486],
+            ['Kangeyam',11.0061,77.5612],['Attur',11.5969,78.5992],['Arakkonam',13.0786,79.6682],
+            ['Vaniyambadi',12.6840,78.6230],['Jolarpettai',12.5600,78.5767],['Harur',12.0516,78.4794],
+            ['Bargur',12.1992,78.2339],['Arani',12.6701,79.2814],['Cheyyar',12.6543,79.5460],
+            ['Gingee',12.2531,79.4167],['Tindivanam',12.2432,79.6569],['Ulundurpet',11.6725,79.3227],
+        ];
+
+        header('Content-Type: text/plain; charset=utf-8');
+        header('X-Accel-Buffering: no'); // disable nginx buffering so lines stream live
+        ob_implicit_flush(true);
+        @ob_end_flush();
+
+        $total = 0; $skipped = 0;
+        echo "KoCourt — Tamil Nadu prefetch (" . count($cities) . " cities)\n";
+        echo str_repeat('-', 50) . "\n";
+
+        foreach ($cities as [$name, $lat, $lng]) {
+            $count = $this->prefetchCity((float)$lat, (float)$lng);
+            if ($count === 0) {
+                echo "  SKIP  $name (cached or quota exceeded)\n";
+                $skipped++;
+            } else {
+                echo "  OK    $name → $count places\n";
+                $total += $count;
+            }
+            flush();
+            sleep(1);
+        }
+
+        echo str_repeat('-', 50) . "\n";
+        echo "Done. $total new places stored, $skipped skipped.\n";
+    }
+
+    /**
      * Pre-seed the cache for a specific lat/lng (used by CLI scripts).
      * Returns the number of places stored (0 if quota exceeded or no API key).
      */
