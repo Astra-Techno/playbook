@@ -121,7 +121,7 @@ foreach ($cities as [$name, $lat, $lng]) {
     $count = $ctrl->prefetchCity((float)$lat, (float)$lng);
 
     if ($count === 0) {
-        echo "  SKIP  $name (already cached or quota exceeded)\n";
+        echo "  SKIP  $name (no API key or quota exceeded)\n";
         $skipped++;
     } else {
         echo "  OK    $name → $count places stored\n";

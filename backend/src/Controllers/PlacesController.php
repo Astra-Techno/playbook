@@ -242,7 +242,7 @@ class PlacesController
         foreach ($cities as [$name, $lat, $lng]) {
             $count = $this->prefetchCity((float)$lat, (float)$lng);
             if ($count === 0) {
-                echo "  SKIP  $name (cached or quota exceeded)\n";
+                echo "  SKIP  $name (no API key or quota exceeded)\n";
                 $skipped++;
             } else {
                 echo "  OK    $name → $count places\n";
@@ -257,16 +257,15 @@ class PlacesController
     }
 
     /**
-     * Pre-seed the cache for a specific lat/lng (used by CLI scripts).
-     * Returns the number of places stored (0 if quota exceeded or no API key).
+     * Pre-seed the cache for a specific lat/lng (used by CLI/HTTP prefetch).
+     * Always fetches from Google — no cache skip so new queries pick up
+     * venues missed on previous runs. storePlaces uses ON DUPLICATE KEY UPDATE
+     * so re-inserting the same google_place_id is safe (no duplicates).
+     * Returns number of places fetched (0 if no API key or quota exceeded).
      */
     public function prefetchCity(float $lat, float $lng): int
     {
         if (!$this->hasApiKey() || $this->isQuotaExceeded()) return 0;
-
-        // Skip if already freshly cached (avoid wasting quota)
-        $existing = $this->getFromCache($lat, $lng);
-        if (count($existing) > 0) return count($existing);
 
         $raw = $this->fetchFromGoogle($lat, $lng);
         if (!empty($raw)) {
