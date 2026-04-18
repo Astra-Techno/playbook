@@ -88,17 +88,18 @@ class PaymentController {
     }
 
     // ── POST /api/payments/create-order ───────────────────────────────────────
-    // Body: { user_id, amount, type: 'booking'|'subscription', payload: {...} }
+    // Body: { amount, type: 'booking'|'subscription', payload: {...} }
     public function createOrder(): void {
-        $data    = json_decode(file_get_contents('php://input'));
-        $user_id = (int)($data->user_id ?? 0);
-        $amount  = round(floatval($data->amount ?? 0), 2);
-        $type    = in_array($data->type ?? '', ['booking', 'subscription'])
-                   ? $data->type : 'booking';
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
+        $data     = json_decode(file_get_contents('php://input'));
+        $amount   = round(floatval($data->amount ?? 0), 2);
+        $type     = in_array($data->type ?? '', ['booking', 'subscription'])
+                    ? $data->type : 'booking';
 
-        if ($amount <= 0 || !$user_id) {
+        if ($amount <= 0) {
             http_response_code(400);
-            echo json_encode(['message' => 'Invalid amount or user_id']);
+            echo json_encode(['message' => 'Invalid amount']);
             return;
         }
 

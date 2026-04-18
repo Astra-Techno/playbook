@@ -201,10 +201,12 @@ if (isset($seg[0]) && $seg[0] === 'payments') {
         exit();
     }
     if (isset($seg[1]) && $seg[1] === 'create-order' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        Auth::require();
         $paymentController->createOrder();
         exit();
     }
     if (isset($seg[1]) && $seg[1] === 'verify' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        Auth::require();
         $paymentController->verify();
         exit();
     }
@@ -302,12 +304,12 @@ if (isset($seg[0]) && $seg[0] === 'subscriptions') {
 if (isset($seg[0]) && $seg[0] === 'notifications') {
     require_once __DIR__ . '/src/Controllers/NotificationController.php';
     $notifCtrl = new NotificationController();
-    // GET /notifications/list?user_id=X
-    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'list') { $notifCtrl->list(); exit(); }
+    // GET /notifications/list
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'list') { Auth::require(); $notifCtrl->list(); exit(); }
     // PUT /notifications/read-all
-    if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && $seg[1] === 'read-all') { $notifCtrl->markAllRead(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && $seg[1] === 'read-all') { Auth::require(); $notifCtrl->markAllRead(); exit(); }
     // PUT /notifications/:id/read
-    if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && is_numeric($seg[1]) && isset($seg[2]) && $seg[2] === 'read') { $notifCtrl->markRead((int)$seg[1]); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && is_numeric($seg[1]) && isset($seg[2]) && $seg[2] === 'read') { Auth::require(); $notifCtrl->markRead((int)$seg[1]); exit(); }
 }
 
 // Notifications Route — GET /notifications?user_id=X (subscription expiry alerts, legacy)
@@ -775,10 +777,10 @@ if (isset($seg[0]) && $seg[0] === 'court-photos') {
 if (isset($seg[0]) && $seg[0] === 'messages') {
     require_once __DIR__ . '/src/Controllers/MessageController.php';
     $msgCtrl = new MessageController();
-    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'threads')      { $msgCtrl->threads();     exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'unread-count') { $msgCtrl->unreadCount(); exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'GET')  { $msgCtrl->index();  exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') { $msgCtrl->create(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'threads')      { Auth::require(); $msgCtrl->threads();     exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'unread-count') { Auth::require(); $msgCtrl->unreadCount(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET')  { Auth::require(); $msgCtrl->index();  exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $msgCtrl->create(); exit(); }
 }
 
 // Waitlist Routes

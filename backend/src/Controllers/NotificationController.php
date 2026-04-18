@@ -20,10 +20,10 @@ class NotificationController {
         try { $db->exec("ALTER TABLE user_notifications ADD COLUMN is_read TINYINT(1) NOT NULL DEFAULT 0"); } catch (\PDOException $e) {}
     }
 
-    // GET /notifications/list?user_id=X
+    // GET /notifications/list
     public function list() {
-        $user_id = (int)($_GET['user_id'] ?? 0);
-        if (!$user_id) { http_response_code(400); echo json_encode(['message' => 'user_id required']); return; }
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
         $db = Database::getConnection();
         $this->ensureTable($db);
         $stmt = $db->prepare(
@@ -42,17 +42,19 @@ class NotificationController {
 
     // PUT /notifications/:id/read
     public function markRead($id) {
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
         $db = Database::getConnection();
         $this->ensureTable($db);
-        $db->prepare("UPDATE user_notifications SET read_at = NOW(), is_read = 1 WHERE id = ?")->execute([$id]);
+        // Only mark your own notifications as read
+        $db->prepare("UPDATE user_notifications SET read_at = NOW(), is_read = 1 WHERE id = ? AND user_id = ?")->execute([$id, $user_id]);
         echo json_encode(['success' => true]);
     }
 
-    // PUT /notifications/read-all  body: { user_id }
+    // PUT /notifications/read-all
     public function markAllRead() {
-        $data    = json_decode(file_get_contents('php://input'));
-        $user_id = (int)($data->user_id ?? 0);
-        if (!$user_id) { http_response_code(400); echo json_encode(['message' => 'user_id required']); return; }
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
         $db = Database::getConnection();
         $this->ensureTable($db);
         $db->prepare("UPDATE user_notifications SET read_at = NOW(), is_read = 1 WHERE user_id = ? AND is_read = 0")->execute([$user_id]);

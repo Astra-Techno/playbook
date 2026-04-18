@@ -76,11 +76,12 @@ class CourtController {
 
     // POST /api/courts
     public function create() {
-        $data = json_decode(file_get_contents("php://input"));
+        $authUser = Auth::requireOwner();
+        $data     = json_decode(file_get_contents("php://input"));
 
-        if (!empty($data->owner_id) && !empty($data->name) && !empty($data->hourly_rate)) {
+        if (!empty($data->name) && !empty($data->hourly_rate)) {
             $court = new Court();
-            $court->owner_id    = $data->owner_id;
+            $court->owner_id    = (int)$authUser['id']; // always from token
             $court->name        = $data->name;
             $court->type        = $data->type        ?? 'other';
             $court->description = $data->description ?? '';
@@ -116,17 +117,18 @@ class CourtController {
         }
     }
 
-    // POST /courts/claim  { owner_id, place_id, hourly_rate, description?, proof_url? }
+    // POST /courts/claim  { place_id, hourly_rate, description?, proof_url? }
     public function claim() {
+        $authUser    = Auth::require();
+        $owner_id    = (int)$authUser['id'];
         $data        = json_decode(file_get_contents("php://input"));
-        $owner_id    = (int)($data->owner_id    ?? 0);
         $place_id    = (int)($data->place_id    ?? 0);
         $hourly_rate = (float)($data->hourly_rate ?? 0);
         $proof_url   = trim($data->proof_url ?? '');
 
-        if (!$owner_id || !$place_id || !$hourly_rate) {
+        if (!$place_id || !$hourly_rate) {
             http_response_code(400);
-            echo json_encode(['message' => 'owner_id, place_id and hourly_rate are required']);
+            echo json_encode(['message' => 'place_id and hourly_rate are required']);
             return;
         }
 
@@ -350,9 +352,9 @@ class CourtController {
 
     // PUT /api/courts/:id
     public function update($id) {
+        $authUser = Auth::requireOwner();
+        $owner_id = (int)$authUser['id'];
         $data     = json_decode(file_get_contents("php://input"));
-        $owner_id = (int)($data->owner_id ?? 0);
-        if (!$id || !$owner_id) { http_response_code(400); echo json_encode(['message' => 'id and owner_id required']); return; }
         $db   = Database::getConnection();
         $chk  = $db->prepare("SELECT id FROM courts WHERE id=? AND owner_id=?");
         $chk->execute([$id, $owner_id]);
@@ -385,23 +387,19 @@ class CourtController {
 
     // PUT /api/courts/:id/verify
     public function verify($id) {
+        Auth::requireAdmin();
         $data     = json_decode(file_get_contents("php://input"));
-        $admin_id = (int)($data->admin_id ?? 0);
         $verified = isset($data->is_verified) ? (int)$data->is_verified : 1;
         $db = Database::getConnection();
-        $chk = $db->prepare("SELECT id FROM users WHERE id=? AND role='admin'");
-        $chk->execute([$admin_id]);
-        if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Not authorised']); return; }
         $db->prepare("UPDATE courts SET is_verified=? WHERE id=?")->execute([$verified, $id]);
         http_response_code(200);
         echo json_encode(['message' => 'Court verification updated.', 'is_verified' => (bool)$verified]);
     }
 
-    // DELETE /api/courts/:id  body: { owner_id }
+    // DELETE /api/courts/:id
     public function delete($id) {
-        $data     = json_decode(file_get_contents("php://input"));
-        $owner_id = (int)($data->owner_id ?? 0);
-        if (!$id || !$owner_id) { http_response_code(400); echo json_encode(['message' => 'id and owner_id required']); return; }
+        $authUser = Auth::requireOwner();
+        $owner_id = (int)$authUser['id'];
         $db  = Database::getConnection();
         $chk = $db->prepare("SELECT id FROM courts WHERE id=? AND owner_id=?");
         $chk->execute([$id, $owner_id]);

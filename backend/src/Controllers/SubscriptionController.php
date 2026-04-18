@@ -28,9 +28,17 @@ class SubscriptionController {
     // GET /subscriptions/members?court_id=X[&sub_court_id=Y]
     // Returns all active subscribers for a venue or specific space's plans
     public function members() {
+        $authUser     = Auth::requireOwner();
+        $owner_id     = (int)$authUser['id'];
         $court_id     = (int)($_GET['court_id'] ?? 0);
         $sub_court_id = isset($_GET['sub_court_id']) ? (int)$_GET['sub_court_id'] : null;
         if (!$court_id) { http_response_code(400); echo json_encode(['message' => 'court_id required']); return; }
+
+        // Verify the requesting owner actually owns this court
+        $db  = Database::getConnection();
+        $chk = $db->prepare("SELECT id FROM courts WHERE id=? AND owner_id=?");
+        $chk->execute([$court_id, $owner_id]);
+        if (!$chk->fetch()) { http_response_code(403); echo json_encode(['error' => 'Forbidden']); return; }
 
         $db = Database::getConnection();
 

@@ -4,14 +4,15 @@ require_once __DIR__ . '/../../config/database.php';
 
 class MessageController {
 
-    // GET /api/messages?booking_id=X&user_id=Y
+    // GET /api/messages?booking_id=X
     // Returns messages for a booking thread; marks received messages as read
     public function index() {
+        $authUser   = Auth::require();
+        $user_id    = (int)$authUser['id'];
         $booking_id = (int)($_GET['booking_id'] ?? 0);
-        $user_id    = (int)($_GET['user_id']    ?? 0);
-        if (!$booking_id || !$user_id) {
+        if (!$booking_id) {
             http_response_code(400);
-            echo json_encode(['message' => 'booking_id and user_id required']);
+            echo json_encode(['message' => 'booking_id required']);
             return;
         }
 
@@ -36,15 +37,11 @@ class MessageController {
         echo json_encode(['messages' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
     }
 
-    // GET /api/messages/threads?user_id=X
+    // GET /api/messages/threads
     // Returns one row per booking conversation the user participates in
     public function threads() {
-        $user_id = (int)($_GET['user_id'] ?? 0);
-        if (!$user_id) {
-            http_response_code(400);
-            echo json_encode(['message' => 'user_id required']);
-            return;
-        }
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
 
         $db   = Database::getConnection();
         $stmt = $db->prepare(
@@ -89,10 +86,10 @@ class MessageController {
         echo json_encode(['threads' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
     }
 
-    // GET /api/messages/unread-count?user_id=X
+    // GET /api/messages/unread-count
     public function unreadCount() {
-        $user_id = (int)($_GET['user_id'] ?? 0);
-        if (!$user_id) { echo json_encode(['count' => 0]); return; }
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
         $db   = Database::getConnection();
         $stmt = $db->prepare(
             "SELECT COUNT(*) FROM messages WHERE receiver_id=? AND is_read=0"
@@ -101,17 +98,18 @@ class MessageController {
         echo json_encode(['count' => (int)$stmt->fetchColumn()]);
     }
 
-    // POST /api/messages  { booking_id, sender_id, receiver_id, body }
+    // POST /api/messages  { booking_id, receiver_id, body }
     public function create() {
-        $data       = json_decode(file_get_contents('php://input'));
-        $booking_id = (int)($data->booking_id  ?? 0);
-        $sender_id  = (int)($data->sender_id   ?? 0);
-        $receiver_id= (int)($data->receiver_id ?? 0);
-        $body       = htmlspecialchars(strip_tags(trim($data->body ?? '')));
+        $authUser    = Auth::require();
+        $sender_id   = (int)$authUser['id'];
+        $data        = json_decode(file_get_contents('php://input'));
+        $booking_id  = (int)($data->booking_id  ?? 0);
+        $receiver_id = (int)($data->receiver_id ?? 0);
+        $body        = htmlspecialchars(strip_tags(trim($data->body ?? '')));
 
-        if (!$booking_id || !$sender_id || !$receiver_id || !$body) {
+        if (!$booking_id || !$receiver_id || !$body) {
             http_response_code(400);
-            echo json_encode(['message' => 'booking_id, sender_id, receiver_id, body required']);
+            echo json_encode(['message' => 'booking_id, receiver_id, body required']);
             return;
         }
 
