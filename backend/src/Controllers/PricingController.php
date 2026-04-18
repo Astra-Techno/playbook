@@ -49,14 +49,15 @@ class PricingController
         echo json_encode(['rules' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
     }
 
-    // POST /pricing-rules  { court_id, owner_id, sub_court_id?, name, day_type, start_hour, end_hour, price, valid_from?, valid_to? }
+    // POST /pricing-rules  { court_id, sub_court_id?, name, day_type, start_hour, end_hour, price, valid_from?, valid_to? }
     public function create(): void
     {
+        $authUser     = Auth::requireOwner();
+        $owner_id     = (int)$authUser['id'];
         $data         = json_decode(file_get_contents('php://input'));
         $court_id     = (int)($data->court_id ?? 0);
-        $owner_id     = (int)($data->owner_id ?? 0);
         $sub_court_id = isset($data->sub_court_id) && $data->sub_court_id !== '' ? (int)$data->sub_court_id : null;
-        if (!$court_id || !$owner_id) { http_response_code(400); echo json_encode(['message' => 'court_id and owner_id required']); return; }
+        if (!$court_id) { http_response_code(400); echo json_encode(['message' => 'court_id required']); return; }
         $chk = $this->db->prepare("SELECT id FROM courts WHERE id=? AND owner_id=?");
         $chk->execute([$court_id, $owner_id]);
         if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
@@ -84,11 +85,12 @@ class PricingController
         echo json_encode(['message' => 'Rule created', 'rule' => $row->fetch(PDO::FETCH_ASSOC)]);
     }
 
-    // DELETE /pricing-rules/:id  { owner_id }
+    // DELETE /pricing-rules/:id
     public function delete(int $id): void
     {
+        $authUser = Auth::requireOwner();
+        $owner_id = (int)$authUser['id'];
         $data     = json_decode(file_get_contents('php://input'));
-        $owner_id = (int)($data->owner_id ?? 0);
         $chk = $this->db->prepare("SELECT pr.id FROM pricing_rules pr JOIN courts c ON c.id=pr.court_id WHERE pr.id=? AND c.owner_id=?");
         $chk->execute([$id, $owner_id]);
         if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }

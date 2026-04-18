@@ -28,7 +28,7 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50 flex flex-col items-center justify-start pt-10 px-5 pb-28">
+    <div class="min-h-full bg-slate-50 flex flex-col items-center justify-start pt-10 px-5 pb-8">
 
         <!-- Loading -->
         <div v-if="loading" class="flex flex-col items-center justify-center py-32">

@@ -120,9 +120,9 @@ const submitPromptRating = async () => {
 </script>
 
 <template>
-    <!-- Centered mobile-width wrapper -->
-    <div class="min-h-[100dvh] bg-slate-100 flex justify-center">
-    <div id="app-root" class="relative w-full max-w-[430px] bg-white h-[100dvh] flex flex-col overflow-hidden shadow-sm">
+    <!-- Lock outer height to dynamic viewport — avoids iOS URL bar resize vs pages that used min-h-screen (100vh) -->
+    <div class="h-[100dvh] max-h-[100dvh] overflow-hidden bg-slate-100 flex justify-center">
+    <div id="app-root" class="relative w-full max-w-[430px] bg-white h-full max-h-full flex flex-col overflow-hidden shadow-sm">
 
         <!-- Toast overlay -->
         <div class="absolute top-4 inset-x-4 z-[200] space-y-2 pointer-events-none">
@@ -145,17 +145,20 @@ const submitPromptRating = async () => {
         <AppHeader />
 
         <!-- Page content -->
-        <main ref="mainEl" class="flex-1 min-h-0 scrollbar-hide"
+        <main ref="mainEl" class="flex-1 min-h-0 scrollbar-hide overscroll-y-contain touch-pan-y"
             :class="[
                 route.meta.fullScreen ? 'overflow-hidden' : 'overflow-y-auto',
-                auth.isLoggedIn && !route.meta.fullScreen ? 'pb-24' : ''
+                auth.isLoggedIn && !route.meta.fullScreen && !route.meta.hideBottomNav
+                    /* Nav is position:absolute; reserve overlap only here. Safe-area belongs on <nav> only — adding it to both caused a visible “dead band” above / below the tab bar (your screenshots). */
+                    ? 'pb-24'
+                    : ''
             ]">
             <RouterView />
         </main>
 
         <!-- Bottom Nav — shown when logged in -->
-        <nav v-if="auth.isLoggedIn"
-            class="absolute bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-100 z-50 px-6 py-3 flex justify-between items-center"
+        <nav v-if="auth.isLoggedIn && !route.meta.hideBottomNav"
+            class="absolute bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-100 z-50 px-6 pt-3 flex justify-between items-center pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
             style="box-shadow: 0 -2px 20px rgba(0,0,0,0.07);">
 
             <RouterLink to="/"

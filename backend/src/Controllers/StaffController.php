@@ -25,15 +25,16 @@ class StaffController
         ");
     }
 
-    // GET /court-staff?court_id=X&owner_id=Y
+    // GET /court-staff?court_id=X
     public function list(): void
     {
+        $authUser = Auth::requireOwner();
+        $owner_id = (int)$authUser['id'];
         $court_id = (int)($_GET['court_id'] ?? 0);
-        $owner_id = (int)($_GET['owner_id'] ?? 0);
 
-        if (!$court_id || !$owner_id) {
+        if (!$court_id) {
             http_response_code(400);
-            echo json_encode(['message' => 'court_id and owner_id required']);
+            echo json_encode(['message' => 'court_id required']);
             return;
         }
 
@@ -56,18 +57,19 @@ class StaffController
         echo json_encode(['staff' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
     }
 
-    // POST /court-staff  { court_id, owner_id, phone, role? }
+    // POST /court-staff  { court_id, phone, role? }
     public function add(): void
     {
+        $authUser = Auth::requireOwner();
+        $owner_id = (int)$authUser['id'];
         $data     = json_decode(file_get_contents('php://input'));
         $court_id = (int)($data->court_id ?? 0);
-        $owner_id = (int)($data->owner_id ?? 0);
         $phone    = trim($data->phone    ?? '');
         $role     = in_array($data->role ?? '', ['manager','viewer']) ? $data->role : 'manager';
 
-        if (!$court_id || !$owner_id || !$phone) {
+        if (!$court_id || !$phone) {
             http_response_code(400);
-            echo json_encode(['message' => 'court_id, owner_id and phone required']);
+            echo json_encode(['message' => 'court_id and phone required']);
             return;
         }
 
@@ -123,15 +125,11 @@ class StaffController
         }
     }
 
-    // DELETE /court-staff/:id  { owner_id }
+    // DELETE /court-staff/:id
     public function remove(int $id): void
     {
-        $data     = json_decode(file_get_contents('php://input'));
-        $owner_id = (int)($data->owner_id ?? 0);
-
-        if (!$owner_id) {
-            http_response_code(400); echo json_encode(['message' => 'owner_id required']); return;
-        }
+        $authUser = Auth::requireOwner();
+        $owner_id = (int)$authUser['id'];
 
         // Verify the record belongs to a court owned by this owner
         $chk = $this->db->prepare("
@@ -148,14 +146,12 @@ class StaffController
         echo json_encode(['message' => 'Staff member removed']);
     }
 
-    // GET /court-staff/my-courts?user_id=X
+    // GET /court-staff/my-courts
     // Returns courts + minimal court data where this user is staff
     public function myCourts(): void
     {
-        $user_id = (int)($_GET['user_id'] ?? 0);
-        if (!$user_id) {
-            http_response_code(400); echo json_encode(['message' => 'user_id required']); return;
-        }
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
 
         $stmt = $this->db->prepare("
             SELECT cs.id AS staff_id, cs.role,

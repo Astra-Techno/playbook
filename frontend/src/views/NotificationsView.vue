@@ -70,7 +70,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50">
+    <div class="min-h-full bg-slate-50">
         <Teleport to="#header-subject">Notifications</Teleport>
 
         <!-- Actions bar -->

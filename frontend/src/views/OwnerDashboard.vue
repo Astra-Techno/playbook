@@ -316,7 +316,7 @@ const handleAvatarUpload = async (event) => {
 
 <template>
     <!-- Outer wrapper matching reference: max-w-md centered, white card, full-screen -->
-    <div class="max-w-md mx-auto bg-white min-h-screen flex flex-col shadow-xl relative">
+    <div class="max-w-md mx-auto bg-white min-h-full h-full flex flex-col shadow-xl relative">
 
         <!-- Teleport contents to Global Header -->
         <Teleport to="#header-extra">
@@ -354,7 +354,7 @@ const handleAvatarUpload = async (event) => {
         </Teleport>
 
         <!-- ── MAIN CONTENT ── -->
-        <main class="flex-1 px-4 pb-28">
+        <main class="flex-1 px-4 pb-24">
 
             <!-- Section header -->
             <div class="flex items-center justify-between pt-4 pb-3">
@@ -906,7 +906,7 @@ const handleAvatarUpload = async (event) => {
         </main>
 
         <!-- ── BOTTOM NAV (fixed, matching reference exactly) ── -->
-        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur border-t border-slate-100 px-6 py-3 flex justify-between items-center z-20">
+        <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white/95 backdrop-blur border-t border-slate-100 px-6 pt-3 flex justify-between items-center z-20 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]">
             <button
                 @click="activeNavTab = 'explore'"
                 :class="activeNavTab === 'explore' ? 'text-primary' : 'text-slate-400'"

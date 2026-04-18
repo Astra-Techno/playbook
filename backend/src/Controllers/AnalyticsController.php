@@ -9,12 +9,12 @@ class AnalyticsController
         $this->db = Database::getConnection();
     }
 
-    // GET /analytics?owner_id=X&period=30  (period in days, default 30)
+    // GET /analytics?period=30  (period in days, default 30)
     public function index(): void
     {
-        $owner_id = (int)($_GET['owner_id'] ?? 0);
+        $authUser = Auth::requireOwner();
+        $owner_id = (int)$authUser['id'];
         $period   = max(7, min(365, (int)($_GET['period'] ?? 30)));
-        if (!$owner_id) { http_response_code(400); echo json_encode(['message' => 'owner_id required']); return; }
 
         $since = date('Y-m-d', strtotime("-{$period} days"));
 

@@ -7,7 +7,7 @@ class Database {
     private $pdo;
 
     // Bump this number whenever migrate() adds new tables/columns/indexes
-    private const SCHEMA_VERSION = 13;
+    private const SCHEMA_VERSION = 14;
 
     private function __construct() {
         $host    = getenv('DB_HOST') ?: 'localhost';
@@ -61,7 +61,7 @@ class Database {
                 description TEXT,
                 location VARCHAR(255),
                 hourly_rate DECIMAL(10, 2) NOT NULL,
-                image_url VARCHAR(255),
+                image_url TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
             )
@@ -275,6 +275,9 @@ class Database {
         // auth_token column for server-side token validation
         try { $this->pdo->exec("ALTER TABLE users ADD COLUMN auth_token VARCHAR(64) DEFAULT NULL"); } catch(\PDOException $e){}
         try { $this->pdo->exec("ALTER TABLE users ADD INDEX idx_auth_token (auth_token)"); } catch(\PDOException $e){}
+
+        // Google Places / CDN image URLs exceed VARCHAR(255) (e.g. court claim from place photo_reference)
+        try { $this->pdo->exec("ALTER TABLE courts MODIFY image_url TEXT NULL"); } catch(\PDOException $e){}
 
         // Stamp schema version
         $this->pdo->exec("DELETE FROM schema_version");

@@ -41,9 +41,10 @@ class PostController {
         )");
     }
 
-    // GET /posts?user_id=X  (user_id for is_liked check, optional)
+    // GET /posts  (viewer_id for is_liked check, from token if logged in)
     public function index() {
-        $viewer_id = isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0;
+        $authUser  = Auth::user();
+        $viewer_id = $authUser ? (int)$authUser['id'] : 0;
         // Visibility filter:
         //   public   → all viewers
         //   only_me  → author only
@@ -85,9 +86,10 @@ class PostController {
         echo json_encode(['records' => $posts]);
     }
 
-    // GET /posts/:id?user_id=X
+    // GET /posts/:id
     public function show($id) {
-        $viewer_id = isset($_GET['user_id']) ? (int)$_GET['user_id'] : 0;
+        $authUser  = Auth::user();
+        $viewer_id = $authUser ? (int)$authUser['id'] : 0;
         $stmt = $this->db->prepare("
             SELECT p.id, p.content, p.image_url, p.images, p.court_id, p.created_at,
                    u.id AS user_id, u.name AS user_name, u.avatar_url,
@@ -120,10 +122,11 @@ class PostController {
         echo json_encode($p);
     }
 
-    // POST /posts  { user_id, content, images?, court_id?, booking_id?, visibility?, tags? }
+    // POST /posts  { content, images?, court_id?, booking_id?, visibility?, tags? }
     public function create() {
+        $authUser   = Auth::require();
         $data       = json_decode(file_get_contents('php://input'), true);
-        $user_id    = (int)($data['user_id'] ?? 0);
+        $user_id    = (int)$authUser['id'];
         $content    = trim($data['content'] ?? '');
         $court_id   = isset($data['court_id'])   ? (int)$data['court_id']   : null;
         $booking_id = isset($data['booking_id']) ? (int)$data['booking_id'] : null;
@@ -137,9 +140,9 @@ class PostController {
         $imgs = array_values(array_filter(array_map('trim', $imgs)));
         $imagesJson = !empty($imgs) ? json_encode($imgs) : null;
 
-        if (!$user_id || !$content) {
+        if (!$content) {
             http_response_code(400);
-            echo json_encode(['message' => 'user_id and content are required']);
+            echo json_encode(['message' => 'content is required']);
             return;
         }
         $stmt = $this->db->prepare(
@@ -162,10 +165,10 @@ class PostController {
         echo json_encode($post);
     }
 
-    // DELETE /posts/:id  { user_id }
+    // DELETE /posts/:id
     public function delete($id) {
-        $data    = json_decode(file_get_contents('php://input'), true);
-        $user_id = (int)($data['user_id'] ?? 0);
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
         $stmt = $this->db->prepare("DELETE FROM posts WHERE id = ? AND user_id = ?");
         $stmt->execute([$id, $user_id]);
         if ($stmt->rowCount() === 0) {
@@ -174,11 +177,10 @@ class PostController {
         echo json_encode(['message' => 'Deleted']);
     }
 
-    // POST /posts/:id/like  { user_id }
+    // POST /posts/:id/like
     public function like($id) {
-        $data    = json_decode(file_get_contents('php://input'), true);
-        $user_id = (int)($data['user_id'] ?? 0);
-        if (!$user_id) { http_response_code(400); echo json_encode(['message' => 'user_id required']); return; }
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
 
         // Toggle: try insert, if duplicate — delete
         try {
@@ -195,14 +197,15 @@ class PostController {
         echo json_encode(['liked' => $liked, 'likes_count' => (int)$cnt->fetchColumn()]);
     }
 
-    // POST /posts/:id/comment  { user_id, content }
+    // POST /posts/:id/comment  { content }
     public function addComment($id) {
-        $data    = json_decode(file_get_contents('php://input'), true);
-        $user_id = (int)($data['user_id'] ?? 0);
-        $content = trim($data['content'] ?? '');
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
+        $data     = json_decode(file_get_contents('php://input'), true);
+        $content  = trim($data['content'] ?? '');
 
-        if (!$user_id || !$content) {
-            http_response_code(400); echo json_encode(['message' => 'user_id and content required']); return;
+        if (!$content) {
+            http_response_code(400); echo json_encode(['message' => 'content required']); return;
         }
 
         $stmt = $this->db->prepare("INSERT INTO post_comments (post_id, user_id, content) VALUES (?, ?, ?)");

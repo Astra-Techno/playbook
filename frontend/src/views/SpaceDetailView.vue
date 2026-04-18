@@ -68,7 +68,7 @@ const menuItems = computed(() => [
     <Teleport to="#header-subject">{{ space?.name || 'Space' }}</Teleport>
     <Teleport to="#header-subtitle">Space Settings</Teleport>
 
-    <div class="min-h-screen bg-slate-50">
+    <div class="min-h-full bg-slate-50">
 
         <div v-if="loading" class="flex items-center justify-center h-64">
             <Loader2 :size="28" class="text-primary animate-spin" />

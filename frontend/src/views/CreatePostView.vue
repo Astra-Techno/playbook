@@ -195,7 +195,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50 pb-28">
+    <div class="min-h-full bg-slate-50">
 
         <!-- Booking context badge -->
         <div v-if="courtName" class="px-4 pt-4">

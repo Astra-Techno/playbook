@@ -116,7 +116,7 @@ const addPlan = async () => {
     <Teleport to="#header-subject">{{ spaceName || courtName || 'Plans' }}</Teleport>
     <Teleport to="#header-subtitle">{{ spaceId ? spaceName + ' · Plans' : 'Membership Plans' }}</Teleport>
 
-    <div class="min-h-screen bg-slate-50">
+    <div class="min-h-full bg-slate-50">
 
         <!-- Header -->
         <div class="bg-white px-5 pt-5 pb-5 border-b border-slate-100">

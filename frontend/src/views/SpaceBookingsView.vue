@@ -67,7 +67,7 @@ const cancelBooking = async (id) => {
     <Teleport to="#header-subject">{{ space?.name || 'Bookings' }}</Teleport>
     <Teleport to="#header-subtitle">{{ space?.name ? space.name + ' · Bookings' : 'Bookings' }}</Teleport>
 
-    <div class="min-h-screen bg-slate-50">
+    <div class="min-h-full bg-slate-50">
         <!-- Header -->
         <div class="bg-white px-5 pt-5 pb-4 border-b border-slate-100">
             <h1 class="text-lg font-bold text-slate-900">Bookings</h1>

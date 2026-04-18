@@ -46,7 +46,7 @@ onMounted(load)
     <Teleport to="#header-subject">Waitlist</Teleport>
     <Teleport to="#header-subtitle">My Waitlist</Teleport>
 
-    <div class="min-h-screen bg-slate-50 pb-28">
+    <div class="min-h-full bg-slate-50">
 
         <div v-if="loading" class="p-4 space-y-3">
             <div v-for="i in 3" :key="i" class="bg-white rounded-2xl h-24 animate-pulse ring-1 ring-slate-100"></div>

@@ -57,7 +57,7 @@ const router = createRouter({
             path: '/my-venues',
             name: 'my-venues',
             component: () => import('../views/OwnerDashboard.vue'),
-            meta: { requiresAuth: true, title: 'My Venues', showGreeting: true },
+            meta: { requiresAuth: true, title: 'My Venues', showGreeting: true, hideBottomNav: true },
         },
         {
             path: '/my-venues/new',

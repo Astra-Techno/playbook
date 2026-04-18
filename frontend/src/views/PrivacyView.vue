@@ -5,7 +5,7 @@ const router = useRouter()
 </script>
 
 <template>
-    <div class="min-h-screen bg-white">
+    <div class="min-h-full bg-white">
 
         <!-- Header -->
         <div class="sticky top-0 z-10 bg-white border-b border-slate-100 px-5 pt-5 pb-4 flex items-center gap-3">

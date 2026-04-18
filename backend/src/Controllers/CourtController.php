@@ -13,10 +13,14 @@ class CourtController {
         $owner_id = isset($_GET['owner_id']) ? (int)$_GET['owner_id'] : null;
         $lat      = isset($_GET['lat'])      ? (float)$_GET['lat']    : null;
         $lng      = isset($_GET['lng'])      ? (float)$_GET['lng']    : null;
-        $radius   = isset($_GET['radius'])   ? (int)$_GET['radius']   : 25;
+        $radius    = isset($_GET['radius'])    ? (int)$_GET['radius']    : 25;
+        $adminList = !empty($_GET['admin_list']);
+        if ($adminList) {
+            Auth::requireAdmin();
+        }
 
         $court = new Court();
-        $stmt  = $court->read($location, $type, $owner_id, $lat, $lng, $radius);
+        $stmt  = $court->read($location, $type, $owner_id, $lat, $lng, $radius, $adminList);
 
         $courts_arr = ["records" => []];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -47,6 +51,9 @@ class CourtController {
             if (isset($row["distance"])) {
                 $item["distance_km"] = round((float)$row["distance"], 1);
             }
+            if ($adminList) {
+                $item["claim_status"] = $row["claim_status"] ?? null;
+            }
             $courts_arr["records"][] = $item;
         }
         http_response_code(200);
@@ -62,7 +69,9 @@ class CourtController {
                    COUNT(r.id)   AS review_count
             FROM courts c
             LEFT JOIN reviews r ON r.court_id = c.id
-            WHERE c.id = ? LIMIT 1
+            WHERE c.id = ?
+            GROUP BY c.id
+            LIMIT 1
         ");
         $stmt->execute([$id]);
         $row  = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -135,12 +144,9 @@ class CourtController {
         $db = Database::getConnection();
 
         // Ensure claim columns exist
-        try {
-            $db->exec("ALTER TABLE courts
-                ADD COLUMN claim_status ENUM('pending','approved','rejected') NULL DEFAULT NULL AFTER peak_members_only,
-                ADD COLUMN claim_proof_url TEXT NULL AFTER claim_status,
-                ADD COLUMN claim_rejection_reason TEXT NULL AFTER claim_proof_url");
-        } catch (Exception $e) { /* columns already exist */ }
+        try { $db->exec("ALTER TABLE courts ADD COLUMN claim_status ENUM('pending','approved','rejected') NULL DEFAULT NULL"); } catch (Exception $e) {}
+        try { $db->exec("ALTER TABLE courts ADD COLUMN claim_proof_url TEXT NULL"); } catch (Exception $e) {}
+        try { $db->exec("ALTER TABLE courts ADD COLUMN claim_rejection_reason TEXT NULL"); } catch (Exception $e) {}
 
         // Fetch the ghost place (allow re-claim only if previous court was rejected)
         $stmt = $db->prepare(

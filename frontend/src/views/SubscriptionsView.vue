@@ -59,7 +59,7 @@ onMounted(fetchSubs)
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50 pb-28">
+    <div class="min-h-full bg-slate-50">
 
         <!-- Loading -->
         <div v-if="loading" class="p-5 space-y-3">

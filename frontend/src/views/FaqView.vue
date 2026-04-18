@@ -81,7 +81,7 @@ const toggle = (key) => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50 pb-28">
+    <div class="min-h-full bg-slate-50">
 
         <!-- Intro -->
         <div class="bg-white px-5 py-6 border-b border-slate-100">

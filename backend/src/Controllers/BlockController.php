@@ -56,18 +56,19 @@ class BlockController
         echo json_encode(['blocks' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
     }
 
-    // POST /blocked-slots  { court_id, blocked_by, sub_court_id?, date, hours: [6,7,8], reason? }
-    // OR  { court_id, blocked_by, sub_court_id?, start_time, end_time, reason? }  for range block
+    // POST /blocked-slots  { court_id, sub_court_id?, date, hours: [6,7,8], reason? }
+    // OR  { court_id, sub_court_id?, start_time, end_time, reason? }  for range block
     public function create(): void
     {
+        $authUser     = Auth::require();
+        $blocked_by   = (int)$authUser['id'];
         $data         = json_decode(file_get_contents('php://input'));
         $court_id     = (int)($data->court_id  ?? 0);
-        $blocked_by   = (int)($data->blocked_by ?? 0);
         $sub_court_id = isset($data->sub_court_id) && $data->sub_court_id !== '' ? (int)$data->sub_court_id : null;
         $reason       = trim($data->reason ?? '');
 
-        if (!$court_id || !$blocked_by) {
-            http_response_code(400); echo json_encode(['message' => 'court_id and blocked_by required']); return;
+        if (!$court_id) {
+            http_response_code(400); echo json_encode(['message' => 'court_id required']); return;
         }
 
         // Verify requester is owner or staff manager
@@ -110,11 +111,11 @@ class BlockController
         echo json_encode(['message' => 'Slots blocked', 'created' => count($created)]);
     }
 
-    // DELETE /blocked-slots/:id  { blocked_by }
+    // DELETE /blocked-slots/:id
     public function delete(int $id): void
     {
-        $data       = json_decode(file_get_contents('php://input'));
-        $blocked_by = (int)($data->blocked_by ?? 0);
+        $authUser   = Auth::require();
+        $blocked_by = (int)$authUser['id'];
 
         $chk = $this->db->prepare("
             SELECT bs.id FROM blocked_slots bs

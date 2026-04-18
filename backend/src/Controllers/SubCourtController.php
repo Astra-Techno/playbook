@@ -55,15 +55,16 @@ class SubCourtController
         echo json_encode(['sub_courts' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
     }
 
-    // POST /sub-courts  { court_id, owner_id, name, description?, hourly_rate? }
+    // POST /sub-courts  { court_id, name, description?, hourly_rate? }
     public function create(): void
     {
+        $authUser = Auth::requireOwner();
+        $owner_id = (int)$authUser['id'];
         $data     = json_decode(file_get_contents('php://input'));
         $court_id = (int)($data->court_id ?? 0);
-        $owner_id = (int)($data->owner_id ?? 0);
         $name     = trim($data->name ?? '');
-        if (!$court_id || !$owner_id || !$name) {
-            http_response_code(400); echo json_encode(['message' => 'court_id, owner_id and name required']); return;
+        if (!$court_id || !$name) {
+            http_response_code(400); echo json_encode(['message' => 'court_id and name required']); return;
         }
         $chk = $this->db->prepare("SELECT id FROM courts WHERE id=? AND owner_id=?");
         $chk->execute([$court_id, $owner_id]);
@@ -88,11 +89,12 @@ class SubCourtController
         echo json_encode(['message' => 'Sub-court created', 'sub_court' => $row->fetch(PDO::FETCH_ASSOC)]);
     }
 
-    // PUT /sub-courts/:id  { owner_id, name?, description?, hourly_rate? }
+    // PUT /sub-courts/:id  { name?, description?, hourly_rate? }
     public function update(int $id): void
     {
+        $authUser = Auth::requireOwner();
+        $owner_id = (int)$authUser['id'];
         $data     = json_decode(file_get_contents('php://input'));
-        $owner_id = (int)($data->owner_id ?? 0);
         $chk = $this->db->prepare("SELECT sc.id FROM sub_courts sc JOIN courts c ON c.id=sc.court_id WHERE sc.id=? AND c.owner_id=?");
         $chk->execute([$id, $owner_id]);
         if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
@@ -108,11 +110,12 @@ class SubCourtController
         echo json_encode(['message' => 'Updated']);
     }
 
-    // DELETE /sub-courts/:id  { owner_id }
+    // DELETE /sub-courts/:id
     public function delete(int $id): void
     {
+        $authUser = Auth::requireOwner();
+        $owner_id = (int)$authUser['id'];
         $data     = json_decode(file_get_contents('php://input'));
-        $owner_id = (int)($data->owner_id ?? 0);
         $chk = $this->db->prepare("SELECT sc.id FROM sub_courts sc JOIN courts c ON c.id=sc.court_id WHERE sc.id=? AND c.owner_id=?");
         $chk->execute([$id, $owner_id]);
         if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }

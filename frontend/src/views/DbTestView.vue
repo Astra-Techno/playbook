@@ -34,7 +34,7 @@ onMounted(test)
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50 px-4 py-6 pb-28">
+    <div class="min-h-full bg-slate-50 px-4 py-6">
 
         <!-- Header card -->
         <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 mb-4">

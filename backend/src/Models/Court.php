@@ -34,14 +34,17 @@ class Court {
      * Read courts with optional filters.
      * - If $lat + $lng provided (and no $owner_id): GPS Haversine search within $radius km.
      * - Otherwise: text LIKE search on location, optional type/owner filters.
+     * - If $for_admin: include courts with pending/rejected claims (public API hides pending).
      */
     public function read($location = null, $type = null, $owner_id = null,
-                         $lat = null, $lng = null, $radius = 25) {
+                         $lat = null, $lng = null, $radius = 25, $for_admin = false) {
 
         // GPS proximity search (player discovering courts)
         if ($lat !== null && $lng !== null && !$owner_id) {
-            $conditions = ["c.lat IS NOT NULL", "c.lng IS NOT NULL",
-                           "(c.claim_status IS NULL OR c.claim_status = 'approved')"];
+            $conditions = ['c.lat IS NOT NULL', 'c.lng IS NOT NULL'];
+            if (!$for_admin) {
+                $conditions[] = "(c.claim_status IS NULL OR c.claim_status = 'approved')";
+            }
             if ($type && $type !== 'All') $conditions[] = "c.type = ?";
 
             $where = implode(" AND ", $conditions);
@@ -73,8 +76,10 @@ class Court {
 
         // Text / owner filter search
         $conditions = [];
-        // Only exclude pending courts for public searches (not owner's own dashboard)
-        if (!$owner_id) $conditions[] = "(c.claim_status IS NULL OR c.claim_status = 'approved')";
+        // Only exclude pending courts for public searches (not owner's own dashboard or admin list)
+        if (!$owner_id && !$for_admin) {
+            $conditions[] = "(c.claim_status IS NULL OR c.claim_status = 'approved')";
+        }
         if ($location && $location !== 'All') $conditions[] = "c.location LIKE ?";
         if ($type     && $type     !== 'All') $conditions[] = "c.type = ?";
         if ($owner_id)                        $conditions[] = "c.owner_id = ?";

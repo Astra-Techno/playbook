@@ -155,7 +155,7 @@ const openChat = (booking) => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50">
+    <div class="min-h-full bg-slate-50">
         <!-- Teleport contents to Global Header -->
         <Teleport to="#header-extra">
             <!-- Tabs -->

@@ -6,8 +6,15 @@ import { X, Send, Loader2, MessageCircle } from 'lucide-vue-next'
 
 const props = defineProps({
     modelValue: Boolean,
-    bookingId:  { type: Number, required: true },
-    receiverId: { type: Number, required: true },
+    // null when sheet is closed (OwnerDashboard / MyBookings idle state)
+    bookingId: {
+        default: null,
+        validator: (v) => v === null || v === undefined || (typeof v === 'number' && Number.isFinite(v)),
+    },
+    receiverId: {
+        default: null,
+        validator: (v) => v === null || v === undefined || (typeof v === 'number' && Number.isFinite(v)),
+    },
     receiverName: { type: String, default: 'Owner' },
     courtName:  { type: String, default: '' },
 })
@@ -42,6 +49,7 @@ const fetchMessages = async () => {
 const send = async () => {
     const body = text.value.trim()
     if (!body || sending.value) return
+    if (props.bookingId == null || props.receiverId == null) return
     sending.value = true
     try {
         await axios.post('/messages', {

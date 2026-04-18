@@ -5,12 +5,22 @@
 @layer base {
     * { -webkit-tap-highlight-color: transparent; }
 
-    html { scroll-behavior: smooth; }
+    /* Avoid smooth-scroll fighting the app <main> scroll container on route changes (feels “shaky” on mobile) */
+    html { scroll-behavior: auto; height: 100%; }
 
     body {
         @apply bg-white text-slate-900 antialiased;
-        overscroll-behavior-y: none;
+        overscroll-behavior: none;
         overflow: hidden;
+        height: 100%;
+    }
+
+    #app {
+        height: 100%;
+    }
+
+    #app-root {
+        overscroll-behavior: none;
     }
 
     input, select, textarea {

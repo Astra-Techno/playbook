@@ -68,7 +68,7 @@ const hasDateFilter = computed(() => fromDate.value || toDate.value)
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50 pb-20">
+    <div class="min-h-full bg-slate-50">
 
         <!-- Header -->
         <div class="bg-white px-5 pt-5 pb-4 border-b border-slate-100 sticky top-0 z-10">

@@ -127,7 +127,7 @@ onMounted(fetchPost)
 </script>
 
 <template>
-    <div class="min-h-screen bg-white">
+    <div class="min-h-full bg-white">
 
         <!-- Dynamic Header Subject -->
         <Teleport v-if="post" to="#header-subject">
@@ -157,7 +157,7 @@ onMounted(fetchPost)
         </div>
 
         <!-- Post -->
-        <div v-else-if="post" class="pb-32">
+        <div v-else-if="post" class="pb-4">
 
             <!-- Author row -->
             <div class="flex items-center justify-between gap-3 px-5 py-5">

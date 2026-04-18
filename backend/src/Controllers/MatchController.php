@@ -41,11 +41,13 @@ class MatchController
         ");
     }
 
-    // GET /match-requests?court_id=X  or  ?user_id=X
+    // GET /match-requests?court_id=X  or  (own matches — uses token)
     public function index(): void
     {
         $court_id = (int)($_GET['court_id'] ?? 0);
-        $user_id  = (int)($_GET['user_id']  ?? 0);
+        // user_id filter uses token to prevent fetching other users' matches
+        $authUser = Auth::user();
+        $user_id  = (!$court_id && $authUser) ? (int)$authUser['id'] : 0;
 
         if ($court_id) {
             $stmt = $this->db->prepare("
@@ -91,11 +93,13 @@ class MatchController
         echo json_encode(['matches' => $matches]);
     }
 
-    // POST /match-requests  { court_id, user_id, title, sport?, date, start_time, end_time, players_needed, notes? }
+    // POST /match-requests  { court_id, title, sport?, date, start_time, end_time, players_needed, notes? }
     public function create(): void
     {
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
         $data = json_decode(file_get_contents('php://input'));
-        $required = ['court_id','user_id','title','date','start_time','end_time','players_needed'];
+        $required = ['court_id','title','date','start_time','end_time','players_needed'];
         foreach ($required as $f) {
             if (empty($data->$f)) { http_response_code(400); echo json_encode(['message' => "$f required"]); return; }
         }
@@ -105,7 +109,7 @@ class MatchController
             VALUES (?,?,?,?,?,?,?,?,?)
         ");
         $ins->execute([
-            (int)$data->court_id, (int)$data->user_id,
+            (int)$data->court_id, $user_id,
             trim($data->title),
             trim($data->sport ?? '') ?: null,
             $data->date, $data->start_time, $data->end_time,
@@ -117,19 +121,18 @@ class MatchController
         // Creator auto-joins
         try {
             $this->db->prepare("INSERT INTO match_participants (match_id, user_id) VALUES (?,?)")
-                     ->execute([$newId, (int)$data->user_id]);
+                     ->execute([$newId, $user_id]);
         } catch (Exception $e) {}
 
         http_response_code(201);
         echo json_encode(['message' => 'Match request created', 'id' => $newId]);
     }
 
-    // POST /match-requests/:id/join  { user_id }
+    // POST /match-requests/:id/join
     public function join(int $id): void
     {
-        $data    = json_decode(file_get_contents('php://input'));
-        $user_id = (int)($data->user_id ?? 0);
-        if (!$user_id) { http_response_code(400); echo json_encode(['message' => 'user_id required']); return; }
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
 
         $mr = $this->db->prepare("SELECT * FROM match_requests WHERE id=? AND status='open'");
         $mr->execute([$id]);
@@ -159,23 +162,23 @@ class MatchController
         echo json_encode(['message' => 'Joined successfully']);
     }
 
-    // DELETE /match-requests/:id  { user_id }
+    // DELETE /match-requests/:id
     public function cancel(int $id): void
     {
-        $data    = json_decode(file_get_contents('php://input'));
-        $user_id = (int)($data->user_id ?? 0);
-        $chk     = $this->db->prepare("SELECT id FROM match_requests WHERE id=? AND user_id=?");
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
+        $chk      = $this->db->prepare("SELECT id FROM match_requests WHERE id=? AND user_id=?");
         $chk->execute([$id, $user_id]);
         if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
         $this->db->prepare("UPDATE match_requests SET status='cancelled' WHERE id=?")->execute([$id]);
         echo json_encode(['message' => 'Cancelled']);
     }
 
-    // DELETE /match-requests/:id/leave  { user_id }
+    // DELETE /match-requests/:id/leave
     public function leave(int $id): void
     {
-        $data    = json_decode(file_get_contents('php://input'));
-        $user_id = (int)($data->user_id ?? 0);
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
         $this->db->prepare("DELETE FROM match_participants WHERE match_id=? AND user_id=?")->execute([$id, $user_id]);
         // Re-open if was full
         $this->db->prepare("UPDATE match_requests SET status='open' WHERE id=? AND status='full'")->execute([$id]);

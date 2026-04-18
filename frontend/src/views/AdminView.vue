@@ -141,11 +141,12 @@ const courtsLoaded  = ref(false)
 const courtsLoading = ref(false)
 const verifyingId   = ref(null)
 
-const fetchAllCourts = async () => {
-    if (courtsLoaded.value) return
+const fetchAllCourts = async (force = false) => {
+    if (courtsLoaded.value && !force) return
     courtsLoading.value = true
     try {
-        const res = await axios.get('/courts')
+        // admin_list=1 includes pending ownership claims (public GET /courts hides those)
+        const res = await axios.get('/courts?admin_list=1')
         allCourts.value = res.data.records || []
         courtsLoaded.value = true
     } catch { allCourts.value = [] }
@@ -172,8 +173,8 @@ const rejectModal   = ref({ show: false, claim: null, reason: '' })
 
 const pendingClaimsCount = computed(() => claims.value.filter(c => c.claim_status === 'pending').length)
 
-const fetchClaims = async () => {
-    if (claimsLoaded.value) return
+const fetchClaims = async (force = false) => {
+    if (claimsLoaded.value && !force) return
     claimsLoading.value = true
     try {
         const res = await axios.get('/courts/claims')
@@ -217,17 +218,20 @@ const goTo = (s) => {
     section.value = s
     if (s === 'demand')       fetchDemand()
     if (s === 'users')        fetchUsers()
-    if (s === 'verification') fetchAllCourts()
-    if (s === 'claims')       fetchClaims()
+    if (s === 'verification') fetchAllCourts(true)
+    if (s === 'claims')       fetchClaims(true)
 }
 
 const roleBadge = { admin: 'bg-primary-light text-primary', owner: 'bg-amber-50 text-amber-700', player: 'bg-slate-100 text-slate-600' }
 
-onMounted(() => { fetchDemand(); fetchClaims() }) // pre-load for stats + claim badge
+onMounted(() => {
+    fetchDemand()
+    fetchClaims()
+})
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50 pb-32">
+    <div class="min-h-full bg-slate-50">
 
         <!-- ── HOME ── -->
         <template v-if="section === 'home'">
@@ -646,12 +650,23 @@ onMounted(() => { fetchDemand(); fetchClaims() }) // pre-load for stats + claim 
         <template v-if="section === 'verification'">
             <div class="px-4 pt-3">
                 <div v-if="courtsLoading" class="text-center py-10 text-slate-400 text-sm">Loading courts…</div>
+                <div v-else-if="!allCourts.length" class="text-center py-16 px-6 text-slate-400 text-sm space-y-2">
+                    <Building2 :size="32" class="mx-auto text-slate-300" />
+                    <p class="font-semibold text-slate-600">No courts to show</p>
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        If you submitted an <strong class="text-slate-700">ownership claim</strong>, open
+                        <strong class="text-slate-700">Claim Reviews</strong> from the admin home — those are listed separately until approved.
+                    </p>
+                </div>
                 <div v-else class="space-y-2">
                     <div v-for="court in allCourts" :key="court.id"
                         class="bg-white rounded-xl p-4 ring-1 ring-slate-100 flex items-center gap-3">
                         <div class="flex-1 min-w-0">
                             <p class="font-bold text-sm text-slate-800 truncate">{{ court.name }}</p>
                             <p class="text-xs text-slate-400 truncate">{{ court.location || 'No location' }}</p>
+                            <p v-if="court.claim_status === 'pending'" class="text-[10px] font-bold text-amber-600 mt-0.5">
+                                Ownership claim pending — also see Claim Reviews
+                            </p>
                         </div>
                         <button @click="toggleVerify(court)" :disabled="verifyingId === court.id"
                             class="shrink-0 flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition-all"

@@ -108,7 +108,7 @@ const formatBlockTime = (b) => {
     <Teleport to="#header-subject">{{ spaceName || courtName || 'Block Slots' }}</Teleport>
     <Teleport to="#header-subtitle">{{ spaceId ? spaceName + ' · Block Slots' : 'Block Slots' }}</Teleport>
 
-    <div class="min-h-screen bg-slate-50">
+    <div class="min-h-full bg-slate-50">
         <!-- Header -->
         <div class="bg-white px-5 pt-5 pb-5 border-b border-slate-100">
             <h1 class="text-lg font-bold text-slate-900">Block Slots</h1>

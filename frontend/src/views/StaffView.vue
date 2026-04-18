@@ -66,7 +66,7 @@ const initials = (name) => (name || '?').split(' ').map(p => p[0]).join('').toUp
     <Teleport to="#header-subject">{{ courtName || 'Staff' }}</Teleport>
     <Teleport to="#header-subtitle">Staff</Teleport>
 
-    <div class="min-h-screen bg-slate-50">
+    <div class="min-h-full bg-slate-50">
         <!-- Header -->
         <div class="bg-white px-5 pt-5 pb-5 border-b border-slate-100">
             <h1 class="text-lg font-bold text-slate-900">Staff</h1>

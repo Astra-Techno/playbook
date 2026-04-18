@@ -124,13 +124,6 @@ class PlacesController
 
     public function adminDemand(): void
     {
-        $adminId = (int)($_GET['admin_id'] ?? 0);
-        if (!$this->isAdmin($adminId)) {
-            http_response_code(403);
-            echo json_encode(['error' => 'Forbidden']);
-            return;
-        }
-
         $stmt = $this->db->query(
             "SELECT p.*,
                     GROUP_CONCAT(u.name  ORDER BY sr.created_at SEPARATOR '||') AS requester_names,
@@ -168,14 +161,6 @@ class PlacesController
 
     public function adminContact(int $id): void
     {
-        $data    = json_decode(file_get_contents('php://input'), true) ?? [];
-        $adminId = (int)($data['admin_id'] ?? 0);
-        if (!$this->isAdmin($adminId)) {
-            http_response_code(403);
-            echo json_encode(['error' => 'Forbidden']);
-            return;
-        }
-
         $this->db->prepare(
             "UPDATE places SET status = 'contacted', updated_at = NOW() WHERE id = ? AND status = 'unregistered'"
         )->execute([$id]);
@@ -609,13 +594,6 @@ class PlacesController
         return $r * 2 * atan2(sqrt($a), sqrt(1 - $a));
     }
 
-    private function isAdmin(int $userId): bool
-    {
-        if (!$userId) return false;
-        $stmt = $this->db->prepare("SELECT role FROM users WHERE id = ?");
-        $stmt->execute([$userId]);
-        return $stmt->fetchColumn() === 'admin';
-    }
 
     private function getFromCache(float $lat, float $lng): array
     {

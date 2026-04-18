@@ -166,7 +166,7 @@ const save = async () => {
             <Loader2 :size="32" class="animate-spin text-primary" />
         </div>
 
-        <div v-else class="px-4 py-5 space-y-4 pb-24">
+        <div v-else class="px-4 py-5 space-y-4 pb-8">
 
             <!-- ── Photo ── -->
             <div class="bg-white rounded-2xl overflow-hidden ring-1 ring-slate-100 shadow-sm">

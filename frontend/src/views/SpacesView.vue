@@ -157,7 +157,7 @@ const removeSpace = async (sc) => {
     <Teleport to="#header-subject">{{ courtName || 'Spaces' }}</Teleport>
     <Teleport to="#header-subtitle">Spaces</Teleport>
 
-    <div class="min-h-screen bg-slate-50 pb-24">
+    <div class="min-h-full bg-slate-50">
 
         <div class="px-5 py-5 space-y-4">
 

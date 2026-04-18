@@ -358,7 +358,7 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
         </Teleport>
 
         <!-- ── Main content (scrollable) ── -->
-        <main class="flex-1 px-4 py-4 pb-28">
+        <main class="flex-1 px-4 py-4 pb-4">
 
             <!-- No location yet (only shown before any fetch has run) -->
             <div v-if="!fetched && !hasLocation && !locating" class="flex flex-col items-center py-20 text-center px-6">

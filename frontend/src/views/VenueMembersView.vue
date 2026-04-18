@@ -58,7 +58,7 @@ const cancelSub = async (sub) => {
     <Teleport to="#header-subject">Members</Teleport>
     <Teleport to="#header-subtitle">Members</Teleport>
 
-    <div class="min-h-screen bg-slate-50">
+    <div class="min-h-full bg-slate-50">
         <!-- Header -->
         <div class="bg-white px-5 pt-5 pb-4 border-b border-slate-100">
             <div class="flex items-center justify-between mb-3">

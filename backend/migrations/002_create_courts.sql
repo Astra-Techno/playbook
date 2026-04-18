@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS courts (
     lat                  DECIMAL(10,7),
     lng                  DECIMAL(10,7),
     hourly_rate          DECIMAL(10,2) NOT NULL,
-    image_url            VARCHAR(255),
+    image_url            TEXT,
     open_time            TIME          DEFAULT '06:00:00',
     close_time           TIME          DEFAULT '22:00:00',
     morning_peak_start   TIME          DEFAULT '05:00:00',
@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS courts (
     evening_peak_start   TIME          DEFAULT '17:00:00',
     evening_peak_end     TIME          DEFAULT '21:00:00',
     peak_members_only    TINYINT(1)    DEFAULT 0,
+    claim_status         ENUM('pending','approved','rejected') NULL DEFAULT NULL,
+    claim_proof_url      TEXT NULL,
+    claim_rejection_reason TEXT NULL,
     created_at           TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
 );

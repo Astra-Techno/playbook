@@ -129,7 +129,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50 pb-20">
+    <div class="min-h-full bg-slate-50">
 
         <!-- Stories Row -->
         <div class="bg-white border-b border-slate-100 overflow-hidden shadow-soft">
@@ -184,7 +184,7 @@ onMounted(() => {
         </div>
 
         <!-- Feed -->
-        <div class="pb-28">
+        <div class="pb-4">
             <div v-if="loading" class="space-y-3 p-4">
                 <div v-for="i in 4" :key="i" class="bg-white rounded-2xl p-4 animate-pulse">
                     <div class="flex gap-3">

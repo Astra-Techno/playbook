@@ -8,6 +8,10 @@
   RewriteEngine On
   RewriteBase /
 
+  # Apache/CGI often drops Authorization before PHP — expose it as HTTP_AUTHORIZATION
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
   # Force HTTPS on production only (skip localhost / 127.0.0.1)
   RewriteCond %{HTTPS} off
   RewriteCond %{HTTP_HOST} !^localhost [NC]
