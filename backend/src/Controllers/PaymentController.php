@@ -171,6 +171,7 @@ class PaymentController {
     // ── POST /api/payments/verify ──────────────────────────────────────────────
     // Body: { order_id }  — sent by frontend after Cashfree checkout completes
     public function verify(): void {
+        $authUser = Auth::require();
         $data     = json_decode(file_get_contents('php://input'));
         $orderId  = trim($data->order_id ?? '');
 
@@ -220,6 +221,13 @@ class PaymentController {
             return;
         }
 
+        // Verify the caller owns this payment
+        if ((int)$payment['user_id'] !== (int)$authUser['id'] && $authUser['role'] !== 'admin') {
+            http_response_code(403);
+            echo json_encode(['message' => 'Forbidden']);
+            return;
+        }
+
         // Mark as paid
         $db->prepare(
             "UPDATE payments SET cf_payment_id = ?, status = 'paid' WHERE id = ?"
@@ -259,7 +267,7 @@ class PaymentController {
                     $peakType = $this->getPeakType($slot['start_time'], $court);
                     if ($peakType !== null) {
                         $sub    = new Subscription();
-                        $active = $sub->getActive((int)$payload['user_id'], (int)$payload['court_id']);
+                        $active = $sub->getActive((int)$payment['user_id'], (int)$payload['court_id']);
                         if (!$active || !Subscription::coversSlot($active['slot_type'], $peakType)) {
                             $takenSlots[] = $slot['start_time'] . ' (members only)';
                             continue;
@@ -268,7 +276,7 @@ class PaymentController {
                 }
 
                 $b = new Booking();
-                $b->user_id     = (int)$payload['user_id'];
+                $b->user_id     = (int)$payment['user_id']; // trusted — set from token in createOrder
                 $b->court_id    = (int)$payload['court_id'];
                 $b->start_time  = $slot['start_time'];
                 $b->end_time    = $slot['end_time'];
@@ -302,7 +310,7 @@ class PaymentController {
             $sub = new Subscription();
 
             if ($sub->create(
-                (int)$payload['user_id'],
+                (int)$payment['user_id'], // trusted — set from token in createOrder
                 (int)$payload['plan_id'],
                 (int)$payload['court_id'],
                 $payload['slot_type'],

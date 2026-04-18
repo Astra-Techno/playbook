@@ -44,7 +44,7 @@ const cancelSub = async (sub) => {
     if (!confirm(`Cancel ${sub.user_name}'s membership?`)) return
     cancellingId.value = sub.id
     try {
-        await axios.put(`/subscriptions/${sub.id}/cancel`, { user_id: sub.user_id })
+        await axios.put(`/subscriptions/${sub.id}/cancel`)
         members.value = members.value.filter(m => m.id !== sub.id)
         toast.success('Membership cancelled')
     } catch (err) {

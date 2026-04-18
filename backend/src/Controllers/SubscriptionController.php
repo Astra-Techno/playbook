@@ -77,21 +77,27 @@ class SubscriptionController {
     public function cancel($id) {
         $authUser = Auth::require();
         $user_id  = (int)$authUser['id'];
+        $role     = $authUser['role'];
 
         $db = Database::getConnection();
         // Migrate: add cancelled_at column if missing
         try { $db->exec("ALTER TABLE user_subscriptions ADD COLUMN cancelled_at DATETIME DEFAULT NULL"); } catch (\PDOException $e) {}
 
-        $stmt = $db->prepare(
-            "UPDATE user_subscriptions SET status='cancelled', cancelled_at=NOW()
-             WHERE id=? AND user_id=? AND status='active'"
+        // Check: subscription owner, court owner (for their courts), or admin
+        $chk = $db->prepare(
+            "SELECT us.id FROM user_subscriptions us
+             JOIN courts c ON c.id = us.court_id
+             WHERE us.id = ? AND us.status = 'active'
+               AND (us.user_id = ? OR c.owner_id = ? OR ? = 'admin')"
         );
-        $stmt->execute([$id, $user_id]);
-        if ($stmt->rowCount() === 0) {
+        $chk->execute([$id, $user_id, $user_id, $role]);
+        if (!$chk->fetch()) {
             http_response_code(404);
             echo json_encode(['message' => 'Subscription not found or already cancelled']);
             return;
         }
+
+        $db->prepare("UPDATE user_subscriptions SET status='cancelled', cancelled_at=NOW() WHERE id=?")->execute([$id]);
         http_response_code(200);
         echo json_encode(['message' => 'Subscription cancelled. Access continues until the end date.']);
     }

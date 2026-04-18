@@ -312,10 +312,10 @@ if (isset($seg[0]) && $seg[0] === 'notifications') {
     if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && is_numeric($seg[1]) && isset($seg[2]) && $seg[2] === 'read') { Auth::require(); $notifCtrl->markRead((int)$seg[1]); exit(); }
 }
 
-// Notifications Route — GET /notifications?user_id=X (subscription expiry alerts, legacy)
+// Notifications Route — GET /notifications (subscription expiry alerts, legacy)
 if (isset($seg[0]) && $seg[0] === 'notifications' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    $user_id = (int)($_GET['user_id'] ?? 0);
-    if (!$user_id) { http_response_code(400); echo json_encode(['message' => 'user_id required']); exit(); }
+    $authUser = Auth::require();
+    $user_id  = (int)$authUser['id']; // always from token
     $db   = Database::getConnection();
     $stmt = $db->prepare(
         "SELECT us.id, us.end_date, us.status, p.name AS plan_name, c.id AS court_id, c.name AS court_name
@@ -597,8 +597,10 @@ if (isset($seg[0]) && $seg[0] === 'admin') {
     http_response_code(404); echo json_encode(['message' => 'Admin endpoint not found']); exit();
 }
 
-// User Notifications — GET /user-notifications?user_id=X
+// User Notifications — GET /user-notifications
 if (isset($seg[0]) && $seg[0] === 'user-notifications') {
+    $authUser = Auth::require();
+    $uid      = (int)$authUser['id']; // always from token
     $db = Database::getConnection();
     // Ensure table exists
     $db->exec("
@@ -611,8 +613,6 @@ if (isset($seg[0]) && $seg[0] === 'user-notifications') {
     ");
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        $uid = (int)($_GET['user_id'] ?? 0);
-        if (!$uid) { http_response_code(400); echo json_encode(['error' => 'user_id required']); exit(); }
         $stmt = $db->prepare(
             "SELECT n.*, c.name AS court_name FROM user_notifications n
              LEFT JOIN courts c ON c.id = n.court_id
@@ -626,7 +626,8 @@ if (isset($seg[0]) && $seg[0] === 'user-notifications') {
 
     // PUT /user-notifications/:id/read
     if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'read') {
-        $db->prepare("UPDATE user_notifications SET read_at = NOW() WHERE id = ?")->execute([(int)$seg[1]]);
+        // Only mark your own notifications as read
+        $db->prepare("UPDATE user_notifications SET read_at = NOW() WHERE id = ? AND user_id = ?")->execute([(int)$seg[1], $uid]);
         echo json_encode(['success' => true]);
         exit();
     }
@@ -704,6 +705,7 @@ if (isset($seg[0]) && $seg[0] === 'booking-players') {
 
     // GET /booking-players?booking_id=X
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        Auth::require();
         $bid  = (int)($_GET['booking_id'] ?? 0);
         $stmt = $db->prepare(
             "SELECT u.id, u.name, u.phone, u.avatar_url
@@ -715,15 +717,16 @@ if (isset($seg[0]) && $seg[0] === 'booking-players') {
         exit();
     }
 
-    // POST /booking-players  { booking_id, invited_by, user_ids:[] }
+    // POST /booking-players  { booking_id, user_ids:[] }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        $authUser   = Auth::require();
+        $invited_by = (int)$authUser['id']; // always from token
         $body       = json_decode(file_get_contents('php://input'), true) ?? [];
         $booking_id = (int)($body['booking_id'] ?? 0);
-        $invited_by = (int)($body['invited_by'] ?? 0);
         $user_ids   = array_filter(array_map('intval', $body['user_ids'] ?? []));
 
-        if (!$booking_id || !$invited_by || empty($user_ids)) {
-            http_response_code(400); echo json_encode(['message' => 'booking_id, invited_by, user_ids required']); exit();
+        if (!$booking_id || empty($user_ids)) {
+            http_response_code(400); echo json_encode(['message' => 'booking_id and user_ids required']); exit();
         }
 
         // Fetch booking + court info for notification body
