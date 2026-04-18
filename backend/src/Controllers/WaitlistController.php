@@ -23,17 +23,18 @@ class WaitlistController {
         ");
     }
 
-    // POST /waitlist  { user_id, court_id, sub_court_id?, booking_date, start_time, end_time }
+    // POST /waitlist  { court_id, sub_court_id?, booking_date, start_time, end_time }
     public function create() {
-        $data = json_decode(file_get_contents('php://input'));
-        $user_id      = (int)($data->user_id  ?? 0);
+        $authUser     = Auth::require();
+        $user_id      = (int)$authUser['id'];
+        $data         = json_decode(file_get_contents('php://input'));
         $court_id     = (int)($data->court_id ?? 0);
         $sub_court_id = isset($data->sub_court_id) ? (int)$data->sub_court_id : null;
         $date         = $data->booking_date ?? '';
         $start        = $data->start_time   ?? '';
         $end          = $data->end_time     ?? '';
 
-        if (!$user_id || !$court_id || !$date || !$start || !$end) {
+        if (!$court_id || !$date || !$start || !$end) {
             http_response_code(400); echo json_encode(['message' => 'Missing fields']); return;
         }
 
@@ -54,10 +55,10 @@ class WaitlistController {
         echo json_encode(['message' => 'Added to waitlist', 'id' => (int)$db->lastInsertId()]);
     }
 
-    // GET /waitlist?user_id=X
+    // GET /waitlist
     public function index() {
-        $user_id = (int)($_GET['user_id'] ?? 0);
-        if (!$user_id) { http_response_code(400); echo json_encode(['message' => 'user_id required']); return; }
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
 
         $db = Database::getConnection();
         $this->ensureTable($db);
@@ -77,11 +78,10 @@ class WaitlistController {
         echo json_encode(['entries' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
     }
 
-    // DELETE /waitlist/:id  body: { user_id }
+    // DELETE /waitlist/:id
     public function delete($id) {
-        $data    = json_decode(file_get_contents('php://input'));
-        $user_id = (int)($data->user_id ?? 0);
-        if (!$user_id) { http_response_code(400); echo json_encode(['message' => 'user_id required']); return; }
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
 
         $db = Database::getConnection();
         $this->ensureTable($db);

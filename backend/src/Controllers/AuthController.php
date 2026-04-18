@@ -163,11 +163,11 @@ class AuthController {
         }
     }
 
-    // PUT /api/auth/profile  { user_id, name?, avatar_url?, bio?, skill_level?, sport_preferences? }
+    // PUT /api/auth/profile  { name?, avatar_url?, bio?, skill_level?, sport_preferences? }
     public function updateProfile() {
-        $data    = json_decode(file_get_contents("php://input"));
-        $user_id = (int)($data->user_id ?? 0);
-        if (!$user_id) { http_response_code(400); echo json_encode(['message' => 'user_id required']); return; }
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
+        $data     = json_decode(file_get_contents("php://input"));
         $db     = Database::getConnection();
         $fields = []; $vals = [];
         if (!empty($data->name))       { $fields[] = "name=?";               $vals[] = trim($data->name); }
@@ -187,10 +187,10 @@ class AuthController {
         echo json_encode(['message' => 'Profile updated', 'user' => $user]);
     }
 
-    // GET /api/auth/profile?user_id=X
+    // GET /api/auth/profile
     public function getProfile() {
-        $user_id = (int)($_GET['user_id'] ?? 0);
-        if (!$user_id) { http_response_code(400); echo json_encode(['message' => 'user_id required']); return; }
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
         $db    = Database::getConnection();
         $uStmt = $db->prepare("SELECT id, name, phone, role, avatar_url, bio, skill_level, sport_preferences FROM users WHERE id=?");
         $uStmt->execute([$user_id]);

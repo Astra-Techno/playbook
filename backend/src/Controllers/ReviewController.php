@@ -58,16 +58,17 @@ class ReviewController {
         ]);
     }
 
-    // POST /api/reviews  { court_id, user_id, booking_id, rating, comment }
+    // POST /api/reviews  { court_id, booking_id, rating, comment }
     public function create() {
+        $authUser   = Auth::require();
+        $user_id    = (int)$authUser['id'];
         $data       = json_decode(file_get_contents("php://input"));
         $court_id   = (int)($data->court_id   ?? 0);
-        $user_id    = (int)($data->user_id    ?? 0);
         $booking_id = (int)($data->booking_id ?? 0);
         $rating     = (int)($data->rating     ?? 0);
         $comment    = htmlspecialchars(strip_tags(trim($data->comment ?? '')));
 
-        if (!$court_id || !$user_id || !$booking_id || $rating < 1 || $rating > 5) {
+        if (!$court_id || !$booking_id || $rating < 1 || $rating > 5) {
             http_response_code(400);
             echo json_encode(["message" => "Invalid review data"]);
             return;
@@ -99,13 +100,14 @@ class ReviewController {
         }
     }
 
-    // PUT /api/reviews/:id/reply  { owner_id, reply }
+    // PUT /api/reviews/:id/reply  { reply }
     public function reply($id) {
+        $authUser = Auth::requireOwner();
+        $owner_id = (int)$authUser['id'];
         $data     = json_decode(file_get_contents("php://input"));
-        $owner_id = (int)($data->owner_id ?? 0);
         $reply    = htmlspecialchars(strip_tags(trim($data->reply ?? '')));
-        if (!$id || !$owner_id || !$reply) {
-            http_response_code(400); echo json_encode(['message' => 'owner_id and reply required']); return;
+        if (!$id || !$reply) {
+            http_response_code(400); echo json_encode(['message' => 'reply required']); return;
         }
         $db  = Database::getConnection();
         $chk = $db->prepare(

@@ -4,17 +4,12 @@ require_once __DIR__ . '/../Models/Plan.php';
 
 class SubscriptionController {
 
-    // GET /subscriptions?user_id=X             → list user's subscriptions
-    // GET /subscriptions?user_id=X&court_id=Y  → check active sub for court
+    // GET /subscriptions                       → list auth user's subscriptions
+    // GET /subscriptions?court_id=Y            → check active sub for court
     public function index() {
-        $user_id  = isset($_GET['user_id'])  ? (int)$_GET['user_id']  : null;
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
         $court_id = isset($_GET['court_id']) ? (int)$_GET['court_id'] : null;
-
-        if (!$user_id) {
-            http_response_code(400);
-            echo json_encode(["message" => "user_id required"]);
-            return;
-        }
 
         $sub = new Subscription();
 
@@ -70,11 +65,10 @@ class SubscriptionController {
         echo json_encode(['members' => $members, 'count' => count($members)]);
     }
 
-    // PUT /subscriptions/:id/cancel  { user_id }
+    // PUT /subscriptions/:id/cancel
     public function cancel($id) {
-        $data    = json_decode(file_get_contents("php://input"));
-        $user_id = (int)($data->user_id ?? 0);
-        if (!$user_id) { http_response_code(400); echo json_encode(['message' => 'user_id required']); return; }
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
 
         $db = Database::getConnection();
         // Migrate: add cancelled_at column if missing
@@ -97,8 +91,10 @@ class SubscriptionController {
     // POST /subscriptions/renew { subscription_id }
     // Creates a new subscription starting from today (or end_date if still active), same plan
     public function renew() {
-        $data = json_decode(file_get_contents("php://input"));
-        $sub_id = (int)($data->subscription_id ?? 0);
+        $authUser = Auth::require();
+        $authId   = (int)$authUser['id'];
+        $data     = json_decode(file_get_contents("php://input"));
+        $sub_id   = (int)($data->subscription_id ?? 0);
         if (!$sub_id) { http_response_code(400); echo json_encode(['message' => 'subscription_id required']); return; }
 
         $db = Database::getConnection();
@@ -112,6 +108,11 @@ class SubscriptionController {
         $stmt->execute([$sub_id]);
         $existing = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$existing) { http_response_code(404); echo json_encode(['message' => 'Subscription not found']); return; }
+
+        // Only the subscription owner or admin can renew
+        if ((int)$existing['user_id'] !== $authId && $authUser['role'] !== 'admin') {
+            http_response_code(403); echo json_encode(['error' => 'Forbidden']); return;
+        }
 
         $duration = (int)$existing['duration_days'];
         $today    = date('Y-m-d');
@@ -143,13 +144,15 @@ class SubscriptionController {
         ]);
     }
 
-    // POST /subscriptions { user_id, plan_id }
+    // POST /subscriptions { plan_id }
     public function create() {
-        $data = json_decode(file_get_contents("php://input"));
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
+        $data     = json_decode(file_get_contents("php://input"));
 
-        if (empty($data->user_id) || empty($data->plan_id)) {
+        if (empty($data->plan_id)) {
             http_response_code(400);
-            echo json_encode(["message" => "user_id and plan_id required"]);
+            echo json_encode(["message" => "plan_id required"]);
             return;
         }
 
@@ -168,7 +171,7 @@ class SubscriptionController {
         $sub = new Subscription();
 
         // Check for duplicate active subscription
-        $existing = $sub->getActive((int)$data->user_id, (int)$planRow['court_id']);
+        $existing = $sub->getActive($user_id, (int)$planRow['court_id']);
         if ($existing && Subscription::coversSlot($existing['slot_type'], $planRow['slot_type'])) {
             http_response_code(409);
             echo json_encode(["message" => "You already have an active subscription covering these slots"]);
@@ -176,7 +179,7 @@ class SubscriptionController {
         }
 
         if ($sub->create(
-            (int)$data->user_id,
+            $user_id,
             (int)$data->plan_id,
             (int)$planRow['court_id'],
             $planRow['slot_type'],

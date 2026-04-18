@@ -22,14 +22,13 @@ class BookingController {
         return null;
     }
 
-    // DELETE /api/bookings/:id  body: { user_id, staff_id? }
+    // DELETE /api/bookings/:id
     public function cancel($id) {
-        $data     = json_decode(file_get_contents("php://input"));
-        $user_id  = (int)($data->user_id  ?? 0);
-        $staff_id = (int)($data->staff_id ?? 0);
+        $authUser = Auth::user();
+        $user_id  = (int)$authUser['id']; // always from token — never trust body
         $booking  = new Booking();
 
-        // Allow cancel if: booking owner OR court staff manager OR court owner
+        // Allow cancel if: booking owner OR court owner OR staff manager OR admin
         $row = $booking->conn->prepare("
             SELECT b.*, c.owner_id FROM bookings b
             JOIN courts c ON c.id = b.court_id
@@ -40,16 +39,14 @@ class BookingController {
 
         if (!$b) { http_response_code(404); echo json_encode(["message" => "Booking not found"]); return; }
 
-        $isBookingOwner = $b['user_id'] === $user_id;
-        $isCourtOwner   = $b['owner_id'] === $user_id;
-        $isStaff        = false;
-        if ($staff_id) {
-            $sc = $booking->conn->prepare("SELECT id FROM court_staff WHERE court_id = ? AND user_id = ? AND role = 'manager'");
-            $sc->execute([$b['court_id'], $staff_id]);
-            $isStaff = (bool)$sc->fetch();
-        }
+        $isBookingOwner = (int)$b['user_id'] === $user_id;
+        $isCourtOwner   = (int)$b['owner_id'] === $user_id;
+        $isAdmin        = $authUser['role'] === 'admin';
+        $sc = $booking->conn->prepare("SELECT id FROM court_staff WHERE court_id = ? AND user_id = ? AND role = 'manager'");
+        $sc->execute([$b['court_id'], $user_id]);
+        $isStaff = (bool)$sc->fetch();
 
-        if (!$isBookingOwner && !$isCourtOwner && !$isStaff) {
+        if (!$isBookingOwner && !$isCourtOwner && !$isStaff && !$isAdmin) {
             http_response_code(403); echo json_encode(["message" => "Not authorised to cancel this booking"]); return;
         }
         if ($b['status'] === 'cancelled') { http_response_code(400); echo json_encode(["message" => "Already cancelled"]); return; }
@@ -76,10 +73,12 @@ class BookingController {
 
     // GET /api/bookings/:id  — single booking detail
     public function show($id) {
-        $db   = Database::getConnection();
-        $stmt = $db->prepare(
+        $authUser = Auth::user();
+        $authId   = (int)$authUser['id'];
+        $db       = Database::getConnection();
+        $stmt     = $db->prepare(
             "SELECT b.*, c.name AS court_name, c.location AS court_location,
-                    sc.name AS space_name, u.name AS user_name
+                    c.owner_id, sc.name AS space_name, u.name AS user_name
              FROM bookings b
              JOIN courts c ON b.court_id = c.id
              LEFT JOIN sub_courts sc ON b.sub_court_id = sc.id
@@ -89,57 +88,68 @@ class BookingController {
         $stmt->execute([$id]);
         $booking = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!$booking) { http_response_code(404); echo json_encode(['message' => 'Booking not found']); return; }
+
+        // Only booking owner, court owner, or admin can view
+        $canView = (int)$booking['user_id'] === $authId
+                || (int)$booking['owner_id'] === $authId
+                || $authUser['role'] === 'admin';
+        if (!$canView) { http_response_code(403); echo json_encode(['error' => 'Forbidden']); return; }
+
+        unset($booking['owner_id']);
         http_response_code(200);
         echo json_encode(['booking' => $booking]);
     }
 
     // GET /api/bookings
-    // Query params:
-    //   user_id   -> bookings made by a player (with court_name join)
-    //   court_id + date -> bookings for a court on a specific date (for slot availability)
-    //   owner_id  -> all bookings across courts owned by an owner
+    // Query params (user_id/owner_id/staff_id are ignored — always uses token):
+    //   user_id   -> player's own bookings
+    //   court_id + date -> slot availability (public)
+    //   owner_id  -> owner's courts bookings
+    //   staff_id  -> managed courts bookings
     public function index() {
-        $booking = new Booking();
+        $authUser = Auth::user();
+        $authId   = (int)$authUser['id'];
+        $booking  = new Booking();
 
         if (isset($_GET['user_id'])) {
-            $stmt = $booking->readByUser((int)$_GET['user_id']);
+            // Always use token's user — ignoring query param prevents user spoofing
+            $stmt = $booking->readByUser($authId);
         } elseif (isset($_GET['court_id']) && isset($_GET['date'])) {
+            // Slot availability — no user filter needed
             $stmt = $booking->readByCourtAndDate((int)$_GET['court_id'], $_GET['date']);
         } elseif (isset($_GET['owner_id'])) {
+            // Owner views their own courts' bookings — use token's user
             $sub_court_id = isset($_GET['sub_court_id']) ? (int)$_GET['sub_court_id'] : null;
             if ($sub_court_id !== null) {
-                $query = "SELECT b.*, c.name as court_name, c.owner_id,
-                                 u.name as user_name
+                $query = "SELECT b.*, c.name as court_name, c.owner_id, u.name as user_name
                           FROM bookings b
                           JOIN courts c ON b.court_id = c.id
                           LEFT JOIN users u ON b.user_id = u.id
                           WHERE c.owner_id = ? AND b.sub_court_id = ?
                           ORDER BY b.start_time DESC";
                 $stmt = $booking->conn->prepare($query);
-                $stmt->execute([(int)$_GET['owner_id'], $sub_court_id]);
+                $stmt->execute([$authId, $sub_court_id]);
             } else {
-                $query = "SELECT b.*, c.name as court_name, c.owner_id,
-                                 u.name as user_name
+                $query = "SELECT b.*, c.name as court_name, c.owner_id, u.name as user_name
                           FROM bookings b
                           JOIN courts c ON b.court_id = c.id
                           LEFT JOIN users u ON b.user_id = u.id
                           WHERE c.owner_id = ?
                           ORDER BY b.start_time DESC";
                 $stmt = $booking->conn->prepare($query);
-                $stmt->execute([(int)$_GET['owner_id']]);
+                $stmt->execute([$authId]);
             }
         } elseif (isset($_GET['staff_id'])) {
-            // Staff: fetch bookings for all courts they manage
+            // Staff: fetch bookings for all courts managed by token's user
             $db      = Database::getConnection();
             $cStmt   = $db->prepare("SELECT court_id FROM court_staff WHERE user_id = ?");
-            $cStmt->execute([(int)$_GET['staff_id']]);
+            $cStmt->execute([$authId]);
             $courtIds = $cStmt->fetchAll(PDO::FETCH_COLUMN);
             if (empty($courtIds)) {
                 echo json_encode(["records" => []]); return;
             }
             $in    = implode(',', array_map('intval', $courtIds));
-            $query = "SELECT b.*, c.name as court_name, c.owner_id,
-                             u.name as user_name
+            $query = "SELECT b.*, c.name as court_name, c.owner_id, u.name as user_name
                       FROM bookings b
                       JOIN courts c ON b.court_id = c.id
                       LEFT JOIN users u ON b.user_id = u.id
@@ -191,12 +201,20 @@ class BookingController {
     public function create() {
         $data = json_decode(file_get_contents("php://input"));
 
-        $isWalkIn   = !empty($data->guest_name);
-        $hasUser    = !empty($data->user_id);
+        $authUser     = Auth::user();
+        $isWalkIn     = !empty($data->guest_name);
+        $authId       = $authUser ? (int)$authUser['id'] : 0;
         $sub_court_id = isset($data->sub_court_id) ? (int)$data->sub_court_id : null;
 
+        // Walk-in bookings (created by owner/staff on behalf of guest) don't need a logged-in user_id
+        // Regular bookings require an authenticated user
+        if (!$isWalkIn && !$authId) {
+            http_response_code(401);
+            echo json_encode(["message" => "Authentication required"]);
+            return;
+        }
+
         if (
-            ($hasUser || $isWalkIn) &&
             !empty($data->court_id) &&
             !empty($data->start_time) &&
             !empty($data->end_time)
@@ -215,11 +233,11 @@ class BookingController {
             $stmt->execute([(int)$data->court_id]);
             $court = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($court && $court['peak_members_only']) {
+            if ($court && $court['peak_members_only'] && !$isWalkIn) {
                 $peakType = $this->getPeakType($data->start_time, $court);
                 if ($peakType !== null) {
                     $sub = new Subscription();
-                    $active = $sub->getActive((int)$data->user_id, (int)$data->court_id);
+                    $active = $sub->getActive($authId, (int)$data->court_id);
                     if (!$active || !Subscription::coversSlot($active['slot_type'], $peakType)) {
                         http_response_code(403);
                         echo json_encode([
@@ -240,7 +258,7 @@ class BookingController {
                 $data->end_time
             );
 
-            $booking->user_id     = $hasUser ? (int)$data->user_id : 0;
+            $booking->user_id     = $isWalkIn ? 0 : $authId;
             $booking->court_id    = (int)$data->court_id;
             $booking->start_time  = $data->start_time;
             $booking->end_time    = $data->end_time;
@@ -341,14 +359,15 @@ class BookingController {
     }
 
     // POST /api/bookings/recurring
-    // Body: { user_id, court_id, sub_court_id?, start_time, end_time,
+    // Body: { court_id, sub_court_id?, start_time, end_time,
     //         recurrence_days: [0,1,2,3,4,5,6],  // JS day-of-week (0=Sun)
     //         recurrence_end_date: "YYYY-MM-DD" }
     // Creates one booking per matching date up to recurrence_end_date (max 12 weeks).
     // Returns { bookings:[ids], skipped:[dates] }
     public function createRecurring() {
-        $data = json_decode(file_get_contents("php://input"));
-        $user_id      = (int)($data->user_id ?? 0);
+        $authUser     = Auth::require(); // must be authenticated
+        $user_id      = (int)$authUser['id'];
+        $data         = json_decode(file_get_contents("php://input"));
         $court_id     = (int)($data->court_id ?? 0);
         $sub_court_id = isset($data->sub_court_id) ? (int)$data->sub_court_id : null;
         $start_time   = $data->start_time ?? ''; // "YYYY-MM-DD HH:MM:SS"
@@ -356,7 +375,7 @@ class BookingController {
         $rec_days     = $data->recurrence_days ?? []; // [0..6]
         $end_date_str = $data->recurrence_end_date ?? '';
 
-        if (!$user_id || !$court_id || !$start_time || !$end_time || empty($rec_days) || !$end_date_str) {
+        if (!$court_id || !$start_time || !$end_time || empty($rec_days) || !$end_date_str) {
             http_response_code(400); echo json_encode(['message' => 'Missing required fields']); return;
         }
 
