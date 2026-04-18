@@ -186,13 +186,14 @@ class PlacesController
     // ── Prefetch / seeding ───────────────────────────────────────────────────
 
     /**
-     * GET /admin/prefetch-tamilnadu?admin_id=X
+     * GET /admin/prefetch-tamilnadu?key=X
      * Streams a plain-text progress log as it seeds each city.
+     * Set PREFETCH_SECRET env var to override the default key.
      */
     public function prefetchTamilnadu(): void
     {
-        $adminId = (int)($_GET['admin_id'] ?? 0);
-        if (!$this->isAdmin($adminId)) {
+        $secret = getenv('PREFETCH_SECRET') ?: 'kocourt_prefetch';
+        if (($_GET['key'] ?? '') !== $secret) {
             http_response_code(403);
             echo json_encode(['error' => 'Forbidden']);
             return;
