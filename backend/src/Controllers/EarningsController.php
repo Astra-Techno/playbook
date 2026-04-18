@@ -261,6 +261,66 @@ class EarningsController {
         ]);
     }
 
+    // GET /earnings/export?court_id=X&owner_id=Y[&from=YYYY-MM-DD][&to=YYYY-MM-DD]
+    // Returns a CSV download of all confirmed bookings for a venue
+    public function export(): void {
+        $court_id = (int)($_GET['court_id'] ?? 0);
+        $owner_id = (int)($_GET['owner_id'] ?? 0);
+        $from     = $_GET['from'] ?? null;
+        $to       = $_GET['to']   ?? null;
+
+        if (!$court_id || !$owner_id) {
+            http_response_code(400);
+            echo json_encode(['message' => 'court_id and owner_id required']);
+            return;
+        }
+
+        $db = Database::getConnection();
+
+        // Verify ownership
+        $chk = $db->prepare("SELECT id FROM courts WHERE id = ? AND owner_id = ?");
+        $chk->execute([$court_id, $owner_id]);
+        if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
+
+        $sql = "
+            SELECT DATE(b.start_time) AS date,
+                   COALESCE(sc.name, 'Main') AS space,
+                   COALESCE(b.guest_name, u.name, 'Walk-in') AS player,
+                   TIME(b.start_time) AS start_time,
+                   TIME(b.end_time)   AS end_time,
+                   ROUND(TIMESTAMPDIFF(MINUTE, b.start_time, b.end_time) / 60, 2) AS hours,
+                   b.total_price AS amount
+            FROM bookings b
+            LEFT JOIN users u     ON b.user_id = u.id
+            LEFT JOIN sub_courts sc ON b.sub_court_id = sc.id
+            WHERE b.court_id = ? AND b.status = 'confirmed'
+        ";
+        $params = [$court_id];
+        if ($from) { $sql .= " AND DATE(b.start_time) >= ?"; $params[] = $from; }
+        if ($to)   { $sql .= " AND DATE(b.start_time) <= ?"; $params[] = $to; }
+        $sql .= " ORDER BY b.start_time DESC";
+
+        $stmt = $db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Output CSV
+        $filename = 'earnings_' . date('Y-m-d') . '.csv';
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+        $out = fopen('php://output', 'w');
+        fputcsv($out, ['Date', 'Space', 'Player', 'Start', 'End', 'Hours', 'Amount (Rs)']);
+        foreach ($rows as $row) {
+            fputcsv($out, [
+                $row['date'], $row['space'], $row['player'],
+                $row['start_time'], $row['end_time'], $row['hours'], $row['amount']
+            ]);
+        }
+        fclose($out);
+        exit();
+    }
+
     // ── Private helpers ────────────────────────────────────────────────────────
 
     private function sumEarnings($db, int $owner_id, ?string $from, ?string $to): float {

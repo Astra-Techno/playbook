@@ -63,7 +63,7 @@ const hasNotifications = computed(() => notifications.count > 0)
 
             <!-- Global Action Icons -->
             <div v-if="auth.isLoggedIn" class="flex items-center gap-2 ml-3">
-                <button @click="router.push('/subscriptions')"
+                <button @click="router.push('/notifications')"
                     class="relative w-9 h-9 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors active:scale-95">
                     <Bell :size="16" :stroke-width="1.8" />
                     <span v-if="hasNotifications"

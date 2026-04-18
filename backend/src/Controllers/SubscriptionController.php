@@ -94,6 +94,55 @@ class SubscriptionController {
         echo json_encode(['message' => 'Subscription cancelled. Access continues until the end date.']);
     }
 
+    // POST /subscriptions/renew { subscription_id }
+    // Creates a new subscription starting from today (or end_date if still active), same plan
+    public function renew() {
+        $data = json_decode(file_get_contents("php://input"));
+        $sub_id = (int)($data->subscription_id ?? 0);
+        if (!$sub_id) { http_response_code(400); echo json_encode(['message' => 'subscription_id required']); return; }
+
+        $db = Database::getConnection();
+        // Fetch existing subscription + plan details
+        $stmt = $db->prepare(
+            "SELECT us.*, p.duration_days, p.slot_type AS plan_slot_type, p.name AS plan_name
+             FROM user_subscriptions us
+             JOIN plans p ON p.id = us.plan_id
+             WHERE us.id = ?"
+        );
+        $stmt->execute([$sub_id]);
+        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$existing) { http_response_code(404); echo json_encode(['message' => 'Subscription not found']); return; }
+
+        $duration = (int)$existing['duration_days'];
+        $today    = date('Y-m-d');
+        // Start from end_date if still active and in the future, else from today
+        $endDate  = $existing['end_date'];
+        $startFrom = ($existing['status'] === 'active' && $endDate >= $today) ? $endDate : $today;
+        $newEnd   = date('Y-m-d', strtotime("+{$duration} days", strtotime($startFrom)));
+
+        $ins = $db->prepare(
+            "INSERT INTO user_subscriptions (user_id, plan_id, court_id, slot_type, start_date, end_date, status)
+             VALUES (?, ?, ?, ?, ?, ?, 'active')"
+        );
+        $ins->execute([
+            $existing['user_id'],
+            $existing['plan_id'],
+            $existing['court_id'],
+            $existing['slot_type'],
+            $startFrom,
+            $newEnd,
+        ]);
+        $newId = $db->lastInsertId();
+        http_response_code(201);
+        echo json_encode([
+            'message'   => 'Subscription renewed!',
+            'id'        => $newId,
+            'start_date'=> $startFrom,
+            'end_date'  => $newEnd,
+            'plan_name' => $existing['plan_name'],
+        ]);
+    }
+
     // POST /subscriptions { user_id, plan_id }
     public function create() {
         $data = json_decode(file_get_contents("php://input"));

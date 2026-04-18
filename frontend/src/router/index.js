@@ -209,6 +209,24 @@ const router = createRouter({
             component: () => import('../views/AdminView.vue'),
             meta: { requiresAdmin: true, title: 'Admin Panel' },
         },
+        {
+            path: '/booking-confirmation/:bookingId',
+            name: 'booking-confirmation',
+            component: () => import('../views/BookingConfirmationView.vue'),
+            meta: { title: 'Booking Confirmed' },
+        },
+        {
+            path: '/notifications',
+            name: 'notifications',
+            component: () => import('../views/NotificationsView.vue'),
+            meta: { requiresAuth: true, title: 'Notifications' },
+        },
+        {
+            path: '/waitlist',
+            name: 'waitlist',
+            component: () => import('../views/WaitlistView.vue'),
+            meta: { requiresAuth: true, title: 'My Waitlist' },
+        },
         // legacy redirects
         { path: '/my-services', redirect: '/my-venues' },
         { path: '/my-services/:id/plans', redirect: to => `/my-venues/${to.params.id}/plans` },

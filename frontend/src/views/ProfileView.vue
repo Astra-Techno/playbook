@@ -8,7 +8,7 @@ import {
     User, Phone, LogOut, ChevronRight,
     Shield, HelpCircle, FileText, Camera,
     LayoutGrid, CalendarDays, Award, Pencil, Check, X, Loader2,
-    Wallet, Star
+    Wallet, Star, BellRing
 } from 'lucide-vue-next'
 import KoLogo from '@/components/KoLogo.vue'
 
@@ -124,7 +124,8 @@ const menuGroups = computed(() => [
                 { label: 'Earnings', icon: Wallet, action: () => router.push('/my-venues?tab=earnings') },
                 { label: 'Reviews',  icon: Star,   action: () => router.push('/my-venues?tab=reviews') },
             ] : []),
-            { label: 'My Memberships', icon: Award, action: () => router.push('/subscriptions') },
+            { label: 'My Memberships', icon: Award,    action: () => router.push('/subscriptions') },
+            { label: 'My Waitlist',    icon: BellRing, action: () => router.push('/waitlist') },
         ],
     },
     {

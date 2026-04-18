@@ -286,13 +286,26 @@ if (isset($seg[0]) && $seg[0] === 'subscriptions') {
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'members') { $subController->members(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { $subController->index(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'renew') { $subController->renew(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($seg[1])) { $subController->create(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'cancel') {
         $subController->cancel((int)$seg[1]); exit();
     }
 }
 
-// Notifications Route — GET /notifications?user_id=X
+// In-app Notifications Routes — /notifications/list, /notifications/:id/read, /notifications/read-all
+if (isset($seg[0]) && $seg[0] === 'notifications') {
+    require_once __DIR__ . '/src/Controllers/NotificationController.php';
+    $notifCtrl = new NotificationController();
+    // GET /notifications/list?user_id=X
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'list') { $notifCtrl->list(); exit(); }
+    // PUT /notifications/read-all
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && $seg[1] === 'read-all') { $notifCtrl->markAllRead(); exit(); }
+    // PUT /notifications/:id/read
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && is_numeric($seg[1]) && isset($seg[2]) && $seg[2] === 'read') { $notifCtrl->markRead((int)$seg[1]); exit(); }
+}
+
+// Notifications Route — GET /notifications?user_id=X (subscription expiry alerts, legacy)
 if (isset($seg[0]) && $seg[0] === 'notifications' && $_SERVER['REQUEST_METHOD'] === 'GET') {
     $user_id = (int)($_GET['user_id'] ?? 0);
     if (!$user_id) { http_response_code(400); echo json_encode(['message' => 'user_id required']); exit(); }
@@ -321,6 +334,14 @@ if (isset($seg[0]) && $seg[0] === 'bookings') {
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'busy-days') {
         $bookingController->busyDays(); exit();
     }
+    // POST /bookings/recurring
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'recurring') {
+        $bookingController->createRecurring(); exit();
+    }
+    // GET /bookings/:id  — single booking detail (before generic index)
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1])) {
+        $bookingController->show((int)$seg[1]); exit();
+    }
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { $bookingController->index(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') { $bookingController->create(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) {
@@ -338,6 +359,9 @@ if (isset($seg[0]) && $seg[0] === 'earnings') {
     }
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'venue') {
         $earningsController->venue(); exit();
+    }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'export') {
+        $earningsController->export(); exit();
     }
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { $earningsController->index(); exit(); }
 }
@@ -747,6 +771,15 @@ if (isset($seg[0]) && $seg[0] === 'messages') {
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'unread-count') { $msgCtrl->unreadCount(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'GET')  { $msgCtrl->index();  exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') { $msgCtrl->create(); exit(); }
+}
+
+// Waitlist Routes
+if (isset($seg[0]) && $seg[0] === 'waitlist') {
+    require_once __DIR__ . '/src/Controllers/WaitlistController.php';
+    $wlCtrl = new WaitlistController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET')                      { $wlCtrl->index();           exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST')                     { $wlCtrl->create();          exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { $wlCtrl->delete((int)$seg[1]); exit(); }
 }
 
 echo json_encode(["message" => "Welcome to Playbook API"]);

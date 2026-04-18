@@ -9,7 +9,7 @@ import {
     Calendar, CheckCircle2, XCircle, Info,
     Wind, Flag, Target, Activity, CircleDot, Layers3, Dumbbell, Waves, Swords,
     Share2, Heart, Lock, Sun, Moon, Crown, Infinity, BadgeCheck,
-    UserPlus, X, Search, Loader2, Users, LayoutGrid
+    UserPlus, X, Search, Loader2, Users, LayoutGrid, RefreshCw, BellRing
 } from 'lucide-vue-next'
 import MatchSheet from '../components/MatchSheet.vue'
 
@@ -51,6 +51,16 @@ const reviewComment   = ref('')
 const reviewSubmitting = ref(false)
 const userPastBooking = ref(null)   // past booking_id for this court
 const alreadyReviewed = ref(false)
+
+// Recurring booking
+const isRecurring      = ref(false)
+const recurringDays    = ref([])   // day-of-week numbers 0–6
+const recurringEndDate = ref('')
+const recurringLoading = ref(false)
+
+// Waitlist prompt
+const waitlistPrompt   = ref({ show: false, slotStart: '', slotEnd: '' })
+const waitlistLoading  = ref(false)
 
 // Add Players modal — shown after a successful booking
 const addPlayers = ref({
@@ -604,12 +614,21 @@ const confirmBooking = async () => {
             ))
             const bookingIds = results.map(r => r.data.id).filter(Boolean)
             toast.success(`${selectedSlots.value.length} slot${selectedSlots.value.length > 1 ? 's' : ''} booked!`)
+            if (bookingIds.length === 1) {
+                router.replace(`/booking-confirmation/${bookingIds[0]}`)
+                return
+            }
             openAddPlayers(bookingIds, slots[0]?.start_time)
         } catch (err) {
             if (err.response?.status === 409) {
-                toast.error('One or more slots were just taken — please reselect')
                 const r = await axios.get(`/bookings?court_id=${court.value.id}&date=${selectedDate.value}`)
                 bookedSlots.value = r.data.records || []
+                // Show waitlist prompt for the first conflicting slot
+                if (slots[0]) {
+                    waitlistPrompt.value = { show: true, slotStart: slots[0].start_time, slotEnd: slots[0].end_time }
+                } else {
+                    toast.error('One or more slots were just taken — please reselect')
+                }
                 selectedSlots.value = []
             } else {
                 toast.error(err.response?.data?.message || 'Booking failed')
@@ -631,6 +650,10 @@ const confirmBooking = async () => {
                 const vRes = await axios.post('/payments/verify', { order_id })
                 const bookingIds = (vRes.data.booking_ids || [])
                 toast.success(`${selectedSlots.value.length} slot${selectedSlots.value.length > 1 ? 's' : ''} booked!`)
+                if (bookingIds.length === 1) {
+                    router.replace(`/booking-confirmation/${bookingIds[0]}`)
+                    return
+                }
                 openAddPlayers(bookingIds, slots[0]?.start_time)
             } catch (err) {
                 if (err.response?.status === 409) {
@@ -646,6 +669,59 @@ const confirmBooking = async () => {
     )
 
     bookingLoading.value = false
+}
+
+const confirmRecurring = async () => {
+    if (!selectedDate.value || !selectedSlots.value.length) return
+    if (!recurringDays.value.length || !recurringEndDate.value) {
+        toast.error('Select days and end date'); return
+    }
+    recurringLoading.value = true
+    const sorted = [...selectedSlots.value].sort((a, b) => a.hour - b.hour)
+    const startH = sorted[0].pad
+    const endH   = String(sorted[sorted.length - 1].hour + 1).padStart(2, '0')
+    try {
+        const res = await axios.post('/bookings/recurring', {
+            user_id:              auth.user?.id,
+            court_id:             court.value.id,
+            sub_court_id:         selectedSpace.value?.id || null,
+            start_time:           `${selectedDate.value} ${startH}:00:00`,
+            end_time:             `${selectedDate.value} ${endH}:00:00`,
+            recurrence_days:      recurringDays.value,
+            recurrence_end_date:  recurringEndDate.value,
+        })
+        const { bookings, message } = res.data
+        toast.success(message || `${bookings.length} bookings created!`)
+        isRecurring.value   = false
+        recurringDays.value = []
+        selectedSlots.value = []
+        if (bookings.length === 1) {
+            router.replace(`/booking-confirmation/${bookings[0]}`)
+        } else {
+            router.replace('/bookings')
+        }
+    } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to create recurring bookings')
+    } finally { recurringLoading.value = false }
+}
+
+const joinWaitlist = async () => {
+    const { slotStart, slotEnd } = waitlistPrompt.value
+    waitlistLoading.value = true
+    try {
+        await axios.post('/waitlist', {
+            user_id:      auth.user?.id,
+            court_id:     court.value.id,
+            sub_court_id: selectedSpace.value?.id || null,
+            booking_date: selectedDate.value,
+            start_time:   slotStart.split(' ')[1] || slotStart,
+            end_time:     slotEnd.split(' ')[1] || slotEnd,
+        })
+        toast.success("You're on the waitlist! We'll notify you if this slot opens.")
+        waitlistPrompt.value.show = false
+    } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to join waitlist')
+    } finally { waitlistLoading.value = false }
 }
 
 const subscribePlan = async (plan) => {
@@ -1306,16 +1382,54 @@ const subscribePlan = async (plan) => {
                 style="box-shadow: 0 -4px 20px rgba(0,0,0,0.06)">
 
                 <!-- Booking tab button -->
-                <button v-if="activeTab === 'booking'"
-                    @click="confirmBooking"
-                    :disabled="!selectedSlots.length || !selectedDate || bookingLoading"
-                    class="w-full bg-primary text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:scale-100">
-                    <span v-if="bookingLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                    <span v-else-if="selectedSlots.length && selectedDate">
-                        Confirm {{ selectedSlots.length > 1 ? selectedSlots.length + ' Slots' : 'Booking' }} · ₹{{ totalPrice }}
-                    </span>
-                    <span v-else>Select a date &amp; time slot</span>
-                </button>
+                <template v-if="activeTab === 'booking'">
+                    <!-- Recurring toggle (shown when slots selected) -->
+                    <div v-if="selectedSlots.length && selectedDate" class="mb-3">
+                        <button @click="isRecurring = !isRecurring"
+                            class="flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-xl transition-colors"
+                            :class="isRecurring ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'">
+                            <RefreshCw :size="12" />
+                            Make it Recurring
+                        </button>
+                        <!-- Recurring config -->
+                        <div v-if="isRecurring" class="mt-2 bg-slate-50 rounded-xl p-3 space-y-2">
+                            <p class="text-[11px] font-bold text-slate-600">Repeat on</p>
+                            <div class="flex gap-1.5 flex-wrap">
+                                <button v-for="(day, i) in ['Su','Mo','Tu','We','Th','Fr','Sa']" :key="i"
+                                    @click="recurringDays.includes(i) ? recurringDays.splice(recurringDays.indexOf(i),1) : recurringDays.push(i)"
+                                    class="w-8 h-8 rounded-full text-[11px] font-bold transition-colors"
+                                    :class="recurringDays.includes(i) ? 'bg-primary text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'">
+                                    {{ day }}
+                                </button>
+                            </div>
+                            <div>
+                                <p class="text-[11px] font-bold text-slate-600 mb-1">Repeat until</p>
+                                <input type="date" v-model="recurringEndDate"
+                                    :min="selectedDate"
+                                    class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <button v-if="!isRecurring"
+                        @click="confirmBooking"
+                        :disabled="!selectedSlots.length || !selectedDate || bookingLoading"
+                        class="w-full bg-primary text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:scale-100">
+                        <span v-if="bookingLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        <span v-else-if="selectedSlots.length && selectedDate">
+                            Confirm {{ selectedSlots.length > 1 ? selectedSlots.length + ' Slots' : 'Booking' }} · ₹{{ totalPrice }}
+                        </span>
+                        <span v-else>Select a date &amp; time slot</span>
+                    </button>
+                    <button v-else
+                        @click="confirmRecurring"
+                        :disabled="!recurringDays.length || !recurringEndDate || recurringLoading"
+                        class="w-full bg-primary text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:scale-100">
+                        <span v-if="recurringLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        <RefreshCw v-else :size="16" />
+                        <span>Book Recurring Slots</span>
+                    </button>
+                </template>
 
                 <!-- Membership tab: Go back to booking when subscribed -->
                 <button v-else-if="activeSub"
@@ -1468,5 +1582,40 @@ const subscribePlan = async (plan) => {
     </Transition>
 
     <MatchSheet v-if="court" v-model="matchSheet" :court="court" />
+
+    <!-- Waitlist Prompt ──────────────────────────────────────────────────── -->
+    <Transition
+        enter-active-class="transition duration-300 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0">
+        <div v-if="waitlistPrompt.show" class="fixed inset-0 bg-black/50 z-[60] flex items-end" @click.self="waitlistPrompt.show = false">
+            <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-10">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                        <BellRing :size="20" class="text-amber-500" />
+                    </div>
+                    <button @click="waitlistPrompt.show = false" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+                        <X :size="16" class="text-slate-500" />
+                    </button>
+                </div>
+                <h3 class="font-black text-slate-900 text-lg mb-1">Slot is taken</h3>
+                <p class="text-sm text-slate-500 mb-5">Join the waitlist and we'll notify you instantly if this slot becomes available.</p>
+                <div class="flex gap-3">
+                    <button @click="waitlistPrompt.show = false" class="flex-1 py-3.5 rounded-2xl bg-slate-100 text-slate-700 font-bold text-sm active:scale-95 transition-transform">
+                        Dismiss
+                    </button>
+                    <button @click="joinWaitlist" :disabled="waitlistLoading"
+                        class="flex-1 py-3.5 rounded-2xl bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-60">
+                        <Loader2 v-if="waitlistLoading" :size="16" class="animate-spin" />
+                        <BellRing v-else :size="16" />
+                        Join Waitlist
+                    </button>
+                </div>
+            </div>
+        </div>
+    </Transition>
 
 </template>

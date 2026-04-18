@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../Models/Booking.php';
 require_once __DIR__ . '/../Models/Subscription.php';
+require_once __DIR__ . '/WaitlistController.php';
 
 class BookingController {
 
@@ -56,12 +57,40 @@ class BookingController {
 
         $upd = $booking->conn->prepare("UPDATE bookings SET status='cancelled' WHERE id=?");
         if ($upd->execute([$id])) {
+            // Notify first waitlisted user for this slot
+            WaitlistController::notifyNext(
+                $booking->conn,
+                (int)$b['court_id'],
+                $b['sub_court_id'] ? (int)$b['sub_court_id'] : null,
+                date('Y-m-d', strtotime($b['start_time'])),
+                date('H:i:s', strtotime($b['start_time'])),
+                date('H:i:s', strtotime($b['end_time']))
+            );
             http_response_code(200);
             echo json_encode(["message" => "Booking cancelled"]);
         } else {
             http_response_code(503);
             echo json_encode(["message" => "Failed to cancel"]);
         }
+    }
+
+    // GET /api/bookings/:id  — single booking detail
+    public function show($id) {
+        $db   = Database::getConnection();
+        $stmt = $db->prepare(
+            "SELECT b.*, c.name AS court_name, c.location AS court_location,
+                    sc.name AS space_name, u.name AS user_name
+             FROM bookings b
+             JOIN courts c ON b.court_id = c.id
+             LEFT JOIN sub_courts sc ON b.sub_court_id = sc.id
+             LEFT JOIN users u ON b.user_id = u.id
+             WHERE b.id = ?"
+        );
+        $stmt->execute([$id]);
+        $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$booking) { http_response_code(404); echo json_encode(['message' => 'Booking not found']); return; }
+        http_response_code(200);
+        echo json_encode(['booking' => $booking]);
     }
 
     // GET /api/bookings
@@ -309,5 +338,74 @@ class BookingController {
             $cursor += 1800;            // advance 30 minutes
         }
         return round($total, 2);
+    }
+
+    // POST /api/bookings/recurring
+    // Body: { user_id, court_id, sub_court_id?, start_time, end_time,
+    //         recurrence_days: [0,1,2,3,4,5,6],  // JS day-of-week (0=Sun)
+    //         recurrence_end_date: "YYYY-MM-DD" }
+    // Creates one booking per matching date up to recurrence_end_date (max 12 weeks).
+    // Returns { bookings:[ids], skipped:[dates] }
+    public function createRecurring() {
+        $data = json_decode(file_get_contents("php://input"));
+        $user_id      = (int)($data->user_id ?? 0);
+        $court_id     = (int)($data->court_id ?? 0);
+        $sub_court_id = isset($data->sub_court_id) ? (int)$data->sub_court_id : null;
+        $start_time   = $data->start_time ?? ''; // "YYYY-MM-DD HH:MM:SS"
+        $end_time     = $data->end_time   ?? '';
+        $rec_days     = $data->recurrence_days ?? []; // [0..6]
+        $end_date_str = $data->recurrence_end_date ?? '';
+
+        if (!$user_id || !$court_id || !$start_time || !$end_time || empty($rec_days) || !$end_date_str) {
+            http_response_code(400); echo json_encode(['message' => 'Missing required fields']); return;
+        }
+
+        $startTs  = strtotime($start_time);
+        $endTs    = strtotime($end_time);
+        $limitTs  = strtotime($end_date_str . ' 23:59:59');
+        $maxLimit = strtotime('+12 weeks', $startTs);
+        if ($limitTs > $maxLimit) $limitTs = $maxLimit;
+
+        $startDateTs = mktime(0,0,0, date('n',$startTs), date('j',$startTs), date('Y',$startTs));
+        $startH      = date('H:i:s', $startTs);
+        $endH        = date('H:i:s', $endTs);
+
+        $booking_model = new Booking();
+        $booked  = [];
+        $skipped = [];
+
+        $cursor = $startDateTs;
+        while ($cursor <= $limitTs) {
+            $dow = (int)date('w', $cursor); // 0=Sun .. 6=Sat
+            if (in_array($dow, (array)$rec_days)) {
+                $dateStr = date('Y-m-d', $cursor);
+                $slotStart = "$dateStr $startH";
+                $slotEnd   = "$dateStr $endH";
+
+                if ($booking_model->isSlotAvailable($court_id, $slotStart, $slotEnd, $sub_court_id)) {
+                    $price = $this->calculateBookingPrice($court_id, $sub_court_id, $slotStart, $slotEnd);
+                    $booking_model->user_id      = $user_id;
+                    $booking_model->court_id     = $court_id;
+                    $booking_model->sub_court_id = $sub_court_id;
+                    $booking_model->start_time   = $slotStart;
+                    $booking_model->end_time     = $slotEnd;
+                    $booking_model->type         = 'hourly';
+                    $booking_model->total_price  = $price > 0 ? $price : 0;
+                    $booking_model->guest_name   = null;
+                    $booking_model->guest_phone  = null;
+                    $booking_model->notes        = 'Recurring booking';
+                    if ($booking_model->create()) {
+                        $booked[] = (int)$booking_model->conn->lastInsertId();
+                    }
+                } else {
+                    $skipped[] = $dateStr;
+                }
+            }
+            $cursor += 86400;
+        }
+
+        http_response_code(201);
+        echo json_encode(['bookings' => $booked, 'skipped' => $skipped,
+                          'message' => count($booked) . ' booking(s) created' . (count($skipped) ? ', ' . count($skipped) . ' date(s) skipped (conflict)' : '')]);
     }
 }

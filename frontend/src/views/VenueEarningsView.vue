@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
-import { TrendingUp, Loader2, CalendarDays, IndianRupee, Users, LayoutGrid } from 'lucide-vue-next'
+import { TrendingUp, Loader2, CalendarDays, IndianRupee, Users, LayoutGrid, Download } from 'lucide-vue-next'
 
 const route  = useRoute()
 const router = useRouter()
@@ -36,6 +36,26 @@ const fmtDate = (dt) => {
     const d = new Date(dt.replace(' ', 'T'))
     return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) +
            ' · ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+}
+
+const exporting = ref(false)
+
+const exportCSV = async () => {
+    exporting.value = true
+    try {
+        const url = `/api/earnings/export?court_id=${courtId}&owner_id=${auth.user?.id}`
+        const res = await fetch(url, {
+            headers: { Authorization: `Bearer ${auth.token}` }
+        })
+        if (!res.ok) throw new Error()
+        const blob = await res.blob()
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(blob)
+        a.download = `earnings_${new Date().toISOString().slice(0,10)}.csv`
+        a.click()
+        URL.revokeObjectURL(a.href)
+    } catch { toast.error('Export failed') }
+    finally { exporting.value = false }
 }
 
 const maxMonthly = computed(() => {
@@ -99,9 +119,17 @@ const maxMonthly = computed(() => {
 
                 <!-- Transactions list -->
                 <div class="bg-white rounded-2xl shadow-sm ring-1 ring-slate-100 overflow-hidden">
-                    <div class="px-4 pt-4 pb-2">
-                        <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Transactions</p>
-                        <p class="text-xs text-slate-400 mt-0.5">Recent confirmed bookings</p>
+                    <div class="px-4 pt-4 pb-2 flex items-center justify-between">
+                        <div>
+                            <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest">Transactions</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Recent confirmed bookings</p>
+                        </div>
+                        <button @click="exportCSV" :disabled="exporting"
+                            class="flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-xl active:scale-95 transition-all disabled:opacity-50">
+                            <Loader2 v-if="exporting" :size="12" class="animate-spin" />
+                            <Download v-else :size="12" />
+                            Export CSV
+                        </button>
                     </div>
 
                     <div v-if="!data.transactions.length" class="px-4 pb-6 text-center py-8">
