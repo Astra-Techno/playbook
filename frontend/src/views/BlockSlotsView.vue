@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
-import { Ban, Loader2, Trash2, CalendarOff } from 'lucide-vue-next'
+import { Ban, Loader2, Trash2, CalendarOff, Repeat } from 'lucide-vue-next'
 
 const route = useRoute()
 const auth  = useAuthStore()
@@ -18,11 +18,23 @@ const blocks    = ref([])
 const loading   = ref(true)
 const saving    = ref(false)
 const removingId = ref(null)
+const spaceById = ref({})
 
 const today          = new Date().toISOString().slice(0, 10)
 const selectedDate   = ref(today)
 const selectedHours  = ref([])
 const reason         = ref('')
+const blockKind      = ref('maintenance')
+const repeatAnnual   = ref(false)
+
+const BLOCK_KIND_LABELS = {
+    maintenance: 'Maintenance',
+    holiday: 'Holiday',
+    private_event: 'Private event',
+    tournament: 'Tournament',
+    coaching: 'Coaching / academy',
+    other: 'Other',
+}
 
 const HOURS = Array.from({ length: 18 }, (_, i) => {
     const h = i + 5
@@ -46,10 +58,18 @@ onMounted(async () => {
     try {
         const reqs = [axios.get(`/courts/${courtId}`), axios.get(blocksUrl())]
         if (spaceId) reqs.push(axios.get(`/sub-courts/${spaceId}`))
+        else reqs.push(axios.get(`/sub-courts?court_id=${courtId}`))
         const [courtRes, blocksRes, spaceRes] = await Promise.all(reqs)
         courtName.value = courtRes.data.court?.name ?? ''
-        spaceName.value = spaceRes?.data.space?.name ?? ''
-        blocks.value    = blocksRes.data.blocks || []
+        if (spaceId) {
+            spaceName.value = spaceRes?.data?.space?.name ?? ''
+        } else {
+            const list = spaceRes?.data?.sub_courts || []
+            const map = {}
+            list.forEach((s) => { map[s.id] = s.name })
+            spaceById.value = map
+        }
+        blocks.value = blocksRes.data.blocks || []
     } catch { toast.error('Failed to load') }
     finally { loading.value = false }
 })
@@ -59,11 +79,21 @@ const toggleHour = (h) => {
     idx === -1 ? selectedHours.value.push(h) : selectedHours.value.splice(idx, 1)
 }
 
-const isBlockedHour = (h) => blocks.value.some(b => {
-    const bDate = b.start_time.slice(0, 10)
-    const bHour = parseInt(b.start_time.slice(11, 13))
-    return bDate === selectedDate.value && bHour === h
-})
+const rowInScope = (b) => {
+    if (spaceId) return !b.sub_court_id || String(b.sub_court_id) === String(spaceId)
+    return !b.sub_court_id
+}
+
+const hourMatchesBlock = (b, h) => {
+    const bHour = parseInt(b.start_time.slice(11, 13), 10)
+    if (bHour !== h) return false
+    if (Number(b.repeat_annually) === 1) {
+        return b.start_time.slice(5, 10) === selectedDate.value.slice(5, 10)
+    }
+    return b.start_time.slice(0, 10) === selectedDate.value
+}
+
+const isBlockedHour = (h) => blocks.value.some((b) => rowInScope(b) && hourMatchesBlock(b, h))
 
 const save = async () => {
     if (!selectedDate.value || !selectedHours.value.length) {
@@ -72,15 +102,19 @@ const save = async () => {
     saving.value = true
     try {
         await axios.post('/blocked-slots', {
-            court_id:     courtId,
-            sub_court_id: spaceId || undefined,
-            blocked_by:   auth.user.id,
-            date:         selectedDate.value,
-            hours:        selectedHours.value,
-            reason:       reason.value.trim(),
+            court_id:         courtId,
+            sub_court_id:       spaceId || undefined,
+            blocked_by:       auth.user.id,
+            date:             selectedDate.value,
+            hours:            selectedHours.value,
+            reason:           reason.value.trim(),
+            block_kind:       blockKind.value,
+            repeat_annually:  repeatAnnual.value,
         })
         toast.success(`${selectedHours.value.length} slot(s) blocked`)
-        selectedHours.value = []; reason.value = ''
+        selectedHours.value = []
+        reason.value = ''
+        repeatAnnual.value = false
         const res = await axios.get(blocksUrl())
         blocks.value = res.data.blocks || []
     } catch (err) {
@@ -97,7 +131,20 @@ const removeBlock = async (block) => {
     finally { removingId.value = null }
 }
 
+const blockKindLabel = (k) => BLOCK_KIND_LABELS[k] || BLOCK_KIND_LABELS.other
+
+const spaceLabel = (b) => {
+    if (!b.sub_court_id) return 'All spaces'
+    return spaceById.value[b.sub_court_id] || `Space #${b.sub_court_id}`
+}
+
 const formatBlockTime = (b) => {
+    if (Number(b.repeat_annually) === 1) {
+        const d = new Date(b.start_time.replace(' ', 'T'))
+        const md = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
+        const t = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+        return `Every year · ${md} · ${t}`
+    }
     const date = new Date(b.start_time.replace(' ', 'T'))
     return date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) +
            ' · ' + date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
@@ -150,12 +197,37 @@ const formatBlockTime = (b) => {
                 </div>
             </div>
 
+            <!-- Category -->
+            <div>
+                <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Why are you blocking?</p>
+                <select v-model="blockKind"
+                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:ring-primary focus:outline-none bg-white">
+                    <option value="maintenance">Maintenance / repairs</option>
+                    <option value="holiday">Holiday / closed day</option>
+                    <option value="private_event">Private event</option>
+                    <option value="tournament">Tournament / league</option>
+                    <option value="coaching">Coaching / academy</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <label class="flex items-center gap-3 cursor-pointer select-none bg-violet-50 rounded-xl px-4 py-3 ring-1 ring-violet-100">
+                <input v-model="repeatAnnual" type="checkbox" class="w-4 h-4 rounded border-violet-300 text-violet-600 focus:ring-violet-500" />
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs font-bold text-violet-900 flex items-center gap-1.5">
+                        <Repeat :size="14" class="shrink-0" />
+                        Repeat every year on this date
+                    </p>
+                    <p class="text-[10px] text-violet-700/90 mt-0.5">Great for fixed holidays. Uses month &amp; day from the date you picked.</p>
+                </div>
+            </label>
+
             <!-- Reason -->
             <div>
                 <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                    Reason <span class="font-normal normal-case text-slate-300">(optional)</span>
+                    Note <span class="font-normal normal-case text-slate-300">(optional)</span>
                 </p>
-                <input v-model="reason" type="text" placeholder="Maintenance, private event, holiday..."
+                <input v-model="reason" type="text" placeholder="e.g. Deep clean, Diwali, team booking…"
                     class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-primary focus:outline-none bg-white" />
             </div>
 
@@ -178,6 +250,17 @@ const formatBlockTime = (b) => {
                         class="flex items-center gap-3 bg-red-50 rounded-xl px-4 py-3">
                         <CalendarOff :size="14" class="text-red-400 shrink-0" />
                         <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-1.5 mb-0.5">
+                                <span class="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-white text-slate-600 ring-1 ring-slate-200">
+                                    {{ blockKindLabel(block.block_kind) }}
+                                </span>
+                                <span v-if="Number(block.repeat_annually) === 1" class="text-[9px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">
+                                    Annual
+                                </span>
+                                <span v-if="!spaceId && block.sub_court_id" class="text-[9px] font-semibold text-slate-500 truncate max-w-[9rem]">
+                                    {{ spaceLabel(block) }}
+                                </span>
+                            </div>
                             <p class="text-xs font-bold text-slate-700 truncate">{{ formatBlockTime(block) }}</p>
                             <p v-if="block.reason" class="text-[11px] text-slate-400 truncate">{{ block.reason }}</p>
                         </div>

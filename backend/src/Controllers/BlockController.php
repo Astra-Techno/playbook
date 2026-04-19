@@ -25,6 +25,15 @@ class BlockController
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
         try { $this->db->exec("ALTER TABLE blocked_slots ADD COLUMN sub_court_id INT DEFAULT NULL"); } catch (Exception $e) {}
+        try { $this->db->exec("ALTER TABLE blocked_slots ADD COLUMN block_kind VARCHAR(32) NOT NULL DEFAULT 'other'"); } catch (Exception $e) {}
+        try { $this->db->exec("ALTER TABLE blocked_slots ADD COLUMN repeat_annually TINYINT(1) NOT NULL DEFAULT 0"); } catch (Exception $e) {}
+    }
+
+    private static function normalizeBlockKind($raw): string
+    {
+        $k = strtolower(trim((string)$raw));
+        $allowed = ['maintenance', 'holiday', 'private_event', 'tournament', 'coaching', 'other'];
+        return in_array($k, $allowed, true) ? $k : 'other';
     }
 
     // GET /blocked-slots?court_id=X[&sub_court_id=Y][&date=YYYY-MM-DD]
@@ -35,21 +44,28 @@ class BlockController
         $date         = $_GET['date'] ?? '';
         if (!$court_id) { http_response_code(400); echo json_encode(['message' => 'court_id required']); return; }
 
-        $spaceFilter = $sub_court_id !== null ? ' AND sub_court_id = ?' : ' AND sub_court_id IS NULL';
-        $params      = $sub_court_id !== null ? [$court_id, $sub_court_id] : [$court_id];
+        // Omit sub_court_id → all blocks for this court (owner calendar + player UI merge client-side).
+        // With sub_court_id → venue-wide (NULL) + that space only.
+        if ($sub_court_id !== null) {
+            $spaceFilter = ' AND (sub_court_id IS NULL OR sub_court_id = ?)';
+            $params      = [$court_id, $sub_court_id];
+        } else {
+            $spaceFilter = '';
+            $params      = [$court_id];
+        }
 
         if ($date) {
             $stmt = $this->db->prepare("
                 SELECT * FROM blocked_slots
                 WHERE court_id = ?{$spaceFilter} AND DATE(start_time) = ?
-                ORDER BY start_time
+                ORDER BY start_time, sub_court_id
             ");
             $stmt->execute(array_merge($params, [$date]));
         } else {
             $stmt = $this->db->prepare("
                 SELECT * FROM blocked_slots
                 WHERE court_id = ?{$spaceFilter} AND end_time >= NOW()
-                ORDER BY start_time LIMIT 200
+                ORDER BY start_time, sub_court_id LIMIT 200
             ");
             $stmt->execute($params);
         }
@@ -66,6 +82,8 @@ class BlockController
         $court_id     = (int)($data->court_id  ?? 0);
         $sub_court_id = isset($data->sub_court_id) && $data->sub_court_id !== '' ? (int)$data->sub_court_id : null;
         $reason       = trim($data->reason ?? '');
+        $block_kind   = self::normalizeBlockKind($data->block_kind ?? 'other');
+        $repeat_yearly = !empty($data->repeat_annually) ? 1 : 0;
 
         if (!$court_id) {
             http_response_code(400); echo json_encode(['message' => 'court_id required']); return;
@@ -85,23 +103,23 @@ class BlockController
         // Block individual hours on a date
         if (!empty($data->date) && !empty($data->hours) && is_array($data->hours)) {
             $ins = $this->db->prepare("
-                INSERT IGNORE INTO blocked_slots (court_id, sub_court_id, start_time, end_time, reason, blocked_by)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT IGNORE INTO blocked_slots (court_id, sub_court_id, start_time, end_time, reason, blocked_by, block_kind, repeat_annually)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
             foreach ($data->hours as $hour) {
                 $h   = (int)$hour;
                 $st  = $data->date . ' ' . str_pad($h,     2, '0', STR_PAD_LEFT) . ':00:00';
                 $et  = $data->date . ' ' . str_pad($h + 1, 2, '0', STR_PAD_LEFT) . ':00:00';
-                $ins->execute([$court_id, $sub_court_id, $st, $et, $reason, $blocked_by]);
+                $ins->execute([$court_id, $sub_court_id, $st, $et, $reason, $blocked_by, $block_kind, $repeat_yearly]);
                 $created[] = ['start_time' => $st, 'end_time' => $et];
             }
         } elseif (!empty($data->start_time) && !empty($data->end_time)) {
             // Block a continuous range
             $ins = $this->db->prepare("
-                INSERT INTO blocked_slots (court_id, sub_court_id, start_time, end_time, reason, blocked_by)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO blocked_slots (court_id, sub_court_id, start_time, end_time, reason, blocked_by, block_kind, repeat_annually)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
-            $ins->execute([$court_id, $sub_court_id, $data->start_time, $data->end_time, $reason, $blocked_by]);
+            $ins->execute([$court_id, $sub_court_id, $data->start_time, $data->end_time, $reason, $blocked_by, $block_kind, $repeat_yearly]);
             $created[] = ['start_time' => $data->start_time, 'end_time' => $data->end_time];
         } else {
             http_response_code(400); echo json_encode(['message' => 'Provide date+hours or start_time+end_time']); return;

@@ -132,13 +132,82 @@ class Booking {
             if ((int)$row['cnt'] > 0) return false;
         }
 
-        // Check blocked slots
-        $blk = $this->conn->prepare(
-            "SELECT COUNT(*) as cnt FROM blocked_slots
-             WHERE court_id = ? AND (start_time < ? AND end_time > ?)"
-        );
-        $blk->execute([$court_id, $end_time, $start_time]);
+        // One-off blocked_slots (repeat_annually = 0): venue-wide or space-specific.
+        if ($sub_court_id !== null) {
+            $blk = $this->conn->prepare(
+                "SELECT COUNT(*) as cnt FROM blocked_slots
+                 WHERE court_id = ?
+                   AND (sub_court_id IS NULL OR sub_court_id = ?)
+                   AND COALESCE(repeat_annually, 0) = 0
+                   AND (start_time < ? AND end_time > ?)"
+            );
+            $blk->execute([$court_id, $sub_court_id, $end_time, $start_time]);
+        } else {
+            $blk = $this->conn->prepare(
+                "SELECT COUNT(*) as cnt FROM blocked_slots
+                 WHERE court_id = ?
+                   AND sub_court_id IS NULL
+                   AND COALESCE(repeat_annually, 0) = 0
+                   AND (start_time < ? AND end_time > ?)"
+            );
+            $blk->execute([$court_id, $end_time, $start_time]);
+        }
         $blkRow = $blk->fetch(PDO::FETCH_ASSOC);
-        return $blkRow['cnt'] == 0;
+        if ((int)$blkRow['cnt'] > 0) {
+            return false;
+        }
+        return !$this->recurringBlockOverlaps((int)$court_id, $start_time, $end_time, $sub_court_id);
+    }
+
+    /**
+     * Annual blocks: same calendar month/day every year, time taken from template row.
+     */
+    private function recurringBlockOverlaps(int $court_id, string $start_time, string $end_time, $sub_court_id): bool
+    {
+        if ($sub_court_id !== null) {
+            $stmt = $this->conn->prepare(
+                "SELECT start_time AS tpl_s, end_time AS tpl_e FROM blocked_slots
+                 WHERE court_id = ? AND COALESCE(repeat_annually, 0) = 1
+                   AND (sub_court_id IS NULL OR sub_court_id = ?)"
+            );
+            $stmt->execute([$court_id, $sub_court_id]);
+        } else {
+            $stmt = $this->conn->prepare(
+                "SELECT start_time AS tpl_s, end_time AS tpl_e FROM blocked_slots
+                 WHERE court_id = ? AND COALESCE(repeat_annually, 0) = 1 AND sub_court_id IS NULL"
+            );
+            $stmt->execute([$court_id]);
+        }
+
+        $bookingStartTs = strtotime($start_time);
+        $bookingEndTs   = strtotime($end_time);
+        if ($bookingStartTs === false || $bookingEndTs === false) {
+            return false;
+        }
+        $bDate = date('Y-m-d', $bookingStartTs);
+        $bm    = (int)date('n', $bookingStartTs);
+        $bd    = (int)date('j', $bookingStartTs);
+
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $tStart = strtotime($row['tpl_s']);
+            $tEnd   = strtotime($row['tpl_e']);
+            if ($tStart === false || $tEnd === false) {
+                continue;
+            }
+            $tm = (int)date('n', $tStart);
+            $td = (int)date('j', $tStart);
+            if ($tm !== $bm || $td !== $bd) {
+                continue;
+            }
+            $vs = strtotime($bDate . ' ' . date('H:i:s', $tStart));
+            $ve = strtotime($bDate . ' ' . date('H:i:s', $tEnd));
+            if ($ve <= $vs) {
+                $ve += 86400;
+            }
+            if ($bookingStartTs < $ve && $bookingEndTs > $vs) {
+                return true;
+            }
+        }
+        return false;
     }
 }

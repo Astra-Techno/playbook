@@ -218,8 +218,35 @@ const subCoversSlot = (subSlotType, peakType) => {
     return subSlotType === peakType
 }
 
+/** Subscription required during peak for the selected space (venue default or per-space override). */
+const effectivePeakMembersOnly = computed(() => {
+    if (!court.value) return false
+    const sp = selectedSpace.value
+    if (!sp) {
+        if (spaces.value.length > 0) return false
+        return !!court.value.peak_members_only
+    }
+    const o = sp.peak_members_override
+    if (o === null || o === undefined || o === '') return !!court.value.peak_members_only
+    return Number(o) === 1
+})
+
+const spaceForcesPeakMembers = computed(() => {
+    const sp = selectedSpace.value
+    if (!sp) return false
+    const o = sp.peak_members_override
+    if (o === null || o === undefined || o === '') return false
+    return Number(o) === 1
+})
+
+/** Use grouped morning/evening grid when the venue uses peak rules or this space forces member-only peaks. */
+const usePeakSlotLayout = computed(() => {
+    if (!court.value) return false
+    return !!court.value.peak_members_only || spaceForcesPeakMembers.value
+})
+
 const isPeakLocked = (slot) => {
-    if (!court.value?.peak_members_only) return false
+    if (!effectivePeakMembersOnly.value) return false
     const pt = slotPeakType(slot)
     if (!pt) return false
     return !subCoversSlot(activeSub.value?.slot_type, pt)
@@ -255,7 +282,25 @@ const slotRemainingCapacity = (slot) => {
 const isBlocked = (slot) => {
     const s = `${selectedDate.value} ${slot.pad}:00`
     const e = `${selectedDate.value} ${String(slot.hour + 1).padStart(2, '0')}:00:00`
-    return blockedSlots.value.some(b => s < b.end_time && e > b.start_time)
+    return blockedSlots.value.some((b) => {
+        const rec = Number(b.repeat_annually) === 1
+        let overlaps = false
+        if (rec) {
+            if (selectedDate.value.slice(5, 10) !== b.start_time.slice(5, 10)) return false
+            const rs = `${selectedDate.value} ${b.start_time.slice(11, 19)}`
+            const re = `${selectedDate.value} ${b.end_time.slice(11, 19)}`
+            overlaps = s < re && e > rs
+        } else {
+            overlaps = s < b.end_time && e > b.start_time
+        }
+        if (!overlaps) return false
+        const bid = b.sub_court_id
+        if (selectedSpace.value) {
+            return !bid || String(bid) === String(selectedSpace.value.id)
+        }
+        if (!spaces.value.length) return true
+        return !bid
+    })
 }
 
 const slotState = (slot) => {
@@ -898,12 +943,19 @@ const subscribePlan = async (plan) => {
                     </span>
                 </div>
 
-                <!-- Peak hours info strip (if applicable) -->
-                <div v-if="court.peak_members_only" class="mt-3 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5 flex items-center gap-2.5 shadow-sm">
-                    <Lock :size="14" :stroke-width="2.5" class="text-amber-600 shrink-0" />
+                <!-- Peak hours info (venue or per-space) -->
+                <div v-if="usePeakSlotLayout" class="mt-3 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5 flex items-start gap-2.5 shadow-sm">
+                    <Lock :size="14" :stroke-width="2.5" class="text-amber-600 shrink-0 mt-0.5" />
                     <p class="text-xs text-amber-800 font-semibold leading-snug">
-                        Peak hours are members only: <span class="text-amber-600/80">{{ court.morning_peak_start?.slice(0,5) }}–{{ court.morning_peak_end?.slice(0,5) }}</span> &amp;
-                        <span class="text-amber-600/80">{{ court.evening_peak_start?.slice(0,5) }}–{{ court.evening_peak_end?.slice(0,5) }}</span>
+                        <template v-if="effectivePeakMembersOnly">
+                            Peak times need an active membership: <span class="text-amber-600/80">{{ court.morning_peak_start?.slice(0,5) }}–{{ court.morning_peak_end?.slice(0,5) }}</span> &amp;
+                            <span class="text-amber-600/80">{{ court.evening_peak_start?.slice(0,5) }}–{{ court.evening_peak_end?.slice(0,5) }}</span>
+                        </template>
+                        <template v-else>
+                            Rush-hour bands below — <span class="text-amber-600/80">{{ court.morning_peak_start?.slice(0,5) }}–{{ court.morning_peak_end?.slice(0,5) }}</span> &amp;
+                            <span class="text-amber-600/80">{{ court.evening_peak_start?.slice(0,5) }}–{{ court.evening_peak_end?.slice(0,5) }}</span>.
+                            This space is <strong>open to everyone</strong> during those windows.
+                        </template>
                     </p>
                 </div>
             </div>
@@ -1006,7 +1058,7 @@ const subscribePlan = async (plan) => {
                             <span class="flex items-center gap-1 text-slate-400">
                                 <span class="w-3 h-3 rounded-sm bg-slate-200 inline-block"></span> Booked
                             </span>
-                            <span v-if="court.peak_members_only" class="flex items-center gap-1 text-amber-600">
+                            <span v-if="usePeakSlotLayout" class="flex items-center gap-1 text-amber-600">
                                 <span class="w-3 h-3 rounded-sm bg-amber-200 inline-block border border-amber-300"></span>
                                 <Lock :size="10" /> Peak
                             </span>
@@ -1028,8 +1080,8 @@ const subscribePlan = async (plan) => {
                     <!-- Slot Grid -->
                     <div v-else class="mb-6 space-y-4">
 
-                        <!-- Non-peak court: single flat grid -->
-                        <template v-if="!court.peak_members_only">
+                        <!-- Flat grid when peak grouping not used -->
+                        <template v-if="!usePeakSlotLayout">
                             <div class="grid grid-cols-4 gap-2">
                                 <button
                                     v-for="slot in TIME_SLOTS" :key="slot.hour"

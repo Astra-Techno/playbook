@@ -3,7 +3,7 @@ import { ref, computed, watch } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
-import { X, Ban, Loader2, Trash2, CalendarOff } from 'lucide-vue-next'
+import { X, Ban, Loader2, Trash2, CalendarOff, Repeat } from 'lucide-vue-next'
 
 const props = defineProps({
     modelValue: Boolean,
@@ -17,6 +17,8 @@ const toast = useToastStore()
 const selectedDate   = ref('')
 const selectedHours  = ref([])
 const reason         = ref('')
+const blockKind      = ref('maintenance')
+const repeatAnnual   = ref(false)
 const saving         = ref(false)
 const blocks         = ref([])
 const loadingBlocks  = ref(false)
@@ -43,8 +45,17 @@ const fetchBlocks = async () => {
     finally { loadingBlocks.value = false }
 }
 
+const blocksVenueWide = computed(() => blocks.value.filter((b) => !b.sub_court_id))
+
 watch(() => props.modelValue, open => {
-    if (open) { selectedDate.value = today; selectedHours.value = []; reason.value = ''; fetchBlocks() }
+    if (open) {
+        selectedDate.value = today
+        selectedHours.value = []
+        reason.value = ''
+        blockKind.value = 'maintenance'
+        repeatAnnual.value = false
+        fetchBlocks()
+    }
 })
 
 watch(selectedDate, () => { selectedHours.value = [] })
@@ -56,10 +67,14 @@ const toggleHour = (h) => {
 
 const isBlockedHour = (h) => {
     if (!selectedDate.value) return false
-    return blocks.value.some(b => {
-        const bDate = b.start_time.slice(0, 10)
-        const bHour = parseInt(b.start_time.slice(11, 13))
-        return bDate === selectedDate.value && bHour === h
+    return blocks.value.some((b) => {
+        if (b.sub_court_id) return false
+        const bHour = parseInt(b.start_time.slice(11, 13), 10)
+        if (bHour !== h) return false
+        if (Number(b.repeat_annually) === 1) {
+            return b.start_time.slice(5, 10) === selectedDate.value.slice(5, 10)
+        }
+        return b.start_time.slice(0, 10) === selectedDate.value
     })
 }
 
@@ -77,15 +92,18 @@ const save = async () => {
     saving.value = true
     try {
         await axios.post('/blocked-slots', {
-            court_id:   props.court.id,
-            blocked_by: auth.user.id,
-            date:       selectedDate.value,
-            hours:      selectedHours.value,
-            reason:     reason.value.trim(),
+            court_id:         props.court.id,
+            blocked_by:       auth.user.id,
+            date:             selectedDate.value,
+            hours:            selectedHours.value,
+            reason:           reason.value.trim(),
+            block_kind:       blockKind.value,
+            repeat_annually:  repeatAnnual.value,
         })
         toast.success(`${selectedHours.value.length} slot(s) blocked`)
         selectedHours.value = []
         reason.value = ''
+        repeatAnnual.value = false
         fetchBlocks()
         emit('blocked')
     } catch (err) {
@@ -104,6 +122,12 @@ const removeBlock = async (block) => {
 }
 
 const formatBlockTime = (b) => {
+    if (Number(b.repeat_annually) === 1) {
+        const d = new Date(b.start_time.replace(' ', 'T'))
+        const md = d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
+        const t = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+        return `Every year · ${md} · ${t}`
+    }
     const date = new Date(b.start_time.replace(' ', 'T'))
     return date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) +
            ' · ' + date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
@@ -168,12 +192,32 @@ const formatBlockTime = (b) => {
                                 </div>
                             </div>
 
+                            <div>
+                                <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2">Category</p>
+                                <select v-model="blockKind"
+                                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:ring-primary focus:outline-none bg-white">
+                                    <option value="maintenance">Maintenance</option>
+                                    <option value="holiday">Holiday</option>
+                                    <option value="private_event">Private event</option>
+                                    <option value="tournament">Tournament</option>
+                                    <option value="coaching">Coaching</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+
+                            <label class="flex items-center gap-3 cursor-pointer select-none bg-violet-50 rounded-xl px-4 py-3 ring-1 ring-violet-100">
+                                <input v-model="repeatAnnual" type="checkbox" class="w-4 h-4 rounded border-violet-300 text-violet-600" />
+                                <span class="text-xs font-bold text-violet-900 flex items-center gap-1.5">
+                                    <Repeat :size="14" /> Repeat every year
+                                </span>
+                            </label>
+
                             <!-- Reason -->
                             <div>
                                 <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2">
-                                    Reason <span class="font-normal normal-case text-slate-300">(optional)</span>
+                                    Note <span class="font-normal normal-case text-slate-300">(optional)</span>
                                 </p>
-                                <input v-model="reason" type="text" placeholder="Maintenance, private event, holiday..."
+                                <input v-model="reason" type="text" placeholder="Short note for your team…"
                                     class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-primary focus:outline-none" />
                             </div>
 
@@ -186,19 +230,22 @@ const formatBlockTime = (b) => {
                             </button>
 
                             <!-- Existing blocks -->
-                            <div v-if="blocks.length">
+                            <div v-if="blocksVenueWide.length">
                                 <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3">
-                                    Active Blocks
-                                    <span class="ml-1 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full text-[10px]">{{ blocks.length }}</span>
+                                    Venue-wide blocks
+                                    <span class="ml-1 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full text-[10px]">{{ blocksVenueWide.length }}</span>
                                 </p>
                                 <div v-if="loadingBlocks" class="space-y-2">
                                     <div v-for="i in 3" :key="i" class="h-12 bg-slate-100 rounded-xl animate-pulse"></div>
                                 </div>
                                 <div v-else class="space-y-2">
-                                    <div v-for="block in blocks" :key="block.id"
+                                    <div v-for="block in blocksVenueWide" :key="block.id"
                                         class="flex items-center gap-3 bg-red-50 rounded-xl px-4 py-3">
                                         <CalendarOff :size="14" class="text-red-400 shrink-0" />
                                         <div class="flex-1 min-w-0">
+                                            <div class="flex flex-wrap gap-1 mb-0.5">
+                                                <span v-if="Number(block.repeat_annually) === 1" class="text-[9px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">Annual</span>
+                                            </div>
                                             <p class="text-xs font-bold text-slate-700 truncate">{{ formatBlockTime(block) }}</p>
                                             <p v-if="block.reason" class="text-[11px] text-slate-400 truncate">{{ block.reason }}</p>
                                         </div>

@@ -32,6 +32,7 @@ class SubCourtController
         try { $this->db->exec("ALTER TABLE sub_courts ADD COLUMN image_url VARCHAR(500) DEFAULT NULL"); } catch (Exception $e) {}
         try { $this->db->exec("ALTER TABLE sub_courts ADD COLUMN capacity INT DEFAULT 1"); } catch (Exception $e) {}
         try { $this->db->exec("ALTER TABLE sub_courts ADD COLUMN booking_mode VARCHAR(20) DEFAULT 'exclusive'"); } catch (Exception $e) {}
+        try { $this->db->exec("ALTER TABLE sub_courts ADD COLUMN peak_members_override TINYINT(1) NULL DEFAULT NULL"); } catch (Exception $e) {}
     }
 
     // GET /sub-courts/:id
@@ -72,8 +73,17 @@ class SubCourtController
 
         $capacity     = max(1, (int)($data->capacity ?? 1));
         $booking_mode = in_array($data->booking_mode ?? '', ['exclusive', 'shared']) ? $data->booking_mode : 'exclusive';
+        $pmo          = null;
+        if (property_exists($data, 'peak_members_override')) {
+            $pv = $data->peak_members_override;
+            if ($pv === null || $pv === '' || $pv === 'inherit') {
+                $pmo = null;
+            } else {
+                $pmo = (int)$pv ? 1 : 0;
+            }
+        }
 
-        $ins = $this->db->prepare("INSERT INTO sub_courts (court_id, name, description, hourly_rate, image_url, capacity, booking_mode) VALUES (?,?,?,?,?,?,?)");
+        $ins = $this->db->prepare("INSERT INTO sub_courts (court_id, name, description, hourly_rate, image_url, capacity, booking_mode, peak_members_override) VALUES (?,?,?,?,?,?,?,?)");
         $ins->execute([
             $court_id, $name,
             trim($data->description ?? '') ?: null,
@@ -81,6 +91,7 @@ class SubCourtController
             trim($data->image_url ?? '') ?: null,
             $capacity,
             $booking_mode,
+            $pmo,
         ]);
         $newId = (int)$this->db->lastInsertId();
         $row   = $this->db->prepare("SELECT * FROM sub_courts WHERE id=?");
@@ -106,6 +117,15 @@ class SubCourtController
         if (isset($data->image_url))   { $fields[] = 'image_url=?';   $vals[] = trim($data->image_url) ?: null; }
         if (isset($data->capacity))    { $fields[] = 'capacity=?';    $vals[] = max(1, (int)$data->capacity); }
         if (isset($data->booking_mode)){ $fields[] = 'booking_mode=?';$vals[] = in_array($data->booking_mode, ['exclusive','shared']) ? $data->booking_mode : 'exclusive'; }
+        if (property_exists($data, 'peak_members_override')) {
+            $pv = $data->peak_members_override;
+            if ($pv === null || $pv === '' || $pv === 'inherit') {
+                $fields[] = 'peak_members_override=NULL';
+            } else {
+                $fields[] = 'peak_members_override=?';
+                $vals[]   = (int)$pv ? 1 : 0;
+            }
+        }
         if ($fields) { $vals[] = $id; $this->db->prepare("UPDATE sub_courts SET ".implode(',',$fields)." WHERE id=?")->execute($vals); }
         echo json_encode(['message' => 'Updated']);
     }
