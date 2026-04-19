@@ -27,8 +27,9 @@ class Plan {
             );
             $stmt->execute([$court_id, $sub_court_id]);
         } else {
+            // No space filter → return all plans for this court (including space-specific ones)
             $stmt = $this->conn->prepare(
-                "SELECT * FROM {$this->table_name} WHERE court_id = ? AND sub_court_id IS NULL ORDER BY price ASC"
+                "SELECT * FROM {$this->table_name} WHERE court_id = ? ORDER BY price ASC"
             );
             $stmt->execute([$court_id]);
         }
