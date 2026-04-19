@@ -2,23 +2,39 @@
 
 require_once __DIR__ . '/../Models/Booking.php';
 require_once __DIR__ . '/../Models/Subscription.php';
+require_once __DIR__ . '/../PeakAccess.php';
 
 class BookingController {
 
     /**
-     * Determine if a given datetime falls within a peak window.
-     * Returns 'morning', 'evening', or null.
+     * @param array|null $subCourt sub_courts row or null
+     * @return array|null ['http'=>int,'json'=>array] when blocked
      */
-    private function getPeakType($startDatetime, $court) {
-        $time = date('H:i:s', strtotime($startDatetime));
-        $mps  = $court['morning_peak_start'] ?? '05:00:00';
-        $mpe  = $court['morning_peak_end']   ?? '09:00:00';
-        $eps  = $court['evening_peak_start'] ?? '17:00:00';
-        $epe  = $court['evening_peak_end']   ?? '21:00:00';
-
-        if ($time >= $mps && $time < $mpe) return 'morning';
-        if ($time >= $eps && $time < $epe) return 'evening';
-        return null;
+    private function peakSubscriptionViolation(array $court, ?array $subCourt, string $startTime, int $authId, bool $isWalkIn): ?array
+    {
+        if ($isWalkIn || !$court) {
+            return null;
+        }
+        if (!PeakAccess::peakMembersOnlyApplies($court, $subCourt)) {
+            return null;
+        }
+        $peakType = PeakAccess::getPeakType($startTime, $court);
+        if ($peakType === null) {
+            return null;
+        }
+        $sub    = new Subscription();
+        $active = $sub->getActive($authId, (int)$court['id']);
+        if ($active && Subscription::coversSlot($active['slot_type'], $peakType)) {
+            return null;
+        }
+        return [
+            'http' => 403,
+            'json' => [
+                'message'                 => 'Peak hours are for members only. Please subscribe to book this slot.',
+                'peak_type'               => $peakType,
+                'requires_subscription'   => true,
+            ],
+        ];
     }
 
     // DELETE /api/bookings/:id
@@ -223,21 +239,18 @@ class BookingController {
             $stmt->execute([(int)$data->court_id]);
             $court = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($court && $court['peak_members_only'] && !$isWalkIn) {
-                $peakType = $this->getPeakType($data->start_time, $court);
-                if ($peakType !== null) {
-                    $sub = new Subscription();
-                    $active = $sub->getActive($authId, (int)$data->court_id);
-                    if (!$active || !Subscription::coversSlot($active['slot_type'], $peakType)) {
-                        http_response_code(403);
-                        echo json_encode([
-                            "message" => "Peak hours are for members only. Please subscribe to book this slot.",
-                            "peak_type" => $peakType,
-                            "requires_subscription" => true
-                        ]);
-                        return;
-                    }
-                }
+            $subCourt = null;
+            if ($sub_court_id) {
+                $scStmt = $db->prepare("SELECT * FROM sub_courts WHERE id = ? AND court_id = ?");
+                $scStmt->execute([$sub_court_id, (int)$data->court_id]);
+                $subCourt = $scStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            }
+
+            $peakErr = $this->peakSubscriptionViolation($court ?: [], $subCourt, $data->start_time, $authId, $isWalkIn);
+            if ($peakErr) {
+                http_response_code($peakErr['http']);
+                echo json_encode($peakErr['json']);
+                return;
             }
 
             // Recalculate total_price server-side using pricing rules (don't trust frontend)
@@ -383,6 +396,17 @@ class BookingController {
         $booked  = [];
         $skipped = [];
 
+        $dbPeak   = Database::getConnection();
+        $courtRow = $dbPeak->prepare('SELECT * FROM courts WHERE id = ?');
+        $courtRow->execute([$court_id]);
+        $court = $courtRow->fetch(PDO::FETCH_ASSOC) ?: [];
+        $subCourt = null;
+        if ($sub_court_id) {
+            $scStmt = $dbPeak->prepare('SELECT * FROM sub_courts WHERE id = ? AND court_id = ?');
+            $scStmt->execute([$sub_court_id, $court_id]);
+            $subCourt = $scStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        }
+
         $cursor = $startDateTs;
         while ($cursor <= $limitTs) {
             $dow = (int)date('w', $cursor); // 0=Sun .. 6=Sat
@@ -391,7 +415,11 @@ class BookingController {
                 $slotStart = "$dateStr $startH";
                 $slotEnd   = "$dateStr $endH";
 
-                if ($booking_model->isSlotAvailable($court_id, $slotStart, $slotEnd, $sub_court_id)) {
+                if (!$booking_model->isSlotAvailable($court_id, $slotStart, $slotEnd, $sub_court_id)) {
+                    $skipped[] = $dateStr;
+                } elseif ($this->peakSubscriptionViolation($court, $subCourt, $slotStart, $user_id, false)) {
+                    $skipped[] = $dateStr;
+                } else {
                     $price = $this->calculateBookingPrice($court_id, $sub_court_id, $slotStart, $slotEnd);
                     $booking_model->user_id      = $user_id;
                     $booking_model->court_id     = $court_id;
@@ -406,8 +434,6 @@ class BookingController {
                     if ($booking_model->create()) {
                         $booked[] = (int)$booking_model->conn->lastInsertId();
                     }
-                } else {
-                    $skipped[] = $dateStr;
                 }
             }
             $cursor += 86400;

@@ -13,6 +13,7 @@ const toast  = useToastStore()
 
 const courtId    = route.params.id
 const courtName  = ref('')
+const courtPeakMembersOnly = ref(false)
 const spaces     = ref([])
 const loading    = ref(true)
 const saving     = ref(false)
@@ -32,10 +33,14 @@ const newCapacity = ref(1)
 const editingId       = ref(null)
 const editSaving      = ref(false)
 const editUploadLoading = ref(false)
-const editForm        = ref({ name: '', hourly_rate: '', description: '', booking_mode: 'exclusive', capacity: 1, image_url: '', imagePreview: '' })
+const editForm        = ref({ name: '', hourly_rate: '', description: '', booking_mode: 'exclusive', capacity: 1, image_url: '', imagePreview: '', peak_access: 'inherit' })
 
 const startEdit = (sc) => {
     editingId.value = sc.id
+    let peak_access = 'inherit'
+    if (sc.peak_members_override !== null && sc.peak_members_override !== undefined && sc.peak_members_override !== '') {
+        peak_access = Number(sc.peak_members_override) === 1 ? 'members' : 'public'
+    }
     editForm.value  = {
         name:         sc.name,
         hourly_rate:  sc.hourly_rate ?? '',
@@ -44,6 +49,7 @@ const startEdit = (sc) => {
         capacity:     sc.capacity || 1,
         image_url:    sc.image_url || '',
         imagePreview: sc.image_url || '',
+        peak_access,
     }
 }
 
@@ -69,6 +75,11 @@ const saveEdit = async () => {
     if (!editForm.value.name.trim()) { toast.error('Enter a name'); return }
     editSaving.value = true
     try {
+        const peakPayload = {}
+        if (editForm.value.peak_access === 'inherit') peakPayload.peak_members_override = null
+        else if (editForm.value.peak_access === 'members') peakPayload.peak_members_override = 1
+        else peakPayload.peak_members_override = 0
+
         await axios.put(`/sub-courts/${editingId.value}`, {
             owner_id:     auth.user.id,
             name:         editForm.value.name.trim(),
@@ -77,6 +88,7 @@ const saveEdit = async () => {
             image_url:    editForm.value.image_url || null,
             booking_mode: editForm.value.booking_mode,
             capacity:     editForm.value.booking_mode === 'shared' ? Math.max(1, parseInt(editForm.value.capacity) || 1) : 1,
+            ...peakPayload,
         })
         const res = await axios.get(`/sub-courts?court_id=${courtId}`)
         spaces.value = res.data.sub_courts || []
@@ -94,6 +106,7 @@ onMounted(async () => {
             axios.get(`/sub-courts?court_id=${courtId}`)
         ])
         courtName.value = courtRes.data.court?.name ?? ''
+        courtPeakMembersOnly.value = !!courtRes.data.court?.peak_members_only
         spaces.value    = spacesRes.data.sub_courts || []
     } catch { toast.error('Failed to load') }
     finally { loading.value = false }
@@ -164,6 +177,9 @@ const removeSpace = async (sc) => {
             <!-- Info banner -->
             <div class="bg-blue-50 rounded-xl px-4 py-3 text-xs text-blue-700 leading-relaxed">
                 Add individual bookable spaces — e.g. Court A/B, Lane 1/2, Table 1, Dance Room. Players can pick a specific space when booking.
+                <span v-if="!courtPeakMembersOnly" class="block mt-2 text-blue-800/90">
+                    <strong>Peak access:</strong> you can require a membership only on certain spaces during rush hours, even if the rest of the venue stays open.
+                </span>
             </div>
 
             <!-- Loading -->
@@ -243,6 +259,16 @@ const removeSpace = async (sc) => {
                                 class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:outline-none bg-slate-50" />
                             <input v-model="editForm.description" type="text" placeholder="Description (optional)"
                                 class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:outline-none bg-slate-50" />
+                            <div>
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">Peak hours (rush windows)</p>
+                                <select v-model="editForm.peak_access"
+                                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:outline-none bg-slate-50 font-semibold text-slate-700">
+                                    <option value="inherit">Same as venue {{ courtPeakMembersOnly ? '(members only at peak)' : '(open at peak)' }}</option>
+                                    <option value="members">Members only at peak (this space)</option>
+                                    <option value="public">Open to everyone at peak (this space)</option>
+                                </select>
+                                <p class="text-[10px] text-slate-400 mt-1 px-0.5">Uses the venue’s morning &amp; evening peak times from venue settings.</p>
+                            </div>
                             <div>
                                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1.5">Booking Type</p>
                                 <div class="flex gap-2">

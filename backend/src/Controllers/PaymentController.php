@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cashfree.php';
+require_once __DIR__ . '/../PeakAccess.php';
 
 class PaymentController {
 
@@ -65,18 +66,6 @@ class PaymentController {
         curl_close($ch);
 
         return ['code' => $httpCode, 'data' => json_decode($response, true)];
-    }
-
-    /** Peak-hour classification (same logic as BookingController) */
-    private function getPeakType(string $startDatetime, array $court): ?string {
-        $time = date('H:i:s', strtotime($startDatetime));
-        $mps  = $court['morning_peak_start'] ?? '05:00:00';
-        $mpe  = $court['morning_peak_end']   ?? '09:00:00';
-        $eps  = $court['evening_peak_start'] ?? '17:00:00';
-        $epe  = $court['evening_peak_end']   ?? '21:00:00';
-        if ($time >= $mps && $time < $mpe) return 'morning';
-        if ($time >= $eps && $time < $epe) return 'evening';
-        return null;
     }
 
     /** Returns true when real Cashfree credentials are not yet configured */
@@ -246,6 +235,15 @@ class PaymentController {
             $cStmt->execute([(int)$payload['court_id']]);
             $court = $cStmt->fetch(PDO::FETCH_ASSOC);
 
+            $subCourtId = isset($payload['sub_court_id']) && $payload['sub_court_id'] !== '' && $payload['sub_court_id'] !== null
+                ? (int)$payload['sub_court_id'] : null;
+            $subCourtRow = null;
+            if ($subCourtId) {
+                $scStmt = $db->prepare('SELECT * FROM sub_courts WHERE id = ? AND court_id = ?');
+                $scStmt->execute([$subCourtId, (int)$payload['court_id']]);
+                $subCourtRow = $scStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            }
+
             // Support both single booking (legacy) and multiple slots
             $slots = isset($payload['slots']) && is_array($payload['slots'])
                 ? $payload['slots']
@@ -257,14 +255,14 @@ class PaymentController {
 
             foreach ($slots as $slot) {
                 // Race-condition guard per slot
-                if (!$booking->isSlotAvailable($payload['court_id'], $slot['start_time'], $slot['end_time'])) {
+                if (!$booking->isSlotAvailable($payload['court_id'], $slot['start_time'], $slot['end_time'], $subCourtId)) {
                     $takenSlots[] = $slot['start_time'];
                     continue;
                 }
 
-                // Peak guard per slot
-                if ($court && $court['peak_members_only']) {
-                    $peakType = $this->getPeakType($slot['start_time'], $court);
+                // Peak guard per slot (court + optional space override)
+                if ($court && PeakAccess::peakMembersOnlyApplies($court, $subCourtRow)) {
+                    $peakType = PeakAccess::getPeakType($slot['start_time'], $court);
                     if ($peakType !== null) {
                         $sub    = new Subscription();
                         $active = $sub->getActive((int)$payment['user_id'], (int)$payload['court_id']);
@@ -276,12 +274,13 @@ class PaymentController {
                 }
 
                 $b = new Booking();
-                $b->user_id     = (int)$payment['user_id']; // trusted — set from token in createOrder
-                $b->court_id    = (int)$payload['court_id'];
-                $b->start_time  = $slot['start_time'];
-                $b->end_time    = $slot['end_time'];
-                $b->type        = $payload['type'] ?? 'hourly';
-                $b->total_price = $slotPrice;
+                $b->user_id      = (int)$payment['user_id']; // trusted — set from token in createOrder
+                $b->court_id     = (int)$payload['court_id'];
+                $b->sub_court_id = $subCourtId;
+                $b->start_time   = $slot['start_time'];
+                $b->end_time     = $slot['end_time'];
+                $b->type         = $payload['type'] ?? 'hourly';
+                $b->total_price  = $slotPrice;
 
                 if ($b->create()) {
                     $bookingIds[] = (int)$db->lastInsertId();

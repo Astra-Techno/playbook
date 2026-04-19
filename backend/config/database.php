@@ -7,7 +7,7 @@ class Database {
     private $pdo;
 
     // Bump this number whenever migrate() adds new tables/columns/indexes
-    private const SCHEMA_VERSION = 14;
+    private const SCHEMA_VERSION = 15;
 
     private function __construct() {
         $host    = getenv('DB_HOST') ?: 'localhost';
@@ -278,6 +278,13 @@ class Database {
 
         // Google Places / CDN image URLs exceed VARCHAR(255) (e.g. court claim from place photo_reference)
         try { $this->pdo->exec("ALTER TABLE courts MODIFY image_url TEXT NULL"); } catch(\PDOException $e){}
+
+        // Sub-court peak override + richer blocks (v15)
+        foreach ([
+            "ALTER TABLE sub_courts ADD COLUMN peak_members_override TINYINT(1) NULL DEFAULT NULL COMMENT 'NULL=inherit court,0=open at peak,1=members at peak'",
+            "ALTER TABLE blocked_slots ADD COLUMN block_kind VARCHAR(32) NOT NULL DEFAULT 'other'",
+            "ALTER TABLE blocked_slots ADD COLUMN repeat_annually TINYINT(1) NOT NULL DEFAULT 0",
+        ] as $s) { try { $this->pdo->exec($s); } catch(\PDOException $e) {} }
 
         // Stamp schema version
         $this->pdo->exec("DELETE FROM schema_version");

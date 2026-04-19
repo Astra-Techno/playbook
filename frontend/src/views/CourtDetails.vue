@@ -628,6 +628,7 @@ const handleSlotClick = (slot) => {
 }
 
 const confirmBooking = async () => {
+    if (spaces.value.length && !selectedSpace.value) { toast.error('Choose a space first'); return }
     if (!selectedDate.value || !selectedSlots.value.length) { toast.error('Choose a date and time slot'); return }
     if (!auth.isLoggedIn) { router.push('/login'); return }
 
@@ -726,6 +727,7 @@ const confirmBooking = async () => {
 }
 
 const confirmRecurring = async () => {
+    if (spaces.value.length && !selectedSpace.value) { toast.error('Choose a space first'); return }
     if (!selectedDate.value || !selectedSlots.value.length) return
     if (!recurringDays.value.length || !recurringEndDate.value) {
         toast.error('Select days and end date'); return
@@ -960,6 +962,48 @@ const subscribePlan = async (plan) => {
                 </div>
             </div>
 
+            <!-- Select space first (above tabs) — booking, memberships, and players all use this -->
+            <div v-if="spaces.length > 0" class="bg-white px-4 pt-4 pb-3 border-b border-slate-100">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-lg shrink-0">1</span>
+                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Space</h3>
+                    </div>
+                    <button v-if="selectedSpace" type="button" @click="selectedSpace = null"
+                        class="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                        <X :size="11" /> Clear
+                    </button>
+                </div>
+                <p class="text-[11px] text-slate-500 mb-2.5 leading-relaxed">
+                    Pick a court, lane, or room first — then use the tabs below for slots, memberships, or players for that space.
+                </p>
+                <div class="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1">
+                    <button v-for="sp in spaces" :key="sp.id" type="button"
+                        @click="selectedSpace = (selectedSpace?.id === sp.id ? null : sp)"
+                        class="shrink-0 flex flex-col items-start rounded-2xl border-2 overflow-hidden w-36 transition-all active:scale-[0.97]"
+                        :class="selectedSpace?.id === sp.id ? 'border-primary shadow-md shadow-primary/10' : 'border-slate-200 bg-white'">
+                        <div class="w-full h-20 bg-slate-100 flex items-center justify-center overflow-hidden">
+                            <img v-if="sp.image_url" :src="sp.image_url" class="w-full h-full object-cover" onerror="this.style.display='none'" />
+                            <LayoutGrid v-else :size="22" class="text-slate-300" />
+                        </div>
+                        <div class="p-2.5 w-full" :class="selectedSpace?.id === sp.id ? 'bg-primary text-white' : 'bg-white'">
+                            <p class="text-xs font-extrabold truncate">{{ sp.name }}</p>
+                            <p class="text-[11px] mt-0.5" :class="selectedSpace?.id === sp.id ? 'text-white/70' : 'text-slate-400'">
+                                {{ sp.hourly_rate ? `₹${sp.hourly_rate}/hr` : 'Venue rate' }}
+                            </p>
+                            <div class="flex items-center gap-1 mt-1 text-[10px] font-bold"
+                                :class="selectedSpace?.id === sp.id ? 'text-white/70' : (sp.booking_mode === 'shared' ? 'text-cyan-500' : 'text-slate-400')">
+                                <Users v-if="sp.booking_mode === 'shared'" :size="10" />
+                                <Lock v-else :size="10" />
+                                {{ sp.booking_mode === 'shared' ? `${sp.capacity} spots` : 'Exclusive' }}
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- After a space is chosen (or venue has no sub-courts), show tabs + actions -->
+            <template v-if="!spaces.length || selectedSpace">
             <!-- Tabs -->
             <div class="bg-white border-b border-slate-100 flex px-5 sticky top-0 z-30">
                 <button @click="activeTab = 'booking'"
@@ -985,100 +1029,67 @@ const subscribePlan = async (plan) => {
 
                 <!-- BOOKING TAB -->
                 <div v-if="activeTab === 'booking'">
-                    <!-- Date Picker -->
-                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Select Date</h3>
-                    <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-6">
-                        <button
-                            v-for="d in dateOptions" :key="d.value"
-                            @click="selectedDate = d.value"
-                            class="flex flex-col items-center px-3.5 py-3 rounded-2xl border-2 min-w-[58px] transition-all shrink-0 relative"
-                            :class="selectedDate === d.value
-                                ? 'bg-primary border-primary text-white'
-                                : 'bg-white border-slate-200 text-slate-600'">
-                            <span class="text-[10px] font-bold uppercase tracking-wider leading-none mb-1"
-                                :class="selectedDate === d.value ? 'text-white/70' : 'text-slate-400'">
-                                {{ d.weekday }}
-                            </span>
-                            <span class="text-xl font-extrabold leading-none">{{ d.day }}</span>
-                            <span v-if="d.isToday || d.isTomorrow"
-                                class="text-[9px] font-bold mt-1 leading-none"
-                                :class="selectedDate === d.value ? 'text-white/70' : 'text-primary'">
-                                {{ d.isToday ? 'TODAY' : 'TMR' }}
-                            </span>
-                            <!-- Busy day dot -->
-                            <span v-else-if="busyDays.includes(d.day)"
-                                class="absolute bottom-1.5 w-1 h-1 rounded-full"
-                                :class="selectedDate === d.value ? 'bg-white/60' : 'bg-amber-400'">
-                            </span>
-                        </button>
-                    </div>
-
-                    <!-- Space Picker (only when venue has defined spaces) -->
-                    <div v-if="spaces.length > 0" class="mb-5">
-                        <div class="flex items-center justify-between mb-2.5">
-                            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Space</h3>
-                            <button v-if="selectedSpace" @click="selectedSpace = null"
-                                class="text-[11px] font-bold text-slate-400 flex items-center gap-1">
-                                <X :size="11" /> Clear
+                    <!-- Step 2: Date (only after space is chosen when venue has multiple spaces) -->
+                    <template v-if="!spaces.length || selectedSpace">
+                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <span v-if="spaces.length" class="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-lg shrink-0">2</span>
+                            Select Date
+                        </h3>
+                        <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-6">
+                            <button
+                                v-for="d in dateOptions" :key="d.value"
+                                type="button"
+                                @click="selectedDate = d.value"
+                                class="flex flex-col items-center px-3.5 py-3 rounded-2xl border-2 min-w-[58px] transition-all shrink-0 relative"
+                                :class="selectedDate === d.value
+                                    ? 'bg-primary border-primary text-white'
+                                    : 'bg-white border-slate-200 text-slate-600'">
+                                <span class="text-[10px] font-bold uppercase tracking-wider leading-none mb-1"
+                                    :class="selectedDate === d.value ? 'text-white/70' : 'text-slate-400'">
+                                    {{ d.weekday }}
+                                </span>
+                                <span class="text-xl font-extrabold leading-none">{{ d.day }}</span>
+                                <span v-if="d.isToday || d.isTomorrow"
+                                    class="text-[9px] font-bold mt-1 leading-none"
+                                    :class="selectedDate === d.value ? 'text-white/70' : 'text-primary'">
+                                    {{ d.isToday ? 'TODAY' : 'TMR' }}
+                                </span>
+                                <span v-else-if="busyDays.includes(d.day)"
+                                    class="absolute bottom-1.5 w-1 h-1 rounded-full"
+                                    :class="selectedDate === d.value ? 'bg-white/60' : 'bg-amber-400'">
+                                </span>
                             </button>
                         </div>
-                        <div class="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1">
-                            <button v-for="sp in spaces" :key="sp.id"
-                                @click="selectedSpace = (selectedSpace?.id === sp.id ? null : sp)"
-                                class="shrink-0 flex flex-col items-start rounded-2xl border-2 overflow-hidden w-36 transition-all active:scale-[0.97]"
-                                :class="selectedSpace?.id === sp.id ? 'border-primary shadow-md shadow-primary/10' : 'border-slate-200 bg-white'">
-                                <!-- Space thumbnail -->
-                                <div class="w-full h-20 bg-slate-100 flex items-center justify-center overflow-hidden">
-                                    <img v-if="sp.image_url" :src="sp.image_url" class="w-full h-full object-cover" onerror="this.style.display='none'" />
-                                    <LayoutGrid v-else :size="22" class="text-slate-300" />
-                                </div>
-                                <div class="p-2.5 w-full" :class="selectedSpace?.id === sp.id ? 'bg-primary text-white' : 'bg-white'">
-                                    <p class="text-xs font-extrabold truncate">{{ sp.name }}</p>
-                                    <p class="text-[11px] mt-0.5" :class="selectedSpace?.id === sp.id ? 'text-white/70' : 'text-slate-400'">
-                                        {{ sp.hourly_rate ? `₹${sp.hourly_rate}/hr` : 'Venue rate' }}
-                                    </p>
-                                    <div class="flex items-center gap-1 mt-1 text-[10px] font-bold"
-                                        :class="selectedSpace?.id === sp.id ? 'text-white/70' : (sp.booking_mode === 'shared' ? 'text-cyan-500' : 'text-slate-400')">
-                                        <Users v-if="sp.booking_mode === 'shared'" :size="10" />
-                                        <Lock v-else :size="10" />
-                                        {{ sp.booking_mode === 'shared' ? `${sp.capacity} spots` : 'Exclusive' }}
-                                    </div>
-                                </div>
-                            </button>
+                    </template>
+
+                    <!-- Step 3: Time slots -->
+                    <div v-if="!spaces.length || selectedSpace">
+                        <div class="flex items-center justify-between mb-3 flex-wrap gap-1">
+                            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                <span v-if="spaces.length" class="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-lg shrink-0">3</span>
+                                Select Time
+                            </h3>
+                            <div v-if="selectedDate" class="flex items-center gap-2 text-[10px] font-semibold flex-wrap">
+                                <span class="flex items-center gap-1 text-primary">
+                                    <span class="w-3 h-3 rounded-sm bg-primary inline-block"></span> Chosen
+                                </span>
+                                <span class="flex items-center gap-1 text-slate-400">
+                                    <span class="w-3 h-3 rounded-sm bg-slate-200 inline-block"></span> Booked
+                                </span>
+                                <span v-if="usePeakSlotLayout" class="flex items-center gap-1 text-amber-600">
+                                    <span class="w-3 h-3 rounded-sm bg-amber-200 inline-block border border-amber-300"></span>
+                                    <Lock :size="10" /> Peak
+                                </span>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Slot Grid -->
-                    <div class="flex items-center justify-between mb-3 flex-wrap gap-1">
-                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Time</h3>
-                        <div v-if="selectedDate" class="flex items-center gap-2 text-[10px] font-semibold flex-wrap">
-                            <span class="flex items-center gap-1 text-primary">
-                                <span class="w-3 h-3 rounded-sm bg-primary inline-block"></span> Chosen
-                            </span>
-                            <span class="flex items-center gap-1 text-slate-400">
-                                <span class="w-3 h-3 rounded-sm bg-slate-200 inline-block"></span> Booked
-                            </span>
-                            <span v-if="usePeakSlotLayout" class="flex items-center gap-1 text-amber-600">
-                                <span class="w-3 h-3 rounded-sm bg-amber-200 inline-block border border-amber-300"></span>
-                                <Lock :size="10" /> Peak
-                            </span>
+                        <div v-if="!selectedDate"
+                            class="bg-slate-100 rounded-2xl flex flex-col items-center py-10 mb-6">
+                            <Calendar :size="30" class="text-slate-300 mb-2" />
+                            <p class="text-sm text-slate-400 font-medium">Select a date first</p>
                         </div>
-                    </div>
 
-                    <div v-if="!selectedDate"
-                        class="bg-slate-100 rounded-2xl flex flex-col items-center py-10 mb-6">
-                        <Calendar :size="30" class="text-slate-300 mb-2" />
-                        <p class="text-sm text-slate-400 font-medium">Select a date first</p>
-                    </div>
-
-                    <div v-else-if="spaces.length > 0 && !selectedSpace"
-                        class="bg-slate-100 rounded-2xl flex flex-col items-center py-10 mb-6">
-                        <LayoutGrid :size="30" class="text-slate-300 mb-2" />
-                        <p class="text-sm text-slate-400 font-medium">Select a space above</p>
-                    </div>
-
-                    <!-- Slot Grid -->
-                    <div v-else class="mb-6 space-y-4">
+                        <div v-else class="mb-6 space-y-4">
 
                         <!-- Flat grid when peak grouping not used -->
                         <template v-if="!usePeakSlotLayout">
@@ -1192,6 +1203,7 @@ const subscribePlan = async (plan) => {
                                 </div>
                             </div>
                         </template>
+                        </div>
                     </div>
 
                     <!-- Booking Summary -->
@@ -1338,7 +1350,7 @@ const subscribePlan = async (plan) => {
                 </div>
 
                 <!-- MEMBERSHIP TAB -->
-                <div v-else>
+                <div v-else-if="activeTab === 'membership'">
 
                     <!-- Active subscription banner -->
                     <div v-if="activeSub"
@@ -1367,17 +1379,6 @@ const subscribePlan = async (plan) => {
                                 Choose a plan below to unlock access.
                             </p>
                         </div>
-                    </div>
-
-                    <!-- Space selector hint when spaces exist but none is selected -->
-                    <div v-if="spaces.length && !selectedSpace"
-                        class="mb-4 bg-slate-50 rounded-2xl p-4 flex flex-wrap gap-2">
-                        <p class="w-full text-xs font-bold text-slate-500 mb-1">Select a space to view its plans:</p>
-                        <button v-for="sp in spaces" :key="sp.id"
-                            @click="selectedSpace = sp"
-                            class="text-xs font-bold px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-600 active:scale-95 transition">
-                            {{ sp.name }}
-                        </button>
                     </div>
 
                     <div v-if="filteredPlans.length === 0" class="flex flex-col items-center py-12 text-center">
@@ -1441,21 +1442,24 @@ const subscribePlan = async (plan) => {
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- PLAYERS TAB -->
-            <div v-if="activeTab === 'players'" class="py-4">
-                <div class="text-center py-6 px-4">
-                    <div class="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                        <Users :size="28" class="text-primary" />
+                <!-- PLAYERS TAB -->
+                <div v-else-if="activeTab === 'players'" class="py-4">
+                    <p v-if="spaces.length && selectedSpace" class="text-[11px] text-slate-500 text-center mb-4 px-2">
+                        Match board for <strong>{{ selectedSpace.name }}</strong> — change space above anytime.
+                    </p>
+                    <div class="text-center py-6 px-4">
+                        <div class="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                            <Users :size="28" class="text-primary" />
+                        </div>
+                        <p class="font-extrabold text-slate-800 text-base">Find Players</p>
+                        <p class="text-sm text-slate-400 mt-1 mb-5">See who's looking for game partners at this venue</p>
+                        <button @click="auth.isLoggedIn ? matchSheet = true : router.push('/login')"
+                            class="bg-primary text-white font-bold px-8 py-3 rounded-2xl text-sm flex items-center gap-2 mx-auto">
+                            <Users :size="14" />
+                            Open Match Board
+                        </button>
                     </div>
-                    <p class="font-extrabold text-slate-800 text-base">Find Players</p>
-                    <p class="text-sm text-slate-400 mt-1 mb-5">See who's looking for game partners at this venue</p>
-                    <button @click="auth.isLoggedIn ? matchSheet = true : router.push('/login')"
-                        class="bg-primary text-white font-bold px-8 py-3 rounded-2xl text-sm flex items-center gap-2 mx-auto">
-                        <Users :size="14" />
-                        Open Match Board
-                    </button>
                 </div>
             </div>
 
@@ -1501,7 +1505,8 @@ const subscribePlan = async (plan) => {
                         <span v-else-if="selectedSlots.length && selectedDate">
                             Confirm {{ selectedSlots.length > 1 ? selectedSlots.length + ' Slots' : 'Booking' }} · ₹{{ totalPrice }}
                         </span>
-                        <span v-else>Select a date &amp; time slot</span>
+                        <span v-else-if="!selectedDate">Select a date</span>
+                        <span v-else>Select time slots</span>
                     </button>
                     <button v-else
                         @click="confirmRecurring"
@@ -1520,6 +1525,15 @@ const subscribePlan = async (plan) => {
                     <Crown :size="17" />
                     Book a Slot (Member Access)
                 </button>
+            </div>
+            </template>
+
+            <div v-else class="px-4 py-10 pb-40 text-center bg-white border-b border-slate-100">
+                <LayoutGrid :size="34" class="text-slate-300 mx-auto mb-3" />
+                <p class="text-sm font-semibold text-slate-800">Choose a space to continue</p>
+                <p class="text-xs text-slate-500 mt-2 max-w-[280px] mx-auto leading-relaxed">
+                    Book a Slot, Memberships, and Players unlock after you pick a court in <strong>Select Space</strong> above.
+                </p>
             </div>
         </template>
     </div>
