@@ -351,10 +351,21 @@ const slotMeta = {
     unlimited: { label: 'Unlimited', icon: Infinity, cls: 'bg-slate-100 text-slate-600' },
 }
 
+// Plans filtered by the currently selected space (sub-court)
+// If a space is selected → show only that space's plans
+// If no space selected → show court-level plans (sub_court_id null); fall back to all if none exist
+const filteredPlans = computed(() => {
+    if (selectedSpace.value) {
+        return plans.value.filter(p => String(p.sub_court_id) === String(selectedSpace.value.id))
+    }
+    const courtLevel = plans.value.filter(p => !p.sub_court_id)
+    return courtLevel.length ? courtLevel : plans.value
+})
+
 // Which plans are relevant for the locked slot type (to highlight on membership tab)
 const recommendedPlanIds = computed(() => {
-    if (!lockedSlotPeak.value || !plans.value.length) return []
-    return plans.value
+    if (!lockedSlotPeak.value || !filteredPlans.value.length) return []
+    return filteredPlans.value
         .filter(p => {
             const st = p.slot_type || 'unlimited'
             return st === 'unlimited' || st === 'full_day' || st === lockedSlotPeak.value
@@ -1300,14 +1311,27 @@ const subscribePlan = async (plan) => {
                         </div>
                     </div>
 
-                    <div v-if="plans.length === 0" class="flex flex-col items-center py-12 text-center">
+                    <!-- Space selector hint when spaces exist but none is selected -->
+                    <div v-if="spaces.length && !selectedSpace"
+                        class="mb-4 bg-slate-50 rounded-2xl p-4 flex flex-wrap gap-2">
+                        <p class="w-full text-xs font-bold text-slate-500 mb-1">Select a space to view its plans:</p>
+                        <button v-for="sp in spaces" :key="sp.id"
+                            @click="selectedSpace = sp"
+                            class="text-xs font-bold px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-600 active:scale-95 transition">
+                            {{ sp.name }}
+                        </button>
+                    </div>
+
+                    <div v-if="filteredPlans.length === 0" class="flex flex-col items-center py-12 text-center">
                         <Info :size="40" class="text-slate-300 mb-3" />
                         <p class="font-bold text-slate-600">No plans yet</p>
-                        <p class="text-sm text-slate-400 mt-1">This court hasn't set up membership plans yet.</p>
+                        <p class="text-sm text-slate-400 mt-1">
+                            {{ selectedSpace ? selectedSpace.name + ' has no membership plans.' : 'This court hasn\'t set up membership plans yet.' }}
+                        </p>
                     </div>
 
                     <div v-else class="space-y-4">
-                        <div v-for="(plan, i) in plans" :key="plan.id"
+                        <div v-for="(plan, i) in filteredPlans" :key="plan.id"
                             class="bg-white rounded-2xl p-5 border-2 relative overflow-hidden transition-all"
                             :class="[
                                 recommendedPlanIds.includes(plan.id) && !activeSub ? 'border-amber-400 ring-2 ring-amber-200' :
