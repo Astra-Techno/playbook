@@ -2,7 +2,6 @@
 
 require_once __DIR__ . '/../Models/Booking.php';
 require_once __DIR__ . '/../Models/Subscription.php';
-require_once __DIR__ . '/WaitlistController.php';
 
 class BookingController {
 
@@ -54,15 +53,6 @@ class BookingController {
 
         $upd = $booking->conn->prepare("UPDATE bookings SET status='cancelled' WHERE id=?");
         if ($upd->execute([$id])) {
-            // Notify first waitlisted user for this slot
-            WaitlistController::notifyNext(
-                $booking->conn,
-                (int)$b['court_id'],
-                $b['sub_court_id'] ? (int)$b['sub_court_id'] : null,
-                date('Y-m-d', strtotime($b['start_time'])),
-                date('H:i:s', strtotime($b['start_time'])),
-                date('H:i:s', strtotime($b['end_time']))
-            );
             http_response_code(200);
             echo json_encode(["message" => "Booking cancelled"]);
         } else {

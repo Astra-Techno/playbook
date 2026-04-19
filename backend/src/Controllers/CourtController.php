@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../Models/Court.php';
+require_once __DIR__ . '/../Models/Booking.php';
 
 class CourtController {
 
@@ -81,6 +82,109 @@ class CourtController {
         $row['review_count'] = (int)$row['review_count'];
         http_response_code(200);
         echo json_encode(['court' => $row]);
+    }
+
+    /**
+     * GET /courts/available-at?date=YYYY-MM-DD&start=HH:MM&duration_minutes=60&lat=&lng=&radius=25
+     * Public — courts near lat/lng with at least one bookable unit free for the window.
+     */
+    public function availableAt() {
+        $date     = $_GET['date'] ?? '';
+        $startT   = trim($_GET['start'] ?? '');
+        $duration = max(15, min(24 * 60, (int)($_GET['duration_minutes'] ?? 60)));
+        $lat      = isset($_GET['lat']) ? (float)$_GET['lat'] : null;
+        $lng      = isset($_GET['lng']) ? (float)$_GET['lng'] : null;
+        $radius   = isset($_GET['radius']) ? (int)$_GET['radius'] : 25;
+
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Invalid date — use YYYY-MM-DD']);
+            return;
+        }
+        if ($startT === '' || !preg_match('/^\d{1,2}:\d{2}(:\d{2})?$/', $startT)) {
+            http_response_code(400);
+            echo json_encode(['message' => 'start is required — use HH:MM']);
+            return;
+        }
+        if ($lat === null || $lng === null) {
+            http_response_code(400);
+            echo json_encode(['message' => 'lat and lng are required']);
+            return;
+        }
+
+        if (strlen($startT) <= 5) {
+            $startT .= ':00';
+        }
+
+        $start_dt = $date . ' ' . $startT;
+        if (strtotime($start_dt) === false) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Invalid datetime']);
+            return;
+        }
+        $end_dt = date('Y-m-d H:i:s', strtotime($start_dt) + $duration * 60);
+
+        $booking = new Booking();
+        $court   = new Court();
+        $stmt    = $court->read(null, 'All', null, $lat, $lng, $radius, false);
+
+        $records = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if (!$this->courtOpenForWindow($row, $start_dt, $end_dt)) {
+                continue;
+            }
+            if (!$this->courtHasFreeSlot($booking, (int)$row['id'], $start_dt, $end_dt)) {
+                continue;
+            }
+            $records[] = [
+                'id'             => (int)$row['id'],
+                'name'           => $row['name'],
+                'type'           => $row['type'],
+                'location'       => $row['location'],
+                'hourly_rate'    => $row['hourly_rate'],
+                'image_url'      => $row['image_url'],
+                'lat'            => $row['lat'],
+                'lng'            => $row['lng'],
+                'distance_km'    => isset($row['distance']) ? round((float)$row['distance'], 1) : null,
+                'avg_rating'     => isset($row['avg_rating']) && $row['avg_rating'] !== null ? round((float)$row['avg_rating'], 1) : null,
+                'review_count'   => (int)($row['review_count'] ?? 0),
+            ];
+        }
+
+        http_response_code(200);
+        echo json_encode([
+            'window'  => ['start' => $start_dt, 'end' => $end_dt, 'duration_minutes' => $duration],
+            'records' => $records,
+        ]);
+    }
+
+    private function courtOpenForWindow(array $court, string $start_dt, string $end_dt): bool {
+        $open  = substr($court['open_time'] ?? '06:00:00', 0, 8);
+        $close = substr($court['close_time'] ?? '22:00:00', 0, 8);
+        $t1    = date('H:i:s', strtotime($start_dt));
+        $t2    = date('H:i:s', strtotime($end_dt));
+        if (date('Y-m-d', strtotime($start_dt)) !== date('Y-m-d', strtotime($end_dt))) {
+            return false;
+        }
+        if ($t2 <= $t1) {
+            return false;
+        }
+        return $t1 >= $open && $t2 <= $close;
+    }
+
+    private function courtHasFreeSlot(Booking $booking, int $court_id, string $start_dt, string $end_dt): bool {
+        $stmt = $booking->conn->prepare('SELECT id FROM sub_courts WHERE court_id = ? ORDER BY id');
+        $stmt->execute([$court_id]);
+        $ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        if (empty($ids)) {
+            return $booking->isSlotAvailable($court_id, $start_dt, $end_dt, null);
+        }
+        foreach ($ids as $sid) {
+            if ($booking->isSlotAvailable($court_id, $start_dt, $end_dt, (int)$sid)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // POST /api/courts

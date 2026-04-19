@@ -9,7 +9,7 @@ import {
     Calendar, CheckCircle2, XCircle, Info,
     Wind, Flag, Target, Activity, CircleDot, Layers3, Dumbbell, Waves, Swords,
     Share2, Heart, Lock, Sun, Moon, Crown, Infinity, BadgeCheck,
-    UserPlus, X, Search, Loader2, Users, LayoutGrid, RefreshCw, BellRing
+    UserPlus, X, Search, Loader2, Users, LayoutGrid, RefreshCw
 } from 'lucide-vue-next'
 import MatchSheet from '../components/MatchSheet.vue'
 
@@ -58,9 +58,8 @@ const recurringDays    = ref([])   // day-of-week numbers 0–6
 const recurringEndDate = ref('')
 const recurringLoading = ref(false)
 
-// Waitlist prompt
-const waitlistPrompt   = ref({ show: false, slotStart: '', slotEnd: '' })
-const waitlistLoading  = ref(false)
+// Slot taken — offer “find other venues free at this time”
+const slotConflictPrompt = ref({ show: false, slotStart: '', slotEnd: '' })
 
 // Add Players modal — shown after a successful booking
 const addPlayers = ref({
@@ -634,9 +633,8 @@ const confirmBooking = async () => {
             if (err.response?.status === 409) {
                 const r = await axios.get(`/bookings?court_id=${court.value.id}&date=${selectedDate.value}`)
                 bookedSlots.value = r.data.records || []
-                // Show waitlist prompt for the first conflicting slot
                 if (slots[0]) {
-                    waitlistPrompt.value = { show: true, slotStart: slots[0].start_time, slotEnd: slots[0].end_time }
+                    slotConflictPrompt.value = { show: true, slotStart: slots[0].start_time, slotEnd: slots[0].end_time }
                 } else {
                     toast.error('One or more slots were just taken — please reselect')
                 }
@@ -716,23 +714,31 @@ const confirmRecurring = async () => {
     } finally { recurringLoading.value = false }
 }
 
-const joinWaitlist = async () => {
-    const { slotStart, slotEnd } = waitlistPrompt.value
-    waitlistLoading.value = true
-    try {
-        await axios.post('/waitlist', {
-            user_id:      auth.user?.id,
-            court_id:     court.value.id,
-            sub_court_id: selectedSpace.value?.id || null,
-            booking_date: selectedDate.value,
-            start_time:   slotStart.split(' ')[1] || slotStart,
-            end_time:     slotEnd.split(' ')[1] || slotEnd,
-        })
-        toast.success("You're on the waitlist! We'll notify you if this slot opens.")
-        waitlistPrompt.value.show = false
-    } catch (err) {
-        toast.error(err.response?.data?.message || 'Failed to join waitlist')
-    } finally { waitlistLoading.value = false }
+const goFindOtherVenues = () => {
+    const { slotStart, slotEnd } = slotConflictPrompt.value
+    slotConflictPrompt.value.show = false
+    const d = selectedDate.value
+    let startHM = ''
+    if (slotStart) {
+        if (slotStart.includes(' ')) startHM = slotStart.split(' ')[1].slice(0, 5)
+        else if (slotStart.includes('T')) startHM = slotStart.slice(11, 16)
+    }
+    if (!startHM) startHM = '18:00'
+    let duration = 60
+    if (slotStart && slotEnd) {
+        const ms = new Date(slotEnd.replace(' ', 'T')).getTime() - new Date(slotStart.replace(' ', 'T')).getTime()
+        if (ms > 0) duration = Math.min(240, Math.max(15, Math.round(ms / 60000)))
+    }
+    const q = {
+        date: d,
+        start: startHM,
+        duration: String(duration),
+    }
+    if (court.value?.lat != null && court.value?.lng != null) {
+        q.lat = String(court.value.lat)
+        q.lng = String(court.value.lng)
+    }
+    router.push({ path: '/find-courts', query: q })
 }
 
 const subscribePlan = async (plan) => {
@@ -1607,7 +1613,7 @@ const subscribePlan = async (plan) => {
 
     <MatchSheet v-if="court" v-model="matchSheet" :court="court" />
 
-    <!-- Waitlist Prompt ──────────────────────────────────────────────────── -->
+    <!-- Slot taken — find other venues at this time ───────────────────────── -->
     <Transition
         enter-active-class="transition duration-300 ease-out"
         enter-from-class="opacity-0"
@@ -1615,27 +1621,26 @@ const subscribePlan = async (plan) => {
         leave-active-class="transition duration-150 ease-in"
         leave-from-class="opacity-100"
         leave-to-class="opacity-0">
-        <div v-if="waitlistPrompt.show" class="fixed inset-0 bg-black/50 z-[60] flex items-end" @click.self="waitlistPrompt.show = false">
+        <div v-if="slotConflictPrompt.show" class="fixed inset-0 bg-black/50 z-[60] flex items-end" @click.self="slotConflictPrompt.show = false">
             <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-10">
                 <div class="flex items-center justify-between mb-3">
-                    <div class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                        <BellRing :size="20" class="text-amber-500" />
+                    <div class="w-10 h-10 bg-primary/15 rounded-full flex items-center justify-center">
+                        <MapPin :size="20" class="text-primary" />
                     </div>
-                    <button @click="waitlistPrompt.show = false" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+                    <button @click="slotConflictPrompt.show = false" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
                         <X :size="16" class="text-slate-500" />
                     </button>
                 </div>
-                <h3 class="font-black text-slate-900 text-lg mb-1">Slot is taken</h3>
-                <p class="text-sm text-slate-500 mb-5">Join the waitlist and we'll notify you instantly if this slot becomes available.</p>
+                <h3 class="font-black text-slate-900 text-lg mb-1">Slot just taken</h3>
+                <p class="text-sm text-slate-500 mb-5">See other venues near this one that still have space for the same time.</p>
                 <div class="flex gap-3">
-                    <button @click="waitlistPrompt.show = false" class="flex-1 py-3.5 rounded-2xl bg-slate-100 text-slate-700 font-bold text-sm active:scale-95 transition-transform">
+                    <button @click="slotConflictPrompt.show = false" class="flex-1 py-3.5 rounded-2xl bg-slate-100 text-slate-700 font-bold text-sm active:scale-95 transition-transform">
                         Dismiss
                     </button>
-                    <button @click="joinWaitlist" :disabled="waitlistLoading"
-                        class="flex-1 py-3.5 rounded-2xl bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform disabled:opacity-60">
-                        <Loader2 v-if="waitlistLoading" :size="16" class="animate-spin" />
-                        <BellRing v-else :size="16" />
-                        Join Waitlist
+                    <button @click="goFindOtherVenues"
+                        class="flex-1 py-3.5 rounded-2xl bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                        <MapPin :size="16" />
+                        Find available
                     </button>
                 </div>
             </div>

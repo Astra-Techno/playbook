@@ -1,10 +1,10 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { ChevronLeft, X, MapPin, Star, IndianRupee, Navigation, Lock, Bell } from 'lucide-vue-next'
+import { ChevronLeft, X, MapPin, Star, IndianRupee, Navigation, Lock, Bell, Clock, Loader2 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 
 delete L.Icon.Default.prototype._getIconUrl
@@ -25,13 +25,36 @@ const loading   = ref(true)
 const locating  = ref(false)
 const requesting = ref(false)
 
-let map = null
-const markers = []
+function defaultAvailTime() {
+    const d = new Date()
+    d.setMinutes(Math.ceil(d.getMinutes() / 15) * 15, 0, 0)
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
 
+/** When on, markers reflect /courts/available-at for map center + chosen window */
+const showAvailability = ref(false)
+const availDate     = ref(new Date().toISOString().slice(0, 10))
+const availTime     = ref(defaultAvailTime())
+const availDuration = ref(60)
+const availableIds  = ref(new Set())
+const availabilityLoading = ref(false)
+
+let map = null
+let courtLayerGroup = null
+let ghostLayerGroup = null
+
+const courtsOnMap = computed(() => courts.value.filter(c => c.lat && c.lng))
 const totalOnMap = computed(() =>
-    courts.value.filter(c => c.lat && c.lng).length +
+    courtsOnMap.value.length +
     places.value.filter(p => p.lat && p.lng).length
 )
+
+const availabilityLabel = computed(() => {
+    if (!showAvailability.value) return ''
+    const n = availableIds.value.size
+    const t = courtsOnMap.value.length
+    return `${n} free · ${t} venues`
+})
 
 const sportColor = {
     shuttle: '#7c3aed', turf: '#16a34a', gym: '#dc2626',
@@ -56,6 +79,24 @@ const makeIcon = (type) => L.divIcon({
     iconSize: [36, 36], iconAnchor: [18, 36], popupAnchor: [0, -38],
 })
 
+// Has a free slot for the selected window — emerald ring
+const makeAvailableIcon = (type) => L.divIcon({
+    className: '',
+    html: `<div style="background:${sportColor[type] || sportColor.other};width:38px;height:38px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #10b981;box-shadow:0 0 0 3px rgba(16,185,129,0.35),0 4px 14px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;">
+        <span style="transform:rotate(45deg);font-size:14px;line-height:1;">${sportEmoji[type] || '🏟️'}</span>
+    </div>`,
+    iconSize: [38, 38], iconAnchor: [19, 38], popupAnchor: [0, -40],
+})
+
+// Filter on but no free slot — muted
+const makeMutedCourtIcon = (type) => L.divIcon({
+    className: '',
+    html: `<div style="background:#cbd5e1;width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #e2e8f8;box-shadow:0 2px 6px rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;opacity:0.55;">
+        <span style="transform:rotate(45deg);font-size:12px;line-height:1;filter:grayscale(0.3);">${sportEmoji[type] || '🏟️'}</span>
+    </div>`,
+    iconSize: [32, 32], iconAnchor: [16, 32], popupAnchor: [0, -34],
+})
+
 // Ghost place marker — grey teardrop with lock
 const makeGhostIcon = (type) => L.divIcon({
     className: '',
@@ -65,6 +106,65 @@ const makeGhostIcon = (type) => L.divIcon({
     iconSize: [30, 30], iconAnchor: [15, 30], popupAnchor: [0, -32],
 })
 
+const pickCourtIcon = (court) => {
+    if (!showAvailability.value) return makeIcon(court.type)
+    if (availableIds.value.has(court.id)) return makeAvailableIcon(court.type)
+    return makeMutedCourtIcon(court.type)
+}
+
+const replotCourts = () => {
+    if (!map || !courtLayerGroup) return
+    courtLayerGroup.clearLayers()
+    courtsOnMap.value.forEach((court) => {
+        const isFree = showAvailability.value && availableIds.value.has(court.id)
+        const m = L.marker([court.lat, court.lng], {
+            icon: pickCourtIcon(court),
+            zIndexOffset: isFree ? 250 : (showAvailability.value ? 40 : 100),
+        })
+            .addTo(courtLayerGroup)
+            .bindTooltip(
+                showAvailability.value && isFree ? `${court.name} · Free` : court.name,
+                { permanent: true, direction: 'bottom', offset: [0, 6], className: 'court-label' },
+            )
+            .on('click', () => { selected.value = court; selectedPlace.value = null })
+    })
+}
+
+const fetchAvailabilityForMapCenter = async () => {
+    if (!map || !showAvailability.value) return
+    const c = map.getCenter()
+    availabilityLoading.value = true
+    try {
+        const start = availTime.value.length === 5 ? availTime.value : availTime.value.slice(0, 5)
+        const res = await axios.get('/courts/available-at', {
+            params: {
+                date: availDate.value,
+                start,
+                duration_minutes: availDuration.value,
+                lat: c.lat,
+                lng: c.lng,
+                radius: 25,
+            },
+        })
+        availableIds.value = new Set((res.data.records || []).map((r) => r.id))
+    } catch {
+        availableIds.value = new Set()
+    } finally {
+        availabilityLoading.value = false
+    }
+    replotCourts()
+}
+
+watch(showAvailability, async (on) => {
+    if (!map || !courtLayerGroup) return
+    if (on) {
+        await fetchAvailabilityForMapCenter()
+    } else {
+        availableIds.value = new Set()
+        replotCourts()
+    }
+})
+
 const initMap = async () => {
     map = L.map(mapEl.value, { zoomControl: false }).setView([20.5937, 78.9629], 5)
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -72,24 +172,20 @@ const initMap = async () => {
     }).addTo(map)
     L.control.zoom({ position: 'topright' }).addTo(map)
 
+    courtLayerGroup = L.featureGroup().addTo(map)
+    ghostLayerGroup = L.featureGroup().addTo(map)
+
     // Load courts
     try {
         const res = await axios.get('/courts')
         courts.value = res.data.records || []
     } catch { courts.value = [] }
 
-    // Plot active court markers
-    const plotted = courts.value.filter(c => c.lat && c.lng)
-    plotted.forEach(court => {
-        const m = L.marker([court.lat, court.lng], { icon: makeIcon(court.type), zIndexOffset: 100 })
-            .addTo(map)
-            .bindTooltip(court.name, { permanent: true, direction: 'bottom', offset: [0, 6], className: 'court-label' })
-            .on('click', () => { selected.value = court; selectedPlace.value = null })
-        markers.push(m)
-    })
+    replotCourts()
 
-    if (plotted.length > 0) {
-        map.fitBounds(L.featureGroup(markers).getBounds().pad(0.3))
+    if (courtLayerGroup.getLayers().length) {
+        const b = courtLayerGroup.getBounds()
+        if (b.isValid()) map.fitBounds(b.pad(0.3))
     }
 
     loading.value = false
@@ -101,17 +197,23 @@ const initMap = async () => {
             const res = await axios.get(`/nearby-places?lat=${latlng[0]}&lng=${latlng[1]}&user_id=${userId}`)
             places.value = res.data.places || []
             plotGhostPlaces()
+            const nMarkers = courtLayerGroup.getLayers().length + ghostLayerGroup.getLayers().length
+            if (nMarkers > 0) {
+                const b = L.featureGroup([courtLayerGroup, ghostLayerGroup]).getBounds()
+                if (b.isValid()) map.fitBounds(b.pad(0.25))
+            }
         } catch { /* ghost places optional */ }
+        if (showAvailability.value) await fetchAvailabilityForMapCenter()
     })
 }
 
 const plotGhostPlaces = () => {
-    places.value.filter(p => p.lat && p.lng).forEach(place => {
-        const m = L.marker([place.lat, place.lng], { icon: makeGhostIcon(place.type), zIndexOffset: 0 })
-            .addTo(map)
+    ghostLayerGroup.clearLayers()
+    places.value.filter(p => p.lat && p.lng).forEach((place) => {
+        L.marker([place.lat, place.lng], { icon: makeGhostIcon(place.type), zIndexOffset: 0 })
+            .addTo(ghostLayerGroup)
             .bindTooltip(place.name, { permanent: false, direction: 'bottom', offset: [0, 4], className: 'ghost-label' })
             .on('click', () => { selectedPlace.value = place; selected.value = null })
-        markers.push(m)
     })
 }
 
@@ -151,25 +253,54 @@ onMounted(initMap)
 onUnmounted(() => { if (map) map.remove() })
 
 const goToCourt = (court) => router.push(`/courts/${court.id}`)
+
+const refreshAvailability = () => {
+    if (showAvailability.value) fetchAvailabilityForMapCenter()
+}
 </script>
 
 <template>
     <div class="relative w-full h-full flex flex-col">
 
         <!-- Top bar -->
-        <div class="absolute top-0 inset-x-0 z-[400] px-4 pt-12 pb-3 pointer-events-none">
+        <div class="absolute top-0 inset-x-0 z-[400] px-4 pt-12 pb-2 pointer-events-none space-y-2">
             <div class="flex items-center gap-2 pointer-events-auto">
                 <button @click="router.back()"
                     class="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center shrink-0">
                     <ChevronLeft :size="20" :stroke-width="2.5" class="text-slate-700" />
                 </button>
-                <div class="flex-1 bg-white rounded-2xl shadow-md px-4 py-2.5 flex items-center gap-2">
+                <div class="flex-1 bg-white rounded-2xl shadow-md px-4 py-2.5 flex items-center gap-2 min-w-0">
                     <MapPin :size="15" class="text-primary shrink-0" />
-                    <span class="text-sm font-semibold text-slate-700">Services near you</span>
-                    <span v-if="!loading" class="ml-auto text-xs text-slate-400 font-medium">
-                        {{ totalOnMap }} on map
+                    <span class="text-sm font-semibold text-slate-700 truncate">Services near you</span>
+                    <span v-if="!loading" class="ml-auto text-xs text-slate-400 font-medium shrink-0 text-right leading-tight">
+                        <template v-if="showAvailability">{{ availabilityLabel }}</template>
+                        <template v-else>{{ totalOnMap }} on map</template>
                     </span>
-                    <span v-else class="ml-auto w-4 h-4 border-2 border-slate-200 border-t-primary rounded-full animate-spin"></span>
+                    <span v-else class="ml-auto w-4 h-4 border-2 border-slate-200 border-t-primary rounded-full animate-spin shrink-0"></span>
+                </div>
+            </div>
+
+            <!-- Availability overlay -->
+            <div class="pointer-events-auto bg-white/95 backdrop-blur-md rounded-2xl shadow-md px-3 py-2.5 ring-1 ring-slate-100">
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                    <input v-model="showAvailability" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary" />
+                    <Clock :size="15" class="text-emerald-600 shrink-0" />
+                    <span class="text-xs font-bold text-slate-800">Show courts free at…</span>
+                    <Loader2 v-if="availabilityLoading" :size="14" class="animate-spin text-primary ml-auto" />
+                </label>
+                <div v-if="showAvailability" class="mt-2 pt-2 border-t border-slate-100 grid grid-cols-3 gap-2">
+                    <input v-model="availDate" type="date" class="col-span-1 text-[11px] font-semibold border border-slate-200 rounded-lg px-1 py-1.5" />
+                    <input v-model="availTime" type="time" class="col-span-1 text-[11px] font-semibold border border-slate-200 rounded-lg px-1 py-1.5" />
+                    <select v-model.number="availDuration" class="col-span-1 text-[11px] font-semibold border border-slate-200 rounded-lg px-1 py-1.5">
+                        <option :value="30">30m</option>
+                        <option :value="60">1h</option>
+                        <option :value="90">1.5h</option>
+                        <option :value="120">2h</option>
+                    </select>
+                    <button type="button" @click="refreshAvailability"
+                        class="col-span-3 mt-1 py-2 rounded-xl bg-emerald-600 text-white text-[11px] font-bold active:scale-[0.98] transition-transform">
+                        Update for map center (25 km)
+                    </button>
                 </div>
             </div>
         </div>
@@ -185,14 +316,22 @@ const goToCourt = (court) => router.push(`/courts/${court.id}`)
         </button>
 
         <!-- Legend -->
-        <div class="absolute bottom-6 left-4 z-[400] bg-white/90 backdrop-blur-sm rounded-xl px-3 py-2 shadow-md flex items-center gap-3 text-xs font-semibold"
+        <div class="absolute bottom-6 left-4 z-[400] bg-white/90 backdrop-blur-sm rounded-xl px-3 py-2 shadow-md flex flex-col gap-1.5 text-[10px] font-semibold max-w-[11rem]"
             :class="{ 'bottom-52': selected || selectedPlace }">
             <div class="flex items-center gap-1.5">
-                <div class="w-3 h-3 rounded-full bg-primary"></div>
-                <span class="text-slate-700">Active</span>
+                <div class="w-3 h-3 rounded-full bg-primary shrink-0"></div>
+                <span class="text-slate-700">Listed venue</span>
+            </div>
+            <div v-if="showAvailability" class="flex items-center gap-1.5">
+                <div class="w-3 h-3 rounded-full shrink-0 ring-2 ring-emerald-500 bg-violet-500"></div>
+                <span class="text-emerald-800">Free at time</span>
+            </div>
+            <div v-if="showAvailability" class="flex items-center gap-1.5">
+                <div class="w-3 h-3 rounded-full bg-slate-300 opacity-60 shrink-0"></div>
+                <span class="text-slate-500">Booked / closed</span>
             </div>
             <div class="flex items-center gap-1.5">
-                <div class="w-3 h-3 rounded-full bg-slate-400 opacity-75"></div>
+                <div class="w-3 h-3 rounded-full bg-slate-400 opacity-75 shrink-0"></div>
                 <span class="text-slate-500">Coming soon</span>
             </div>
         </div>

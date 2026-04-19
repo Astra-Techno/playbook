@@ -222,11 +222,12 @@ const router = createRouter({
             meta: { requiresAuth: true, title: 'Notifications' },
         },
         {
-            path: '/waitlist',
-            name: 'waitlist',
-            component: () => import('../views/WaitlistView.vue'),
-            meta: { requiresAuth: true, title: 'My Waitlist' },
+            path: '/find-courts',
+            name: 'find-courts',
+            component: () => import('../views/FindCourtsView.vue'),
+            meta: { title: 'Available now' },
         },
+        { path: '/waitlist', redirect: '/find-courts' },
         // legacy redirects
         { path: '/my-services', redirect: '/my-venues' },
         { path: '/my-services/:id/plans', redirect: to => `/my-venues/${to.params.id}/plans` },

@@ -245,6 +245,11 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
     $courtController = new CourtController();
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1]) && !isset($seg[2])) { $courtController->show((int)$seg[1]); exit(); }
+    // GET /courts/available-at — before generic GET /courts
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'available-at') {
+        $courtController->availableAt();
+        exit();
+    }
     // GET  /courts/claims — must run before generic GET /courts (index)
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'claims') {
         Auth::requireAdmin();
@@ -785,15 +790,6 @@ if (isset($seg[0]) && $seg[0] === 'messages') {
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'unread-count') { Auth::require(); $msgCtrl->unreadCount(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'GET')  { Auth::require(); $msgCtrl->index();  exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $msgCtrl->create(); exit(); }
-}
-
-// Waitlist Routes
-if (isset($seg[0]) && $seg[0] === 'waitlist') {
-    require_once __DIR__ . '/src/Controllers/WaitlistController.php';
-    $wlCtrl = new WaitlistController();
-    if ($_SERVER['REQUEST_METHOD'] === 'GET')                      { Auth::require(); $wlCtrl->index();           exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'POST')                     { Auth::require(); $wlCtrl->create();          exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { Auth::require(); $wlCtrl->delete((int)$seg[1]); exit(); }
 }
 
 echo json_encode(["message" => "Welcome to Playbook API"]);
