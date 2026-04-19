@@ -86,20 +86,39 @@ if ($command === 'migrate') {
             fn($s) => $s !== ''
         );
 
-        try {
-            $db->beginTransaction();
-            foreach ($statements as $stmt) {
+        // MySQL DDL (ALTER TABLE) causes implicit commit, so we run each statement
+        // individually. Error codes we treat as harmless (already-applied by
+        // controller auto-migrations):
+        //   1060 — Duplicate column name
+        //   1061 — Duplicate key name
+        //   1091 — Can't DROP; check column/key exists
+        $harmless = [1060, 1061, 1091];
+        $failed   = false;
+
+        foreach ($statements as $stmt) {
+            try {
                 $db->exec($stmt);
+            } catch (PDOException $e) {
+                $code = (int)$e->errorInfo[1];
+                if (in_array($code, $harmless)) {
+                    printLine("  [warn] $name — already applied: " . $e->getMessage(), 'yellow');
+                } else {
+                    printLine("  [FAIL] $name — " . $e->getMessage(), 'red');
+                    $failed = true;
+                    break;
+                }
             }
-            $db->prepare("INSERT INTO migrations (filename) VALUES (?)")->execute([$name]);
-            $db->commit();
-            printLine("  [done] $name", 'green');
-            $ran++;
-        } catch (PDOException $e) {
-            $db->rollBack();
-            printLine("  [FAIL] $name — " . $e->getMessage(), 'red');
+        }
+
+        if ($failed) {
             exit(1);
         }
+
+        try {
+            $db->prepare("INSERT INTO migrations (filename) VALUES (?)")->execute([$name]);
+        } catch (PDOException $e) { /* already recorded */ }
+        printLine("  [done] $name", 'green');
+        $ran++;
     }
 
     echo PHP_EOL;
