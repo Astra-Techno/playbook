@@ -11,6 +11,7 @@ on:
       - 'frontend/tailwind.config.js'
       - 'frontend/postcss.config.js'
       - 'frontend/public/**'
+      - 'frontend/.env.production'
       - '.htaccess'
 
 permissions:
