@@ -33,7 +33,7 @@ const hasNotifications = computed(() => notifications.count > 0)
     <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100">
         
         <!-- Main row: Logo + Title + Actions -->
-        <div class="flex items-center justify-between px-5 pt-3 pb-3">
+        <div class="flex items-center justify-between px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))]">
             <div class="flex items-center gap-3 flex-1 min-w-0">
                 <!-- Back Button for items -->
                 <button v-if="isDetail" @click="router.back()"

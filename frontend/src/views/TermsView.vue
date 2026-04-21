@@ -20,7 +20,7 @@ const router = useRouter()
         </div>
 
         <!-- Content -->
-        <div class="px-5 py-6 space-y-7 pb-16 max-w-2xl mx-auto">
+        <div class="px-5 py-6 space-y-7 pb-8 max-w-2xl mx-auto">
 
             <p class="text-sm text-slate-500 leading-relaxed">
                 Welcome to <strong class="text-slate-800">KoCourt</strong>. By using our app or website, you agree to the following terms. Please read them carefully.

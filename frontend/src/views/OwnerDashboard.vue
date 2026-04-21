@@ -354,7 +354,7 @@ const handleAvatarUpload = async (event) => {
         </Teleport>
 
         <!-- ── MAIN CONTENT ── -->
-        <main class="flex-1 px-4 pb-24">
+        <main class="flex-1 px-4 pb-[calc(6rem+env(safe-area-inset-bottom,0px))]">
 
             <!-- Section header -->
             <div class="flex items-center justify-between pt-4 pb-3">
@@ -460,7 +460,14 @@ const handleAvatarUpload = async (event) => {
                                         ₹{{ court.hourly_rate }}<span class="text-sm font-normal text-slate-500">/hr</span>
                                     </span>
                                 </div>
-                                <span class="text-xs font-semibold text-primary bg-primary-light px-3 py-1.5 rounded-full">Manage →</span>
+                                <div class="flex items-center gap-2">
+                                    <button @click.stop="router.push(`/my-venues/${court.id}/calendar`)"
+                                        class="flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-full active:scale-95 transition-transform">
+                                        <CalendarDays :size="11" />
+                                        Calendar
+                                    </button>
+                                    <span class="text-xs font-semibold text-primary bg-primary-light px-3 py-1.5 rounded-full">Manage →</span>
+                                </div>
                             </div>
                         </div>
                     </div>

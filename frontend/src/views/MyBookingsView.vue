@@ -177,7 +177,7 @@ const openChat = (booking) => {
         </Teleport>
 
         <!-- Content -->
-        <div class="px-5 py-5 pb-8">
+        <div class="px-5 py-5 pb-4">
             <!-- Loading -->
             <div v-if="loading" class="space-y-4">
                 <div v-for="i in 3" :key="i" class="card p-4 animate-pulse">

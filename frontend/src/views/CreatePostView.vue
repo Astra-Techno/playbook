@@ -195,7 +195,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="min-h-full bg-slate-50">
+    <div class="min-h-full bg-slate-50 pb-[calc(11rem+env(safe-area-inset-bottom,0px))]">
 
         <!-- Booking context badge -->
         <div v-if="courtName" class="px-4 pt-4">
@@ -336,7 +336,7 @@ onMounted(() => {
         </div>
 
         <!-- Submit button -->
-        <div class="fixed bottom-[72px] left-1/2 -translate-x-1/2 w-full max-w-[430px] px-4 z-30">
+        <div class="fixed left-1/2 z-30 w-full max-w-[430px] -translate-x-1/2 px-4 bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]">
             <button
                 @click="submitPost"
                 :disabled="!canSubmit || submitting"

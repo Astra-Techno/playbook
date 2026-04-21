@@ -263,7 +263,7 @@ const refreshAvailability = () => {
     <div class="relative w-full h-full flex flex-col">
 
         <!-- Top bar -->
-        <div class="absolute top-0 inset-x-0 z-[400] px-4 pt-12 pb-2 pointer-events-none space-y-2">
+        <div class="pointer-events-none absolute inset-x-0 top-0 z-[400] space-y-2 px-4 pb-2 pt-[max(3rem,calc(env(safe-area-inset-top,0px)+2.5rem))]">
             <div class="flex items-center gap-2 pointer-events-auto">
                 <button @click="router.back()"
                     class="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center shrink-0">
@@ -310,14 +310,18 @@ const refreshAvailability = () => {
 
         <!-- Locate me -->
         <button @click="locateUser(true)"
-            class="absolute bottom-6 right-4 z-[400] w-11 h-11 bg-white rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform"
-            :class="{ 'bottom-52': selected || selectedPlace }">
+            class="absolute right-4 z-[400] flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-lg transition-transform active:scale-95"
+            :class="(selected || selectedPlace)
+                ? 'bottom-[calc(13rem+env(safe-area-inset-bottom,0px))]'
+                : 'bottom-[max(1.5rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))]'">
             <Navigation :size="18" :class="locating ? 'text-primary animate-pulse' : 'text-slate-600'" />
         </button>
 
         <!-- Legend -->
-        <div class="absolute bottom-6 left-4 z-[400] bg-white/90 backdrop-blur-sm rounded-xl px-3 py-2 shadow-md flex flex-col gap-1.5 text-[10px] font-semibold max-w-[11rem]"
-            :class="{ 'bottom-52': selected || selectedPlace }">
+        <div class="absolute left-4 z-[400] flex max-w-[11rem] flex-col gap-1.5 rounded-xl bg-white/90 px-3 py-2 text-[10px] font-semibold shadow-md backdrop-blur-sm"
+            :class="(selected || selectedPlace)
+                ? 'bottom-[calc(13rem+env(safe-area-inset-bottom,0px))]'
+                : 'bottom-[max(1.5rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))]'">
             <div class="flex items-center gap-1.5">
                 <div class="w-3 h-3 rounded-full bg-primary shrink-0"></div>
                 <span class="text-slate-700">Listed venue</span>
@@ -345,7 +349,7 @@ const refreshAvailability = () => {
             leave-from-class="translate-y-0 opacity-100"
             leave-to-class="translate-y-full opacity-0">
             <div v-if="selected"
-                class="absolute bottom-0 inset-x-0 z-[400] bg-white rounded-t-3xl shadow-2xl pb-8"
+                class="absolute inset-x-0 bottom-0 z-[400] rounded-t-3xl bg-white pb-[max(2rem,calc(env(safe-area-inset-bottom,0px)+1.25rem))] shadow-2xl"
                 style="box-shadow:0 -8px 40px rgba(0,0,0,0.15)">
                 <div class="flex justify-center pt-3 pb-1">
                     <div class="w-10 h-1 bg-slate-200 rounded-full"></div>
@@ -401,7 +405,7 @@ const refreshAvailability = () => {
             leave-from-class="translate-y-0 opacity-100"
             leave-to-class="translate-y-full opacity-0">
             <div v-if="selectedPlace"
-                class="absolute bottom-0 inset-x-0 z-[400] bg-white rounded-t-3xl shadow-2xl pb-8"
+                class="absolute inset-x-0 bottom-0 z-[400] rounded-t-3xl bg-white pb-[max(2rem,calc(env(safe-area-inset-bottom,0px)+1.25rem))] shadow-2xl"
                 style="box-shadow:0 -8px 40px rgba(0,0,0,0.15)">
                 <div class="flex justify-center pt-3 pb-1">
                     <div class="w-10 h-1 bg-slate-200 rounded-full"></div>

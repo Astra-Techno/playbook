@@ -125,7 +125,7 @@ const submitPromptRating = async () => {
     <div id="app-root" class="relative w-full max-w-[430px] bg-white h-full max-h-full flex flex-col overflow-hidden shadow-sm">
 
         <!-- Toast overlay -->
-        <div class="absolute top-4 inset-x-4 z-[200] space-y-2 pointer-events-none">
+        <div class="absolute inset-x-4 z-[200] space-y-2 pointer-events-none top-[max(1rem,calc(env(safe-area-inset-top,0px)+0.5rem))]">
             <TransitionGroup
                 enter-active-class="transition duration-250 ease-out"
                 enter-from-class="opacity-0 -translate-y-2 scale-95"
@@ -149,8 +149,8 @@ const submitPromptRating = async () => {
             :class="[
                 route.meta.fullScreen ? 'overflow-hidden' : 'overflow-y-auto',
                 auth.isLoggedIn && !route.meta.fullScreen && !route.meta.hideBottomNav
-                    /* Nav is position:absolute; reserve overlap only here. Safe-area belongs on <nav> only — adding it to both caused a visible “dead band” above / below the tab bar (your screenshots). */
-                    ? 'pb-24'
+                    /* Reserve tab bar + FAB; add home-indicator inset so last lines clear on iOS (nav already pads its own bottom). */
+                    ? 'pb-[calc(6rem+env(safe-area-inset-bottom,0px))]'
                     : ''
             ]">
             <RouterView />
@@ -218,7 +218,7 @@ const submitPromptRating = async () => {
             leave-from-class="opacity-100"
             leave-to-class="opacity-0">
             <div v-if="reviewPrompt.show" class="absolute inset-0 bg-black/50 z-[300] flex items-end" @click.self="dismissPrompt">
-                <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-10">
+                <div class="w-full rounded-t-3xl bg-white px-5 pt-5 pb-[max(2.5rem,calc(env(safe-area-inset-bottom,0px)+1.5rem))]">
                     <div class="flex items-center justify-between mb-1">
                         <div>
                             <p class="text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">How was your session?</p>

@@ -86,3 +86,14 @@
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Calendar blocked-slot hatch pattern */
+.blocked-hatch {
+    background: repeating-linear-gradient(
+        -45deg,
+        #fef2f2,
+        #fef2f2 4px,
+        #fee2e2 4px,
+        #fee2e2 8px
+    );
+}

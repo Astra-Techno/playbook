@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { useToastStore } from '../stores/toast'
 import {
-    Tag, Award, Ban, CalendarCheck, Users, Lock,
+    Tag, Award, Ban, CalendarCheck, CalendarDays, Users, Lock,
     ChevronRight, Loader2, LayoutGrid, UserCheck
 } from 'lucide-vue-next'
 
@@ -31,6 +31,12 @@ onMounted(async () => {
 })
 
 const menuItems = computed(() => [
+    {
+        label: 'Calendar',
+        desc:  'Day & week view for this space',
+        icon:  CalendarDays,
+        to:    `/my-venues/${venueId}/calendar?space=${spaceId}`,
+    },
     {
         label: 'Pricing Rules',
         desc:  'Set peak hour rates and special prices',

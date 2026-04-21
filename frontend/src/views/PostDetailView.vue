@@ -157,7 +157,7 @@ onMounted(fetchPost)
         </div>
 
         <!-- Post -->
-        <div v-else-if="post" class="pb-4">
+        <div v-else-if="post" class="pb-[calc(8rem+env(safe-area-inset-bottom,0px))]">
 
             <!-- Author row -->
             <div class="flex items-center justify-between gap-3 px-5 py-5">
@@ -286,9 +286,11 @@ onMounted(fetchPost)
             </div>
         </div>
 
-        <!-- Sticky Comment Input -->
-        <div v-if="post" class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-100 px-4 pt-3 pb-8 z-50">
-            <div class="max-w-[430px] mx-auto flex items-center gap-3">
+        <!-- Sticky Comment Input — above app bottom nav (same offset as other fixed CTAs) -->
+        <div v-if="post"
+            class="fixed left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t border-slate-100 bg-white/95 px-4 pb-3 pt-3 backdrop-blur-md bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]"
+            style="box-shadow: 0 -4px 20px rgba(0,0,0,0.06)">
+            <div class="flex items-center gap-3 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))]">
                 <div class="w-9 h-9 rounded-full overflow-hidden bg-primary-light flex items-center justify-center shrink-0 ring-4 ring-primary/5 shadow-sm">
                     <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
                     <span v-else class="text-[10px] font-black text-primary">{{ initials(auth.user?.name) }}</span>

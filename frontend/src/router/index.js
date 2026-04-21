@@ -156,6 +156,12 @@ const router = createRouter({
             meta: { requiresAuth: true, title: 'Block Slots' },
         },
         {
+            path: '/my-venues/:id/calendar',
+            name: 'venue-calendar',
+            component: () => import('../views/CalendarView.vue'),
+            meta: { requiresAuth: true, title: 'Booking Calendar' },
+        },
+        {
             path: '/feed/:id',
             name: 'post-detail',
             component: () => import('../views/PostDetailView.vue'),

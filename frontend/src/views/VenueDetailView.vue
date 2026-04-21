@@ -6,7 +6,7 @@ import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import {
     Pencil, LayoutGrid, Users, Ban, Trash2, TrendingUp,
-    MapPin, ChevronRight, Star, Flame, Loader2, X, IndianRupee, UserCheck, ShieldCheck
+    MapPin, ChevronRight, Star, Flame, Loader2, X, IndianRupee, UserCheck, ShieldCheck, CalendarDays
 } from 'lucide-vue-next'
 
 const route  = useRoute()
@@ -58,6 +58,7 @@ const menuGroups = computed(() => {
     const ops = []
 
     if (isVenueOwner.value) manage.push({ label: 'Edit Venue', desc: 'Update name, location, rate & amenities', icon: Pencil, to: `/my-venues/${vid}/edit` })
+    manage.push({ label: 'Booking Calendar', desc: 'Day & week view of all bookings', icon: CalendarDays, to: `/my-venues/${vid}/calendar` })
     manage.push({ label: 'Spaces', desc: 'Manage courts, lanes, tables, rooms', icon: LayoutGrid, to: `/my-venues/${vid}/spaces` })
 
     if (isVenueOwner.value) ops.push({ label: 'Staff', desc: 'Manage staff and permissions', icon: Users, to: `/my-venues/${vid}/staff` })

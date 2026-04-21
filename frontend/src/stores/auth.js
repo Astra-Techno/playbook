@@ -28,9 +28,27 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem('user', JSON.stringify(userData))
         localStorage.setItem('token', tokenData)
         axios.defaults.headers.common['Authorization'] = `Bearer ${tokenData}`
+
+        // Sync user identity to AppifyWeb24 push system (works when running inside Android app)
+        if (window.SaaS) {
+            try {
+                window.SaaS.updateUserIdentity(
+                    String(userData.id    || ''),
+                    String(userData.phone || userData.email || ''),
+                    String(userData.name  || '')
+                )
+                const tags = [userData.role, userData.city].filter(Boolean)
+                if (tags.length) window.SaaS.setUserTags(JSON.stringify(tags))
+            } catch { /* not in Android WebView — ignore */ }
+        }
     }
 
     function logout() {
+        // Clear push identity before wiping credentials
+        if (window.SaaS) {
+            try { window.SaaS.clearUserIdentity() } catch { /* not in Android WebView — ignore */ }
+        }
+
         user.value = null
         token.value = null
         localStorage.removeItem('user')

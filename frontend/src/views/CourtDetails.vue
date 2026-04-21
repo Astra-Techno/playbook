@@ -1015,7 +1015,7 @@ const subscribePlan = async (plan) => {
                     class="flex-1 py-3.5 text-sm font-bold border-b-2 transition-colors relative"
                     :class="activeTab === 'membership' ? 'border-primary text-primary' : 'border-transparent text-slate-400'">
                     Memberships
-                    <span v-if="activeSub" class="absolute top-2.5 right-3 w-2 h-2 bg-primary-light0 rounded-full"></span>
+                    <span v-if="activeSub" class="absolute top-2.5 right-3 w-2 h-2 bg-primary-light rounded-full"></span>
                 </button>
                 <button @click="activeTab = 'players'"
                     class="flex-1 py-3.5 text-sm font-bold border-b-2 transition-colors"
@@ -1025,7 +1025,9 @@ const subscribePlan = async (plan) => {
             </div>
 
             <!-- Tab Content -->
-            <div class="px-4 py-5 pb-48">
+            <div class="px-4 py-5" :class="activeTab === 'booking'
+                ? 'pb-[calc(11rem+env(safe-area-inset-bottom,0px))]'
+                : 'pb-6'">
 
                 <!-- BOOKING TAB -->
                 <div v-if="activeTab === 'booking'">
@@ -1464,7 +1466,7 @@ const subscribePlan = async (plan) => {
             </div>
 
             <!-- Sticky Bottom Button -->
-            <div class="fixed bottom-[72px] left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-slate-100 px-4 py-3 z-40"
+            <div class="fixed left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t border-slate-100 bg-white px-4 py-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]"
                 style="box-shadow: 0 -4px 20px rgba(0,0,0,0.06)">
 
                 <!-- Booking tab button -->
@@ -1528,7 +1530,7 @@ const subscribePlan = async (plan) => {
             </div>
             </template>
 
-            <div v-else class="px-4 py-10 pb-40 text-center bg-white border-b border-slate-100">
+            <div v-else class="px-4 py-10 pb-8 text-center bg-white border-b border-slate-100">
                 <LayoutGrid :size="34" class="text-slate-300 mx-auto mb-3" />
                 <p class="text-sm font-semibold text-slate-800">Choose a space to continue</p>
                 <p class="text-xs text-slate-500 mt-2 max-w-[280px] mx-auto leading-relaxed">

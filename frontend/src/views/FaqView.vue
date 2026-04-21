@@ -121,7 +121,7 @@ const toggle = (key) => {
         </div>
 
         <!-- Contact -->
-        <div class="mx-4 mt-6 bg-primary/5 rounded-2xl px-5 py-5 text-center">
+        <div class="mx-4 mt-6 mb-4 bg-primary/5 rounded-2xl px-5 py-5 text-center">
             <p class="text-sm font-black text-slate-800 mb-1">Still have questions?</p>
             <p class="text-xs text-slate-500">Reach us at <span class="text-primary font-bold">support@kocourt.com</span></p>
         </div>
