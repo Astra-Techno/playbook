@@ -3,6 +3,7 @@ name: Build Frontend
 on:
   push:
     branches: [main]
+  workflow_dispatch:
     paths:
       - 'frontend/src/**'
       - 'frontend/index.html'
