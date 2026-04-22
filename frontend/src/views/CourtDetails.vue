@@ -1549,7 +1549,7 @@ const subscribePlan = async (plan) => {
         leave-from-class="opacity-100"
         leave-to-class="opacity-0">
         <div v-if="addPlayers.show" class="fixed inset-0 bg-black/50 z-50 flex items-end" @click.self="submitPlayers">
-            <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-10 max-h-[90dvh] flex flex-col">
+            <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-10 max-h-[90vh] flex flex-col" style="max-height:90dvh">
 
                 <!-- Header -->
                 <div class="flex items-center justify-between mb-1 shrink-0">
