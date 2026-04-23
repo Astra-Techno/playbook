@@ -33,7 +33,7 @@ class CourtController {
                 "description"         => $row["description"],
                 "location"            => $row["location"],
                 "hourly_rate"         => $row["hourly_rate"],
-                "image_url"           => $row["image_url"],
+                "image_url"           => self::normalizeImageUrl($row["image_url"]),
                 "lat"                 => $row["lat"],
                 "lng"                 => $row["lng"],
                 "open_time"           => $row["open_time"]           ?? "06:00:00",
@@ -80,6 +80,7 @@ class CourtController {
         $row['amenities']    = $row['amenities'] ? json_decode($row['amenities'], true) : [];
         $row['avg_rating']   = $row['avg_rating']   !== null ? round((float)$row['avg_rating'], 1) : null;
         $row['review_count'] = (int)$row['review_count'];
+        $row['image_url']    = self::normalizeImageUrl($row['image_url']);
         http_response_code(200);
         echo json_encode(['court' => $row]);
     }
@@ -142,7 +143,7 @@ class CourtController {
                 'type'           => $row['type'],
                 'location'       => $row['location'],
                 'hourly_rate'    => $row['hourly_rate'],
-                'image_url'      => $row['image_url'],
+                'image_url'      => self::normalizeImageUrl($row['image_url']),
                 'lat'            => $row['lat'],
                 'lng'            => $row['lng'],
                 'distance_km'    => isset($row['distance']) ? round((float)$row['distance'], 1) : null,
@@ -398,6 +399,17 @@ class CourtController {
 
         http_response_code(200);
         echo json_encode(['message' => 'Claim rejected.']);
+    }
+
+    // Rewrite localhost/dev image URLs to the production domain
+    private static function normalizeImageUrl(?string $url): string {
+        if (!$url) return '';
+        if (strpos($url, 'localhost') !== false || strpos($url, '127.0.0.1') !== false) {
+            if (preg_match('#/uploads/([^?#\s]+)$#', $url, $m)) {
+                return 'https://www.kocourt.com/backend/uploads/' . $m[1];
+            }
+        }
+        return $url;
     }
 
     // Auto-link newly created court to a nearby ghost place (within ~200 m)
