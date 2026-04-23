@@ -120,8 +120,9 @@ const submitPromptRating = async () => {
 </script>
 
 <template>
-    <div class="h-screen max-h-screen overflow-hidden bg-slate-100 flex justify-center">
-    <div id="app-root" class="relative w-full max-w-[430px] bg-white h-full max-h-full flex flex-col overflow-hidden shadow-sm">
+    <!-- flex-1 + min-h-0: fill #app without relying on h-screen/100vh (often 0px in embedded WebViews) -->
+    <div class="flex w-full flex-1 min-h-0 justify-center overflow-hidden bg-slate-100">
+    <div id="app-root" class="relative flex w-full max-w-[430px] flex-1 min-h-0 flex-col overflow-hidden bg-white shadow-sm">
 
         <!-- Toast overlay -->
         <div class="absolute inset-x-4 z-[200] space-y-2 pointer-events-none top-[max(1rem,calc(env(safe-area-inset-top,0px)+0.5rem))]">

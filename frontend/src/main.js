@@ -29,6 +29,36 @@ axios.interceptors.request.use(config => {
     return config
 })
 
+// Embedded WebViews sometimes report innerHeight === 0 before layout; never set height to 0
+// or the whole app collapses. CSS (main.css #app) provides fallbacks; JS only reinforces when h > 0.
+const setAppHeight = () => {
+    const el = document.getElementById('app')
+    if (!el) return
+    const vv = window.visualViewport
+    const h = Math.round(
+        (vv && vv.height > 0 ? vv.height : 0) ||
+            (typeof window.innerHeight === 'number' && window.innerHeight > 0 ? window.innerHeight : 0) ||
+            (document.documentElement && document.documentElement.clientHeight > 0
+                ? document.documentElement.clientHeight
+                : 0)
+    )
+    if (h > 0) {
+        el.style.minHeight = `${h}px`
+        el.style.height = `${h}px`
+    } else {
+        el.style.removeProperty('height')
+        el.style.removeProperty('min-height')
+    }
+}
+setAppHeight()
+window.addEventListener('resize', setAppHeight)
+if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppHeight)
+requestAnimationFrame(() => {
+    setAppHeight()
+    setTimeout(setAppHeight, 50)
+    setTimeout(setAppHeight, 250)
+})
+
 const app = createApp(App)
 app.use(createPinia())
 app.use(router)

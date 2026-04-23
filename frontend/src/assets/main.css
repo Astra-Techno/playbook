@@ -6,15 +6,33 @@
     * { -webkit-tap-highlight-color: transparent; }
 
     /* Avoid smooth-scroll fighting the app <main> scroll container on route changes (feels “shaky” on mobile) */
-    html { scroll-behavior: auto; }
+    html {
+        scroll-behavior: auto;
+        height: 100%;
+        height: -webkit-fill-available;
+    }
 
     body {
         @apply bg-white text-slate-900 antialiased;
         overscroll-behavior: none;
+        margin: 0;
+        min-height: 100%;
+        min-height: 100vh;
+        min-height: 100dvh;
+        min-height: -webkit-fill-available;
     }
 
+    /*
+      WebView wrappers (e.g. Appify) may report innerHeight === 0 before first paint.
+      Establish a real height chain so % / flex children never collapse to 0 when JS height is wrong.
+    */
     #app {
-        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 100vh;
+        min-height: 100dvh;
+        min-height: -webkit-fill-available;
     }
 
     #app-root {
