@@ -11,12 +11,10 @@
     body {
         @apply bg-white text-slate-900 antialiased;
         overscroll-behavior: none;
-        overflow: hidden;
-        height: 100%;
     }
 
     #app {
-        height: 100%;
+        height: 100vh;
     }
 
     #app-root {
