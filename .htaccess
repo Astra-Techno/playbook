@@ -12,11 +12,12 @@
   RewriteCond %{HTTP:Authorization} .
   RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-  # Force HTTPS on production only (skip localhost / 127.0.0.1)
-  RewriteCond %{HTTPS} off
+  # Force https://www.kocourt.com — skip localhost / 127.0.0.1
   RewriteCond %{HTTP_HOST} !^localhost [NC]
   RewriteCond %{HTTP_HOST} !^127\.0\.0\.1
-  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+  RewriteCond %{HTTPS} off [OR]
+  RewriteCond %{HTTP_HOST} !^www\. [NC]
+  RewriteRule ^ https://www.kocourt.com%{REQUEST_URI} [L,R=301]
 
   # Route /api/* → backend (Vite dev-proxy equivalent for production)
   RewriteRule ^api/(.*)$ backend/index.php [L,QSA]
