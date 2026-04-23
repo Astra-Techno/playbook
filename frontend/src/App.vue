@@ -120,10 +120,7 @@ const submitPromptRating = async () => {
 </script>
 
 <template>
-    <!-- h-screen (100vh) is the safe base; inline style upgrades to dvh on browsers that support it
-         correctly. Android WebView often returns 0 for dvh, collapsing the whole app. -->
-    <div class="h-screen max-h-screen overflow-hidden bg-slate-100 flex justify-center"
-         style="height:100dvh;max-height:100dvh">
+    <div class="h-screen max-h-screen overflow-hidden bg-slate-100 flex justify-center">
     <div id="app-root" class="relative w-full max-w-[430px] bg-white h-full max-h-full flex flex-col overflow-hidden shadow-sm">
 
         <!-- Toast overlay -->
