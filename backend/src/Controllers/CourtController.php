@@ -405,7 +405,7 @@ class CourtController {
     private static function normalizeImageUrl(?string $url): string {
         if (!$url) return '';
         if (strpos($url, 'localhost') !== false || strpos($url, '127.0.0.1') !== false) {
-            if (preg_match('#/uploads/([^?#\s]+)$#', $url, $m)) {
+            if (preg_match('|/uploads/([^?#\s]+)$|', $url, $m)) {
                 $protocol  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
                 $host      = $_SERVER['HTTP_HOST'];
                 $scriptDir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
