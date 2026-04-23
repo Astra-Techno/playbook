@@ -134,10 +134,15 @@ const save = async () => {
     }
     saving.value = true
     try {
-        await axios.put(`/courts/${courtId}`, { ...form.value, owner_id: auth.user?.id })
-        toast.success('Service updated!')
+        if (isCreate) {
+            await axios.post('/courts', { ...form.value, owner_id: auth.user?.id })
+            toast.success('Venue added!')
+        } else {
+            await axios.put(`/courts/${courtId}`, { ...form.value, owner_id: auth.user?.id })
+            toast.success('Service updated!')
+        }
         router.replace('/my-venues')
-    } catch { toast.error('Update failed') }
+    } catch { toast.error(isCreate ? 'Failed to add venue' : 'Update failed') }
     finally { saving.value = false }
 }
 </script>
