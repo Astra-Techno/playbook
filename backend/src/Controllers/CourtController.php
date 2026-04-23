@@ -401,12 +401,15 @@ class CourtController {
         echo json_encode(['message' => 'Claim rejected.']);
     }
 
-    // Rewrite localhost/dev image URLs to the production domain
+    // Rewrite localhost/dev image URLs to the current server's URL
     private static function normalizeImageUrl(?string $url): string {
         if (!$url) return '';
         if (strpos($url, 'localhost') !== false || strpos($url, '127.0.0.1') !== false) {
             if (preg_match('#/uploads/([^?#\s]+)$#', $url, $m)) {
-                return 'https://www.kocourt.com/backend/uploads/' . $m[1];
+                $protocol  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+                $host      = $_SERVER['HTTP_HOST'];
+                $scriptDir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
+                return $protocol . '://' . $host . $scriptDir . '/uploads/' . $m[1];
             }
         }
         return $url;
