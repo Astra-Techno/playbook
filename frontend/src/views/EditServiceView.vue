@@ -7,7 +7,7 @@ import { useToastStore } from '../stores/toast'
 import {
     ArrowLeft, Check, Camera, Loader2, LocateFixed,
     Wind, Flag, Target, Activity, CircleDot, Layers3, Dumbbell, Waves, Swords,
-    Sun, Moon, Lock, ChevronDown
+    Sun, Moon, Lock, ChevronDown, Plus, Trash2
 } from 'lucide-vue-next'
 
 const route  = useRoute()
@@ -23,6 +23,36 @@ const geoLoading = ref(false)
 const uploadLoading = ref(false)
 const imagePreview = ref(null)
 const showPeakHours = ref(false)
+
+// Gallery photos (existing courts only)
+const galleryPhotos   = ref([])
+const galleryUploading = ref(false)
+const deletingPhotoId  = ref(null)
+
+const uploadGalleryPhoto = async (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+    galleryUploading.value = true
+    try {
+        const fd = new FormData()
+        fd.append('image', file)
+        const uploadRes = await axios.post('/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+        const url = uploadRes.data.url
+        const res = await axios.post('/court-photos', { court_id: courtId, owner_id: auth.user?.id, url })
+        galleryPhotos.value.push({ id: res.data.id, url })
+        toast.success('Photo added')
+    } catch { toast.error('Upload failed') }
+    finally { galleryUploading.value = false; event.target.value = '' }
+}
+
+const deleteGalleryPhoto = async (photo) => {
+    deletingPhotoId.value = photo.id
+    try {
+        await axios.delete(`/court-photos/${photo.id}`, { data: { owner_id: auth.user?.id } })
+        galleryPhotos.value = galleryPhotos.value.filter(p => p.id !== photo.id)
+    } catch { toast.error('Failed to delete') }
+    finally { deletingPhotoId.value = null }
+}
 
 const form = ref({
     name: '', location: '', type: 'shuttle', hourly_rate: '',
@@ -56,8 +86,12 @@ onMounted(async () => {
     if (!auth.isOwner && !auth.isAdmin) { router.replace('/'); return }
     if (isCreate) return
     try {
-        const res = await axios.get(`/courts/${courtId}`)
-        const court = res.data.court || null
+        const [courtRes, photosRes] = await Promise.all([
+            axios.get(`/courts/${courtId}`),
+            axios.get(`/court-photos?court_id=${courtId}`).catch(() => ({ data: { photos: [] } })),
+        ])
+        galleryPhotos.value = photosRes.data.photos || []
+        const court = courtRes.data.court || null
         if (!court) { router.replace('/my-venues'); return }
         Object.assign(form.value, {
             name:               court.name,
@@ -360,6 +394,34 @@ const save = async () => {
                         {{ tag }}
                     </button>
                 </div>
+            </div>
+
+            <!-- ── Gallery Photos (edit only) ── -->
+            <div v-if="!isCreate" class="bg-white rounded-2xl px-4 py-4 ring-1 ring-slate-100 shadow-sm">
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Gallery Photos</p>
+                <div class="grid grid-cols-3 gap-2">
+                    <!-- Existing photos -->
+                    <div v-for="photo in galleryPhotos" :key="photo.id"
+                        class="relative aspect-square rounded-xl overflow-hidden bg-gray-100">
+                        <img :src="photo.url" class="w-full h-full object-cover" />
+                        <button @click="deleteGalleryPhoto(photo)" :disabled="deletingPhotoId === photo.id"
+                            class="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 flex items-center justify-center active:scale-90 transition-transform">
+                            <Loader2 v-if="deletingPhotoId === photo.id" :size="11" class="animate-spin text-white" />
+                            <Trash2 v-else :size="11" class="text-white" />
+                        </button>
+                    </div>
+                    <!-- Upload button -->
+                    <label class="aspect-square rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-black transition-colors"
+                        :class="galleryUploading ? 'pointer-events-none opacity-60' : ''">
+                        <Loader2 v-if="galleryUploading" :size="20" class="animate-spin text-gray-400" />
+                        <template v-else>
+                            <Plus :size="18" class="text-gray-400" />
+                            <span class="text-[10px] font-semibold text-gray-400">Add</span>
+                        </template>
+                        <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="uploadGalleryPhoto" />
+                    </label>
+                </div>
+                <p class="text-[11px] text-gray-400 mt-2">These appear in the court's photo gallery for players.</p>
             </div>
 
             <!-- ── Save button ── -->

@@ -5,11 +5,11 @@ import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import {
-    ChevronLeft, MapPin, Star, Clock,
+    ChevronLeft, ChevronRight, MapPin, Star, Clock,
     Calendar, CheckCircle2, XCircle, Info,
     Wind, Flag, Target, Activity, CircleDot, Layers3, Dumbbell, Waves, Swords,
     Share2, Heart, Lock, Sun, Moon, Crown, Infinity, BadgeCheck,
-    UserPlus, X, Search, Loader2, Users, LayoutGrid, RefreshCw
+    UserPlus, X, Search, Loader2, Users, LayoutGrid, RefreshCw, Images
 } from 'lucide-vue-next'
 import MatchSheet from '../components/MatchSheet.vue'
 
@@ -42,6 +42,22 @@ const isFavorited = ref(false)
 const favLoading = ref(false)
 const courtPhotos = ref([])
 const busyDays = ref([])   // day numbers (1-31) with bookings this month
+
+// Lightbox
+const lightbox = ref({ show: false, idx: 0 })
+const lightboxImages = computed(() => {
+    const hero = court.value?.image_url
+        ? [{ id: 'hero', url: court.value.image_url }]
+        : []
+    return [...hero, ...courtPhotos.value]
+})
+const openLightbox = (idx) => { lightbox.value = { show: true, idx } }
+const lightboxPrev = () => {
+    lightbox.value.idx = (lightbox.value.idx - 1 + lightboxImages.value.length) % lightboxImages.value.length
+}
+const lightboxNext = () => {
+    lightbox.value.idx = (lightbox.value.idx + 1) % lightboxImages.value.length
+}
 
 // Review form
 const showReviewForm  = ref(false)
@@ -111,6 +127,16 @@ const addPlayerToList = (u) => {
 
 const removePlayer = (id) => {
     addPlayers.value.selected = addPlayers.value.selected.filter(p => p.id !== id)
+}
+
+const shareCourt = async () => {
+    const url = `${window.location.origin}/courts/${court.value?.id}`
+    const text = `${court.value?.name || 'Check out this venue'} — ${court.value?.location || ''}`
+    if (navigator.share) {
+        try { await navigator.share({ title: court.value?.name, text, url }) } catch {}
+    } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank')
+    }
 }
 
 const shareWhatsApp = () => {
@@ -869,9 +895,15 @@ const subscribePlan = async (plan) => {
 
         <template v-else>
             <!-- Hero (square, prototype style) -->
-            <div class="relative w-full aspect-square bg-gray-100">
-                <img :src="heroImg" :alt="court.name" class="w-full h-full object-cover"
+            <div class="relative w-full aspect-square bg-gray-100" @click="openLightbox(0)">
+                <img :src="heroImg" :alt="court.name" class="w-full h-full object-cover cursor-pointer"
                     onerror="this.src='https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=600&q=80'" />
+                <!-- Photo count badge -->
+                <div v-if="lightboxImages.length > 1"
+                    class="absolute bottom-3 right-3 flex items-center gap-1 bg-black/50 text-white text-xs font-bold px-2.5 py-1 rounded-full pointer-events-none">
+                    <Images :size="11" />
+                    {{ lightboxImages.length }}
+                </div>
 
                 <div class="absolute top-[max(3rem,calc(env(safe-area-inset-top,0px)+0.75rem))] inset-x-5 flex justify-between items-center z-10">
                     <button @click="router.back()"
@@ -879,7 +911,7 @@ const subscribePlan = async (plan) => {
                         <ChevronLeft :size="22" />
                     </button>
                     <div class="flex gap-3">
-                        <button class="w-11 h-11 rounded-full bg-white shadow-premium flex items-center justify-center text-black hover:scale-105 active:scale-95 transition-transform">
+                        <button @click="shareCourt" class="w-11 h-11 rounded-full bg-white shadow-premium flex items-center justify-center text-black hover:scale-105 active:scale-95 transition-transform">
                             <Share2 :size="20" />
                         </button>
                         <button @click="toggleFavorite" :disabled="favLoading"
@@ -890,11 +922,12 @@ const subscribePlan = async (plan) => {
                 </div>
             </div>
 
-            <!-- Photo Gallery (if extra photos exist) -->
+            <!-- Photo Gallery strip (extra photos) -->
             <div v-if="courtPhotos.length > 0" class="bg-white border-b border-gray-100 px-6 py-3">
                 <div class="flex gap-2 overflow-x-auto scrollbar-hide">
-                    <div v-for="photo in courtPhotos" :key="photo.id"
-                        class="shrink-0 w-28 h-20 rounded-xl overflow-hidden bg-gray-100">
+                    <div v-for="(photo, i) in courtPhotos" :key="photo.id"
+                        class="shrink-0 w-28 h-20 rounded-xl overflow-hidden bg-gray-100 cursor-pointer active:opacity-80 transition-opacity"
+                        @click="openLightbox(i + 1)">
                         <img :src="photo.url" :alt="court.name"
                             class="w-full h-full object-cover"
                             onerror="this.style.display='none'" />
@@ -1691,6 +1724,55 @@ const subscribePlan = async (plan) => {
     </Transition>
 
     <MatchSheet v-if="court" v-model="matchSheet" :court="court" />
+
+    <!-- Photo Lightbox ──────────────────────────────────────────────────────── -->
+    <Transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0">
+        <div v-if="lightbox.show"
+            class="fixed inset-0 z-[100] bg-black flex flex-col"
+            @click.self="lightbox.show = false">
+            <!-- Top bar -->
+            <div class="flex items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-3 shrink-0">
+                <span class="text-white/60 text-sm font-medium">
+                    {{ lightbox.idx + 1 }} / {{ lightboxImages.length }}
+                </span>
+                <button @click="lightbox.show = false"
+                    class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center">
+                    <X :size="18" class="text-white" />
+                </button>
+            </div>
+            <!-- Image -->
+            <div class="flex-1 flex items-center justify-center px-2 min-h-0">
+                <img :src="lightboxImages[lightbox.idx]?.url"
+                    class="max-w-full max-h-full object-contain rounded-lg"
+                    :alt="court?.name" />
+            </div>
+            <!-- Prev / Next -->
+            <div class="flex items-center justify-between px-4 py-6 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] shrink-0">
+                <button @click="lightboxPrev"
+                    class="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center active:bg-white/20 transition-colors"
+                    :class="lightboxImages.length <= 1 ? 'invisible' : ''">
+                    <ChevronLeft :size="22" class="text-white" />
+                </button>
+                <!-- Dots -->
+                <div class="flex gap-1.5">
+                    <div v-for="(_, i) in lightboxImages" :key="i"
+                        class="w-1.5 h-1.5 rounded-full transition-colors"
+                        :class="i === lightbox.idx ? 'bg-white' : 'bg-white/30'" />
+                </div>
+                <button @click="lightboxNext"
+                    class="w-11 h-11 rounded-full bg-white/10 flex items-center justify-center active:bg-white/20 transition-colors"
+                    :class="lightboxImages.length <= 1 ? 'invisible' : ''">
+                    <ChevronRight :size="22" class="text-white" />
+                </button>
+            </div>
+        </div>
+    </Transition>
 
     <!-- Slot taken — find other venues at this time ───────────────────────── -->
     <Transition
