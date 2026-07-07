@@ -19,7 +19,7 @@ defineProps({
             class="shrink-0 rounded-[22%] object-cover"
             alt="KoCourt"
         />
-        <span v-if="showText" class="text-sm font-black text-primary tracking-widest uppercase">
+        <span v-if="showText" class="text-sm font-black text-black tracking-widest uppercase">
             KoCourt
         </span>
     </div>

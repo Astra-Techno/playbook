@@ -59,16 +59,16 @@ const cancelSub = async (sub) => {
     <Teleport to="#header-subject">{{ space?.name || 'Members' }}</Teleport>
     <Teleport to="#header-subtitle">{{ space?.name ? space.name + ' · Members' : 'Members' }}</Teleport>
 
-    <div class="min-h-full bg-slate-50">
+    <div class="min-h-full bg-white">
         <!-- Header -->
-        <div class="bg-white px-5 pt-5 pb-4 border-b border-slate-100">
+        <div class="bg-white px-5 pt-5 pb-4 border-b border-gray-100">
             <div class="flex items-center justify-between">
                 <div>
-                    <h1 class="text-lg font-bold text-slate-900">Members</h1>
-                    <p class="text-xs text-slate-500">Active subscribers · {{ space?.name }}</p>
+                    <h1 class="text-lg font-bold text-black">Members</h1>
+                    <p class="text-xs text-gray-500">Active subscribers · {{ space?.name }}</p>
                 </div>
-                <div v-if="!loading" class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                    <span class="text-primary font-extrabold text-sm">{{ members.length }}</span>
+                <div v-if="!loading" class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                    <span class="text-black font-extrabold text-sm">{{ members.length }}</span>
                 </div>
             </div>
         </div>
@@ -79,11 +79,11 @@ const cancelSub = async (sub) => {
             </div>
 
             <div v-else-if="!members.length" class="flex flex-col items-center justify-center py-16 text-center">
-                <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3">
-                    <UserCheck :size="26" class="text-slate-300" />
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                    <UserCheck :size="26" class="text-gray-300" />
                 </div>
-                <p class="font-semibold text-slate-700">No active members</p>
-                <p class="text-xs text-slate-400 mt-1">Members who subscribe to this space's plans will appear here</p>
+                <p class="font-semibold text-gray-700">No active members</p>
+                <p class="text-xs text-gray-400 mt-1">Members who subscribe to this space's plans will appear here</p>
             </div>
 
             <div v-else class="space-y-2">
@@ -91,20 +91,20 @@ const cancelSub = async (sub) => {
                     class="bg-white rounded-2xl px-4 py-3.5 shadow-sm ring-1 ring-slate-100">
                     <div class="flex items-start gap-3">
                         <!-- Avatar -->
-                        <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 font-extrabold text-primary text-sm">
+                        <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 font-extrabold text-black text-sm">
                             {{ (m.user_name || '?').charAt(0).toUpperCase() }}
                         </div>
                         <!-- Info -->
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm font-bold text-slate-800 truncate">{{ m.user_name }}</p>
-                            <div class="flex items-center gap-1 text-[11px] text-slate-400 mt-0.5">
+                            <p class="text-sm font-bold text-black truncate">{{ m.user_name }}</p>
+                            <div class="flex items-center gap-1 text-[11px] text-gray-400 mt-0.5">
                                 <Award :size="10" />
                                 <span>{{ m.plan_name }}</span>
-                                <span class="text-slate-300">·</span>
-                                <span class="font-semibold text-primary">₹{{ m.plan_price }}</span>
+                                <span class="text-gray-300">·</span>
+                                <span class="font-semibold text-black">₹{{ m.plan_price }}</span>
                             </div>
                             <div class="flex items-center gap-3 mt-1.5">
-                                <div class="flex items-center gap-1 text-[10px] text-slate-400">
+                                <div class="flex items-center gap-1 text-[10px] text-gray-400">
                                     <Calendar :size="10" />
                                     <span>Expires {{ fmtDate(m.end_date) }}</span>
                                 </div>
@@ -120,8 +120,8 @@ const cancelSub = async (sub) => {
                         <!-- Actions -->
                         <div class="shrink-0 flex flex-col items-end gap-2">
                             <a v-if="m.user_phone" :href="`tel:${m.user_phone}`"
-                                class="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center">
-                                <Phone :size="13" class="text-slate-400" />
+                                class="w-8 h-8 rounded-xl bg-white flex items-center justify-center">
+                                <Phone :size="13" class="text-gray-400" />
                             </a>
                             <button @click="cancelSub(m)" :disabled="cancellingId === m.id"
                                 class="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center active:scale-90 transition">

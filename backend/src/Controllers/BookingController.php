@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../Models/Booking.php';
 require_once __DIR__ . '/../Models/Subscription.php';
 require_once __DIR__ . '/../PeakAccess.php';
+require_once __DIR__ . '/../Push.php';
 
 class BookingController {
 
@@ -277,6 +278,19 @@ class BookingController {
                 $newId = (int)$booking->conn->lastInsertId();
                 $msg   = $isWalkIn ? "Walk-in booking created." : "Booking confirmed.";
                 echo json_encode(["message" => $msg, "id" => $newId]);
+
+                // Push: notify court owner of new booking
+                if (!$isWalkIn && $court && !empty($court['owner_id'])) {
+                    $playerName = $authUser['name'] ?? 'Someone';
+                    $courtName  = $court['name']    ?? 'your court';
+                    $dateStr    = date('D, d M', strtotime($data->start_time));
+                    Push::sendToUser(
+                        (int)$court['owner_id'],
+                        'New Booking',
+                        "{$playerName} booked {$courtName} on {$dateStr}",
+                        ['type' => 'booking', 'booking_id' => (string)$newId, 'court_id' => (string)$court['id']]
+                    );
+                }
             } else {
                 http_response_code(503);
                 echo json_encode(["message" => "Unable to create booking."]);

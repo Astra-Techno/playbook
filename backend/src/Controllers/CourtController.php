@@ -16,12 +16,13 @@ class CourtController {
         $lng      = isset($_GET['lng'])      ? (float)$_GET['lng']    : null;
         $radius    = isset($_GET['radius'])    ? (int)$_GET['radius']    : 25;
         $adminList = !empty($_GET['admin_list']);
+        $featured  = !empty($_GET['featured']);
         if ($adminList) {
             Auth::requireAdmin();
         }
 
         $court = new Court();
-        $stmt  = $court->read($location, $type, $owner_id, $lat, $lng, $radius, $adminList);
+        $stmt  = $court->read($location, $type, $owner_id, $lat, $lng, $radius, $adminList, $featured);
 
         $courts_arr = ["records" => []];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -47,6 +48,7 @@ class CourtController {
                 "is_verified"         => (bool)($row["is_verified"] ?? false),
                 "avg_rating"          => isset($row["avg_rating"]) && $row["avg_rating"] !== null ? round((float)$row["avg_rating"], 1) : null,
                 "review_count"        => (int)($row["review_count"] ?? 0),
+                "is_featured"         => (bool)($row["is_featured"] ?? false),
             ];
             // Include distance (km) when GPS search was used
             if (isset($row["distance"])) {
@@ -519,6 +521,17 @@ class CourtController {
         $db->prepare("UPDATE courts SET is_verified=? WHERE id=?")->execute([$verified, $id]);
         http_response_code(200);
         echo json_encode(['message' => 'Court verification updated.', 'is_verified' => (bool)$verified]);
+    }
+
+    // PUT /api/courts/:id/featured
+    public function toggleFeatured($id) {
+        Auth::requireAdmin();
+        $data     = json_decode(file_get_contents("php://input"));
+        $featured = isset($data->is_featured) ? (int)$data->is_featured : 1;
+        $db = Database::getConnection();
+        $db->prepare("UPDATE courts SET is_featured=? WHERE id=?")->execute([$featured, $id]);
+        http_response_code(200);
+        echo json_encode(['message' => 'Court featured status updated.', 'is_featured' => (bool)$featured]);
     }
 
     // DELETE /api/courts/:id

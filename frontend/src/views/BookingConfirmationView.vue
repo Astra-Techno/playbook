@@ -28,16 +28,16 @@ onMounted(async () => {
 </script>
 
 <template>
-    <div class="min-h-full bg-slate-50 flex flex-col items-center justify-start pt-10 px-5 pb-8">
+    <div class="min-h-full bg-white flex flex-col items-center justify-start pt-10 px-5 pb-8">
 
         <!-- Loading -->
         <div v-if="loading" class="flex flex-col items-center justify-center py-32">
-            <Loader2 :size="32" class="text-primary animate-spin" />
+            <Loader2 :size="32" class="text-black animate-spin" />
         </div>
 
         <!-- Not Found -->
         <div v-else-if="notFound" class="text-center py-16">
-            <p class="font-bold text-slate-600 mb-3">Booking not found</p>
+            <p class="font-bold text-gray-500 mb-3">Booking not found</p>
             <button @click="router.replace('/')" class="btn-primary text-sm px-6 py-2.5">Back to Home</button>
         </div>
 
@@ -47,14 +47,14 @@ onMounted(async () => {
                 <div class="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center mb-5 animate-bounce-once">
                     <CheckCircle2 :size="52" class="text-emerald-500" stroke-width="1.5" />
                 </div>
-                <h1 class="text-2xl font-black text-slate-900">Booking Confirmed!</h1>
-                <p class="text-slate-500 text-sm mt-1 text-center">Your slot has been successfully reserved.</p>
+                <h1 class="text-2xl font-black text-black">Booking Confirmed!</h1>
+                <p class="text-gray-500 text-sm mt-1 text-center">Your slot has been successfully reserved.</p>
             </div>
 
             <!-- Booking details card -->
             <div class="w-full bg-white rounded-2xl shadow-sm ring-1 ring-slate-100 overflow-hidden mb-6">
                 <!-- Header band -->
-                <div class="bg-primary px-5 py-4">
+                <div class="bg-black px-5 py-4">
                     <p class="text-white/70 text-[11px] font-bold uppercase tracking-wider mb-0.5">Venue</p>
                     <p class="text-white font-black text-lg leading-tight">{{ booking.court_name }}</p>
                     <p v-if="booking.space_name" class="text-white/80 text-sm mt-0.5">{{ booking.space_name }}</p>
@@ -63,51 +63,51 @@ onMounted(async () => {
                 <div class="px-5 py-4 space-y-4">
                     <!-- Booking ID -->
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                            <Hash :size="16" class="text-slate-500" />
+                        <div class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                            <Hash :size="16" class="text-gray-500" />
                         </div>
                         <div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Booking ID</p>
-                            <p class="text-sm font-black text-slate-800">#{{ booking.id }}</p>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Booking ID</p>
+                            <p class="text-sm font-black text-black">#{{ booking.id }}</p>
                         </div>
                     </div>
 
                     <!-- Date -->
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                            <CalendarDays :size="16" class="text-primary" />
+                        <div class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                            <CalendarDays :size="16" class="text-black" />
                         </div>
                         <div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Date</p>
-                            <p class="text-sm font-black text-slate-800">{{ fmtDate(booking.start_time) }}</p>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Date</p>
+                            <p class="text-sm font-black text-black">{{ fmtDate(booking.start_time) }}</p>
                         </div>
                     </div>
 
                     <!-- Time -->
                     <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                            <Clock :size="16" class="text-primary" />
+                        <div class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                            <Clock :size="16" class="text-black" />
                         </div>
                         <div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Time</p>
-                            <p class="text-sm font-black text-slate-800">{{ fmtTime(booking.start_time) }} – {{ fmtTime(booking.end_time) }}</p>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Time</p>
+                            <p class="text-sm font-black text-black">{{ fmtTime(booking.start_time) }} – {{ fmtTime(booking.end_time) }}</p>
                         </div>
                     </div>
 
                     <!-- Location -->
                     <div v-if="booking.court_location" class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center shrink-0">
-                            <MapPin :size="16" class="text-slate-500" />
+                        <div class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
+                            <MapPin :size="16" class="text-gray-500" />
                         </div>
                         <div>
-                            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Location</p>
-                            <p class="text-sm font-semibold text-slate-700">{{ booking.court_location }}</p>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Location</p>
+                            <p class="text-sm font-semibold text-gray-700">{{ booking.court_location }}</p>
                         </div>
                     </div>
 
                     <!-- Total price -->
-                    <div class="border-t border-slate-100 pt-4 flex items-center justify-between">
-                        <p class="text-sm font-bold text-slate-500">Total Paid</p>
+                    <div class="border-t border-gray-100 pt-4 flex items-center justify-between">
+                        <p class="text-sm font-bold text-gray-500">Total Paid</p>
                         <p class="text-xl font-black text-emerald-600">₹{{ Number(booking.total_price).toLocaleString('en-IN') }}</p>
                     </div>
                 </div>

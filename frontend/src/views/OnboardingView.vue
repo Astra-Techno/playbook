@@ -9,8 +9,8 @@ const current = ref(0)
 const slides = [
     {
         icon: MapPin,
-        color: 'text-primary',
-        bg: 'bg-primary-light',
+        color: 'text-black',
+        bg: 'bg-gray-100',
         title: 'Discover Courts Near You',
         body: 'Find football turfs, badminton courts, gyms and more — just share your location and we\'ll show the best venues nearby.',
         emoji: '🏟️',
@@ -47,7 +47,7 @@ const finish = () => {
     <div class="min-h-full bg-white flex flex-col">
         <!-- Skip -->
         <div class="flex justify-end px-5 pt-5">
-            <button @click="finish" class="text-xs font-bold text-slate-400 hover:text-slate-600">Skip</button>
+            <button @click="finish" class="text-xs font-bold text-gray-400 hover:text-gray-500">Skip</button>
         </div>
 
         <!-- Slides -->
@@ -61,10 +61,10 @@ const finish = () => {
                             <span class="text-5xl">{{ slides[current].emoji }}</span>
                         </div>
 
-                        <h1 class="text-2xl font-extrabold text-slate-900 leading-tight mb-4">
+                        <h1 class="text-2xl font-extrabold text-black leading-tight mb-4">
                             {{ slides[current].title }}
                         </h1>
-                        <p class="text-slate-500 text-sm leading-relaxed max-w-[280px]">
+                        <p class="text-gray-500 text-sm leading-relaxed max-w-[280px]">
                             {{ slides[current].body }}
                         </p>
                     </div>
@@ -78,13 +78,13 @@ const finish = () => {
             <div class="flex gap-2">
                 <div v-for="(_, i) in slides" :key="i"
                     class="h-2 rounded-full transition-all duration-300"
-                    :class="i === current ? 'w-6 bg-primary' : 'w-2 bg-slate-200'">
+                    :class="i === current ? 'w-6 bg-black' : 'w-2 bg-slate-200'">
                 </div>
             </div>
 
             <!-- CTA button -->
             <button @click="next"
-                class="w-full bg-primary text-white font-extrabold py-4 rounded-2xl text-base shadow-md active:scale-[0.98] transition-transform">
+                class="w-full bg-black text-white font-extrabold py-4 rounded-2xl text-base shadow-md active:scale-[0.98] transition-transform">
                 {{ current < slides.length - 1 ? 'Next' : 'Get Started' }}
             </button>
         </div>

@@ -35,7 +35,7 @@ class ReviewController {
         }
 
         $stmt = $db->prepare(
-            "SELECT r.id, r.rating, r.comment, r.created_at,
+            "SELECT r.id, r.user_id, r.rating, r.comment, r.created_at,
                     r.owner_reply, r.owner_reply_at, u.name as user_name
              FROM reviews r
              JOIN users u ON r.user_id = u.id

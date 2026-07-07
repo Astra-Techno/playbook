@@ -5,7 +5,7 @@ import {
     CalendarDays, User,
     CheckCircle2, XCircle, Info,
     Compass, Rss, Map, ShieldCheck,
-    Star, X, Loader2
+    Star, X, Loader2, Users
 } from 'lucide-vue-next'
 import axios from 'axios'
 import { useAuthStore } from './stores/auth'
@@ -45,7 +45,7 @@ const isActive = (path) =>
     path === '/' ? route.path === '/' : route.path.startsWith(path)
 
 const toastIcon = { success: CheckCircle2, error: XCircle, info: Info }
-const toastBg   = { success: 'bg-slate-900', error: 'bg-red-600', info: 'bg-primary' }
+const toastBg   = { success: 'bg-slate-900', error: 'bg-red-600', info: 'bg-slate-900' }
 
 // ── Global review prompt ──────────────────────────────────────────────────────
 
@@ -120,9 +120,8 @@ const submitPromptRating = async () => {
 </script>
 
 <template>
-    <!-- flex-1 + min-h-0: fill #app without relying on h-screen/100vh (often 0px in embedded WebViews) -->
-    <div class="flex w-full flex-1 min-h-0 justify-center overflow-hidden bg-slate-100">
-    <div id="app-root" class="relative flex w-full max-w-[430px] flex-1 min-h-0 flex-col overflow-hidden bg-white shadow-sm">
+    <div class="flex w-full flex-1 min-h-0 justify-center overflow-hidden bg-[#f2f2f7] sm:py-6">
+    <div id="app-root" class="relative flex w-full max-w-[430px] mx-auto flex-1 min-h-0 flex-col overflow-hidden bg-white sm:rounded-[3rem] sm:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.2)] sm:ring-[12px] sm:ring-white">
 
         <!-- Toast overlay -->
         <div class="absolute inset-x-4 z-[200] space-y-2 pointer-events-none top-[max(1rem,calc(env(safe-area-inset-top,0px)+0.5rem))]">
@@ -141,16 +140,15 @@ const submitPromptRating = async () => {
             </TransitionGroup>
         </div>
 
-        <!-- Global Header -->
-        <AppHeader />
+        <!-- Global Header (hidden on profile & court detail — they use in-page headers) -->
+        <AppHeader v-if="!route.meta.hideHeader" />
 
         <!-- Page content -->
         <main ref="mainEl" class="flex-1 min-h-0 scrollbar-hide overscroll-y-contain touch-pan-y"
             :class="[
                 route.meta.fullScreen ? 'overflow-hidden' : 'overflow-y-auto',
                 auth.isLoggedIn && !route.meta.fullScreen && !route.meta.hideBottomNav
-                    /* Reserve tab bar + FAB; add home-indicator inset so last lines clear on iOS (nav already pads its own bottom). */
-                    ? 'pb-[calc(6rem+env(safe-area-inset-bottom,0px))]'
+                    ? 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))]'
                     : ''
             ]">
             <RouterView />
@@ -158,53 +156,41 @@ const submitPromptRating = async () => {
 
         <!-- Bottom Nav — shown when logged in -->
         <nav v-if="auth.isLoggedIn && !route.meta.hideBottomNav"
-            class="absolute bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-100 z-50 px-6 pt-3 flex justify-between items-center pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
-            style="box-shadow: 0 -2px 20px rgba(0,0,0,0.07);">
+            class="absolute bottom-0 inset-x-0 glass-blur border-t border-gray-100 z-50 px-8 pt-4 flex justify-between items-center pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] sm:rounded-b-[3rem]">
 
             <RouterLink to="/"
-                class="flex flex-col items-center gap-0.5 transition-colors"
-                :class="isActive('/') ? 'text-primary' : 'text-slate-400'">
-                <Compass :size="24" :stroke-width="isActive('/') ? 2.5 : 1.8" />
-                <span class="text-[10px] font-bold">Explore</span>
+                class="flex flex-col items-center gap-1.5 transition-opacity"
+                :class="isActive('/') ? 'opacity-100' : 'opacity-40 hover:opacity-100'">
+                <Compass :size="24" :stroke-width="isActive('/') ? 2.5 : 2" class="text-black" />
+                <span class="text-[10px] font-bold text-black">Explore</span>
             </RouterLink>
 
             <RouterLink to="/feed"
-                class="flex flex-col items-center gap-0.5 transition-colors"
-                :class="isActive('/feed') ? 'text-primary' : 'text-slate-400'">
-                <Rss :size="24" :stroke-width="isActive('/feed') ? 2.5 : 1.8" />
-                <span class="text-[10px]" :class="isActive('/feed') ? 'font-bold' : 'font-medium'">Feed</span>
+                class="flex flex-col items-center gap-1.5 transition-opacity"
+                :class="isActive('/feed') ? 'opacity-100' : 'opacity-40 hover:opacity-100'">
+                <Rss :size="24" :stroke-width="isActive('/feed') ? 2.5 : 2" class="text-black" />
+                <span class="text-[10px] font-bold text-black">Feed</span>
             </RouterLink>
 
-            <!-- FAB — Map -->
-            <div class="flex flex-col items-center -mt-8">
-                <RouterLink to="/map"
-                    class="bg-primary text-white size-14 rounded-full flex items-center justify-center border-4 border-white active:scale-95 transition-transform"
-                    :class="isActive('/map') ? 'ring-2 ring-primary ring-offset-2' : ''"
-                    style="box-shadow: 0 6px 24px rgba(124,58,237,0.40);">
-                    <Map :size="24" :stroke-width="2" />
-                </RouterLink>
-                <span class="text-[10px] font-medium mt-1" :class="isActive('/map') ? 'text-primary font-bold' : 'text-slate-400'">Map</span>
-            </div>
-
-            <!-- Admin: show Admin panel link; others: show Bookings -->
-            <RouterLink v-if="auth.isAdmin" to="/admin"
-                class="flex flex-col items-center gap-0.5 transition-colors relative"
-                :class="isActive('/admin') ? 'text-primary' : 'text-slate-400'">
-                <ShieldCheck :size="24" :stroke-width="isActive('/admin') ? 2.5 : 1.8" />
-                <span class="text-[10px]" :class="isActive('/admin') ? 'font-bold' : 'font-medium'">Admin</span>
+            <RouterLink to="/matches"
+                class="flex flex-col items-center gap-1.5 transition-opacity"
+                :class="isActive('/matches') ? 'opacity-100' : 'opacity-40 hover:opacity-100'">
+                <Users :size="24" :stroke-width="isActive('/matches') ? 2.5 : 2" class="text-black" />
+                <span class="text-[10px] font-bold text-black">Matches</span>
             </RouterLink>
-            <RouterLink v-else to="/bookings"
-                class="flex flex-col items-center gap-0.5 transition-colors"
-                :class="isActive('/bookings') ? 'text-primary' : 'text-slate-400'">
-                <CalendarDays :size="24" :stroke-width="isActive('/bookings') ? 2.5 : 1.8" />
-                <span class="text-[10px]" :class="isActive('/bookings') ? 'font-bold' : 'font-medium'">Bookings</span>
+
+            <RouterLink to="/bookings"
+                class="flex flex-col items-center gap-1.5 transition-opacity"
+                :class="isActive('/bookings') ? 'opacity-100' : 'opacity-40 hover:opacity-100'">
+                <CalendarDays :size="24" :stroke-width="isActive('/bookings') ? 2.5 : 2" class="text-black" />
+                <span class="text-[10px] font-bold text-black">Bookings</span>
             </RouterLink>
 
             <RouterLink to="/profile"
-                class="flex flex-col items-center gap-0.5 transition-colors"
-                :class="isActive('/profile') ? 'text-primary' : 'text-slate-400'">
-                <User :size="24" :stroke-width="isActive('/profile') ? 2.5 : 1.8" />
-                <span class="text-[10px]" :class="isActive('/profile') ? 'font-bold' : 'font-medium'">Profile</span>
+                class="flex flex-col items-center gap-1.5 transition-opacity"
+                :class="isActive('/profile') ? 'opacity-100' : 'opacity-40 hover:opacity-100'">
+                <User :size="24" :stroke-width="isActive('/profile') ? 2.5 : 2" class="text-black" />
+                <span class="text-[10px] font-bold text-black">Profile</span>
             </RouterLink>
 
         </nav>
@@ -221,14 +207,14 @@ const submitPromptRating = async () => {
                 <div class="w-full rounded-t-3xl bg-white px-5 pt-5 pb-[max(2.5rem,calc(env(safe-area-inset-bottom,0px)+1.5rem))]">
                     <div class="flex items-center justify-between mb-1">
                         <div>
-                            <p class="text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">How was your session?</p>
-                            <h3 class="font-bold text-slate-900 text-base">Rate Your Experience</h3>
+                            <p class="text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">How was your session?</p>
+                            <h3 class="font-bold text-black text-base">Rate Your Experience</h3>
                         </div>
-                        <button @click="dismissPrompt" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                            <X :size="16" class="text-slate-500" />
+                        <button @click="dismissPrompt" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                            <X :size="16" class="text-gray-500" />
                         </button>
                     </div>
-                    <p class="text-sm text-slate-500 mb-5">{{ reviewPrompt.booking?.court_name }}</p>
+                    <p class="text-sm text-gray-500 mb-5">{{ reviewPrompt.booking?.court_name }}</p>
 
                     <!-- Stars -->
                     <div class="flex gap-2 justify-center mb-5">

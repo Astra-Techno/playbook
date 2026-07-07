@@ -17,7 +17,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
         try {
             const [subRes, notifRes] = await Promise.all([
                 axios.get(`/notifications?user_id=${userId}`),
-                axios.get(`/user-notifications?user_id=${userId}`),
+                axios.get('/notifications/list'),
             ])
             expiringSoon.value = subRes.data.expiring_soon   || []
             venueAlerts.value  = notifRes.data.notifications || []
@@ -29,7 +29,7 @@ export const useNotificationsStore = defineStore('notifications', () => {
 
     const markRead = async (id) => {
         try {
-            await axios.put(`/user-notifications/${id}/read`)
+            await axios.put(`/notifications/${id}/read`)
             const n = venueAlerts.value.find(n => n.id === id)
             if (n) n.read_at = new Date().toISOString()
         } catch { /* ignore */ }

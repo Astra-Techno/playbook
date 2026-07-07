@@ -39,8 +39,8 @@ const formatDate = (dt) => {
 const statusMeta = computed(() => ({
     confirmed: { label: 'Confirmed',  cls: 'bg-emerald-100 text-emerald-700' },
     pending:   { label: 'Pending',    cls: 'bg-amber-100 text-amber-700' },
-    cancelled: { label: 'Cancelled',  cls: 'bg-slate-100 text-slate-500' },
-}[props.booking?.status] ?? { label: props.booking?.status, cls: 'bg-slate-100 text-slate-500' }))
+    cancelled: { label: 'Cancelled',  cls: 'bg-gray-100 text-gray-500' },
+}[props.booking?.status] ?? { label: props.booking?.status, cls: 'bg-gray-100 text-gray-500' }))
 
 const canCancel = computed(() => {
     if (!props.booking) return false
@@ -87,13 +87,13 @@ const cancelBooking = async () => {
                          class="absolute bottom-0 inset-x-0 bg-white rounded-t-3xl pb-10">
 
                         <!-- Handle + header -->
-                        <div class="pt-3 pb-4 px-5 border-b border-slate-100">
+                        <div class="pt-3 pb-4 px-5 border-b border-gray-100">
                             <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4"></div>
                             <div class="flex items-center justify-between">
-                                <h3 class="text-base font-extrabold text-slate-900">Booking Details</h3>
+                                <h3 class="text-base font-extrabold text-black">Booking Details</h3>
                                 <button @click="close"
-                                    class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 active:scale-90 transition-transform">
-                                    <X :size="16" class="text-slate-500" />
+                                    class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 active:scale-90 transition-transform">
+                                    <X :size="16" class="text-gray-500" />
                                 </button>
                             </div>
                         </div>
@@ -107,58 +107,58 @@ const cancelBooking = async () => {
                                     {{ statusMeta.label }}
                                 </span>
                                 <span v-if="booking.total_price"
-                                    class="text-lg font-extrabold text-primary flex items-center gap-0.5">
+                                    class="text-lg font-extrabold text-black flex items-center gap-0.5">
                                     <IndianRupee :size="14" :stroke-width="2.5" />{{ booking.total_price }}
                                 </span>
                             </div>
 
                             <!-- Player -->
-                            <div class="flex items-center gap-3 bg-slate-50 rounded-2xl px-4 py-3">
-                                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                    <User :size="18" class="text-primary" />
+                            <div class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3">
+                                <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                                    <User :size="18" class="text-black" />
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <p class="font-bold text-slate-900 text-sm truncate">{{ playerName }}</p>
-                                    <p v-if="playerPhone" class="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                                    <p class="font-bold text-black text-sm truncate">{{ playerName }}</p>
+                                    <p v-if="playerPhone" class="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                                         <Phone :size="10" /> {{ playerPhone }}
                                     </p>
-                                    <p v-else class="text-xs text-slate-400">Member</p>
+                                    <p v-else class="text-xs text-gray-400">Member</p>
                                 </div>
                             </div>
 
                             <!-- Space + Date/Time row -->
                             <div class="grid grid-cols-2 gap-3">
-                                <div v-if="spaceName" class="bg-slate-50 rounded-2xl px-4 py-3">
+                                <div v-if="spaceName" class="bg-white rounded-2xl px-4 py-3">
                                     <div class="flex items-center gap-1.5 mb-1">
-                                        <MapPin :size="12" class="text-slate-400" />
-                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Space</span>
+                                        <MapPin :size="12" class="text-gray-400" />
+                                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Space</span>
                                     </div>
-                                    <p class="text-sm font-bold text-slate-800 truncate">{{ spaceName }}</p>
+                                    <p class="text-sm font-bold text-black truncate">{{ spaceName }}</p>
                                 </div>
-                                <div class="bg-slate-50 rounded-2xl px-4 py-3" :class="spaceName ? '' : 'col-span-2'">
+                                <div class="bg-white rounded-2xl px-4 py-3" :class="spaceName ? '' : 'col-span-2'">
                                     <div class="flex items-center gap-1.5 mb-1">
-                                        <CalendarDays :size="12" class="text-slate-400" />
-                                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Date</span>
+                                        <CalendarDays :size="12" class="text-gray-400" />
+                                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Date</span>
                                     </div>
-                                    <p class="text-sm font-bold text-slate-800">{{ formatDate(booking.start_time) }}</p>
+                                    <p class="text-sm font-bold text-black">{{ formatDate(booking.start_time) }}</p>
                                 </div>
                             </div>
 
                             <!-- Time -->
-                            <div class="bg-slate-50 rounded-2xl px-4 py-3 flex items-center gap-3">
-                                <Clock :size="18" class="text-primary shrink-0" />
+                            <div class="bg-white rounded-2xl px-4 py-3 flex items-center gap-3">
+                                <Clock :size="18" class="text-black shrink-0" />
                                 <div>
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">Time</p>
-                                    <p class="text-sm font-extrabold text-slate-900">
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">Time</p>
+                                    <p class="text-sm font-extrabold text-black">
                                         {{ formatTime(booking.start_time) }} – {{ formatTime(booking.end_time) }}
                                     </p>
                                 </div>
                             </div>
 
                             <!-- Notes -->
-                            <div v-if="booking.notes" class="bg-slate-50 rounded-2xl px-4 py-3 flex items-start gap-3">
-                                <FileText :size="16" class="text-slate-400 mt-0.5 shrink-0" />
-                                <p class="text-sm text-slate-600 leading-relaxed">{{ booking.notes }}</p>
+                            <div v-if="booking.notes" class="bg-white rounded-2xl px-4 py-3 flex items-start gap-3">
+                                <FileText :size="16" class="text-gray-400 mt-0.5 shrink-0" />
+                                <p class="text-sm text-gray-500 leading-relaxed">{{ booking.notes }}</p>
                             </div>
 
                             <!-- Cancel button -->

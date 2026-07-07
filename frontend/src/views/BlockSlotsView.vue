@@ -155,22 +155,22 @@ const formatBlockTime = (b) => {
     <Teleport to="#header-subject">{{ spaceName || courtName || 'Block Slots' }}</Teleport>
     <Teleport to="#header-subtitle">{{ spaceId ? spaceName + ' · Block Slots' : 'Block Slots' }}</Teleport>
 
-    <div class="min-h-full bg-slate-50">
+    <div class="min-h-full bg-white">
         <!-- Header -->
-        <div class="bg-white px-5 pt-5 pb-5 border-b border-slate-100">
-            <h1 class="text-lg font-bold text-slate-900">Block Slots</h1>
-            <p class="text-xs text-slate-500">{{ spaceId ? `Block slots for ${spaceName || 'this space'}` : 'Mark time slots as unavailable' }}</p>
+        <div class="bg-white px-5 pt-5 pb-5 border-b border-gray-100">
+            <h1 class="text-lg font-bold text-black">Block Slots</h1>
+            <p class="text-xs text-gray-500">{{ spaceId ? `Block slots for ${spaceName || 'this space'}` : 'Mark time slots as unavailable' }}</p>
         </div>
 
         <div class="px-5 py-5 pb-8 space-y-5">
 
             <!-- Date picker -->
             <div>
-                <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Select Date</p>
+                <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Select Date</p>
                 <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
                     <button v-for="d in dateOptions" :key="d" @click="selectedDate = d; selectedHours = []"
                         class="shrink-0 flex flex-col items-center px-3 py-2 rounded-xl text-xs font-bold transition-all"
-                        :class="selectedDate === d ? 'bg-primary text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'">
+                        :class="selectedDate === d ? 'bg-black text-white' : 'bg-white text-gray-500 ring-1 ring-slate-200'">
                         <span class="text-[9px] uppercase">{{ new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'short'}) }}</span>
                         <span class="text-sm font-extrabold">{{ new Date(d+'T00:00').getDate() }}</span>
                     </button>
@@ -179,7 +179,7 @@ const formatBlockTime = (b) => {
 
             <!-- Hour grid -->
             <div>
-                <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">
                     Select Hours to Block
                     <span v-if="selectedHours.length" class="ml-1 bg-red-100 text-red-600 px-1.5 rounded-full text-[10px]">
                         {{ selectedHours.length }} selected
@@ -191,7 +191,7 @@ const formatBlockTime = (b) => {
                         class="py-2.5 rounded-xl text-xs font-bold border-2 transition-all"
                         :class="isBlockedHour(s.hour) ? 'bg-red-50 border-red-200 text-red-300 cursor-not-allowed' :
                                 selectedHours.includes(s.hour) ? 'bg-red-500 border-red-500 text-white' :
-                                'bg-white border-slate-200 text-slate-700 hover:border-red-300'">
+                                'bg-white border-gray-200 text-gray-700 hover:border-red-300'">
                         {{ s.label }}
                     </button>
                 </div>
@@ -199,9 +199,9 @@ const formatBlockTime = (b) => {
 
             <!-- Category -->
             <div>
-                <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Why are you blocking?</p>
+                <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">Why are you blocking?</p>
                 <select v-model="blockKind"
-                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-slate-700 focus:ring-primary focus:outline-none bg-white">
+                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-gray-700 focus:border border-black focus:outline-none bg-white">
                     <option value="maintenance">Maintenance / repairs</option>
                     <option value="holiday">Holiday / closed day</option>
                     <option value="private_event">Private event</option>
@@ -224,11 +224,11 @@ const formatBlockTime = (b) => {
 
             <!-- Reason -->
             <div>
-                <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                    Note <span class="font-normal normal-case text-slate-300">(optional)</span>
+                <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">
+                    Note <span class="font-normal normal-case text-gray-300">(optional)</span>
                 </p>
                 <input v-model="reason" type="text" placeholder="e.g. Deep clean, Diwali, team booking…"
-                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-primary focus:outline-none bg-white" />
+                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:border border-black focus:outline-none bg-white" />
             </div>
 
             <!-- Save -->
@@ -241,9 +241,9 @@ const formatBlockTime = (b) => {
 
             <!-- Existing blocks -->
             <div v-if="!loading && blocks.length">
-                <p class="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">
                     Active Blocks
-                    <span class="ml-1 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full text-[10px]">{{ blocks.length }}</span>
+                    <span class="ml-1 bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-[10px]">{{ blocks.length }}</span>
                 </p>
                 <div class="space-y-2">
                     <div v-for="block in blocks" :key="block.id"
@@ -251,18 +251,18 @@ const formatBlockTime = (b) => {
                         <CalendarOff :size="14" class="text-red-400 shrink-0" />
                         <div class="flex-1 min-w-0">
                             <div class="flex flex-wrap items-center gap-1.5 mb-0.5">
-                                <span class="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-white text-slate-600 ring-1 ring-slate-200">
+                                <span class="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-white text-gray-500 ring-1 ring-slate-200">
                                     {{ blockKindLabel(block.block_kind) }}
                                 </span>
                                 <span v-if="Number(block.repeat_annually) === 1" class="text-[9px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">
                                     Annual
                                 </span>
-                                <span v-if="!spaceId && block.sub_court_id" class="text-[9px] font-semibold text-slate-500 truncate max-w-[9rem]">
+                                <span v-if="!spaceId && block.sub_court_id" class="text-[9px] font-semibold text-gray-500 truncate max-w-[9rem]">
                                     {{ spaceLabel(block) }}
                                 </span>
                             </div>
-                            <p class="text-xs font-bold text-slate-700 truncate">{{ formatBlockTime(block) }}</p>
-                            <p v-if="block.reason" class="text-[11px] text-slate-400 truncate">{{ block.reason }}</p>
+                            <p class="text-xs font-bold text-gray-700 truncate">{{ formatBlockTime(block) }}</p>
+                            <p v-if="block.reason" class="text-[11px] text-gray-400 truncate">{{ block.reason }}</p>
                         </div>
                         <button @click="removeBlock(block)" :disabled="removingId === block.id"
                             class="w-7 h-7 rounded-full bg-white flex items-center justify-center active:scale-90 transition">

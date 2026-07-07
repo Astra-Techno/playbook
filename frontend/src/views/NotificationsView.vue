@@ -29,13 +29,15 @@ const fetchNotifications = async () => {
 }
 
 const markRead = async (n) => {
-    if (n.is_read || n.read_at) return
-    try {
-        await axios.put(`/notifications/${n.id}/read`)
-        n.read_at = new Date().toISOString()
-        n.is_read = 1
-        unreadCount.value = Math.max(0, unreadCount.value - 1)
-    } catch { /* silent */ }
+    if (!n.is_read && !n.read_at) {
+        try {
+            await axios.put(`/notifications/${n.id}/read`)
+            n.read_at = new Date().toISOString()
+            n.is_read = 1
+            unreadCount.value = Math.max(0, unreadCount.value - 1)
+        } catch { /* silent */ }
+    }
+    if (n.court_id) router.push(`/courts/${n.court_id}`)
 }
 
 const markAllRead = async () => {
@@ -70,19 +72,19 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="min-h-full bg-slate-50">
+    <div class="min-h-full bg-white">
         <Teleport to="#header-subject">Notifications</Teleport>
 
         <!-- Actions bar -->
-        <div v-if="notifications.length" class="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-slate-100 px-5 py-3 flex items-center justify-between">
-            <p class="text-xs font-bold text-slate-500">
-                <span v-if="unreadCount > 0" class="text-primary">{{ unreadCount }} unread</span>
+        <div v-if="notifications.length" class="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-gray-100 px-5 py-3 flex items-center justify-between">
+            <p class="text-xs font-bold text-gray-500">
+                <span v-if="unreadCount > 0" class="text-black">{{ unreadCount }} unread</span>
                 <span v-else class="text-emerald-600">All caught up</span>
             </p>
             <button v-if="unreadCount > 0"
                 @click="markAllRead"
                 :disabled="markingAll"
-                class="flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full active:scale-95 transition-transform disabled:opacity-50">
+                class="flex items-center gap-1.5 text-xs font-bold text-black bg-gray-100 px-3 py-1.5 rounded-full active:scale-95 transition-transform disabled:opacity-50">
                 <Loader2 v-if="markingAll" :size="12" class="animate-spin" />
                 <CheckCheck v-else :size="12" />
                 Mark all read
@@ -96,11 +98,11 @@ onMounted(() => {
 
         <!-- Empty state -->
         <div v-else-if="notifications.length === 0" class="flex flex-col items-center justify-center py-32 px-8 text-center">
-            <div class="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mb-5">
-                <Bell :size="36" class="text-slate-300" />
+            <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-5">
+                <Bell :size="36" class="text-gray-300" />
             </div>
-            <p class="font-black text-slate-700 text-lg mb-2">No notifications</p>
-            <p class="text-sm text-slate-400">You're all caught up! Check back later.</p>
+            <p class="font-black text-gray-700 text-lg mb-2">No notifications</p>
+            <p class="text-sm text-gray-400">You're all caught up! Check back later.</p>
         </div>
 
         <!-- Notifications list -->
@@ -108,21 +110,21 @@ onMounted(() => {
             <div v-for="n in notifications" :key="n.id"
                 @click="markRead(n)"
                 class="bg-white rounded-2xl p-4 shadow-sm ring-1 transition-all cursor-pointer active:scale-[0.99]"
-                :class="isUnread(n) ? 'ring-primary/20 border-l-4 border-l-primary' : 'ring-slate-100'">
+                :class="isUnread(n) ? 'border border-gray-200 border-l-4 border-l-black' : 'ring-slate-100'">
                 <div class="flex items-start gap-3">
                     <!-- Unread dot -->
                     <div class="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5"
-                        :class="isUnread(n) ? 'bg-primary' : 'bg-transparent'"></div>
+                        :class="isUnread(n) ? 'bg-black' : 'bg-transparent'"></div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-start justify-between gap-2">
-                            <p class="text-sm font-bold text-slate-900 leading-snug"
+                            <p class="text-sm font-bold text-black leading-snug"
                                 :class="isUnread(n) ? 'font-black' : ''">
                                 {{ n.title }}
                             </p>
-                            <span class="text-[10px] font-semibold text-slate-400 shrink-0 mt-0.5">{{ timeAgo(n.created_at) }}</span>
+                            <span class="text-[10px] font-semibold text-gray-400 shrink-0 mt-0.5">{{ timeAgo(n.created_at) }}</span>
                         </div>
-                        <p v-if="n.body" class="text-xs text-slate-500 mt-1 leading-relaxed">{{ n.body }}</p>
-                        <p v-if="n.court_name" class="text-[11px] font-bold text-primary mt-1.5">{{ n.court_name }}</p>
+                        <p v-if="n.body" class="text-xs text-gray-500 mt-1 leading-relaxed">{{ n.body }}</p>
+                        <p v-if="n.court_name" class="text-[11px] font-bold text-black mt-1.5">{{ n.court_name }}</p>
                     </div>
                 </div>
             </div>

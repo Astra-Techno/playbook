@@ -53,10 +53,11 @@ const pageTitle = computed(() => isCreate ? 'Add Venue' : 'Edit Venue')
 const saveLabel = computed(() => isCreate ? 'Add Venue' : 'Save Changes')
 
 onMounted(async () => {
+    if (!auth.isOwner && !auth.isAdmin) { router.replace('/'); return }
     if (isCreate) return
     try {
-        const res = await axios.get('/courts')
-        const court = (res.data.records || []).find(c => c.id == courtId)
+        const res = await axios.get(`/courts/${courtId}`)
+        const court = res.data.court || null
         if (!court) { router.replace('/my-venues'); return }
         Object.assign(form.value, {
             name:               court.name,
@@ -148,18 +149,18 @@ const save = async () => {
 </script>
 
 <template>
-    <div class="min-h-full bg-slate-50">
+    <div class="min-h-full bg-white">
 
         <!-- Sticky top bar -->
-        <div class="sticky top-0 z-30 bg-white border-b border-slate-100 px-4 py-3.5 flex items-center gap-3"
+        <div class="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-3.5 flex items-center gap-3"
             style="box-shadow: 0 1px 6px rgba(0,0,0,0.06)">
             <button @click="router.back()"
-                class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center active:scale-90 transition-transform shrink-0">
-                <ArrowLeft :size="20" class="text-slate-600" />
+                class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center active:scale-90 transition-transform shrink-0">
+                <ArrowLeft :size="20" class="text-gray-500" />
             </button>
-            <h1 class="flex-1 font-extrabold text-slate-900 text-base truncate">{{ pageTitle }}</h1>
+            <h1 class="flex-1 font-extrabold text-black text-base truncate">{{ pageTitle }}</h1>
             <button @click="save" :disabled="saving || uploadLoading"
-                class="flex items-center gap-1.5 bg-primary text-white font-bold text-sm px-4 py-2 rounded-xl disabled:opacity-50 active:scale-95 transition-all">
+                class="flex items-center gap-1.5 bg-black text-white font-bold text-sm px-4 py-2 rounded-xl disabled:opacity-50 active:scale-95 transition-all">
                 <Loader2 v-if="saving" :size="14" class="animate-spin" />
                 <Check v-else :size="14" />
                 Save
@@ -168,7 +169,7 @@ const save = async () => {
 
         <!-- Loading -->
         <div v-if="loading" class="flex items-center justify-center py-24">
-            <Loader2 :size="32" class="animate-spin text-primary" />
+            <Loader2 :size="32" class="animate-spin text-black" />
         </div>
 
         <div v-else class="px-4 py-5 space-y-4 pb-8">
@@ -176,22 +177,22 @@ const save = async () => {
             <!-- ── Photo ── -->
             <div class="bg-white rounded-2xl overflow-hidden ring-1 ring-slate-100 shadow-sm">
                 <div class="px-4 pt-4 pb-2">
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Photo</p>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Photo</p>
                 </div>
-                <div class="relative h-48 bg-slate-100 cursor-pointer">
+                <div class="relative h-48 bg-gray-100 cursor-pointer">
                     <img v-if="imagePreview || form.image_url"
                         :src="imagePreview || form.image_url"
                         class="w-full h-full object-cover" />
-                    <div v-else class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-300">
+                    <div v-else class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-300">
                         <Camera :size="36" />
-                        <p class="text-sm font-medium text-slate-400">Tap to add a photo</p>
+                        <p class="text-sm font-medium text-gray-400">Tap to add a photo</p>
                     </div>
                     <label class="absolute inset-0 cursor-pointer">
                         <input type="file" accept="image/jpeg,image/png,image/webp"
                             class="hidden" @change="handleImageSelect" />
                     </label>
                     <div v-if="uploadLoading" class="absolute inset-0 bg-white/80 flex items-center justify-center">
-                        <Loader2 :size="28" class="animate-spin text-primary" />
+                        <Loader2 :size="28" class="animate-spin text-black" />
                     </div>
                     <!-- Edit overlay -->
                     <div v-if="!uploadLoading && (imagePreview || form.image_url)"
@@ -208,35 +209,35 @@ const save = async () => {
             <!-- ── Basic Info ── -->
             <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm divide-y divide-slate-50">
                 <div class="px-4 py-3">
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2.5">Basic Info</p>
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">Venue Name *</label>
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2.5">Basic Info</p>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Venue Name *</label>
                     <input v-model="form.name" type="text" placeholder="e.g. GS Sports Arena"
-                        class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-slate-50" />
+                        class="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border border-gray-200 bg-white" />
                 </div>
                 <div class="px-4 py-3">
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">Description</label>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Description</label>
                     <textarea v-model="form.description" rows="3" placeholder="Describe your venue, facilities, etc."
-                        class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 bg-slate-50">
+                        class="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:border border-gray-200 bg-white">
                     </textarea>
                 </div>
                 <div class="px-4 py-3">
-                    <label class="block text-xs font-semibold text-slate-500 mb-1">Base Rate per Hour (₹) *</label>
-                    <p class="text-[11px] text-slate-400 mt-1.5">You can set per-court rates from the Services section</p>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Base Rate per Hour (₹) *</label>
+                    <p class="text-[11px] text-gray-400 mt-1.5">You can set per-court rates from the Services section</p>
                     <input v-model="form.hourly_rate" type="number" placeholder="500"
-                        class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-slate-50" />
+                        class="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border border-gray-200 bg-white" />
                 </div>
             </div>
 
             <!-- ── Sport Type ── -->
             <div class="bg-white rounded-2xl px-4 py-4 ring-1 ring-slate-100 shadow-sm">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Primary Sport</p>
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Primary Sport</p>
                 <div class="grid grid-cols-3 gap-2">
                     <button v-for="sport in sportOptions" :key="sport.id"
                         @click="form.type = sport.id"
                         class="flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-all text-xs font-semibold"
                         :class="form.type === sport.id
-                            ? 'border-primary bg-primary-light text-primary'
-                            : 'border-slate-100 bg-slate-50 text-slate-500'">
+                            ? 'border-black bg-gray-100 text-black'
+                            : 'border-gray-100 bg-white text-gray-500'">
                         <component :is="sport.icon" :size="20" />
                         {{ sport.label }}
                     </button>
@@ -245,14 +246,14 @@ const save = async () => {
 
             <!-- ── Location ── -->
             <div class="bg-white rounded-2xl px-4 py-4 ring-1 ring-slate-100 shadow-sm">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Location</p>
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Location</p>
                 <div class="flex gap-2">
                     <input v-model="form.location" type="text" placeholder="City or area name"
-                        class="flex-1 rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-slate-50" />
+                        class="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border border-gray-200 bg-white" />
                     <button @click="detectLocation" :disabled="geoLoading"
-                        class="w-12 h-12 rounded-xl bg-primary-light flex items-center justify-center shrink-0 active:scale-95 transition-transform disabled:opacity-50">
-                        <Loader2 v-if="geoLoading" :size="18" class="animate-spin text-primary" />
-                        <LocateFixed v-else :size="18" class="text-primary" />
+                        class="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 active:scale-95 transition-transform disabled:opacity-50">
+                        <Loader2 v-if="geoLoading" :size="18" class="animate-spin text-black" />
+                        <LocateFixed v-else :size="18" class="text-black" />
                     </button>
                 </div>
                 <p v-if="form.lat && form.lng" class="text-[11px] text-emerald-600 font-semibold mt-2">
@@ -262,17 +263,17 @@ const save = async () => {
 
             <!-- ── Operating Hours ── -->
             <div class="bg-white rounded-2xl px-4 py-4 ring-1 ring-slate-100 shadow-sm">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Operating Hours</p>
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Operating Hours</p>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="text-[11px] font-semibold text-slate-400 block mb-1.5">Opens</label>
+                        <label class="text-[11px] font-semibold text-gray-400 block mb-1.5">Opens</label>
                         <input v-model="form.open_time" type="time"
-                            class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-slate-50" />
+                            class="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border border-gray-200 bg-white" />
                     </div>
                     <div>
-                        <label class="text-[11px] font-semibold text-slate-400 block mb-1.5">Closes</label>
+                        <label class="text-[11px] font-semibold text-gray-400 block mb-1.5">Closes</label>
                         <input v-model="form.close_time" type="time"
-                            class="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 bg-slate-50" />
+                            class="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border border-gray-200 bg-white" />
                     </div>
                 </div>
             </div>
@@ -281,17 +282,17 @@ const save = async () => {
             <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm overflow-hidden">
                 <button @click="showPeakHours = !showPeakHours"
                     class="w-full flex items-center justify-between px-4 py-4">
-                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Peak Hours</p>
-                    <ChevronDown :size="16" class="text-slate-400 transition-transform"
+                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Peak Hours</p>
+                    <ChevronDown :size="16" class="text-gray-400 transition-transform"
                         :class="showPeakHours ? 'rotate-180' : ''" />
                 </button>
 
                 <div v-if="showPeakHours" class="px-4 pb-4 space-y-3">
                 <div class="flex items-center justify-between mb-1">
-                    <p class="text-xs text-slate-500">Restrict peak slots to members only</p>
+                    <p class="text-xs text-gray-500">Restrict peak slots to members only</p>
                     <label class="relative flex items-center cursor-pointer">
                         <input type="checkbox" v-model="form.peak_members_only" class="sr-only peer" />
-                        <div class="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:bg-primary transition-colors"></div>
+                        <div class="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:bg-black transition-colors"></div>
                         <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
                     </label>
                 </div>
@@ -347,15 +348,15 @@ const save = async () => {
 
             <!-- ── Amenities ── -->
             <div class="bg-white rounded-2xl px-4 py-4 ring-1 ring-slate-100 shadow-sm">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Amenities</p>
+                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Amenities</p>
                 <div class="flex flex-wrap gap-2">
                     <button v-for="tag in AMENITIES_LIST" :key="tag"
                         type="button"
                         @click="toggleAmenity(tag)"
                         class="px-3.5 py-2 rounded-full text-xs font-semibold border-2 transition-all"
                         :class="form.amenities.includes(tag)
-                            ? 'bg-primary border-primary text-white'
-                            : 'bg-slate-50 border-slate-200 text-slate-500'">
+                            ? 'bg-black border-black text-white'
+                            : 'bg-white border-gray-200 text-gray-500'">
                         {{ tag }}
                     </button>
                 </div>
@@ -363,7 +364,7 @@ const save = async () => {
 
             <!-- ── Save button ── -->
             <button @click="save" :disabled="saving || uploadLoading"
-                class="w-full bg-primary text-white font-extrabold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all disabled:opacity-50">
+                class="w-full bg-black text-white font-extrabold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all disabled:opacity-50">
                 <Loader2 v-if="saving" :size="18" class="animate-spin" />
                 <Check v-else :size="18" />
                 {{ saveLabel }}

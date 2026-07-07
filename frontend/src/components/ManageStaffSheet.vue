@@ -87,13 +87,13 @@ const initials = (name) => (name || '?').split(' ').map(p => p[0]).join('').toUp
                         <!-- Handle + Header -->
                         <div class="pt-3 shrink-0">
                             <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-3"></div>
-                            <div class="flex items-center justify-between px-5 pb-4 border-b border-slate-100">
+                            <div class="flex items-center justify-between px-5 pb-4 border-b border-gray-100">
                                 <div>
-                                    <p class="text-[10px] font-black text-primary uppercase tracking-wider">{{ court.name }}</p>
-                                    <h3 class="text-base font-extrabold text-slate-900">Manage Staff</h3>
+                                    <p class="text-[10px] font-black text-black uppercase tracking-wider">{{ court.name }}</p>
+                                    <h3 class="text-base font-extrabold text-black">Manage Staff</h3>
                                 </div>
-                                <button @click="close" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                                    <X :size="16" class="text-slate-500" />
+                                <button @click="close" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                                    <X :size="16" class="text-gray-500" />
                                 </button>
                             </div>
                         </div>
@@ -102,35 +102,35 @@ const initials = (name) => (name || '?').split(' ').map(p => p[0]).join('').toUp
 
                             <!-- Add Staff -->
                             <div>
-                                <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3">Add Staff Member</p>
+                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-3">Add Staff Member</p>
                                 <div class="space-y-2">
                                     <!-- Phone input -->
-                                    <div class="flex items-center gap-2 ring-1 ring-slate-200 rounded-xl px-4 h-12 focus-within:ring-primary transition-all bg-white">
-                                        <Phone :size="15" class="text-slate-400 shrink-0" />
+                                    <div class="flex items-center gap-2 ring-1 ring-slate-200 rounded-xl px-4 h-12 focus-within:border border-black transition-all bg-white">
+                                        <Phone :size="15" class="text-gray-400 shrink-0" />
                                         <input v-model="phone" type="tel" placeholder="Staff phone number"
-                                            class="flex-1 text-sm bg-transparent border-none focus:ring-0 placeholder:text-slate-300"
+                                            class="flex-1 text-sm bg-transparent border-none focus:ring-0 placeholder:text-gray-300"
                                             @keyup.enter="addStaff" />
                                     </div>
                                     <!-- Role selector -->
                                     <div class="flex gap-2">
                                         <button @click="role = 'manager'"
                                             class="flex-1 flex items-center justify-center gap-2 h-10 rounded-xl text-xs font-bold transition-all"
-                                            :class="role === 'manager' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'">
+                                            :class="role === 'manager' ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'">
                                             <Shield :size="13" /> Manager
                                         </button>
                                         <button @click="role = 'viewer'"
                                             class="flex-1 flex items-center justify-center gap-2 h-10 rounded-xl text-xs font-bold transition-all"
-                                            :class="role === 'viewer' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500'">
+                                            :class="role === 'viewer' ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'">
                                             <Eye :size="13" /> Viewer
                                         </button>
                                     </div>
                                     <!-- Role description -->
-                                    <p class="text-[11px] text-slate-400 px-1">
+                                    <p class="text-[11px] text-gray-400 px-1">
                                         <template v-if="role === 'manager'">Can view, create &amp; cancel bookings</template>
                                         <template v-else>Can view bookings only</template>
                                     </p>
                                     <button @click="addStaff" :disabled="addLoading"
-                                        class="w-full bg-primary text-white text-sm font-extrabold py-3 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-60">
+                                        class="w-full bg-black text-white text-sm font-extrabold py-3 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-60">
                                         <Loader2 v-if="addLoading" :size="15" class="animate-spin" />
                                         <UserPlus v-else :size="15" />
                                         Add Staff
@@ -140,40 +140,40 @@ const initials = (name) => (name || '?').split(' ').map(p => p[0]).join('').toUp
 
                             <!-- Staff List -->
                             <div>
-                                <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3">
+                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-3">
                                     Current Staff
-                                    <span v-if="staff.length" class="ml-1 bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full text-[10px]">{{ staff.length }}</span>
+                                    <span v-if="staff.length" class="ml-1 bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-[10px]">{{ staff.length }}</span>
                                 </p>
 
                                 <div v-if="loadingList" class="space-y-3">
-                                    <div v-for="i in 2" :key="i" class="h-14 bg-slate-100 rounded-2xl animate-pulse"></div>
+                                    <div v-for="i in 2" :key="i" class="h-14 bg-gray-100 rounded-2xl animate-pulse"></div>
                                 </div>
 
                                 <div v-else-if="staff.length === 0"
                                     class="flex flex-col items-center py-8 text-center">
-                                    <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
-                                        <Users :size="22" class="text-slate-400" />
+                                    <div class="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
+                                        <Users :size="22" class="text-gray-400" />
                                     </div>
-                                    <p class="text-sm font-bold text-slate-500">No staff added yet</p>
-                                    <p class="text-xs text-slate-400 mt-1">Add staff by phone number above</p>
+                                    <p class="text-sm font-bold text-gray-500">No staff added yet</p>
+                                    <p class="text-xs text-gray-400 mt-1">Add staff by phone number above</p>
                                 </div>
 
                                 <div v-else class="space-y-2">
                                     <div v-for="member in staff" :key="member.id"
-                                        class="flex items-center gap-3 bg-slate-50 rounded-2xl px-4 py-3">
+                                        class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3">
                                         <!-- Avatar -->
-                                        <div class="w-10 h-10 rounded-full bg-primary-light flex items-center justify-center shrink-0 overflow-hidden">
+                                        <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
                                             <img v-if="member.avatar_url" :src="member.avatar_url" class="w-full h-full object-cover" />
-                                            <span v-else class="text-xs font-extrabold text-primary">{{ initials(member.name) }}</span>
+                                            <span v-else class="text-xs font-extrabold text-black">{{ initials(member.name) }}</span>
                                         </div>
                                         <!-- Info -->
                                         <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-bold text-slate-800 truncate">{{ member.name }}</p>
-                                            <p class="text-xs text-slate-400">{{ member.phone }}</p>
+                                            <p class="text-sm font-bold text-black truncate">{{ member.name }}</p>
+                                            <p class="text-xs text-gray-400">{{ member.phone }}</p>
                                         </div>
                                         <!-- Role badge -->
                                         <span class="text-[10px] font-black px-2.5 py-1 rounded-full shrink-0"
-                                            :class="member.role === 'manager' ? 'bg-primary/10 text-primary' : 'bg-slate-200 text-slate-500'">
+                                            :class="member.role === 'manager' ? 'bg-gray-100 text-black' : 'bg-slate-200 text-gray-500'">
                                             {{ member.role }}
                                         </span>
                                         <!-- Remove -->

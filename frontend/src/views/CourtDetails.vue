@@ -319,13 +319,13 @@ const slotState = (slot) => {
 const sportInfo = {
     shuttle:  { label: 'Badminton',   cls: 'bg-blue-100 text-blue-700',    icon: Wind     },
     turf:     { label: 'Football',    cls: 'bg-green-100 text-green-700',   icon: Flag     },
-    gym:      { label: 'Gym',         cls: 'bg-violet-100 text-violet-700', icon: Dumbbell },
+    gym:      { label: 'Gym',         cls: 'bg-gray-100 text-black', icon: Dumbbell },
     cricket:  { label: 'Cricket',     cls: 'bg-orange-100 text-orange-700', icon: Target   },
     tennis:   { label: 'Tennis',      cls: 'bg-yellow-100 text-yellow-700', icon: Activity },
     swimming: { label: 'Swimming',    cls: 'bg-cyan-100 text-cyan-700',     icon: Waves    },
     boxing:   { label: 'Boxing',      cls: 'bg-red-100 text-red-700',       icon: Swords   },
     basket:   { label: 'Basketball',  cls: 'bg-rose-100 text-rose-700',     icon: CircleDot},
-    other:    { label: 'Other',       cls: 'bg-slate-100 text-slate-700',   icon: Layers3  },
+    other:    { label: 'Other',       cls: 'bg-gray-100 text-gray-700',   icon: Layers3  },
 }
 const getSport = (t) => sportInfo[t] || sportInfo.other
 
@@ -364,7 +364,7 @@ const fetchSlotPrices = async () => {
     }
 }
 
-// price for a specific slot (30-min) — looks up by hour
+// price for a specific slot (1 hour) — looks up by hour
 const slotPrice = (slot) => {
     const h = parseInt(slot.split(':')[0])
     if (slotPrices.value[h] !== undefined) return slotPrices.value[h]
@@ -379,7 +379,7 @@ const price = computed(() => {
 
 const totalPrice = computed(() => {
     if (selectedSlots.value.length === 0) return 0
-    return selectedSlots.value.reduce((sum, slot) => sum + slotPrice(slot.pad) / 2, 0)
+    return selectedSlots.value.reduce((sum, slot) => sum + slotPrice(slot.pad), 0)
 })
 
 // Computed slot groups for clean template rendering
@@ -391,8 +391,8 @@ const offPeakSlots     = computed(() => TIME_SLOTS.value.filter(s => slotPeakTyp
 const slotMeta = {
     morning:   { label: 'Morning',   icon: Sun,      cls: 'bg-amber-100 text-amber-700' },
     evening:   { label: 'Evening',   icon: Moon,     cls: 'bg-indigo-100 text-indigo-700' },
-    full_day:  { label: 'Full Day',  icon: BadgeCheck,cls: 'bg-primary-light text-primary' },
-    unlimited: { label: 'Unlimited', icon: Infinity, cls: 'bg-slate-100 text-slate-600' },
+    full_day:  { label: 'Full Day',  icon: BadgeCheck,cls: 'bg-gray-100 text-black' },
+    unlimited: { label: 'Unlimited', icon: Infinity, cls: 'bg-gray-100 text-gray-500' },
 }
 
 // Plans filtered by the currently selected space (sub-court)
@@ -427,8 +427,8 @@ onMounted(async () => {
     } catch { paymentDemo.value = true }
 
     try {
-        const res = await axios.get('/courts')
-        court.value = (res.data.records || []).find(c => c.id == route.params.id) || null
+        const res = await axios.get(`/courts/${route.params.id}`)
+        court.value = res.data.court || null
         if (court.value) {
             const [plansRes, reviewsRes, photosRes, spacesRes] = await Promise.all([
                 axios.get(`/plans?court_id=${court.value.id}`),
@@ -465,7 +465,7 @@ onMounted(async () => {
                     )
                     userPastBooking.value = past || null
                     // Check if user already left a review
-                    alreadyReviewed.value = reviews.value.some(r => r.user_name === auth.user?.name)
+                    alreadyReviewed.value = reviews.value.some(r => r.user_id == auth.user?.id)
                 } catch { activeSub.value = null }
             }
         }
@@ -784,6 +784,15 @@ const goFindOtherVenues = () => {
     if (court.value?.lat != null && court.value?.lng != null) {
         q.lat = String(court.value.lat)
         q.lng = String(court.value.lng)
+    } else {
+        // Fall back to cached GPS from HomeView
+        try {
+            const cached = JSON.parse(localStorage.getItem('kocourt_gps_cache') || 'null')
+            if (cached?.lat && cached?.lng) {
+                q.lat = String(cached.lat)
+                q.lng = String(cached.lng)
+            }
+        } catch {}
     }
     router.push({ path: '/find-courts', query: q })
 }
@@ -842,70 +851,50 @@ const subscribePlan = async (plan) => {
 </script>
 
 <template>
-    <div class="min-h-full bg-slate-50">
-
-        <!-- Dynamic Header Subject -->
-        <Teleport v-if="court" to="#header-subject">
-            {{ court.name }}
-        </Teleport>
+    <div class="min-h-full bg-white">
 
         <!-- Loading -->
         <div v-if="loading" class="flex items-center justify-center h-64">
-            <div class="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+            <div class="w-8 h-8 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
         </div>
 
         <!-- Not found -->
         <div v-else-if="!court" class="flex flex-col items-center justify-center py-24 gap-3">
-            <XCircle :size="48" class="text-slate-300" />
-            <p class="text-slate-500 font-medium">Court not found</p>
-            <button @click="router.push('/')" class="mt-2 bg-primary text-white font-semibold px-6 py-2.5 rounded-xl">
+            <XCircle :size="48" class="text-gray-300" />
+            <p class="text-gray-500 font-medium">Court not found</p>
+            <button @click="router.push('/')" class="mt-2 bg-black text-white font-semibold px-6 py-2.5 rounded-xl">
                 Go Home
             </button>
         </div>
 
         <template v-else>
-            <!-- Hero Image -->
-            <div class="relative h-60 bg-slate-200">
+            <!-- Hero (square, prototype style) -->
+            <div class="relative w-full aspect-square bg-gray-100">
                 <img :src="heroImg" :alt="court.name" class="w-full h-full object-cover"
                     onerror="this.src='https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=600&q=80'" />
-                <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
 
-
-                <!-- Action buttons -->
-                <div class="absolute top-12 right-4 flex gap-2">
-                    <button @click="toggleFavorite" :disabled="favLoading"
-                        class="w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform">
-                        <Heart :size="16" :class="isFavorited ? 'fill-red-500 text-red-500' : 'text-slate-600'" />
+                <div class="absolute top-[max(3rem,calc(env(safe-area-inset-top,0px)+0.75rem))] inset-x-5 flex justify-between items-center z-10">
+                    <button @click="router.back()"
+                        class="w-11 h-11 rounded-full bg-white shadow-premium flex items-center justify-center text-black hover:scale-105 active:scale-95 transition-transform">
+                        <ChevronLeft :size="22" />
                     </button>
-                    <button class="w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md">
-                        <Share2 :size="16" class="text-slate-600" />
-                    </button>
-                </div>
-
-                <!-- Sport badge -->
-                <div class="absolute bottom-4 left-4 flex items-center gap-2 flex-wrap">
-                    <span :class="[getSport(court.type).cls, 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm']">
-                        <component :is="getSport(court.type).icon" :size="12" />
-                        {{ getSport(court.type).label }}
-                    </span>
-                    <!-- Verified badge -->
-                    <span v-if="court.is_verified" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-500 text-white shadow-sm">
-                        <svg viewBox="0 0 12 12" fill="none" class="w-3 h-3"><path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        Verified
-                    </span>
-                    <!-- Active subscription badge -->
-                    <span v-if="activeSub" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-primary text-white shadow-sm">
-                        <Crown :size="11" />
-                        Member
-                    </span>
+                    <div class="flex gap-3">
+                        <button class="w-11 h-11 rounded-full bg-white shadow-premium flex items-center justify-center text-black hover:scale-105 active:scale-95 transition-transform">
+                            <Share2 :size="20" />
+                        </button>
+                        <button @click="toggleFavorite" :disabled="favLoading"
+                            class="w-11 h-11 rounded-full bg-white shadow-premium flex items-center justify-center text-black hover:scale-105 active:scale-95 transition-transform">
+                            <Heart :size="20" :class="isFavorited ? 'fill-red-500 text-red-500' : 'text-black'" />
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <!-- Photo Gallery (if extra photos exist) -->
-            <div v-if="courtPhotos.length > 0" class="bg-white border-b border-slate-100 px-4 py-3">
+            <div v-if="courtPhotos.length > 0" class="bg-white border-b border-gray-100 px-6 py-3">
                 <div class="flex gap-2 overflow-x-auto scrollbar-hide">
                     <div v-for="photo in courtPhotos" :key="photo.id"
-                        class="shrink-0 w-28 h-20 rounded-xl overflow-hidden bg-slate-100">
+                        class="shrink-0 w-28 h-20 rounded-xl overflow-hidden bg-gray-100">
                         <img :src="photo.url" :alt="court.name"
                             class="w-full h-full object-cover"
                             onerror="this.style.display='none'" />
@@ -913,37 +902,50 @@ const subscribePlan = async (plan) => {
                 </div>
             </div>
 
-            <!-- Court Info Card -->
-            <div class="bg-white px-5 py-4 border-b border-slate-100">
-                <div class="flex items-start justify-between gap-2 mb-2">
-                    <h1 class="text-xl font-extrabold text-slate-900">{{ court.name }}</h1>
-                    <div class="flex items-center gap-1 bg-amber-50 px-2.5 py-1.5 rounded-xl shrink-0">
-                        <Star :size="13" class="text-amber-500 fill-amber-400" />
-                        <span class="text-sm font-bold text-amber-700">{{ avgRating || '—' }}</span>
-                        <span v-if="reviewCount" class="text-[11px] text-amber-600">({{ reviewCount }})</span>
-                    </div>
-                </div>
-                <div class="flex items-center gap-1.5 text-slate-500 text-sm mb-3">
-                    <MapPin :size="13" class="text-slate-400" />
+            <!-- Court Info -->
+            <div class="px-6 pt-8 pb-6">
+                <h1 class="text-[32px] font-bold text-black tracking-tight leading-tight mb-2">{{ court.name }}</h1>
+                <p class="text-ink-muted text-[16px] font-medium mb-3 flex items-center gap-1.5">
+                    <MapPin :size="16" class="shrink-0" />
                     {{ court.location || 'Location not set' }}
+                </p>
+                <div class="flex items-center gap-4 flex-wrap mb-4">
+                    <div class="flex items-center gap-1.5">
+                        <Star :size="16" class="text-black fill-black" />
+                        <span class="text-[15px] font-bold text-black">{{ avgRating || '—' }}</span>
+                        <button v-if="reviewCount" type="button" class="text-[15px] text-gray-500 underline decoration-gray-300 underline-offset-4">
+                            {{ reviewCount }} reviews
+                        </button>
+                    </div>
+                    <span :class="[getSport(court.type).cls, 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold']">
+                        <component :is="getSport(court.type).icon" :size="12" />
+                        {{ getSport(court.type).label }}
+                    </span>
+                    <span v-if="court.is_verified" class="inline-flex items-center gap-1 text-[13px] font-semibold text-gray-500">
+                        <BadgeCheck :size="14" /> Verified
+                    </span>
+                    <span v-if="activeSub" class="inline-flex items-center gap-1 text-[13px] font-bold text-black">
+                        <Crown :size="14" /> Member
+                    </span>
                 </div>
-                <div class="flex items-center justify-between">
-                    <span class="flex items-center gap-1.5 text-slate-500 text-sm">
-                        <Clock :size="13" class="text-slate-400" />
+                <div class="flex items-center justify-between text-[15px]">
+                    <span class="flex items-center gap-1.5 text-gray-500 font-medium">
+                        <Clock :size="15" />
                         {{ court.open_time?.slice(0,5) || '06:00' }} – {{ court.close_time?.slice(0,5) || '22:00' }}
                     </span>
-                    <span class="text-xl font-extrabold text-primary">
-                        ₹{{ court.hourly_rate }}<span class="text-sm font-semibold text-slate-400">/hr</span>
-                    </span>
+                    <p class="text-black font-bold text-[18px]">
+                        ₹{{ court.hourly_rate }}<span class="font-normal text-[15px] text-gray-500"> / hour</span>
+                    </p>
                 </div>
 
-                <!-- Amenities chips -->
-                <div v-if="court.amenities && court.amenities.length" class="mt-3 flex flex-wrap gap-1.5">
+                <div v-if="court.amenities && court.amenities.length" class="mt-4 flex flex-wrap gap-1.5">
                     <span v-for="tag in court.amenities" :key="tag"
-                        class="bg-slate-100 text-slate-600 text-[11px] font-semibold px-2.5 py-1 rounded-full">
+                        class="bg-gray-100 text-gray-600 text-[11px] font-semibold px-2.5 py-1 rounded-full">
                         {{ tag }}
                     </span>
                 </div>
+
+                <hr class="border-gray-200 my-8" />
 
                 <!-- Peak hours info (venue or per-space) -->
                 <div v-if="usePeakSlotLayout" class="mt-3 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5 flex items-start gap-2.5 shadow-sm">
@@ -963,36 +965,36 @@ const subscribePlan = async (plan) => {
             </div>
 
             <!-- Select space first (above tabs) — booking, memberships, and players all use this -->
-            <div v-if="spaces.length > 0" class="bg-white px-4 pt-4 pb-3 border-b border-slate-100">
+            <div v-if="spaces.length > 0" class="bg-white px-4 pt-4 pb-3 border-b border-gray-100">
                 <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center gap-2">
-                        <span class="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-lg shrink-0">1</span>
-                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Select Space</h3>
+                        <span class="text-[10px] font-black text-black bg-gray-100 px-2 py-0.5 rounded-lg shrink-0">1</span>
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest">Select Space</h3>
                     </div>
                     <button v-if="selectedSpace" type="button" @click="selectedSpace = null"
-                        class="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                        class="text-[11px] font-bold text-gray-400 flex items-center gap-1">
                         <X :size="11" /> Clear
                     </button>
                 </div>
-                <p class="text-[11px] text-slate-500 mb-2.5 leading-relaxed">
+                <p class="text-[11px] text-gray-500 mb-2.5 leading-relaxed">
                     Pick a court, lane, or room first — then use the tabs below for slots, memberships, or players for that space.
                 </p>
                 <div class="flex gap-2.5 overflow-x-auto scrollbar-hide pb-1">
                     <button v-for="sp in spaces" :key="sp.id" type="button"
                         @click="selectedSpace = (selectedSpace?.id === sp.id ? null : sp)"
                         class="shrink-0 flex flex-col items-start rounded-2xl border-2 overflow-hidden w-36 transition-all active:scale-[0.97]"
-                        :class="selectedSpace?.id === sp.id ? 'border-primary shadow-md shadow-primary/10' : 'border-slate-200 bg-white'">
-                        <div class="w-full h-20 bg-slate-100 flex items-center justify-center overflow-hidden">
+                        :class="selectedSpace?.id === sp.id ? 'border-black shadow-md shadow-sm' : 'border-gray-200 bg-white'">
+                        <div class="w-full h-20 bg-gray-100 flex items-center justify-center overflow-hidden">
                             <img v-if="sp.image_url" :src="sp.image_url" class="w-full h-full object-cover" onerror="this.style.display='none'" />
-                            <LayoutGrid v-else :size="22" class="text-slate-300" />
+                            <LayoutGrid v-else :size="22" class="text-gray-300" />
                         </div>
-                        <div class="p-2.5 w-full" :class="selectedSpace?.id === sp.id ? 'bg-primary text-white' : 'bg-white'">
+                        <div class="p-2.5 w-full" :class="selectedSpace?.id === sp.id ? 'bg-black text-white' : 'bg-white'">
                             <p class="text-xs font-extrabold truncate">{{ sp.name }}</p>
-                            <p class="text-[11px] mt-0.5" :class="selectedSpace?.id === sp.id ? 'text-white/70' : 'text-slate-400'">
+                            <p class="text-[11px] mt-0.5" :class="selectedSpace?.id === sp.id ? 'text-white/70' : 'text-gray-400'">
                                 {{ sp.hourly_rate ? `₹${sp.hourly_rate}/hr` : 'Venue rate' }}
                             </p>
                             <div class="flex items-center gap-1 mt-1 text-[10px] font-bold"
-                                :class="selectedSpace?.id === sp.id ? 'text-white/70' : (sp.booking_mode === 'shared' ? 'text-cyan-500' : 'text-slate-400')">
+                                :class="selectedSpace?.id === sp.id ? 'text-white/70' : (sp.booking_mode === 'shared' ? 'text-cyan-500' : 'text-gray-400')">
                                 <Users v-if="sp.booking_mode === 'shared'" :size="10" />
                                 <Lock v-else :size="10" />
                                 {{ sp.booking_mode === 'shared' ? `${sp.capacity} spots` : 'Exclusive' }}
@@ -1005,21 +1007,21 @@ const subscribePlan = async (plan) => {
             <!-- After a space is chosen (or venue has no sub-courts), show tabs + actions -->
             <template v-if="!spaces.length || selectedSpace">
             <!-- Tabs -->
-            <div class="bg-white border-b border-slate-100 flex px-5 sticky top-0 z-30">
+            <div class="bg-white border-b border-gray-100 flex px-5 sticky top-0 z-30">
                 <button @click="activeTab = 'booking'"
                     class="flex-1 py-3.5 text-sm font-bold border-b-2 transition-colors"
-                    :class="activeTab === 'booking' ? 'border-primary text-primary' : 'border-transparent text-slate-400'">
+                    :class="activeTab === 'booking' ? 'border-black text-black' : 'border-transparent text-gray-400'">
                     Book a Slot
                 </button>
                 <button @click="activeTab = 'membership'"
                     class="flex-1 py-3.5 text-sm font-bold border-b-2 transition-colors relative"
-                    :class="activeTab === 'membership' ? 'border-primary text-primary' : 'border-transparent text-slate-400'">
+                    :class="activeTab === 'membership' ? 'border-black text-black' : 'border-transparent text-gray-400'">
                     Memberships
-                    <span v-if="activeSub" class="absolute top-2.5 right-3 w-2 h-2 bg-primary-light rounded-full"></span>
+                    <span v-if="activeSub" class="absolute top-2.5 right-3 w-2 h-2 bg-gray-100 rounded-full"></span>
                 </button>
                 <button @click="activeTab = 'players'"
                     class="flex-1 py-3.5 text-sm font-bold border-b-2 transition-colors"
-                    :class="activeTab === 'players' ? 'border-primary text-primary' : 'border-transparent text-slate-400'">
+                    :class="activeTab === 'players' ? 'border-black text-black' : 'border-transparent text-gray-400'">
                     Players
                 </button>
             </div>
@@ -1033,8 +1035,8 @@ const subscribePlan = async (plan) => {
                 <div v-if="activeTab === 'booking'">
                     <!-- Step 2: Date (only after space is chosen when venue has multiple spaces) -->
                     <template v-if="!spaces.length || selectedSpace">
-                        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
-                            <span v-if="spaces.length" class="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-lg shrink-0">2</span>
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                            <span v-if="spaces.length" class="text-[10px] font-black text-black bg-gray-100 px-2 py-0.5 rounded-lg shrink-0">2</span>
                             Select Date
                         </h3>
                         <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1 mb-6">
@@ -1044,16 +1046,16 @@ const subscribePlan = async (plan) => {
                                 @click="selectedDate = d.value"
                                 class="flex flex-col items-center px-3.5 py-3 rounded-2xl border-2 min-w-[58px] transition-all shrink-0 relative"
                                 :class="selectedDate === d.value
-                                    ? 'bg-primary border-primary text-white'
-                                    : 'bg-white border-slate-200 text-slate-600'">
+                                    ? 'bg-black border-black text-white'
+                                    : 'bg-white border-gray-200 text-gray-500'">
                                 <span class="text-[10px] font-bold uppercase tracking-wider leading-none mb-1"
-                                    :class="selectedDate === d.value ? 'text-white/70' : 'text-slate-400'">
+                                    :class="selectedDate === d.value ? 'text-white/70' : 'text-gray-400'">
                                     {{ d.weekday }}
                                 </span>
                                 <span class="text-xl font-extrabold leading-none">{{ d.day }}</span>
                                 <span v-if="d.isToday || d.isTomorrow"
                                     class="text-[9px] font-bold mt-1 leading-none"
-                                    :class="selectedDate === d.value ? 'text-white/70' : 'text-primary'">
+                                    :class="selectedDate === d.value ? 'text-white/70' : 'text-black'">
                                     {{ d.isToday ? 'TODAY' : 'TMR' }}
                                 </span>
                                 <span v-else-if="busyDays.includes(d.day)"
@@ -1067,15 +1069,15 @@ const subscribePlan = async (plan) => {
                     <!-- Step 3: Time slots -->
                     <div v-if="!spaces.length || selectedSpace">
                         <div class="flex items-center justify-between mb-3 flex-wrap gap-1">
-                            <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                                <span v-if="spaces.length" class="text-[10px] font-black text-primary bg-primary/10 px-2 py-0.5 rounded-lg shrink-0">3</span>
+                            <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                                <span v-if="spaces.length" class="text-[10px] font-black text-black bg-gray-100 px-2 py-0.5 rounded-lg shrink-0">3</span>
                                 Select Time
                             </h3>
                             <div v-if="selectedDate" class="flex items-center gap-2 text-[10px] font-semibold flex-wrap">
-                                <span class="flex items-center gap-1 text-primary">
-                                    <span class="w-3 h-3 rounded-sm bg-primary inline-block"></span> Chosen
+                                <span class="flex items-center gap-1 text-black">
+                                    <span class="w-3 h-3 rounded-sm bg-black inline-block"></span> Chosen
                                 </span>
-                                <span class="flex items-center gap-1 text-slate-400">
+                                <span class="flex items-center gap-1 text-gray-400">
                                     <span class="w-3 h-3 rounded-sm bg-slate-200 inline-block"></span> Booked
                                 </span>
                                 <span v-if="usePeakSlotLayout" class="flex items-center gap-1 text-amber-600">
@@ -1086,9 +1088,9 @@ const subscribePlan = async (plan) => {
                         </div>
 
                         <div v-if="!selectedDate"
-                            class="bg-slate-100 rounded-2xl flex flex-col items-center py-10 mb-6">
-                            <Calendar :size="30" class="text-slate-300 mb-2" />
-                            <p class="text-sm text-slate-400 font-medium">Select a date first</p>
+                            class="bg-gray-100 rounded-2xl flex flex-col items-center py-10 mb-6">
+                            <Calendar :size="30" class="text-gray-300 mb-2" />
+                            <p class="text-sm text-gray-400 font-medium">Select a date first</p>
                         </div>
 
                         <div v-else class="mb-6 space-y-4">
@@ -1101,15 +1103,15 @@ const subscribePlan = async (plan) => {
                                     @click="handleSlotClick(slot)"
                                     class="py-2.5 rounded-xl text-xs font-bold border-2 transition-all text-center flex flex-col items-center justify-center gap-0.5"
                                     :class="{
-                                        'bg-primary border-primary text-white shadow-sm': slotState(slot) === 'selected',
-                                        'bg-slate-100 border-slate-100 text-slate-300 cursor-not-allowed': slotState(slot) === 'booked',
+                                        'bg-black border-black text-white shadow-sm': slotState(slot) === 'selected',
+                                        'bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed': slotState(slot) === 'booked',
                                         'bg-red-50 border-red-200 text-red-300 cursor-not-allowed': slotState(slot) === 'blocked',
-                                        'bg-white border-slate-200 text-slate-700 hover:border-primary/40 hover:bg-primary-light active:scale-95 cursor-pointer': slotState(slot) === 'free',
+                                        'bg-white border-gray-200 text-gray-700 hover:border-black/40 hover:bg-gray-100 active:scale-95 cursor-pointer': slotState(slot) === 'free',
                                     }">
                                     {{ slot.short }}
                                     <span v-if="slotPrices[slot.hour] !== undefined && slotState(slot) !== 'booked' && slotState(slot) !== 'blocked'"
                                         class="text-[9px] font-normal leading-none"
-                                        :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-primary/60'">
+                                        :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-gray-400'">
                                         ₹{{ slotPrices[slot.hour] }}
                                     </span>
                                     <span v-else-if="slotRemainingCapacity(slot) !== null && slotState(slot) !== 'booked'"
@@ -1128,7 +1130,7 @@ const subscribePlan = async (plan) => {
                                 <div class="flex items-center gap-1.5 mb-2 text-[11px] font-semibold text-amber-600">
                                     <Sun :size="12" />
                                     Morning peak · {{ court.morning_peak_start?.slice(0,5) }} – {{ court.morning_peak_end?.slice(0,5) }}
-                                    <span v-if="activeSub && subCoversSlot(activeSub.slot_type, 'morning')" class="text-primary font-bold ml-1">✓ Access granted</span>
+                                    <span v-if="activeSub && subCoversSlot(activeSub.slot_type, 'morning')" class="text-black font-bold ml-1">✓ Access granted</span>
                                     <Lock v-else :size="11" class="ml-0.5" />
                                 </div>
                                 <div class="grid grid-cols-4 gap-2">
@@ -1136,16 +1138,16 @@ const subscribePlan = async (plan) => {
                                         @click="handleSlotClick(slot)"
                                         class="py-3 rounded-xl text-xs font-bold border-2 transition-all text-center relative flex flex-col items-center justify-center gap-0.5"
                                         :class="{
-                                            'bg-primary border-primary text-white shadow-sm': slotState(slot) === 'selected',
-                                            'bg-slate-100 border-slate-100 text-slate-300 cursor-not-allowed': slotState(slot) === 'booked',
+                                            'bg-black border-black text-white shadow-sm': slotState(slot) === 'selected',
+                                            'bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed': slotState(slot) === 'booked',
                                             'bg-red-50 border-red-200 text-red-300 cursor-not-allowed': slotState(slot) === 'blocked',
                                             'bg-amber-100 border-amber-200 text-amber-700 cursor-pointer': slotState(slot) === 'peak_morning',
-                                            'bg-white border-slate-200 text-slate-700 hover:border-primary/40 hover:bg-primary-light active:scale-95 cursor-pointer': slotState(slot) === 'free',
+                                            'bg-white border-gray-200 text-gray-700 hover:border-black/40 hover:bg-gray-100 active:scale-95 cursor-pointer': slotState(slot) === 'free',
                                         }">
                                         {{ slot.short }}
                                         <span v-if="slotPrices[slot.hour] !== undefined && slotState(slot) !== 'booked' && slotState(slot) !== 'blocked'"
                                             class="text-[9px] font-normal leading-none"
-                                            :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-primary/60'">
+                                            :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-gray-400'">
                                             ₹{{ slotPrices[slot.hour] }}
                                         </span>
                                         <Lock v-if="slotState(slot) === 'peak_morning'" :size="8" class="absolute top-1 right-1 opacity-60" />
@@ -1158,7 +1160,7 @@ const subscribePlan = async (plan) => {
                                 <div class="flex items-center gap-1.5 mb-2 text-[11px] font-semibold text-indigo-600">
                                     <Moon :size="12" />
                                     Evening peak · {{ court.evening_peak_start?.slice(0,5) }} – {{ court.evening_peak_end?.slice(0,5) }}
-                                    <span v-if="activeSub && subCoversSlot(activeSub.slot_type, 'evening')" class="text-primary font-bold ml-1">✓ Access granted</span>
+                                    <span v-if="activeSub && subCoversSlot(activeSub.slot_type, 'evening')" class="text-black font-bold ml-1">✓ Access granted</span>
                                     <Lock v-else :size="11" class="ml-0.5" />
                                 </div>
                                 <div class="grid grid-cols-4 gap-2">
@@ -1166,16 +1168,16 @@ const subscribePlan = async (plan) => {
                                         @click="handleSlotClick(slot)"
                                         class="py-3 rounded-xl text-xs font-bold border-2 transition-all text-center relative flex flex-col items-center justify-center gap-0.5"
                                         :class="{
-                                            'bg-primary border-primary text-white shadow-sm': slotState(slot) === 'selected',
-                                            'bg-slate-100 border-slate-100 text-slate-300 cursor-not-allowed': slotState(slot) === 'booked',
+                                            'bg-black border-black text-white shadow-sm': slotState(slot) === 'selected',
+                                            'bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed': slotState(slot) === 'booked',
                                             'bg-red-50 border-red-200 text-red-300 cursor-not-allowed': slotState(slot) === 'blocked',
                                             'bg-indigo-100 border-indigo-200 text-indigo-700 cursor-pointer': slotState(slot) === 'peak_evening',
-                                            'bg-white border-slate-200 text-slate-700 hover:border-primary/40 hover:bg-primary-light active:scale-95 cursor-pointer': slotState(slot) === 'free',
+                                            'bg-white border-gray-200 text-gray-700 hover:border-black/40 hover:bg-gray-100 active:scale-95 cursor-pointer': slotState(slot) === 'free',
                                         }">
                                         {{ slot.short }}
                                         <span v-if="slotPrices[slot.hour] !== undefined && slotState(slot) !== 'booked' && slotState(slot) !== 'blocked'"
                                             class="text-[9px] font-normal leading-none"
-                                            :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-primary/60'">
+                                            :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-gray-400'">
                                             ₹{{ slotPrices[slot.hour] }}
                                         </span>
                                         <Lock v-if="slotState(slot) === 'peak_evening'" :size="8" class="absolute top-1 right-1 opacity-60" />
@@ -1185,20 +1187,20 @@ const subscribePlan = async (plan) => {
 
                             <!-- Off-peak (open to all) -->
                             <div v-if="offPeakSlots.length">
-                                <p class="text-[11px] font-semibold text-slate-400 mb-2">Off-peak · open to all</p>
+                                <p class="text-[11px] font-semibold text-gray-400 mb-2">Off-peak · open to all</p>
                                 <div class="grid grid-cols-4 gap-2">
                                     <button v-for="slot in offPeakSlots" :key="slot.hour"
                                         @click="handleSlotClick(slot)"
                                         class="py-3 rounded-xl text-xs font-bold border-2 transition-all text-center flex flex-col items-center justify-center gap-0.5"
                                         :class="{
-                                            'bg-primary border-primary text-white shadow-sm': slotState(slot) === 'selected',
-                                            'bg-slate-100 border-slate-100 text-slate-300 cursor-not-allowed': slotState(slot) === 'booked',
-                                            'bg-white border-slate-200 text-slate-700 hover:border-primary/40 hover:bg-primary-light active:scale-95 cursor-pointer': slotState(slot) === 'free',
+                                            'bg-black border-black text-white shadow-sm': slotState(slot) === 'selected',
+                                            'bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed': slotState(slot) === 'booked',
+                                            'bg-white border-gray-200 text-gray-700 hover:border-black/40 hover:bg-gray-100 active:scale-95 cursor-pointer': slotState(slot) === 'free',
                                         }">
                                         {{ slot.short }}
                                         <span v-if="slotPrices[slot.hour] !== undefined && slotState(slot) !== 'booked'"
                                             class="text-[9px] font-normal leading-none"
-                                            :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-primary/60'">
+                                            :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-gray-400'">
                                             ₹{{ slotPrices[slot.hour] }}
                                         </span>
                                     </button>
@@ -1210,43 +1212,43 @@ const subscribePlan = async (plan) => {
 
                     <!-- Booking Summary -->
                     <div v-if="selectedSlots.length && selectedDate"
-                        class="bg-primary-light border border-primary/20 rounded-2xl p-4">
+                        class="bg-gray-100 border border-black/20 rounded-2xl p-4">
                         <div class="flex items-center gap-2 mb-3">
-                            <CheckCircle2 :size="16" class="text-primary" />
-                            <span class="text-sm font-bold text-primary">Booking Summary</span>
+                            <CheckCircle2 :size="16" class="text-black" />
+                            <span class="text-sm font-bold text-black">Booking Summary</span>
                         </div>
                         <div class="space-y-1.5 text-sm">
                             <div v-if="selectedSpace" class="flex justify-between">
-                                <span class="text-slate-500">Space</span>
-                                <span class="font-semibold text-slate-800">{{ selectedSpace.name }}</span>
+                                <span class="text-gray-500">Space</span>
+                                <span class="font-semibold text-black">{{ selectedSpace.name }}</span>
                             </div>
                             <div class="flex justify-between">
-                                <span class="text-slate-500">Date</span>
-                                <span class="font-semibold text-slate-800">
+                                <span class="text-gray-500">Date</span>
+                                <span class="font-semibold text-black">
                                     {{ new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-IN', { dateStyle: 'medium' }) }}
                                 </span>
                             </div>
                             <div class="flex justify-between items-start">
-                                <span class="text-slate-500">Slots</span>
+                                <span class="text-gray-500">Slots</span>
                                 <div class="flex flex-wrap gap-1 justify-end max-w-[60%]">
                                     <span v-for="s in selectedSlots" :key="s.hour"
-                                        class="bg-primary/10 text-primary text-xs font-semibold px-2 py-0.5 rounded-full">
+                                        class="bg-gray-100 text-black text-xs font-semibold px-2 py-0.5 rounded-full">
                                         {{ s.short }}
                                     </span>
                                 </div>
                             </div>
                             <div class="flex justify-between">
-                                <span class="text-slate-500">Duration</span>
-                                <span class="font-semibold text-slate-800">{{ selectedSlots.length }} hour{{ selectedSlots.length > 1 ? 's' : '' }}</span>
+                                <span class="text-gray-500">Duration</span>
+                                <span class="font-semibold text-black">{{ selectedSlots.length }} hour{{ selectedSlots.length > 1 ? 's' : '' }}</span>
                             </div>
-                            <div v-if="selectedSlots.length > 1" class="flex justify-between text-xs text-slate-400">
+                            <div v-if="selectedSlots.length > 1" class="flex justify-between text-xs text-gray-400">
                                 <span>₹{{ price }} × {{ selectedSlots.length }} slots</span>
                                 <span>₹{{ totalPrice }}</span>
                             </div>
                         </div>
-                        <div class="flex justify-between items-center pt-3 mt-3 border-t border-primary/20">
-                            <span class="font-bold text-slate-700">Total payable</span>
-                            <span class="text-xl font-extrabold text-primary">₹{{ totalPrice }}</span>
+                        <div class="flex justify-between items-center pt-3 mt-3 border-t border-black/20">
+                            <span class="font-bold text-gray-700">Total payable</span>
+                            <span class="text-xl font-extrabold text-black">₹{{ totalPrice }}</span>
                         </div>
                     </div>
 
@@ -1256,8 +1258,8 @@ const subscribePlan = async (plan) => {
                             <h3 class="section-title">Reviews</h3>
                             <div v-if="reviewCount > 0" class="flex items-center gap-1.5">
                                 <Star :size="14" class="fill-amber-400 text-amber-400" />
-                                <span class="font-bold text-slate-800 text-sm">{{ avgRating }}</span>
-                                <span class="text-xs text-slate-400">({{ reviewCount }})</span>
+                                <span class="font-bold text-black text-sm">{{ avgRating }}</span>
+                                <span class="text-xs text-gray-400">({{ reviewCount }})</span>
                             </div>
                         </div>
 
@@ -1265,8 +1267,8 @@ const subscribePlan = async (plan) => {
                         <div v-if="auth.isLoggedIn && userPastBooking && !alreadyReviewed && !showReviewForm"
                             class="mb-4">
                             <button @click="showReviewForm = true"
-                                class="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-primary/30 text-primary text-sm font-bold active:scale-[0.98] transition-transform hover:bg-primary/5">
-                                <Star :size="15" class="fill-primary" />
+                                class="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-black/30 text-black text-sm font-bold active:scale-[0.98] transition-transform hover:bg-gray-50">
+                                <Star :size="15" class="fill-amber-400 text-amber-400" />
                                 Write a Review
                             </button>
                         </div>
@@ -1279,8 +1281,8 @@ const subscribePlan = async (plan) => {
 
                         <!-- Review Form -->
                         <div v-if="showReviewForm"
-                            class="mb-4 bg-primary/5 rounded-2xl p-4 ring-1 ring-primary/20">
-                            <p class="text-sm font-black text-slate-800 mb-3">Your Rating</p>
+                            class="mb-4 bg-gray-50 rounded-2xl p-4 ring-1 border border-gray-200">
+                            <p class="text-sm font-black text-black mb-3">Your Rating</p>
 
                             <!-- Star selector -->
                             <div class="flex gap-2 mb-4">
@@ -1298,17 +1300,17 @@ const subscribePlan = async (plan) => {
                             <textarea v-model="reviewComment"
                                 placeholder="Share your experience (optional)…"
                                 rows="3"
-                                class="w-full text-sm rounded-xl bg-white border border-slate-200 px-4 py-3 resize-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 outline-none placeholder:text-slate-300 mb-3">
+                                class="w-full text-sm rounded-xl bg-white border border-gray-200 px-4 py-3 resize-none focus:ring-2 focus:border border-gray-200 focus:border-black/40 outline-none placeholder:text-gray-300 mb-3">
                             </textarea>
 
                             <div class="flex gap-2">
                                 <button @click="showReviewForm = false; reviewRating = 0; reviewComment = ''"
-                                    class="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-500 active:scale-95 transition-transform">
+                                    class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-500 active:scale-95 transition-transform">
                                     Cancel
                                 </button>
                                 <button @click="submitReview"
                                     :disabled="!reviewRating || reviewSubmitting"
-                                    class="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-40 active:scale-95 transition-transform flex items-center justify-center gap-1.5">
+                                    class="flex-1 py-2.5 rounded-xl bg-black text-white text-sm font-bold disabled:opacity-40 active:scale-95 transition-transform flex items-center justify-center gap-1.5">
                                     <span v-if="reviewSubmitting">Submitting…</span>
                                     <span v-else>Submit Review</span>
                                 </button>
@@ -1317,22 +1319,22 @@ const subscribePlan = async (plan) => {
 
                         <div v-if="reviews.length === 0" class="text-center py-8">
                             <Star :size="32" class="text-slate-200 mx-auto mb-2" />
-                            <p class="text-sm text-slate-400">No reviews yet. Be the first!</p>
+                            <p class="text-sm text-gray-400">No reviews yet. Be the first!</p>
                         </div>
 
                         <div v-else class="space-y-3">
                             <div v-for="review in reviews" :key="review.id"
-                                class="bg-white rounded-2xl p-4 border border-slate-100">
+                                class="bg-white rounded-2xl p-4 border border-gray-100">
                                 <div class="flex items-start justify-between gap-2 mb-2">
                                     <div class="flex items-center gap-2">
-                                        <div class="w-8 h-8 rounded-full bg-primary-light flex items-center justify-center shrink-0">
-                                            <span class="text-xs font-bold text-primary">
+                                        <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                                            <span class="text-xs font-bold text-black">
                                                 {{ (review.user_name || 'U').charAt(0).toUpperCase() }}
                                             </span>
                                         </div>
                                         <div>
-                                            <span class="text-sm font-semibold text-slate-800">{{ review.user_name || 'Player' }}</span>
-                                            <p class="text-[10px] text-slate-400">{{ review.created_at ? new Date(review.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '' }}</p>
+                                            <span class="text-sm font-semibold text-black">{{ review.user_name || 'Player' }}</span>
+                                            <p class="text-[10px] text-gray-400">{{ review.created_at ? new Date(review.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '' }}</p>
                                         </div>
                                     </div>
                                     <div class="flex gap-0.5">
@@ -1340,11 +1342,11 @@ const subscribePlan = async (plan) => {
                                             :class="n <= review.rating ? 'fill-amber-400 text-amber-400' : 'fill-slate-200 text-slate-200'" />
                                     </div>
                                 </div>
-                                <p v-if="review.comment" class="text-sm text-slate-500 leading-relaxed">{{ review.comment }}</p>
+                                <p v-if="review.comment" class="text-sm text-gray-500 leading-relaxed">{{ review.comment }}</p>
                                 <!-- Owner reply -->
-                                <div v-if="review.owner_reply" class="mt-2.5 bg-slate-50 rounded-xl px-3 py-2.5 border-l-2 border-primary/40">
-                                    <p class="text-[10px] font-bold text-primary mb-1">Owner's Response</p>
-                                    <p class="text-xs text-slate-600 leading-relaxed">{{ review.owner_reply }}</p>
+                                <div v-if="review.owner_reply" class="mt-2.5 bg-white rounded-xl px-3 py-2.5 border-l-2 border-black/40">
+                                    <p class="text-[10px] font-bold text-black mb-1">Owner's Response</p>
+                                    <p class="text-xs text-gray-500 leading-relaxed">{{ review.owner_reply }}</p>
                                 </div>
                             </div>
                         </div>
@@ -1356,18 +1358,18 @@ const subscribePlan = async (plan) => {
 
                     <!-- Active subscription banner -->
                     <div v-if="activeSub"
-                        class="bg-primary-light border border-primary/20 rounded-2xl p-4 mb-5 flex items-start gap-3">
-                        <div class="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shrink-0">
+                        class="bg-gray-100 border border-black/20 rounded-2xl p-4 mb-5 flex items-start gap-3">
+                        <div class="w-9 h-9 bg-black rounded-xl flex items-center justify-center shrink-0">
                             <Crown :size="17" class="text-white" />
                         </div>
                         <div class="flex-1 min-w-0">
-                            <p class="font-bold text-primary text-sm">Active Membership</p>
-                            <p class="text-xs text-primary mt-0.5">
+                            <p class="font-bold text-black text-sm">Active Membership</p>
+                            <p class="text-xs text-black mt-0.5">
                                 <span class="font-semibold capitalize">{{ activeSub.slot_type?.replace('_', ' ') }}</span> access
                                 · expires {{ new Date(activeSub.end_date).toLocaleDateString('en-IN', { dateStyle: 'medium' }) }}
                             </p>
                         </div>
-                        <span class="text-[10px] font-bold bg-primary text-white px-2 py-1 rounded-full capitalize">Active</span>
+                        <span class="text-[10px] font-bold bg-black text-white px-2 py-1 rounded-full capitalize">Active</span>
                     </div>
 
                     <!-- Prompt when coming from locked slot -->
@@ -1384,9 +1386,9 @@ const subscribePlan = async (plan) => {
                     </div>
 
                     <div v-if="filteredPlans.length === 0" class="flex flex-col items-center py-12 text-center">
-                        <Info :size="40" class="text-slate-300 mb-3" />
-                        <p class="font-bold text-slate-600">No plans yet</p>
-                        <p class="text-sm text-slate-400 mt-1">
+                        <Info :size="40" class="text-gray-300 mb-3" />
+                        <p class="font-bold text-gray-500">No plans yet</p>
+                        <p class="text-sm text-gray-400 mt-1">
                             {{ selectedSpace ? selectedSpace.name + ' has no membership plans.' : 'This court hasn\'t set up membership plans yet.' }}
                         </p>
                     </div>
@@ -1396,11 +1398,11 @@ const subscribePlan = async (plan) => {
                             class="bg-white rounded-2xl p-5 border-2 relative overflow-hidden transition-all"
                             :class="[
                                 recommendedPlanIds.includes(plan.id) && !activeSub ? 'border-amber-400 ring-2 ring-amber-200' :
-                                (i === 0 ? 'border-primary' : 'border-slate-200')
+                                (i === 0 ? 'border-black' : 'border-gray-200')
                             ]">
                             <!-- Tags -->
                             <div class="absolute top-0 right-0 flex gap-1 flex-col items-end">
-                                <div v-if="i === 0" class="bg-primary text-white text-[10px] font-extrabold px-3 py-1 rounded-bl-xl tracking-wider">
+                                <div v-if="i === 0" class="bg-black text-white text-[10px] font-extrabold px-3 py-1 rounded-bl-xl tracking-wider">
                                     POPULAR
                                 </div>
                                 <div v-if="recommendedPlanIds.includes(plan.id) && !activeSub"
@@ -1411,8 +1413,8 @@ const subscribePlan = async (plan) => {
 
                             <div class="flex items-start justify-between mb-3 pr-2">
                                 <div>
-                                    <h3 class="font-extrabold text-slate-900">{{ plan.name }}</h3>
-                                    <p v-if="plan.description" class="text-sm text-slate-500 mt-0.5">{{ plan.description }}</p>
+                                    <h3 class="font-extrabold text-black">{{ plan.name }}</h3>
+                                    <p v-if="plan.description" class="text-sm text-gray-500 mt-0.5">{{ plan.description }}</p>
                                     <!-- Slot type badge -->
                                     <span v-if="plan.slot_type"
                                         class="inline-flex items-center gap-1 mt-2 text-[11px] font-bold px-2 py-0.5 rounded-full"
@@ -1422,8 +1424,8 @@ const subscribePlan = async (plan) => {
                                     </span>
                                 </div>
                                 <div class="text-right shrink-0">
-                                    <p class="text-2xl font-extrabold text-primary">₹{{ plan.price }}</p>
-                                    <p class="text-xs text-slate-400">{{ plan.duration_days }} days</p>
+                                    <p class="text-2xl font-extrabold text-black">₹{{ plan.price }}</p>
+                                    <p class="text-xs text-gray-400">{{ plan.duration_days }} days</p>
                                 </div>
                             </div>
 
@@ -1432,8 +1434,8 @@ const subscribePlan = async (plan) => {
                                 :disabled="subscribeLoading === plan.id || (activeSub && subCoversSlot(activeSub.slot_type, plan.slot_type || 'unlimited'))"
                                 class="w-full font-bold py-3 rounded-xl text-sm active:scale-95 transition-all flex items-center justify-center gap-2"
                                 :class="activeSub && subCoversSlot(activeSub.slot_type, plan.slot_type || 'unlimited')
-                                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                    : 'bg-primary text-white'">
+                                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                    : 'bg-black text-white'">
                                 <span v-if="subscribeLoading === plan.id" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                                 <template v-else>
                                     <CheckCircle2 v-if="activeSub && subCoversSlot(activeSub.slot_type, plan.slot_type || 'unlimited')" :size="15" />
@@ -1447,17 +1449,17 @@ const subscribePlan = async (plan) => {
 
                 <!-- PLAYERS TAB -->
                 <div v-else-if="activeTab === 'players'" class="py-4">
-                    <p v-if="spaces.length && selectedSpace" class="text-[11px] text-slate-500 text-center mb-4 px-2">
+                    <p v-if="spaces.length && selectedSpace" class="text-[11px] text-gray-500 text-center mb-4 px-2">
                         Match board for <strong>{{ selectedSpace.name }}</strong> — change space above anytime.
                     </p>
                     <div class="text-center py-6 px-4">
-                        <div class="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                            <Users :size="28" class="text-primary" />
+                        <div class="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                            <Users :size="28" class="text-black" />
                         </div>
-                        <p class="font-extrabold text-slate-800 text-base">Find Players</p>
-                        <p class="text-sm text-slate-400 mt-1 mb-5">See who's looking for game partners at this venue</p>
+                        <p class="font-extrabold text-black text-base">Find Players</p>
+                        <p class="text-sm text-gray-400 mt-1 mb-5">See who's looking for game partners at this venue</p>
                         <button @click="auth.isLoggedIn ? matchSheet = true : router.push('/login')"
-                            class="bg-primary text-white font-bold px-8 py-3 rounded-2xl text-sm flex items-center gap-2 mx-auto">
+                            class="bg-black text-white font-bold px-8 py-3 rounded-2xl text-sm flex items-center gap-2 mx-auto">
                             <Users :size="14" />
                             Open Match Board
                         </button>
@@ -1466,8 +1468,7 @@ const subscribePlan = async (plan) => {
             </div>
 
             <!-- Sticky Bottom Button -->
-            <div class="fixed left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t border-slate-100 bg-white px-4 py-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]"
-                style="box-shadow: 0 -4px 20px rgba(0,0,0,0.06)">
+            <div class="fixed left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t border-gray-200 bg-white px-6 pt-4 pb-3 bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]">
 
                 <!-- Booking tab button -->
                 <template v-if="activeTab === 'booking'">
@@ -1475,45 +1476,55 @@ const subscribePlan = async (plan) => {
                     <div v-if="selectedSlots.length && selectedDate" class="mb-3">
                         <button @click="isRecurring = !isRecurring"
                             class="flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-xl transition-colors"
-                            :class="isRecurring ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'">
+                            :class="isRecurring ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'">
                             <RefreshCw :size="12" />
                             Make it Recurring
                         </button>
                         <!-- Recurring config -->
-                        <div v-if="isRecurring" class="mt-2 bg-slate-50 rounded-xl p-3 space-y-2">
-                            <p class="text-[11px] font-bold text-slate-600">Repeat on</p>
+                        <div v-if="isRecurring" class="mt-2 bg-white rounded-xl p-3 space-y-2">
+                            <p class="text-[11px] font-bold text-gray-500">Repeat on</p>
                             <div class="flex gap-1.5 flex-wrap">
                                 <button v-for="(day, i) in ['Su','Mo','Tu','We','Th','Fr','Sa']" :key="i"
                                     @click="recurringDays.includes(i) ? recurringDays.splice(recurringDays.indexOf(i),1) : recurringDays.push(i)"
                                     class="w-8 h-8 rounded-full text-[11px] font-bold transition-colors"
-                                    :class="recurringDays.includes(i) ? 'bg-primary text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200'">
+                                    :class="recurringDays.includes(i) ? 'bg-black text-white' : 'bg-white text-gray-500 ring-1 ring-slate-200'">
                                     {{ day }}
                                 </button>
                             </div>
                             <div>
-                                <p class="text-[11px] font-bold text-slate-600 mb-1">Repeat until</p>
+                                <p class="text-[11px] font-bold text-gray-500 mb-1">Repeat until</p>
                                 <input type="date" v-model="recurringEndDate"
                                     :min="selectedDate"
-                                    class="w-full text-xs border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/30 bg-white" />
+                                    class="w-full text-xs border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:border border-gray-200 bg-white" />
                             </div>
                         </div>
                     </div>
 
-                    <button v-if="!isRecurring"
-                        @click="confirmBooking"
-                        :disabled="!selectedSlots.length || !selectedDate || bookingLoading"
-                        class="w-full bg-primary text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:scale-100">
-                        <span v-if="bookingLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-                        <span v-else-if="selectedSlots.length && selectedDate">
-                            Confirm {{ selectedSlots.length > 1 ? selectedSlots.length + ' Slots' : 'Booking' }} · ₹{{ totalPrice }}
-                        </span>
-                        <span v-else-if="!selectedDate">Select a date</span>
-                        <span v-else>Select time slots</span>
-                    </button>
+                    <template v-if="!isRecurring">
+                        <div class="flex items-center justify-between gap-4">
+                            <div v-if="selectedSlots.length && selectedDate" class="min-w-0">
+                                <p class="text-black font-bold text-[18px]">₹{{ totalPrice }}</p>
+                                <p class="text-gray-500 text-[13px]">{{ selectedSlots.length }} slot{{ selectedSlots.length > 1 ? 's' : '' }} selected</p>
+                            </div>
+                            <div v-else class="min-w-0">
+                                <p class="text-black font-bold text-[18px]">₹{{ price }}</p>
+                                <p class="text-gray-500 text-[13px] underline decoration-gray-300 underline-offset-2">per hour</p>
+                            </div>
+                            <button
+                                @click="confirmBooking"
+                                :disabled="!selectedSlots.length || !selectedDate || bookingLoading"
+                                class="shrink-0 bg-black text-white font-bold text-[16px] px-8 py-4 rounded-xl flex items-center justify-center gap-2 shadow-float active:scale-95 disabled:opacity-50 disabled:scale-100 min-w-[140px]">
+                                <span v-if="bookingLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                <span v-else-if="selectedSlots.length && selectedDate">Reserve</span>
+                                <span v-else-if="!selectedDate">Pick date</span>
+                                <span v-else>Pick time</span>
+                            </button>
+                        </div>
+                    </template>
                     <button v-else
                         @click="confirmRecurring"
                         :disabled="!recurringDays.length || !recurringEndDate || recurringLoading"
-                        class="w-full bg-primary text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 disabled:opacity-50 disabled:scale-100">
+                        class="w-full bg-black text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-float active:scale-95 disabled:opacity-50 disabled:scale-100">
                         <span v-if="recurringLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                         <RefreshCw v-else :size="16" />
                         <span>Book Recurring Slots</span>
@@ -1523,17 +1534,17 @@ const subscribePlan = async (plan) => {
                 <!-- Membership tab: Go back to booking when subscribed -->
                 <button v-else-if="activeSub"
                     @click="activeTab = 'booking'"
-                    class="w-full bg-primary text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2">
+                    class="w-full bg-black text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2">
                     <Crown :size="17" />
                     Book a Slot (Member Access)
                 </button>
             </div>
             </template>
 
-            <div v-else class="px-4 py-10 pb-8 text-center bg-white border-b border-slate-100">
-                <LayoutGrid :size="34" class="text-slate-300 mx-auto mb-3" />
-                <p class="text-sm font-semibold text-slate-800">Choose a space to continue</p>
-                <p class="text-xs text-slate-500 mt-2 max-w-[280px] mx-auto leading-relaxed">
+            <div v-else class="px-4 py-10 pb-8 text-center bg-white border-b border-gray-100">
+                <LayoutGrid :size="34" class="text-gray-300 mx-auto mb-3" />
+                <p class="text-sm font-semibold text-black">Choose a space to continue</p>
+                <p class="text-xs text-gray-500 mt-2 max-w-[280px] mx-auto leading-relaxed">
                     Book a Slot, Memberships, and Players unlock after you pick a court in <strong>Select Space</strong> above.
                 </p>
             </div>
@@ -1554,15 +1565,15 @@ const subscribePlan = async (plan) => {
                 <!-- Header -->
                 <div class="flex items-center justify-between mb-1 shrink-0">
                     <div>
-                        <p class="text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">Booking Confirmed!</p>
-                        <h3 class="font-bold text-slate-900 text-base">Invite Players</h3>
+                        <p class="text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">Booking Confirmed!</p>
+                        <h3 class="font-bold text-black text-base">Invite Players</h3>
                     </div>
-                    <button @click="submitPlayers" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                        <X :size="16" class="text-slate-500" />
+                    <button @click="submitPlayers" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                        <X :size="16" class="text-gray-500" />
                     </button>
                 </div>
                 <!-- Slot info -->
-                <p v-if="addPlayers.slotLabel" class="text-xs text-slate-400 mb-4 shrink-0">{{ court?.name }} · {{ addPlayers.slotLabel }}</p>
+                <p v-if="addPlayers.slotLabel" class="text-xs text-gray-400 mb-4 shrink-0">{{ court?.name }} · {{ addPlayers.slotLabel }}</p>
                 <div v-else class="mb-4"></div>
 
                 <!-- Scrollable body -->
@@ -1570,12 +1581,12 @@ const subscribePlan = async (plan) => {
 
                     <!-- ① Regular players -->
                     <div class="shrink-0">
-                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Regular Players</p>
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Regular Players</p>
                         <!-- Loading -->
                         <div v-if="addPlayers.regularsLoading" class="flex gap-3">
                             <div v-for="i in 4" :key="i" class="flex flex-col items-center gap-1.5 animate-pulse">
-                                <div class="w-12 h-12 rounded-full bg-slate-100"></div>
-                                <div class="w-10 h-2.5 rounded bg-slate-100"></div>
+                                <div class="w-12 h-12 rounded-full bg-gray-100"></div>
+                                <div class="w-10 h-2.5 rounded bg-gray-100"></div>
                             </div>
                         </div>
                         <!-- Players -->
@@ -1585,68 +1596,68 @@ const subscribePlan = async (plan) => {
                                 class="flex flex-col items-center gap-1 active:scale-90 transition-transform">
                                 <div class="relative w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all"
                                     :class="isSelected(p.id)
-                                        ? 'bg-primary text-white border-primary'
-                                        : 'bg-primary/10 text-primary border-transparent'">
+                                        ? 'bg-black text-white border-black'
+                                        : 'bg-gray-100 text-black border-transparent'">
                                     <img v-if="p.avatar_url" :src="p.avatar_url" class="w-full h-full rounded-full object-cover" />
                                     <span v-else>{{ p.name?.[0]?.toUpperCase() }}</span>
                                     <div v-if="isSelected(p.id)"
-                                        class="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full border-2 border-white flex items-center justify-center">
+                                        class="absolute -top-1 -right-1 w-4 h-4 bg-black rounded-full border-2 border-white flex items-center justify-center">
                                         <CheckCircle2 :size="10" class="text-white" />
                                     </div>
                                 </div>
-                                <span class="text-[10px] font-semibold text-slate-600 max-w-[48px] truncate">{{ p.name?.split(' ')[0] }}</span>
+                                <span class="text-[10px] font-semibold text-gray-500 max-w-[48px] truncate">{{ p.name?.split(' ')[0] }}</span>
                             </button>
                         </div>
-                        <p v-else class="text-xs text-slate-400 italic">No regulars found for this court yet</p>
+                        <p v-else class="text-xs text-gray-400 italic">No regulars found for this court yet</p>
                     </div>
 
                     <!-- ② Phone search -->
                     <div class="shrink-0">
-                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Search by Phone</p>
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Search by Phone</p>
                         <div class="flex gap-2">
                             <div class="flex-1 relative">
                                 <input v-model="addPlayers.phone" @keyup.enter="searchPlayer"
                                     type="tel" placeholder="Enter phone number"
                                     class="input-field pr-10 w-full" maxlength="15" />
                                 <Loader2 v-if="addPlayers.searching" :size="16"
-                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 animate-spin" />
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />
                             </div>
                             <button @click="searchPlayer"
-                                class="w-11 h-11 rounded-xl bg-primary flex items-center justify-center shrink-0 active:scale-95 transition-transform">
+                                class="w-11 h-11 rounded-xl bg-black flex items-center justify-center shrink-0 active:scale-95 transition-transform">
                                 <Search :size="18" class="text-white" />
                             </button>
                         </div>
                         <!-- Result -->
                         <div v-if="addPlayers.searchResult"
-                            class="mt-2 p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-sm font-bold text-primary">
+                            class="mt-2 p-3 rounded-xl bg-white border border-gray-100 flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center shrink-0 text-sm font-bold text-black">
                                 {{ addPlayers.searchResult.name?.[0]?.toUpperCase() }}
                             </div>
                             <div class="flex-1 min-w-0">
-                                <p class="font-semibold text-slate-800 text-sm truncate">{{ addPlayers.searchResult.name }}</p>
-                                <p class="text-xs text-slate-400">{{ addPlayers.searchResult.phone }}</p>
+                                <p class="font-semibold text-black text-sm truncate">{{ addPlayers.searchResult.name }}</p>
+                                <p class="text-xs text-gray-400">{{ addPlayers.searchResult.phone }}</p>
                             </div>
                             <button @click="addPlayerToList(addPlayers.searchResult)"
-                                class="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg bg-primary text-white active:scale-95 transition-transform">
+                                class="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-lg bg-black text-white active:scale-95 transition-transform">
                                 <UserPlus :size="13" /> Add
                             </button>
                         </div>
-                        <p v-else-if="addPlayers.notFound" class="text-xs text-slate-400 mt-2">No registered player found with that number</p>
+                        <p v-else-if="addPlayers.notFound" class="text-xs text-gray-400 mt-2">No registered player found with that number</p>
                     </div>
 
                     <!-- ③ Selected list -->
                     <div v-if="addPlayers.selected.length" class="shrink-0">
-                        <p class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                        <p class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
                             Invited ({{ addPlayers.selected.length }})
                         </p>
                         <div class="space-y-2">
                             <div v-for="p in addPlayers.selected" :key="p.id"
-                                class="flex items-center gap-3 p-2.5 rounded-xl bg-primary/5 border border-primary/10">
-                                <div class="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center shrink-0 text-xs font-bold text-primary">
+                                class="flex items-center gap-3 p-2.5 rounded-xl bg-gray-50 border border-black/10">
+                                <div class="w-8 h-8 rounded-full bg-black/15 flex items-center justify-center shrink-0 text-xs font-bold text-black">
                                     <img v-if="p.avatar_url" :src="p.avatar_url" class="w-full h-full rounded-full object-cover" />
                                     <span v-else>{{ p.name?.[0]?.toUpperCase() }}</span>
                                 </div>
-                                <span class="flex-1 text-sm font-semibold text-slate-700 truncate">{{ p.name }}</span>
+                                <span class="flex-1 text-sm font-semibold text-gray-700 truncate">{{ p.name }}</span>
                                 <button @click="removePlayer(p.id)"
                                     class="w-6 h-6 rounded-full bg-red-50 flex items-center justify-center active:scale-90 transition-transform">
                                     <X :size="11" class="text-red-400" />
@@ -1692,21 +1703,21 @@ const subscribePlan = async (plan) => {
         <div v-if="slotConflictPrompt.show" class="fixed inset-0 bg-black/50 z-[60] flex items-end" @click.self="slotConflictPrompt.show = false">
             <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-10">
                 <div class="flex items-center justify-between mb-3">
-                    <div class="w-10 h-10 bg-primary/15 rounded-full flex items-center justify-center">
-                        <MapPin :size="20" class="text-primary" />
+                    <div class="w-10 h-10 bg-black/15 rounded-full flex items-center justify-center">
+                        <MapPin :size="20" class="text-black" />
                     </div>
-                    <button @click="slotConflictPrompt.show = false" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                        <X :size="16" class="text-slate-500" />
+                    <button @click="slotConflictPrompt.show = false" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                        <X :size="16" class="text-gray-500" />
                     </button>
                 </div>
-                <h3 class="font-black text-slate-900 text-lg mb-1">Slot just taken</h3>
-                <p class="text-sm text-slate-500 mb-5">See other venues near this one that still have space for the same time.</p>
+                <h3 class="font-black text-black text-lg mb-1">Slot just taken</h3>
+                <p class="text-sm text-gray-500 mb-5">See other venues near this one that still have space for the same time.</p>
                 <div class="flex gap-3">
-                    <button @click="slotConflictPrompt.show = false" class="flex-1 py-3.5 rounded-2xl bg-slate-100 text-slate-700 font-bold text-sm active:scale-95 transition-transform">
+                    <button @click="slotConflictPrompt.show = false" class="flex-1 py-3.5 rounded-2xl bg-gray-100 text-gray-700 font-bold text-sm active:scale-95 transition-transform">
                         Dismiss
                     </button>
                     <button @click="goFindOtherVenues"
-                        class="flex-1 py-3.5 rounded-2xl bg-primary text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform">
+                        class="flex-1 py-3.5 rounded-2xl bg-black text-white font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform">
                         <MapPin :size="16" />
                         Find available
                     </button>

@@ -74,11 +74,11 @@ const menuGroups = computed(() => {
 </script>
 
 <template>
-    <div class="min-h-full bg-slate-50">
+    <div class="min-h-full bg-white">
 
         <!-- Loading -->
         <div v-if="loading" class="flex items-center justify-center h-64">
-            <Loader2 :size="28" class="text-primary animate-spin" />
+            <Loader2 :size="28" class="text-black animate-spin" />
         </div>
 
         <template v-else-if="court">
@@ -87,14 +87,14 @@ const menuGroups = computed(() => {
                 <img v-if="court.image_url" :src="court.image_url"
                     class="w-full h-full object-cover"
                     onerror="this.style.display='none'" />
-                <div v-else class="w-full h-full flex items-center justify-center bg-slate-100">
-                    <LayoutGrid :size="56" :stroke-width="1.5" class="text-slate-300" />
+                <div v-else class="w-full h-full flex items-center justify-center bg-gray-100">
+                    <LayoutGrid :size="56" :stroke-width="1.5" class="text-gray-300" />
                 </div>
                 <button @click="router.back()"
                     class="absolute top-5 left-4 w-9 h-9 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-sm">
-                    <ChevronRight :size="18" class="text-slate-700 rotate-180" />
+                    <ChevronRight :size="18" class="text-gray-700 rotate-180" />
                 </button>
-                <div class="absolute bottom-3 left-4 bg-primary text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-lg shadow-primary/30 tracking-wider">
+                <div class="absolute bottom-3 left-4 bg-black text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-lg shadow-sm tracking-wider">
                     <Flame :size="10" :stroke-width="3" />
                     POPULAR
                 </div>
@@ -112,21 +112,21 @@ const menuGroups = computed(() => {
                 </div>
 
                 <div class="flex items-start justify-between mb-1">
-                    <h1 class="text-xl font-bold text-slate-900">{{ court.name }}</h1>
+                    <h1 class="text-xl font-bold text-black">{{ court.name }}</h1>
                     <div v-if="court.avg_rating" class="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg text-amber-700 font-bold text-[11px] border border-amber-100/50">
                         <Star :size="11" :stroke-width="2.5" class="fill-amber-500 text-amber-500" />
                         {{ court.avg_rating }}
                         <span class="font-normal opacity-60">({{ court.review_count }})</span>
                     </div>
                 </div>
-                <div class="flex items-center gap-1.5 text-slate-500 text-sm mb-3">
-                    <MapPin :size="12" :stroke-width="2.5" class="text-slate-400" />
+                <div class="flex items-center gap-1.5 text-gray-500 text-sm mb-3">
+                    <MapPin :size="12" :stroke-width="2.5" class="text-gray-400" />
                     <span>{{ court.location || 'Location not set' }}</span>
                 </div>
                 <div class="flex items-end justify-between">
                     <div>
-                        <span class="text-xs text-slate-400 font-medium block">Starting at</span>
-                        <span class="text-primary font-bold text-xl">₹{{ court.hourly_rate }}<span class="text-sm font-normal text-slate-500">/hr</span></span>
+                        <span class="text-xs text-gray-400 font-medium block">Starting at</span>
+                        <span class="text-black font-bold text-xl">₹{{ court.hourly_rate }}<span class="text-sm font-normal text-gray-500">/hr</span></span>
                     </div>
                     <div class="flex items-center gap-2">
                         <div v-if="!isVenueOwner" class="flex items-center gap-1 bg-amber-50 border border-amber-100 text-amber-700 text-[10px] font-bold px-2.5 py-1.5 rounded-full">
@@ -134,7 +134,7 @@ const menuGroups = computed(() => {
                             Staff Access
                         </div>
                         <button v-if="isVenueOwner" @click="router.push(`/my-venues/${court.id}/edit`)"
-                            class="text-xs font-bold text-primary bg-primary-light px-3 py-1.5 rounded-full">
+                            class="text-xs font-bold text-black bg-gray-100 px-3 py-1.5 rounded-full">
                             Edit
                         </button>
                     </div>
@@ -144,7 +144,7 @@ const menuGroups = computed(() => {
             <!-- Earnings summary card -->
             <div v-if="earnings" class="mx-4 mb-5 cursor-pointer"
                 @click="router.push(`/my-venues/${court.id}/earnings`)">
-                <div class="bg-gradient-to-r from-primary to-blue-600 rounded-2xl p-4 text-white shadow-lg shadow-primary/30">
+                <div class="bg-gradient-to-br from-black via-gray-950 to-black rounded-2xl p-4 text-white shadow-lg shadow-sm">
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2">
                             <TrendingUp :size="16" />
@@ -174,21 +174,21 @@ const menuGroups = computed(() => {
             <!-- Menu groups -->
             <div class="px-4 pb-8 space-y-5">
                 <div v-for="group in menuGroups" :key="group.group">
-                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">{{ group.group }}</p>
+                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">{{ group.group }}</p>
                     <div class="bg-white rounded-2xl overflow-hidden divide-y divide-slate-50" style="box-shadow:0 1px 6px rgba(0,0,0,0.06)">
                         <button
                             v-for="item in group.items"
                             :key="item.label"
                             @click="router.push(item.to)"
-                            class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 active:bg-slate-100 transition-colors">
-                            <div class="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center shrink-0">
-                                <component :is="item.icon" :size="17" class="text-slate-600" />
+                            class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white active:bg-gray-100 transition-colors">
+                            <div class="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
+                                <component :is="item.icon" :size="17" class="text-gray-500" />
                             </div>
                             <div class="flex-1 text-left">
-                                <p class="text-sm font-semibold text-slate-800">{{ item.label }}</p>
-                                <p class="text-xs text-slate-400">{{ item.desc }}</p>
+                                <p class="text-sm font-semibold text-black">{{ item.label }}</p>
+                                <p class="text-xs text-gray-400">{{ item.desc }}</p>
                             </div>
-                            <ChevronRight :size="15" class="text-slate-300" />
+                            <ChevronRight :size="15" class="text-gray-300" />
                         </button>
                     </div>
                 </div>

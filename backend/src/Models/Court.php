@@ -37,7 +37,8 @@ class Court {
      * - If $for_admin: include courts with pending/rejected claims (public API hides pending).
      */
     public function read($location = null, $type = null, $owner_id = null,
-                         $lat = null, $lng = null, $radius = 25, $for_admin = false) {
+                         $lat = null, $lng = null, $radius = 25, $for_admin = false,
+                         $featured = false) {
 
         // GPS proximity search (player discovering courts)
         if ($lat !== null && $lng !== null && !$owner_id) {
@@ -46,6 +47,7 @@ class Court {
                 $conditions[] = "(c.claim_status IS NULL OR c.claim_status = 'approved')";
             }
             if ($type && $type !== 'All') $conditions[] = "c.type = ?";
+            if ($featured)                $conditions[] = "c.is_featured = 1";
 
             $where = implode(" AND ", $conditions);
 
@@ -83,6 +85,7 @@ class Court {
         if ($location && $location !== 'All') $conditions[] = "c.location LIKE ?";
         if ($type     && $type     !== 'All') $conditions[] = "c.type = ?";
         if ($owner_id)                        $conditions[] = "c.owner_id = ?";
+        if ($featured)                        $conditions[] = "c.is_featured = 1";
 
         $query = "SELECT c.*, AVG(r.rating) AS avg_rating, COUNT(r.id) AS review_count
                   FROM {$this->table_name} c

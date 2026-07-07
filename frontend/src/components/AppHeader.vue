@@ -1,27 +1,20 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Bell, ChevronLeft } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import { useNotificationsStore } from '../stores/notifications'
-import KoLogo from './KoLogo.vue'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 
-// Dynamic title based on router metadata
-const title = computed(() => route.meta.title || 'KoCourt')
-const showGreeting = computed(() => route.meta.showGreeting)
-const isSocial = computed(() => route.path.startsWith('/feed'))
-const isDetail = computed(() => route.name === 'post-detail' || !!route.params.id)
-const isTopLevel = computed(() => !isDetail.value)
-const subtitle = computed(() => route.meta.subtitle)
+const isHome    = computed(() => route.path === '/')
+const isDetail  = computed(() => !!route.params.id || route.meta.isDetail)
+const title     = computed(() => route.meta.title || '')
 
-// User info for greeting
-const firstName = computed(() => auth.user?.name?.split(' ')[0] || 'there')
 const userInitials = computed(() => {
-    const parts = (auth.user?.name || 'Owner').split(' ')
+    const parts = (auth.user?.name || 'KO').split(' ')
     return parts.map(p => p[0]).join('').toUpperCase().slice(0, 2)
 })
 
@@ -30,63 +23,57 @@ const hasNotifications = computed(() => notifications.count > 0)
 </script>
 
 <template>
-    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100">
-        
-        <!-- Main row: Logo + Title + Actions -->
-        <div class="flex items-center justify-between px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))]">
+    <header class="sticky top-0 z-40 bg-white glass-blur sm:rounded-t-[3rem]"
+        :class="isHome ? 'border-b-0' : 'border-b border-gray-100'">
+
+        <div class="page-gutter flex items-start justify-between pb-2"
+            :class="isHome ? 'mb-4' : 'pb-3'"
+            :style="{ paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))' }">
+
             <div class="flex items-center gap-3 flex-1 min-w-0">
-                <!-- Back Button for items -->
                 <button v-if="isDetail" @click="router.back()"
-                    class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center shrink-0 active:scale-95 transition-transform">
-                    <ChevronLeft :size="20" :stroke-width="2.5" class="text-slate-600" />
+                    class="w-11 h-11 rounded-full bg-white shadow-premium flex items-center justify-center shrink-0 active:scale-95 transition-transform border border-gray-100">
+                    <ChevronLeft :size="22" :stroke-width="2.5" class="text-black" />
                 </button>
 
-                <!-- Standard Logo Button -->
-                <button @click="router.push('/')" class="shrink-0 active:scale-95 transition-transform">
-                    <KoLogo :size="36" :showText="isTopLevel" />
-                </button>
-                
-                <div class="min-w-0">
-                    <h1 v-if="!isTopLevel" class="text-slate-900 text-[16px] font-black leading-tight tracking-tight truncate flex items-center gap-2">
-                        <template v-if="showGreeting">Hello!</template>
-                        <template v-else>
-                            <span class="text-slate-300 font-bold">/</span>
-                            <div id="header-subject" class="truncate"></div>
-                        </template>
+                <div class="min-w-0 flex-1">
+                    <div id="header-subtitle" class="text-[13px] font-semibold text-ink-muted leading-none mb-1"></div>
+
+                    <h1 v-if="isHome" class="text-[32px] font-extrabold text-black leading-none tracking-tight">
+                        Find a court.
                     </h1>
-                    <div id="header-subtitle" class="text-[9px] font-black text-primary/60 uppercase tracking-[0.1em] mt-0.5 leading-none"></div>
+                    <h1 v-else class="text-[17px] font-bold text-black leading-tight truncate">
+                        <span v-if="isDetail" id="header-subject"></span>
+                        <span v-else>{{ title || 'KoCourt' }}</span>
+                    </h1>
                 </div>
             </div>
 
-            <!-- Header Action Slot (Teleport) -->
-            <div id="header-action" class="flex items-center gap-2"></div>
+            <div class="flex items-center gap-2 ml-3 shrink-0">
+                <div id="header-action" class="flex items-center gap-2"></div>
 
-            <!-- Global Action Icons -->
-            <div v-if="auth.isLoggedIn" class="flex items-center gap-2 ml-3">
-                <button @click="router.push('/notifications')"
-                    class="relative w-9 h-9 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors active:scale-95">
-                    <Bell :size="16" :stroke-width="1.8" />
-                    <span v-if="hasNotifications"
-                        class="absolute top-1.5 right-1.5 min-w-[16px] h-4 bg-red-500 rounded-full border-2 border-white flex items-center justify-center text-white text-[9px] font-black px-0.5">
-                        {{ notifications.count }}
-                    </span>
-                </button>
-                <div @click="router.push('/profile')" class="w-9 h-9 rounded-full overflow-hidden bg-primary-light flex items-center justify-center ring-2 ring-primary/20 cursor-pointer active:scale-95 transition-transform">
-                    <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
-                    <span v-else class="text-xs font-extrabold text-primary">{{ userInitials }}</span>
-                </div>
-            </div>
-            
-            <!-- Login button for guests -->
-            <div v-else class="ml-3">
-                <button @click="router.push('/login')" class="text-xs font-bold text-white bg-primary px-4 py-2 rounded-xl active:scale-95 transition-transform">
+                <template v-if="auth.isLoggedIn">
+                    <button @click="router.push('/notifications')"
+                        class="relative w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-black active:scale-95 transition-transform">
+                        <Bell :size="18" :stroke-width="2" />
+                        <span v-if="hasNotifications"
+                            class="absolute top-1.5 right-1.5 min-w-[8px] h-2 w-2 bg-red-500 rounded-full border-[1.5px] border-white">
+                        </span>
+                    </button>
+                    <div @click="router.push('/profile')"
+                        class="w-11 h-11 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center cursor-pointer active:scale-95 transition-transform shrink-0">
+                        <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
+                        <span v-else class="text-[13px] font-bold text-black">{{ userInitials }}</span>
+                    </div>
+                </template>
+
+                <button v-else @click="router.push('/login')"
+                    class="text-[13px] font-bold text-white bg-black px-5 py-2.5 rounded-full active:scale-95 transition-transform">
                     Sign in
                 </button>
             </div>
         </div>
 
-        <!-- Teleport destination for page-specific bottom sections (Search Bar, Categories) -->
         <div id="header-extra"></div>
     </header>
 </template>
-

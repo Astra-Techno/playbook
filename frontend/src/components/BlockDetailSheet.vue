@@ -20,7 +20,7 @@ const BLOCK_KIND_META = {
     private_event: { label: 'Private Event',  cls: 'bg-purple-100 text-purple-700' },
     tournament:    { label: 'Tournament',     cls: 'bg-emerald-100 text-emerald-700' },
     coaching:      { label: 'Coaching',       cls: 'bg-cyan-100 text-cyan-700' },
-    other:         { label: 'Blocked',        cls: 'bg-slate-100 text-slate-600' },
+    other:         { label: 'Blocked',        cls: 'bg-gray-100 text-gray-500' },
 }
 
 const kindMeta = computed(() => BLOCK_KIND_META[props.block?.block_kind] ?? BLOCK_KIND_META.other)
@@ -77,13 +77,13 @@ const unblock = async () => {
                          class="absolute bottom-0 inset-x-0 bg-white rounded-t-3xl pb-10">
 
                         <!-- Handle + header -->
-                        <div class="pt-3 pb-4 px-5 border-b border-slate-100">
+                        <div class="pt-3 pb-4 px-5 border-b border-gray-100">
                             <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4"></div>
                             <div class="flex items-center justify-between">
-                                <h3 class="text-base font-extrabold text-slate-900">Blocked Slot</h3>
+                                <h3 class="text-base font-extrabold text-black">Blocked Slot</h3>
                                 <button @click="close"
-                                    class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 active:scale-90 transition-transform">
-                                    <X :size="16" class="text-slate-500" />
+                                    class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 active:scale-90 transition-transform">
+                                    <X :size="16" class="text-gray-500" />
                                 </button>
                             </div>
                         </div>
@@ -104,22 +104,22 @@ const unblock = async () => {
                             </div>
 
                             <!-- Date + Time -->
-                            <div class="bg-slate-50 rounded-2xl px-4 py-3 flex items-center gap-3">
-                                <Clock :size="18" class="text-primary shrink-0" />
+                            <div class="bg-white rounded-2xl px-4 py-3 flex items-center gap-3">
+                                <Clock :size="18" class="text-black shrink-0" />
                                 <div>
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-0.5">
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">
                                         {{ formatDate(block.start_time) }}
                                     </p>
-                                    <p class="text-sm font-extrabold text-slate-900">
+                                    <p class="text-sm font-extrabold text-black">
                                         {{ formatTime(block.start_time) }} – {{ formatTime(block.end_time) }}
                                     </p>
                                 </div>
                             </div>
 
                             <!-- Reason -->
-                            <div v-if="block.reason" class="bg-slate-50 rounded-2xl px-4 py-3 flex items-start gap-3">
-                                <FileText :size="16" class="text-slate-400 mt-0.5 shrink-0" />
-                                <p class="text-sm text-slate-600 leading-relaxed">{{ block.reason }}</p>
+                            <div v-if="block.reason" class="bg-white rounded-2xl px-4 py-3 flex items-start gap-3">
+                                <FileText :size="16" class="text-gray-400 mt-0.5 shrink-0" />
+                                <p class="text-sm text-gray-500 leading-relaxed">{{ block.reason }}</p>
                             </div>
 
                             <!-- Unblock -->

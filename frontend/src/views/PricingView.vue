@@ -107,11 +107,11 @@ const hourLabel    = (h)  => HOURS[h]?.label ?? h
     <Teleport to="#header-subject">{{ spaceName || courtName || 'Pricing' }}</Teleport>
     <Teleport to="#header-subtitle">{{ spaceId ? spaceName + ' · Pricing' : 'Dynamic Pricing' }}</Teleport>
 
-    <div class="min-h-full bg-slate-50">
+    <div class="min-h-full bg-white">
         <!-- Header -->
-        <div class="bg-white px-5 pt-5 pb-5 border-b border-slate-100">
-            <h1 class="text-lg font-bold text-slate-900">Dynamic Pricing</h1>
-            <p class="text-xs text-slate-500">{{ spaceId ? `Pricing rules for ${spaceName || 'this space'}` : 'Set time-based pricing rules for this venue' }}</p>
+        <div class="bg-white px-5 pt-5 pb-5 border-b border-gray-100">
+            <h1 class="text-lg font-bold text-black">Dynamic Pricing</h1>
+            <p class="text-xs text-gray-500">{{ spaceId ? `Pricing rules for ${spaceName || 'this space'}` : 'Set time-based pricing rules for this venue' }}</p>
         </div>
 
         <div class="px-5 py-5 pb-8 space-y-5">
@@ -123,20 +123,20 @@ const hourLabel    = (h)  => HOURS[h]?.label ?? h
 
             <!-- Loading -->
             <div v-if="loading" class="space-y-2">
-                <div v-for="i in 3" :key="i" class="h-16 bg-slate-100 rounded-xl animate-pulse"></div>
+                <div v-for="i in 3" :key="i" class="h-16 bg-gray-100 rounded-xl animate-pulse"></div>
             </div>
 
             <!-- Rules list -->
             <div v-else-if="rules.length" class="space-y-2">
                 <div v-for="rule in rules" :key="rule.id"
                     class="flex items-start gap-3 bg-white rounded-xl px-4 py-3 shadow-sm ring-1 ring-slate-100">
-                    <Tag :size="14" class="text-primary shrink-0 mt-0.5" />
+                    <Tag :size="14" class="text-black shrink-0 mt-0.5" />
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2">
-                            <p class="text-sm font-bold text-slate-800">{{ rule.name }}</p>
-                            <span class="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-bold">P{{ rule.priority }}</span>
+                            <p class="text-sm font-bold text-black">{{ rule.name }}</p>
+                            <span class="text-[10px] bg-gray-100 text-black px-1.5 py-0.5 rounded-full font-bold">P{{ rule.priority }}</span>
                         </div>
-                        <p class="text-[11px] text-slate-400 mt-0.5">
+                        <p class="text-[11px] text-gray-400 mt-0.5">
                             {{ dayTypeLabel(rule.day_type) }} · {{ hourLabel(rule.start_hour) }} – {{ hourLabel(rule.end_hour) }}
                         </p>
                         <p class="text-sm font-extrabold text-emerald-600 mt-0.5">₹{{ rule.price }}/hr</p>
@@ -148,56 +148,56 @@ const hourLabel    = (h)  => HOURS[h]?.label ?? h
                     </button>
                 </div>
             </div>
-            <p v-else-if="!loading" class="text-center text-slate-400 text-sm py-6">No pricing rules — base rate applies</p>
+            <p v-else-if="!loading" class="text-center text-gray-400 text-sm py-6">No pricing rules — base rate applies</p>
 
             <!-- Add form -->
             <div v-if="adding" class="bg-white rounded-2xl p-4 space-y-3 shadow-sm ring-1 ring-slate-100">
-                <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider">New Rule</p>
+                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider">New Rule</p>
                 <input v-model="newName" type="text" placeholder="Rule name (e.g. Weekend Peak) *"
-                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:outline-none bg-slate-50" />
+                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border border-black focus:outline-none bg-white" />
                 <div>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-1.5">Applies on</p>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase mb-1.5">Applies on</p>
                     <div class="flex gap-2">
                         <button v-for="dt in DAY_TYPES" :key="dt.value" @click="newDayType = dt.value"
                             class="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
-                            :class="newDayType === dt.value ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'">
+                            :class="newDayType === dt.value ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'">
                             {{ dt.label }}
                         </button>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">From</p>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">From</p>
                         <select v-model.number="newStartHour"
-                            class="w-full ring-1 ring-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-primary focus:outline-none bg-slate-50">
+                            class="w-full ring-1 ring-slate-200 rounded-xl px-3 py-2.5 text-sm focus:border border-black focus:outline-none bg-white">
                             <option v-for="h in HOURS" :key="h.value" :value="h.value">{{ h.label }}</option>
                         </select>
                     </div>
                     <div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">To</p>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">To</p>
                         <select v-model.number="newEndHour"
-                            class="w-full ring-1 ring-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-primary focus:outline-none bg-slate-50">
+                            class="w-full ring-1 ring-slate-200 rounded-xl px-3 py-2.5 text-sm focus:border border-black focus:outline-none bg-white">
                             <option v-for="h in HOURS" :key="h.value" :value="h.value">{{ h.label }}</option>
                         </select>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Price (₹/hr) *</p>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Price (₹/hr) *</p>
                         <input v-model="newPrice" type="number" placeholder="e.g. 800"
-                            class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:outline-none bg-slate-50" />
+                            class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border border-black focus:outline-none bg-white" />
                     </div>
                     <div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Priority</p>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-1">Priority</p>
                         <input v-model.number="newPriority" type="number" placeholder="10"
-                            class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:outline-none bg-slate-50" />
+                            class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border border-black focus:outline-none bg-white" />
                     </div>
                 </div>
                 <div class="flex gap-2">
                     <button @click="adding = false; resetForm()"
-                        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-slate-100 text-slate-600">Cancel</button>
+                        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-gray-100 text-gray-500">Cancel</button>
                     <button @click="addRule" :disabled="saving"
-                        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-primary text-white flex items-center justify-center gap-1.5 disabled:opacity-50">
+                        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-black text-white flex items-center justify-center gap-1.5 disabled:opacity-50">
                         <Loader2 v-if="saving" :size="13" class="animate-spin" />
                         <span>Add Rule</span>
                     </button>
@@ -205,7 +205,7 @@ const hourLabel    = (h)  => HOURS[h]?.label ?? h
             </div>
 
             <button v-else @click="adding = true"
-                class="w-full py-3.5 rounded-2xl text-sm font-bold border-2 border-dashed border-slate-200 text-slate-500 flex items-center justify-center gap-2 hover:border-primary hover:text-primary transition-all">
+                class="w-full py-3.5 rounded-2xl text-sm font-bold border-2 border-dashed border-gray-200 text-gray-500 flex items-center justify-center gap-2 hover:border-black hover:text-black transition-all">
                 <Plus :size="14" /> Add Pricing Rule
             </button>
 

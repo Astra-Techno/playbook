@@ -39,6 +39,15 @@ export const useAuthStore = defineStore('auth', () => {
                 )
                 const tags = [userData.role, userData.city].filter(Boolean)
                 if (tags.length) window.SaaS.setUserTags(JSON.stringify(tags))
+
+                // Request FCM token and save to backend for server-side push
+                window.onSaaS_FCMToken = async (fcmToken) => {
+                    window.onSaaS_FCMToken = null
+                    if (fcmToken) {
+                        try { await axios.post('/auth/fcm-token', { token: fcmToken }) } catch {}
+                    }
+                }
+                window.SaaS.requestFCMToken()
             } catch { /* not in Android WebView — ignore */ }
         }
     }

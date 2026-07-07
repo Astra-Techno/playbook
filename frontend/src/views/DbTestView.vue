@@ -34,22 +34,22 @@ onMounted(test)
 </script>
 
 <template>
-    <div class="min-h-full bg-slate-50 px-4 py-6">
+    <div class="min-h-full bg-white px-4 py-6">
 
         <!-- Header card -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 mb-4">
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-primary-light rounded-xl flex items-center justify-center">
-                        <Database :size="20" class="text-primary" />
+                    <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                        <Database :size="20" class="text-black" />
                     </div>
                     <div>
-                        <h1 class="font-extrabold text-slate-900 text-base">DB Connection Test</h1>
-                        <p class="text-xs text-slate-400">{{ lastRun ? 'Last checked: ' + lastRun : 'Checking...' }}</p>
+                        <h1 class="font-extrabold text-black text-base">DB Connection Test</h1>
+                        <p class="text-xs text-gray-400">{{ lastRun ? 'Last checked: ' + lastRun : 'Checking...' }}</p>
                     </div>
                 </div>
                 <button @click="test" :disabled="loading"
-                    class="flex items-center gap-1.5 text-xs font-bold text-primary bg-primary-light px-3 py-2 rounded-xl disabled:opacity-50 active:scale-95 transition-transform">
+                    class="flex items-center gap-1.5 text-xs font-bold text-black bg-gray-100 px-3 py-2 rounded-xl disabled:opacity-50 active:scale-95 transition-transform">
                     <RefreshCw :size="13" :class="loading ? 'animate-spin' : ''" />
                     Retry
                 </button>
@@ -57,9 +57,9 @@ onMounted(test)
         </div>
 
         <!-- Loading -->
-        <div v-if="loading" class="bg-white rounded-2xl p-8 shadow-sm border border-slate-100 flex flex-col items-center gap-3">
-            <RefreshCw :size="32" class="text-primary animate-spin" />
-            <p class="text-sm font-semibold text-slate-500">Testing connection...</p>
+        <div v-if="loading" class="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 flex flex-col items-center gap-3">
+            <RefreshCw :size="32" class="text-black animate-spin" />
+            <p class="text-sm font-semibold text-gray-500">Testing connection...</p>
         </div>
 
         <!-- Result -->
@@ -81,48 +81,48 @@ onMounted(test)
             </div>
 
             <!-- Connection details -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-4">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-4">
                 <div class="px-4 py-3 border-b border-slate-50">
-                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Connection Details</p>
+                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Connection Details</p>
                 </div>
                 <div class="divide-y divide-slate-50">
                     <div class="flex items-center justify-between px-4 py-3">
-                        <div class="flex items-center gap-2 text-slate-500">
+                        <div class="flex items-center gap-2 text-gray-500">
                             <Server :size="14" />
                             <span class="text-sm font-medium">Host</span>
                         </div>
-                        <span class="text-sm font-bold text-slate-900 font-mono">{{ result.host || '—' }}</span>
+                        <span class="text-sm font-bold text-black font-mono">{{ result.host || '—' }}</span>
                     </div>
                     <div class="flex items-center justify-between px-4 py-3">
-                        <div class="flex items-center gap-2 text-slate-500">
+                        <div class="flex items-center gap-2 text-gray-500">
                             <Wifi :size="14" />
                             <span class="text-sm font-medium">Port</span>
                         </div>
-                        <span class="text-sm font-bold text-slate-900 font-mono">{{ result.port || '—' }}</span>
+                        <span class="text-sm font-bold text-black font-mono">{{ result.port || '—' }}</span>
                     </div>
                     <div class="flex items-center justify-between px-4 py-3">
-                        <div class="flex items-center gap-2 text-slate-500">
+                        <div class="flex items-center gap-2 text-gray-500">
                             <Database :size="14" />
                             <span class="text-sm font-medium">Database</span>
                         </div>
-                        <span class="text-sm font-bold text-slate-900 font-mono">{{ result.database || '—' }}</span>
+                        <span class="text-sm font-bold text-black font-mono">{{ result.database || '—' }}</span>
                     </div>
                     <div v-if="result.mysql_version" class="flex items-center justify-between px-4 py-3">
-                        <div class="flex items-center gap-2 text-slate-500">
+                        <div class="flex items-center gap-2 text-gray-500">
                             <Hash :size="14" />
                             <span class="text-sm font-medium">MySQL Version</span>
                         </div>
-                        <span class="text-sm font-bold text-slate-900 font-mono">{{ result.mysql_version }}</span>
+                        <span class="text-sm font-bold text-black font-mono">{{ result.mysql_version }}</span>
                     </div>
                     <div v-if="result.php_version" class="flex items-center justify-between px-4 py-3">
-                        <div class="flex items-center gap-2 text-slate-500">
+                        <div class="flex items-center gap-2 text-gray-500">
                             <Hash :size="14" />
                             <span class="text-sm font-medium">PHP Version</span>
                         </div>
-                        <span class="text-sm font-bold text-slate-900 font-mono">{{ result.php_version }}</span>
+                        <span class="text-sm font-bold text-black font-mono">{{ result.php_version }}</span>
                     </div>
                     <div v-if="result.latency_ms != null" class="flex items-center justify-between px-4 py-3">
-                        <div class="flex items-center gap-2 text-slate-500">
+                        <div class="flex items-center gap-2 text-gray-500">
                             <Clock :size="14" />
                             <span class="text-sm font-medium">Latency</span>
                         </div>
@@ -132,20 +132,20 @@ onMounted(test)
                         </span>
                     </div>
                     <div v-if="result.server_time" class="flex items-center justify-between px-4 py-3">
-                        <div class="flex items-center gap-2 text-slate-500">
+                        <div class="flex items-center gap-2 text-gray-500">
                             <Clock :size="14" />
                             <span class="text-sm font-medium">Server Time</span>
                         </div>
-                        <span class="text-sm font-bold text-slate-900 font-mono">{{ result.server_time }}</span>
+                        <span class="text-sm font-bold text-black font-mono">{{ result.server_time }}</span>
                     </div>
                 </div>
             </div>
 
             <!-- Tables -->
-            <div v-if="result.tables && Object.keys(result.tables).length" class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div v-if="result.tables && Object.keys(result.tables).length" class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div class="px-4 py-3 border-b border-slate-50 flex items-center justify-between">
-                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Tables</p>
-                    <span class="text-[11px] font-bold text-primary bg-primary-light px-2 py-0.5 rounded-full">
+                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Tables</p>
+                    <span class="text-[11px] font-bold text-black bg-gray-100 px-2 py-0.5 rounded-full">
                         {{ Object.keys(result.tables).length }} tables
                     </span>
                 </div>
@@ -153,10 +153,10 @@ onMounted(test)
                     <div v-for="(count, table) in result.tables" :key="table"
                         class="flex items-center justify-between px-4 py-2.5">
                         <div class="flex items-center gap-2">
-                            <Table2 :size="13" class="text-slate-400" />
-                            <span class="text-sm font-mono text-slate-700">{{ table }}</span>
+                            <Table2 :size="13" class="text-gray-400" />
+                            <span class="text-sm font-mono text-gray-700">{{ table }}</span>
                         </div>
-                        <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                        <span class="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                             {{ count }} rows
                         </span>
                     </div>

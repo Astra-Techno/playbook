@@ -7,20 +7,27 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans:    ['Lexend', 'system-ui', 'sans-serif'],
-                display: ['Lexend', 'system-ui', 'sans-serif'],
+                sans:    ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+                display: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
             },
             colors: {
-                primary:  '#7c3aed',   // violet-700 — KoCourt brand
-                'primary-dark': '#6d28d9',
-                'primary-light': '#ede9fe',
-                surface: '#f8f7ff',
+                primary:  '#000000',
+                'primary-dark': '#000000',
+                'primary-light': '#f3f4f6',
+                surface: '#ffffff',
+                ink: {
+                    base: '#000000',
+                    muted: '#6b7280',
+                    light: '#9ca3af',
+                },
             },
             boxShadow: {
-                'card':     '0 2px 12px rgba(0,0,0,0.07)',
-                'card-lg':  '0 8px 24px rgba(0,0,0,0.10)',
-                'nav':      '0 -2px 16px rgba(0,0,0,0.06)',
-                'fab':      '0 6px 24px rgba(124,58,237,0.40)',
+                'card':     '0 20px 40px -15px rgba(0,0,0,0.05)',
+                'card-lg':  '0 30px 60px -15px rgba(0,0,0,0.1)',
+                'nav':      '0 -10px 40px rgba(0,0,0,0.05)',
+                'fab':      '0 10px 40px -10px rgba(0,0,0,0.15)',
+                'premium':  '0 20px 40px -15px rgba(0,0,0,0.05)',
+                'float':    '0 10px 40px -10px rgba(0,0,0,0.15)',
             },
         },
     },

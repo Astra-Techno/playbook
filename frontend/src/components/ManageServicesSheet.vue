@@ -51,7 +51,7 @@ const SERVICE_TYPES = [
     { id: 'court', label: 'Court',  desc: 'Hourly slot booking', icon: LayoutGrid, bg: 'bg-blue-50',   ring: 'ring-blue-200',   text: 'text-blue-600'   },
     { id: 'class', label: 'Class',  desc: 'Fixed schedule, enroll', icon: BookOpen, bg: 'bg-purple-50', ring: 'ring-purple-200', text: 'text-purple-600' },
     { id: 'pool',  label: 'Pool',   desc: 'Session / lane booking', icon: Droplets, bg: 'bg-cyan-50',   ring: 'ring-cyan-200',   text: 'text-cyan-600'   },
-    { id: 'other', label: 'Other',  desc: 'Custom service',         icon: Package,  bg: 'bg-slate-50',  ring: 'ring-slate-200',  text: 'text-slate-600'  },
+    { id: 'other', label: 'Other',  desc: 'Custom service',         icon: Package,  bg: 'bg-white',  ring: 'ring-slate-200',  text: 'text-gray-500'  },
 ]
 
 const SPORTS = [
@@ -191,19 +191,19 @@ const remove = async (svc) => {
                         <!-- Handle + Header -->
                         <div class="shrink-0 pt-3">
                             <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-3"></div>
-                            <div class="flex items-center gap-3 px-5 pb-4 border-b border-slate-100">
+                            <div class="flex items-center gap-3 px-5 pb-4 border-b border-gray-100">
                                 <button v-if="view !== 'list'" @click="view = view === 'form' ? 'type-select' : 'list'"
-                                    class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                                    <ChevronLeft :size="16" class="text-slate-500" />
+                                    class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                                    <ChevronLeft :size="16" class="text-gray-500" />
                                 </button>
                                 <div class="flex-1">
-                                    <p class="text-[10px] font-black text-primary uppercase tracking-wider">{{ venue.name }}</p>
-                                    <h3 class="text-base font-extrabold text-slate-900">
+                                    <p class="text-[10px] font-black text-black uppercase tracking-wider">{{ venue.name }}</p>
+                                    <h3 class="text-base font-extrabold text-black">
                                         {{ view === 'list' ? 'Manage Services' : view === 'type-select' ? 'What do you offer?' : (editing ? 'Edit Service' : 'Add Service') }}
                                     </h3>
                                 </div>
-                                <button @click="close" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
-                                    <X :size="16" class="text-slate-500" />
+                                <button @click="close" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                                    <X :size="16" class="text-gray-500" />
                                 </button>
                             </div>
                         </div>
@@ -212,29 +212,29 @@ const remove = async (svc) => {
                         <div v-if="view === 'list'" class="flex-1 overflow-y-auto px-5 py-5 space-y-4">
                             <!-- Loading -->
                             <div v-if="loading" class="space-y-3">
-                                <div v-for="i in 3" :key="i" class="h-16 bg-slate-100 rounded-2xl animate-pulse"></div>
+                                <div v-for="i in 3" :key="i" class="h-16 bg-gray-100 rounded-2xl animate-pulse"></div>
                             </div>
 
                             <!-- Empty -->
-                            <div v-else-if="!services.length" class="text-center py-12 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
-                                <LayoutGrid :size="32" class="text-slate-300 mx-auto mb-3" />
-                                <p class="font-bold text-slate-500 text-sm">No services yet</p>
-                                <p class="text-xs text-slate-400 mt-1">Add courts, classes or pools</p>
+                            <div v-else-if="!services.length" class="text-center py-12 bg-white rounded-3xl border-2 border-dashed border-gray-200">
+                                <LayoutGrid :size="32" class="text-gray-300 mx-auto mb-3" />
+                                <p class="font-bold text-gray-500 text-sm">No services yet</p>
+                                <p class="text-xs text-gray-400 mt-1">Add courts, classes or pools</p>
                             </div>
 
                             <!-- Service cards -->
                             <div v-else class="space-y-3">
                                 <div v-for="svc in services" :key="svc.id"
-                                    class="flex items-center gap-3 bg-slate-50 rounded-2xl px-4 py-3 ring-1 ring-slate-100">
+                                    class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3 ring-1 ring-slate-100">
                                     <!-- Type icon -->
                                     <div :class="[typeInfo(svc.service_type).bg, 'w-10 h-10 rounded-xl flex items-center justify-center shrink-0']">
                                         <component :is="typeInfo(svc.service_type).icon" :size="18" :class="typeInfo(svc.service_type).text" />
                                     </div>
                                     <!-- Info -->
                                     <div class="flex-1 min-w-0">
-                                        <p class="font-bold text-slate-800 text-sm truncate">{{ svc.name }}</p>
-                                        <p class="text-xs text-slate-500 truncate">
-                                            <span v-if="svc.sport" class="text-primary font-semibold">{{ sportInfo(svc.sport).label }} · </span>
+                                        <p class="font-bold text-black text-sm truncate">{{ svc.name }}</p>
+                                        <p class="text-xs text-gray-500 truncate">
+                                            <span v-if="svc.sport" class="text-black font-semibold">{{ sportInfo(svc.sport).label }} · </span>
                                             {{ priceLabel(svc) }}
                                             <span v-if="svc.service_type === 'class' && svc.schedule"> · {{ scheduleLabel(svc) }}</span>
                                             <span v-if="svc.capacity"> · {{ svc.capacity }} spots</span>
@@ -242,7 +242,7 @@ const remove = async (svc) => {
                                     </div>
                                     <!-- Actions -->
                                     <button @click="startEdit(svc)" class="w-8 h-8 rounded-xl bg-white ring-1 ring-slate-200 flex items-center justify-center shrink-0">
-                                        <Pencil :size="13" class="text-slate-500" />
+                                        <Pencil :size="13" class="text-gray-500" />
                                     </button>
                                     <button @click="remove(svc)" class="w-8 h-8 rounded-xl bg-red-50 ring-1 ring-red-100 flex items-center justify-center shrink-0">
                                         <Trash2 :size="13" class="text-red-400" />
@@ -252,7 +252,7 @@ const remove = async (svc) => {
 
                             <!-- Add button -->
                             <button @click="goAdd"
-                                class="w-full flex items-center justify-center gap-2 bg-primary text-white font-extrabold py-4 rounded-2xl text-sm active:scale-[0.98] transition-transform">
+                                class="w-full flex items-center justify-center gap-2 bg-black text-white font-extrabold py-4 rounded-2xl text-sm active:scale-[0.98] transition-transform">
                                 <Plus :size="16" />
                                 Add Service
                             </button>
@@ -260,14 +260,14 @@ const remove = async (svc) => {
 
                         <!-- ── TYPE SELECT VIEW ───────────────────────────────────── -->
                         <div v-else-if="view === 'type-select'" class="flex-1 overflow-y-auto px-5 py-5">
-                            <p class="text-sm text-slate-500 mb-5">Choose what type of service you want to add to this venue.</p>
+                            <p class="text-sm text-gray-500 mb-5">Choose what type of service you want to add to this venue.</p>
                             <div class="grid grid-cols-2 gap-3">
                                 <button v-for="t in SERVICE_TYPES" :key="t.id" @click="pickType(t.id)"
                                     :class="[t.bg, t.ring, 'ring-1 rounded-2xl p-5 flex flex-col items-start gap-2 active:scale-[0.97] transition-transform text-left']">
                                     <component :is="t.icon" :size="28" :class="t.text" />
                                     <div>
                                         <p :class="[t.text, 'font-extrabold text-base']">{{ t.label }}</p>
-                                        <p class="text-xs text-slate-500 mt-0.5">{{ t.desc }}</p>
+                                        <p class="text-xs text-gray-500 mt-0.5">{{ t.desc }}</p>
                                     </div>
                                 </button>
                             </div>
@@ -283,23 +283,23 @@ const remove = async (svc) => {
 
                             <!-- Name -->
                             <div>
-                                <label class="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2">
+                                <label class="text-[11px] font-black text-gray-400 uppercase tracking-wider block mb-2">
                                     Name <span class="text-red-400">*</span>
                                 </label>
                                 <input v-model="form.name" type="text"
                                     :placeholder="selType === 'court' ? 'e.g. Badminton Court 1' : selType === 'class' ? 'e.g. Zumba, Classical Dance' : selType === 'pool' ? 'e.g. Swimming Pool' : 'Service name'"
-                                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-primary focus:outline-none" />
+                                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:border border-black focus:outline-none" />
                             </div>
 
                             <!-- COURT: sport + hourly rate -->
                             <template v-if="selType === 'court'">
                                 <div>
-                                    <label class="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2">Sport</label>
+                                    <label class="text-[11px] font-black text-gray-400 uppercase tracking-wider block mb-2">Sport</label>
                                     <div class="grid grid-cols-3 gap-2">
                                         <button v-for="s in SPORTS" :key="s.id" @click="form.sport = s.id"
                                             :class="form.sport === s.id
-                                                ? 'bg-primary text-white ring-primary'
-                                                : 'bg-slate-50 text-slate-600 ring-slate-200'"
+                                                ? 'bg-black text-white border border-black'
+                                                : 'bg-white text-gray-500 ring-slate-200'"
                                             class="ring-1 rounded-xl py-2.5 flex flex-col items-center gap-1 text-[11px] font-bold transition-all active:scale-95">
                                             <component :is="s.icon" :size="16" />
                                             {{ s.label }}
@@ -307,14 +307,14 @@ const remove = async (svc) => {
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2">
+                                    <label class="text-[11px] font-black text-gray-400 uppercase tracking-wider block mb-2">
                                         Hourly Rate <span class="text-red-400">*</span>
                                     </label>
-                                    <div class="flex items-center gap-2 ring-1 ring-slate-200 rounded-xl px-4 h-12 focus-within:ring-primary">
-                                        <span class="text-slate-400 font-bold text-sm">₹</span>
+                                    <div class="flex items-center gap-2 ring-1 ring-slate-200 rounded-xl px-4 h-12 focus-within:border border-black">
+                                        <span class="text-gray-400 font-bold text-sm">₹</span>
                                         <input v-model="form.hourly_rate" type="number" min="1" placeholder="e.g. 300"
                                             class="flex-1 text-sm font-bold bg-transparent border-none focus:ring-0" />
-                                        <span class="text-xs text-slate-400 shrink-0">/ hr</span>
+                                        <span class="text-xs text-gray-400 shrink-0">/ hr</span>
                                     </div>
                                 </div>
                             </template>
@@ -322,12 +322,12 @@ const remove = async (svc) => {
                             <!-- CLASS: schedule + pricing -->
                             <template v-else-if="selType === 'class'">
                                 <div>
-                                    <label class="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2">Days</label>
+                                    <label class="text-[11px] font-black text-gray-400 uppercase tracking-wider block mb-2">Days</label>
                                     <div class="flex gap-2 flex-wrap">
                                         <button v-for="day in DAYS" :key="day" @click="toggleDay(day)"
                                             :class="form.schedule.days.includes(day)
-                                                ? 'bg-primary text-white'
-                                                : 'bg-slate-100 text-slate-600'"
+                                                ? 'bg-black text-white'
+                                                : 'bg-gray-100 text-gray-500'"
                                             class="w-11 h-11 rounded-xl text-xs font-bold transition-all active:scale-95">
                                             {{ day }}
                                         </button>
@@ -335,74 +335,74 @@ const remove = async (svc) => {
                                 </div>
                                 <div class="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label class="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2">Start Time</label>
+                                        <label class="text-[11px] font-black text-gray-400 uppercase tracking-wider block mb-2">Start Time</label>
                                         <input v-model="form.schedule.start_time" type="time"
-                                            class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-primary focus:outline-none" />
+                                            class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:border border-black focus:outline-none" />
                                     </div>
                                     <div>
-                                        <label class="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2">End Time</label>
+                                        <label class="text-[11px] font-black text-gray-400 uppercase tracking-wider block mb-2">End Time</label>
                                         <input v-model="form.schedule.end_time" type="time"
-                                            class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-primary focus:outline-none" />
+                                            class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:border border-black focus:outline-none" />
                                     </div>
                                 </div>
                                 <!-- Pricing type -->
                                 <div>
-                                    <label class="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2">Pricing</label>
+                                    <label class="text-[11px] font-black text-gray-400 uppercase tracking-wider block mb-2">Pricing</label>
                                     <div class="flex gap-2 mb-3">
-                                        <button @click="form.pricing_type = 'monthly'" :class="form.pricing_type === 'monthly' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all">Monthly</button>
-                                        <button @click="form.pricing_type = 'session'" :class="form.pricing_type === 'session' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all">Per Session</button>
+                                        <button @click="form.pricing_type = 'monthly'" :class="form.pricing_type === 'monthly' ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all">Monthly</button>
+                                        <button @click="form.pricing_type = 'session'" :class="form.pricing_type === 'session' ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all">Per Session</button>
                                     </div>
-                                    <div class="flex items-center gap-2 ring-1 ring-slate-200 rounded-xl px-4 h-12 focus-within:ring-primary">
-                                        <span class="text-slate-400 font-bold text-sm">₹</span>
+                                    <div class="flex items-center gap-2 ring-1 ring-slate-200 rounded-xl px-4 h-12 focus-within:border border-black">
+                                        <span class="text-gray-400 font-bold text-sm">₹</span>
                                         <input v-if="form.pricing_type === 'monthly'" v-model="form.monthly_rate" type="number" min="1" placeholder="e.g. 2000"
                                             class="flex-1 text-sm font-bold bg-transparent border-none focus:ring-0" />
                                         <input v-else v-model="form.session_rate" type="number" min="1" placeholder="e.g. 500"
                                             class="flex-1 text-sm font-bold bg-transparent border-none focus:ring-0" />
-                                        <span class="text-xs text-slate-400 shrink-0">/ {{ form.pricing_type === 'monthly' ? 'month' : 'session' }}</span>
+                                        <span class="text-xs text-gray-400 shrink-0">/ {{ form.pricing_type === 'monthly' ? 'month' : 'session' }}</span>
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2">Max Spots <span class="font-normal normal-case text-slate-300">(optional)</span></label>
+                                    <label class="text-[11px] font-black text-gray-400 uppercase tracking-wider block mb-2">Max Spots <span class="font-normal normal-case text-gray-300">(optional)</span></label>
                                     <input v-model="form.capacity" type="number" min="1" placeholder="e.g. 15"
-                                        class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-primary focus:outline-none" />
+                                        class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:border border-black focus:outline-none" />
                                 </div>
                             </template>
 
                             <!-- POOL: session rate + capacity -->
                             <template v-else-if="selType === 'pool'">
                                 <div>
-                                    <label class="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2">Pricing</label>
+                                    <label class="text-[11px] font-black text-gray-400 uppercase tracking-wider block mb-2">Pricing</label>
                                     <div class="flex gap-2 mb-3">
-                                        <button @click="form.pricing_type = 'session'" :class="form.pricing_type === 'session' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all">Per Session</button>
-                                        <button @click="form.pricing_type = 'hourly'"  :class="form.pricing_type === 'hourly'  ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all">Per Hour</button>
+                                        <button @click="form.pricing_type = 'session'" :class="form.pricing_type === 'session' ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all">Per Session</button>
+                                        <button @click="form.pricing_type = 'hourly'"  :class="form.pricing_type === 'hourly'  ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'" class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all">Per Hour</button>
                                     </div>
-                                    <div class="flex items-center gap-2 ring-1 ring-slate-200 rounded-xl px-4 h-12 focus-within:ring-primary">
-                                        <span class="text-slate-400 font-bold text-sm">₹</span>
+                                    <div class="flex items-center gap-2 ring-1 ring-slate-200 rounded-xl px-4 h-12 focus-within:border border-black">
+                                        <span class="text-gray-400 font-bold text-sm">₹</span>
                                         <input v-if="form.pricing_type === 'session'" v-model="form.session_rate" type="number" min="1" placeholder="e.g. 500"
                                             class="flex-1 text-sm font-bold bg-transparent border-none focus:ring-0" />
                                         <input v-else v-model="form.hourly_rate" type="number" min="1" placeholder="e.g. 300"
                                             class="flex-1 text-sm font-bold bg-transparent border-none focus:ring-0" />
-                                        <span class="text-xs text-slate-400 shrink-0">/ {{ form.pricing_type === 'session' ? 'session' : 'hr' }}</span>
+                                        <span class="text-xs text-gray-400 shrink-0">/ {{ form.pricing_type === 'session' ? 'session' : 'hr' }}</span>
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2">Capacity <span class="font-normal normal-case text-slate-300">(lanes / spots)</span></label>
+                                    <label class="text-[11px] font-black text-gray-400 uppercase tracking-wider block mb-2">Capacity <span class="font-normal normal-case text-gray-300">(lanes / spots)</span></label>
                                     <input v-model="form.capacity" type="number" min="1" placeholder="e.g. 6"
-                                        class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-primary focus:outline-none" />
+                                        class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:border border-black focus:outline-none" />
                                 </div>
                             </template>
 
                             <!-- OTHER: pricing type + rate -->
                             <template v-else>
                                 <div>
-                                    <label class="text-[11px] font-black text-slate-400 uppercase tracking-wider block mb-2">Pricing Type</label>
+                                    <label class="text-[11px] font-black text-gray-400 uppercase tracking-wider block mb-2">Pricing Type</label>
                                     <div class="flex gap-2 mb-3">
                                         <button v-for="pt in [{id:'hourly',l:'Per Hour'},{id:'session',l:'Per Session'},{id:'monthly',l:'Monthly'}]" :key="pt.id"
-                                            @click="form.pricing_type = pt.id" :class="form.pricing_type === pt.id ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'"
+                                            @click="form.pricing_type = pt.id" :class="form.pricing_type === pt.id ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'"
                                             class="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all">{{ pt.l }}</button>
                                     </div>
-                                    <div class="flex items-center gap-2 ring-1 ring-slate-200 rounded-xl px-4 h-12 focus-within:ring-primary">
-                                        <span class="text-slate-400 font-bold text-sm">₹</span>
+                                    <div class="flex items-center gap-2 ring-1 ring-slate-200 rounded-xl px-4 h-12 focus-within:border border-black">
+                                        <span class="text-gray-400 font-bold text-sm">₹</span>
                                         <input v-model="form.hourly_rate" type="number" min="1" placeholder="Rate"
                                             class="flex-1 text-sm font-bold bg-transparent border-none focus:ring-0" />
                                     </div>
@@ -411,7 +411,7 @@ const remove = async (svc) => {
 
                             <!-- Save button -->
                             <button @click="save" :disabled="saving"
-                                class="w-full bg-primary text-white font-extrabold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-60">
+                                class="w-full bg-black text-white font-extrabold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition-transform disabled:opacity-60">
                                 <Loader2 v-if="saving" :size="16" class="animate-spin" />
                                 <span v-else>{{ editing ? 'Save Changes' : 'Add Service' }}</span>
                             </button>

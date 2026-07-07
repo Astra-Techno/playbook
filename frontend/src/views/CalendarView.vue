@@ -163,7 +163,7 @@ const singleColBlocks = (spaceId) => {
 const bookingClass = (status) => {
     if (status === 'confirmed') return 'bg-emerald-500 text-white shadow-sm shadow-emerald-200'
     if (status === 'pending')   return 'bg-amber-400 text-white shadow-sm shadow-amber-200'
-    return 'bg-slate-200 text-slate-400 opacity-60'
+    return 'bg-slate-200 text-gray-400 opacity-60'
 }
 
 // ── Current time indicator ────────────────────────────────────────────────────
@@ -291,36 +291,36 @@ const onUnblocked = (id) => {
     <Teleport to="#header-subject">{{ court?.name ?? 'Calendar' }}</Teleport>
     <Teleport to="#header-subtitle">Booking Calendar</Teleport>
 
-    <div class="bg-slate-50 flex flex-col" style="height: calc(100vh - 120px)">
+    <div class="bg-white flex flex-col" style="height: calc(100vh - 120px)">
 
         <!-- ── Sticky control bar ──────────────────────────────────────── -->
-        <div class="bg-white border-b border-slate-100 shrink-0">
+        <div class="bg-white border-b border-gray-100 shrink-0">
 
             <!-- View toggle + date nav -->
             <div class="flex items-center gap-2 px-4 py-2.5">
                 <!-- Day / Week toggle -->
-                <div class="flex bg-slate-100 rounded-xl p-0.5 shrink-0">
+                <div class="flex bg-gray-100 rounded-xl p-0.5 shrink-0">
                     <button @click="view='day'"
                         class="px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
-                        :class="view==='day' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'">
+                        :class="view==='day' ? 'bg-white shadow-sm text-black' : 'text-gray-500'">
                         Day
                     </button>
                     <button @click="view='week'"
                         class="px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all"
-                        :class="view==='week' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'">
+                        :class="view==='week' ? 'bg-white shadow-sm text-black' : 'text-gray-500'">
                         Week
                     </button>
                 </div>
 
                 <!-- Prev -->
                 <button @click="shiftDate(-1)"
-                    class="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition-transform">
-                    <ChevronLeft :size="15" class="text-slate-600" />
+                    class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition-transform">
+                    <ChevronLeft :size="15" class="text-gray-500" />
                 </button>
 
                 <!-- Date label (tappable) -->
                 <button @click="openDatePicker" class="flex-1 text-center">
-                    <span class="text-sm font-bold text-slate-800">{{ formatNavDate(activeDate) }}</span>
+                    <span class="text-sm font-bold text-black">{{ formatNavDate(activeDate) }}</span>
                 </button>
 
                 <!-- Hidden native date picker -->
@@ -330,13 +330,13 @@ const onUnblocked = (id) => {
 
                 <!-- Next -->
                 <button @click="shiftDate(1)"
-                    class="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition-transform">
-                    <ChevronRight :size="15" class="text-slate-600" />
+                    class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition-transform">
+                    <ChevronRight :size="15" class="text-gray-500" />
                 </button>
 
                 <!-- Today -->
                 <button @click="activeDate = todayStr()"
-                    class="shrink-0 text-[11px] font-bold text-primary bg-primary/10 px-2.5 py-1.5 rounded-lg active:scale-95 transition-transform"
+                    class="shrink-0 text-[11px] font-bold text-black bg-gray-100 px-2.5 py-1.5 rounded-lg active:scale-95 transition-transform"
                     :class="activeDate === todayStr() ? 'opacity-40 pointer-events-none' : ''">
                     Today
                 </button>
@@ -347,13 +347,13 @@ const onUnblocked = (id) => {
                 class="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-hide">
                 <button @click="filterSpaceId = null"
                     class="shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all"
-                    :class="!filterSpaceId ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'">
+                    :class="!filterSpaceId ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'">
                     All
                 </button>
                 <button v-for="sp in subCourts" :key="sp.id"
                     @click="filterSpaceId = sp.id"
                     class="shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all"
-                    :class="String(filterSpaceId) === String(sp.id) ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'">
+                    :class="String(filterSpaceId) === String(sp.id) ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'">
                     {{ sp.name }}
                 </button>
             </div>
@@ -361,22 +361,22 @@ const onUnblocked = (id) => {
 
         <!-- ── Loading ──────────────────────────────────────────────────── -->
         <div v-if="loading" class="flex-1 flex items-center justify-center">
-            <Loader2 :size="32" class="text-primary animate-spin" />
+            <Loader2 :size="32" class="text-black animate-spin" />
         </div>
 
         <!-- ── WEEK VIEW ────────────────────────────────────────────────── -->
         <template v-else-if="view === 'week'">
             <!-- 7-day chips -->
-            <div class="bg-white border-b border-slate-100 shrink-0">
+            <div class="bg-white border-b border-gray-100 shrink-0">
                 <div class="flex px-2 py-2 gap-1.5">
                     <button v-for="d in weekDates" :key="d.iso"
                         @click="activeDate = d.iso; view = 'day'"
                         class="flex-1 flex flex-col items-center py-2 rounded-xl transition-all active:scale-95"
                         :class="d.iso === activeDate
-                            ? 'bg-primary text-white'
+                            ? 'bg-black text-white'
                             : d.iso === todayStr()
-                                ? 'bg-primary/10 text-primary ring-1 ring-primary/20'
-                                : 'bg-slate-50 text-slate-700'">
+                                ? 'bg-gray-100 text-black ring-1 border border-gray-200'
+                                : 'bg-white text-gray-700'">
                         <span class="text-[9px] font-bold uppercase tracking-wide leading-none mb-1">{{ d.dow }}</span>
                         <span class="text-base font-extrabold leading-none">{{ d.day }}</span>
                         <div class="mt-1 h-1.5 flex items-center gap-0.5">
@@ -398,13 +398,13 @@ const onUnblocked = (id) => {
                 <div v-if="weekBookingsByDate.length === 0"
                     class="flex flex-col items-center py-16 text-center">
                     <CalendarDays :size="40" class="text-slate-200 mb-3" />
-                    <p class="font-bold text-slate-500">No bookings this week</p>
-                    <p class="text-xs text-slate-400 mt-1">Tap a day to see the full schedule</p>
+                    <p class="font-bold text-gray-500">No bookings this week</p>
+                    <p class="text-xs text-gray-400 mt-1">Tap a day to see the full schedule</p>
                 </div>
 
                 <template v-for="group in weekBookingsByDate" :key="group.date">
                     <div>
-                        <p class="text-[11px] font-extrabold text-slate-400 uppercase tracking-widest mb-2">
+                        <p class="text-[11px] font-extrabold text-gray-400 uppercase tracking-widest mb-2">
                             {{ group.label }}
                         </p>
                         <!-- Bookings -->
@@ -417,13 +417,13 @@ const onUnblocked = (id) => {
                                     :class="b.status==='confirmed' ? 'bg-emerald-500' : b.status==='pending' ? 'bg-amber-400' : 'bg-slate-300'">
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-bold text-slate-900 truncate">{{ b.guest_name || b.user_name || 'Player' }}</p>
-                                    <p class="text-xs text-slate-400">{{ shortTime(b.start_time) }} – {{ shortTime(b.end_time) }}
+                                    <p class="text-sm font-bold text-black truncate">{{ b.guest_name || b.user_name || 'Player' }}</p>
+                                    <p class="text-xs text-gray-400">{{ shortTime(b.start_time) }} – {{ shortTime(b.end_time) }}
                                         <span v-if="spaceNameById(b.sub_court_id)"> · {{ spaceNameById(b.sub_court_id) }}</span>
                                     </p>
                                 </div>
                                 <span class="text-[10px] font-bold px-2 py-1 rounded-full"
-                                    :class="b.status==='confirmed' ? 'bg-emerald-100 text-emerald-700' : b.status==='pending' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'">
+                                    :class="b.status==='confirmed' ? 'bg-emerald-100 text-emerald-700' : b.status==='pending' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'">
                                     {{ b.status }}
                                 </span>
                             </button>
@@ -450,8 +450,8 @@ const onUnblocked = (id) => {
             <!-- No data empty state -->
             <div v-if="!court" class="flex flex-col items-center justify-center h-full text-center px-8">
                 <CalendarDays :size="40" class="text-slate-200 mb-3" />
-                <p class="font-bold text-slate-500">No data available</p>
-                <button @click="fetchCalendar" class="mt-4 flex items-center gap-2 text-sm font-bold text-primary bg-primary/10 px-4 py-2 rounded-xl active:scale-95 transition-transform">
+                <p class="font-bold text-gray-500">No data available</p>
+                <button @click="fetchCalendar" class="mt-4 flex items-center gap-2 text-sm font-bold text-black bg-gray-100 px-4 py-2 rounded-xl active:scale-95 transition-transform">
                     <RefreshCw :size="14" /> Retry
                 </button>
             </div>
@@ -462,15 +462,15 @@ const onUnblocked = (id) => {
                      :style="`min-width: ${TIME_COL_W + visibleSpaces.length * colWidth}px`">
 
                     <!-- ── Sticky column headers ── -->
-                    <div class="sticky top-0 z-20 flex bg-white border-b border-slate-100 shadow-sm">
+                    <div class="sticky top-0 z-20 flex bg-white border-b border-gray-100 shadow-sm">
                         <!-- Time gutter header -->
                         <div :style="`width:${TIME_COL_W}px;min-width:${TIME_COL_W}px`"
-                             class="sticky left-0 z-30 bg-white shrink-0 h-11 border-r border-slate-100"></div>
+                             class="sticky left-0 z-30 bg-white shrink-0 h-11 border-r border-gray-100"></div>
                         <!-- Space headers -->
                         <div v-for="sp in visibleSpaces" :key="`hdr-${sp.id}`"
                              :style="`width:${colWidth}px;min-width:${colWidth}px`"
-                             class="shrink-0 h-11 flex items-center justify-center border-r border-slate-100 px-2">
-                            <span class="text-xs font-bold text-slate-700 truncate">{{ sp.name }}</span>
+                             class="shrink-0 h-11 flex items-center justify-center border-r border-gray-100 px-2">
+                            <span class="text-xs font-bold text-gray-700 truncate">{{ sp.name }}</span>
                         </div>
                     </div>
 
@@ -483,14 +483,14 @@ const onUnblocked = (id) => {
                             <!-- Sticky time label -->
                             <div :style="`width:${TIME_COL_W}px;min-width:${TIME_COL_W}px`"
                                  class="sticky left-0 z-10 bg-white shrink-0 flex items-start
-                                        justify-end pr-2 pt-1.5 border-r border-slate-100">
-                                <span class="text-[10px] font-semibold text-slate-400 leading-none">{{ formatHour(h) }}</span>
+                                        justify-end pr-2 pt-1.5 border-r border-gray-100">
+                                <span class="text-[10px] font-semibold text-gray-400 leading-none">{{ formatHour(h) }}</span>
                             </div>
                             <!-- Tappable cells -->
                             <div v-for="sp in visibleSpaces" :key="`cell-${h}-${sp.id}`"
                                  :style="`width:${colWidth}px;min-width:${colWidth}px`"
                                  class="shrink-0 border-r border-slate-50 cursor-pointer
-                                        transition-colors active:bg-primary/5 hover:bg-slate-50/80"
+                                        transition-colors active:bg-gray-50 hover:bg-white/80"
                                  @click="handleCellTap(h, sp.id)">
                             </div>
                         </div>
@@ -556,13 +556,13 @@ const onUnblocked = (id) => {
     <!-- ── FAB: Add action ─────────────────────────────────────────────── -->
     <div class="fixed bottom-20 right-4 z-30 flex flex-col gap-2 items-end">
         <button @click="router.push(`/my-venues/${courtId}/block`)"
-            class="flex items-center gap-2 bg-white text-slate-700 font-bold text-xs px-4 py-2.5
+            class="flex items-center gap-2 bg-white text-gray-700 font-bold text-xs px-4 py-2.5
                    rounded-full shadow-lg ring-1 ring-slate-200 active:scale-95 transition-transform">
             <Ban :size="14" class="text-red-500" />
             Block Slots
         </button>
         <button @click="router.push(subCourts.length ? `/my-venues/${courtId}/spaces` : `/my-venues/${courtId}/spaces`)"
-            class="w-14 h-14 bg-primary text-white rounded-full shadow-lg shadow-primary/30
+            class="w-14 h-14 bg-black text-white rounded-full shadow-lg shadow-sm
                    flex items-center justify-center active:scale-95 transition-transform">
             <Plus :size="22" />
         </button>
@@ -585,12 +585,12 @@ const onUnblocked = (id) => {
                     <div v-if="cellSheet.show"
                          class="absolute bottom-0 inset-x-0 bg-white rounded-t-3xl px-5 pt-4 pb-10">
                         <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5"></div>
-                        <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 text-center">
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 text-center">
                             {{ formatHour(cellSheet.hour) }} slot
                         </p>
                         <div class="space-y-3">
                             <button @click="goToBookings"
-                                class="w-full flex items-center gap-3 bg-primary text-white font-bold
+                                class="w-full flex items-center gap-3 bg-black text-white font-bold
                                        py-4 px-5 rounded-2xl active:scale-[0.98] transition-transform">
                                 <Plus :size="18" />
                                 <span>Add Walk-in Booking</span>
@@ -602,8 +602,8 @@ const onUnblocked = (id) => {
                                 <span>Block This Slot</span>
                             </button>
                             <button @click="cellSheet.show = false"
-                                class="w-full flex items-center justify-center gap-2 bg-slate-100
-                                       text-slate-600 font-bold py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
+                                class="w-full flex items-center justify-center gap-2 bg-gray-100
+                                       text-gray-500 font-bold py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
                                 <X :size="16" />
                                 Cancel
                             </button>

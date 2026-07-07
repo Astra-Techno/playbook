@@ -50,7 +50,7 @@ const fetchRequests = async () => {
     loading.value = true
     try {
         const res = await axios.get(`/match-requests?court_id=${props.court.id}`)
-        requests.value = res.data.requests || []
+        requests.value = res.data.requests || res.data.matches || []
     } catch { requests.value = [] }
     finally { loading.value = false }
 }
@@ -144,13 +144,13 @@ const spotsLeft = (req) => req.slots_needed - (req.participants?.length || 0)
                         <!-- Header -->
                         <div class="pt-3 shrink-0">
                             <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-3"></div>
-                            <div class="flex items-center justify-between px-5 pb-4 border-b border-slate-100">
+                            <div class="flex items-center justify-between px-5 pb-4 border-b border-gray-100">
                                 <div>
-                                    <p class="text-[10px] font-black text-primary uppercase tracking-wider">{{ court.name }}</p>
-                                    <h3 class="text-base font-extrabold text-slate-900">Player Matching</h3>
+                                    <p class="text-[10px] font-black text-black uppercase tracking-wider">{{ court.name }}</p>
+                                    <h3 class="text-base font-extrabold text-black">Player Matching</h3>
                                 </div>
-                                <button @click="close" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                                    <X :size="16" class="text-slate-500" />
+                                <button @click="close" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                                    <X :size="16" class="text-gray-500" />
                                 </button>
                             </div>
                         </div>
@@ -158,18 +158,18 @@ const spotsLeft = (req) => req.slots_needed - (req.participants?.length || 0)
                         <div class="flex-1 overflow-y-auto px-5 py-5 space-y-5">
 
                             <!-- Create form -->
-                            <div v-if="showForm" class="bg-slate-50 rounded-2xl p-4 space-y-4">
-                                <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider">New Match Request</p>
+                            <div v-if="showForm" class="bg-white rounded-2xl p-4 space-y-4">
+                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider">New Match Request</p>
 
                                 <!-- Date -->
                                 <div>
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-1.5 flex items-center gap-1">
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase mb-1.5 flex items-center gap-1">
                                         <CalendarDays :size="11" />Date
                                     </p>
                                     <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
                                         <button v-for="d in dateOptions" :key="d" @click="playDate = d"
                                             class="shrink-0 flex flex-col items-center px-3 py-2 rounded-xl text-xs font-bold transition-all"
-                                            :class="playDate === d ? 'bg-primary text-white' : 'bg-white ring-1 ring-slate-200 text-slate-600'">
+                                            :class="playDate === d ? 'bg-black text-white' : 'bg-white ring-1 ring-slate-200 text-gray-500'">
                                             <span class="text-[9px] uppercase">{{ new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'short'}) }}</span>
                                             <span class="text-sm font-extrabold">{{ new Date(d+'T00:00').getDate() }}</span>
                                         </button>
@@ -178,11 +178,11 @@ const spotsLeft = (req) => req.slots_needed - (req.participants?.length || 0)
 
                                 <!-- Time -->
                                 <div>
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-1.5">Time</p>
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase mb-1.5">Time</p>
                                     <div class="grid grid-cols-4 gap-1.5">
                                         <button v-for="h in HOURS" :key="h.value" @click="playHour = h.value"
                                             class="py-2 rounded-xl text-[11px] font-bold border-2 transition-all"
-                                            :class="playHour === h.value ? 'bg-primary border-primary text-white' : 'bg-white border-slate-200 text-slate-600'">
+                                            :class="playHour === h.value ? 'bg-black border-black text-white' : 'bg-white border-gray-200 text-gray-500'">
                                             {{ h.label }}
                                         </button>
                                     </div>
@@ -190,11 +190,11 @@ const spotsLeft = (req) => req.slots_needed - (req.participants?.length || 0)
 
                                 <!-- Slots needed -->
                                 <div>
-                                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-1.5">Players needed (total including you)</p>
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase mb-1.5">Players needed (total including you)</p>
                                     <div class="flex gap-2">
                                         <button v-for="n in [2,3,4,6,8]" :key="n" @click="slots = n"
                                             class="flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all"
-                                            :class="slots === n ? 'bg-primary border-primary text-white' : 'bg-white border-slate-200 text-slate-600'">
+                                            :class="slots === n ? 'bg-black border-black text-white' : 'bg-white border-gray-200 text-gray-500'">
                                             {{ n }}
                                         </button>
                                     </div>
@@ -202,15 +202,15 @@ const spotsLeft = (req) => req.slots_needed - (req.participants?.length || 0)
 
                                 <!-- Notes -->
                                 <input v-model="notes" type="text" placeholder="Add a note (skill level, game type...)"
-                                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:ring-primary focus:outline-none bg-white" />
+                                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border border-black focus:outline-none bg-white" />
 
                                 <div class="flex gap-2">
                                     <button @click="showForm = false"
-                                        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-white ring-1 ring-slate-200 text-slate-600">
+                                        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-white ring-1 ring-slate-200 text-gray-500">
                                         Cancel
                                     </button>
                                     <button @click="createRequest" :disabled="creating"
-                                        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-primary text-white flex items-center justify-center gap-1.5 disabled:opacity-50">
+                                        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-black text-white flex items-center justify-center gap-1.5 disabled:opacity-50">
                                         <Loader2 v-if="creating" :size="13" class="animate-spin" />
                                         <span>Post Request</span>
                                     </button>
@@ -218,31 +218,31 @@ const spotsLeft = (req) => req.slots_needed - (req.participants?.length || 0)
                             </div>
 
                             <button v-else @click="showForm = true"
-                                class="w-full py-3 rounded-2xl text-sm font-bold border-2 border-dashed border-slate-200 text-slate-500 flex items-center justify-center gap-2 hover:border-primary hover:text-primary transition-all">
+                                class="w-full py-3 rounded-2xl text-sm font-bold border-2 border-dashed border-gray-200 text-gray-500 flex items-center justify-center gap-2 hover:border-black hover:text-black transition-all">
                                 <Plus :size="14" />
                                 Looking for players? Post a request
                             </button>
 
                             <!-- Match requests list -->
                             <div v-if="loading" class="space-y-3">
-                                <div v-for="i in 3" :key="i" class="h-20 bg-slate-100 rounded-2xl animate-pulse"></div>
+                                <div v-for="i in 3" :key="i" class="h-20 bg-gray-100 rounded-2xl animate-pulse"></div>
                             </div>
                             <div v-else-if="requests.length" class="space-y-3">
                                 <div v-for="req in requests" :key="req.id"
-                                    class="bg-slate-50 rounded-2xl p-4 space-y-3">
+                                    class="bg-white rounded-2xl p-4 space-y-3">
                                     <div class="flex items-start justify-between">
                                         <div>
                                             <div class="flex items-center gap-2">
-                                                <span class="text-sm font-extrabold text-slate-800">{{ req.creator_name || 'Player' }}</span>
+                                                <span class="text-sm font-extrabold text-black">{{ req.creator_name || 'Player' }}</span>
                                                 <span v-if="req.status === 'full'"
                                                     class="text-[10px] bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-bold">Full</span>
                                                 <span v-else
-                                                    class="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
+                                                    class="text-[10px] bg-gray-100 text-black px-2 py-0.5 rounded-full font-bold">
                                                     {{ spotsLeft(req) }} spot{{ spotsLeft(req) !== 1 ? 's' : '' }} left
                                                 </span>
                                             </div>
-                                            <p class="text-xs text-slate-400 mt-0.5">{{ formatPlayTime(req) }}</p>
-                                            <p v-if="req.notes" class="text-xs text-slate-500 mt-1 italic">{{ req.notes }}</p>
+                                            <p class="text-xs text-gray-400 mt-0.5">{{ formatPlayTime(req) }}</p>
+                                            <p v-if="req.notes" class="text-xs text-gray-500 mt-1 italic">{{ req.notes }}</p>
                                         </div>
                                         <!-- Cancel (owner) -->
                                         <button v-if="isOwner(req)" @click="cancelRequest(req)" :disabled="cancelId === req.id"
@@ -254,10 +254,10 @@ const spotsLeft = (req) => req.slots_needed - (req.participants?.length || 0)
 
                                     <!-- Participants -->
                                     <div v-if="req.participants?.length" class="flex items-center gap-1.5">
-                                        <Users :size="11" class="text-slate-400" />
+                                        <Users :size="11" class="text-gray-400" />
                                         <div class="flex gap-1 flex-wrap">
                                             <span v-for="p in req.participants" :key="p.user_id"
-                                                class="text-[10px] bg-white ring-1 ring-slate-200 rounded-full px-2 py-0.5 font-medium text-slate-600">
+                                                class="text-[10px] bg-white ring-1 ring-slate-200 rounded-full px-2 py-0.5 font-medium text-gray-500">
                                                 {{ p.name || 'Player' }}
                                             </span>
                                         </div>
@@ -267,7 +267,7 @@ const spotsLeft = (req) => req.slots_needed - (req.participants?.length || 0)
                                     <div v-if="!isOwner(req)">
                                         <button v-if="!isMember(req)" @click="joinRequest(req)"
                                             :disabled="req.status === 'full' || joiningId === req.id"
-                                            class="w-full py-2.5 rounded-xl text-sm font-bold bg-primary text-white flex items-center justify-center gap-1.5 disabled:opacity-40 transition">
+                                            class="w-full py-2.5 rounded-xl text-sm font-bold bg-black text-white flex items-center justify-center gap-1.5 disabled:opacity-40 transition">
                                             <Loader2 v-if="joiningId === req.id" :size="13" class="animate-spin" />
                                             <UserPlus v-else :size="13" />
                                             {{ req.status === 'full' ? 'Match Full' : 'Join Match' }}
@@ -281,7 +281,7 @@ const spotsLeft = (req) => req.slots_needed - (req.participants?.length || 0)
                                     </div>
                                 </div>
                             </div>
-                            <p v-else class="text-center text-slate-400 text-sm py-6">
+                            <p v-else class="text-center text-gray-400 text-sm py-6">
                                 No open match requests at this venue yet.
                             </p>
 

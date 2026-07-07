@@ -74,22 +74,22 @@ const menuItems = computed(() => [
     <Teleport to="#header-subject">{{ space?.name || 'Space' }}</Teleport>
     <Teleport to="#header-subtitle">Space Settings</Teleport>
 
-    <div class="min-h-full bg-slate-50">
+    <div class="min-h-full bg-white">
 
         <div v-if="loading" class="flex items-center justify-center h-64">
-            <Loader2 :size="28" class="text-primary animate-spin" />
+            <Loader2 :size="28" class="text-black animate-spin" />
         </div>
 
         <template v-else-if="space">
             <!-- Space info card -->
             <div class="mx-4 mt-5 bg-white rounded-2xl overflow-hidden shadow-sm ring-1 ring-slate-100 mb-5">
                 <!-- Image or placeholder -->
-                <div class="relative h-36 bg-slate-100">
+                <div class="relative h-36 bg-gray-100">
                     <img v-if="space.image_url" :src="space.image_url"
                         class="w-full h-full object-cover"
                         onerror="this.style.display='none'" />
                     <div v-else class="w-full h-full flex items-center justify-center">
-                        <LayoutGrid :size="40" :stroke-width="1.5" class="text-slate-300" />
+                        <LayoutGrid :size="40" :stroke-width="1.5" class="text-gray-300" />
                     </div>
                     <!-- Mode badge -->
                     <div class="absolute top-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold shadow-sm"
@@ -103,18 +103,18 @@ const menuItems = computed(() => [
                 </div>
 
                 <div class="p-4">
-                    <h1 class="text-xl font-bold text-slate-900">{{ space.name }}</h1>
-                    <p v-if="space.description" class="text-sm text-slate-500 mt-0.5">{{ space.description }}</p>
+                    <h1 class="text-xl font-bold text-black">{{ space.name }}</h1>
+                    <p v-if="space.description" class="text-sm text-gray-500 mt-0.5">{{ space.description }}</p>
                     <div class="mt-3 flex items-end justify-between">
                         <div v-if="space.hourly_rate">
-                            <span class="text-xs text-slate-400 font-medium block">Rate</span>
-                            <span class="text-primary font-bold text-lg">₹{{ space.hourly_rate }}<span class="text-sm font-normal text-slate-500">/hr</span></span>
+                            <span class="text-xs text-gray-400 font-medium block">Rate</span>
+                            <span class="text-black font-bold text-lg">₹{{ space.hourly_rate }}<span class="text-sm font-normal text-gray-500">/hr</span></span>
                         </div>
                         <div v-else>
-                            <span class="text-xs text-slate-400">Uses venue base rate</span>
+                            <span class="text-xs text-gray-400">Uses venue base rate</span>
                         </div>
                         <button @click="router.push(`/my-venues/${venueId}/spaces`)"
-                            class="text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full">
+                            class="text-xs font-bold text-black bg-gray-100 px-3 py-1.5 rounded-full">
                             All Spaces
                         </button>
                     </div>
@@ -123,21 +123,21 @@ const menuItems = computed(() => [
 
             <!-- Menu -->
             <div class="px-4 pb-8">
-                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 px-1">Configure</p>
+                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">Configure</p>
                 <div class="bg-white rounded-2xl overflow-hidden divide-y divide-slate-50" style="box-shadow:0 1px 6px rgba(0,0,0,0.06)">
                     <button
                         v-for="item in menuItems"
                         :key="item.label"
                         @click="router.push(item.to)"
-                        class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-slate-50 active:bg-slate-100 transition-colors">
-                        <div class="w-9 h-9 bg-slate-100 rounded-xl flex items-center justify-center shrink-0">
-                            <component :is="item.icon" :size="17" class="text-slate-600" />
+                        class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white active:bg-gray-100 transition-colors">
+                        <div class="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
+                            <component :is="item.icon" :size="17" class="text-gray-500" />
                         </div>
                         <div class="flex-1 text-left">
-                            <p class="text-sm font-semibold text-slate-800">{{ item.label }}</p>
-                            <p class="text-xs text-slate-400">{{ item.desc }}</p>
+                            <p class="text-sm font-semibold text-black">{{ item.label }}</p>
+                            <p class="text-xs text-gray-400">{{ item.desc }}</p>
                         </div>
-                        <ChevronRight :size="15" class="text-slate-300" />
+                        <ChevronRight :size="15" class="text-gray-300" />
                     </button>
                 </div>
             </div>

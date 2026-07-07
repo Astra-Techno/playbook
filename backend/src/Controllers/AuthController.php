@@ -200,6 +200,17 @@ class AuthController {
         echo json_encode(['user' => $user]);
     }
 
+    // POST /auth/fcm-token  { token: "..." }
+    public function saveFcmToken() {
+        $authUser = Auth::require();
+        $data     = json_decode(file_get_contents("php://input"));
+        $token    = trim($data->token ?? '');
+        if (!$token) { http_response_code(400); echo json_encode(['message' => 'token required']); return; }
+        $db = Database::getConnection();
+        $db->prepare("UPDATE users SET fcm_token = ? WHERE id = ?")->execute([$token, (int)$authUser['id']]);
+        echo json_encode(['success' => true]);
+    }
+
     private function sendTokenResponse($user) {
         $token = bin2hex(random_bytes(32)); // 64-char hex token
         $db    = Database::getConnection();

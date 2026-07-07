@@ -22,12 +22,14 @@ const renderContent = (text) => {
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/\n/g, '<br>')
     return escaped
-        .replace(/@(\w+)/g, '<span class="text-primary font-semibold">@$1</span>')
-        .replace(/#(\w+)/g, '<span class="text-violet-600 font-semibold">#$1</span>')
+        .replace(/@(\w+)/g, '<span class="text-black font-semibold">@$1</span>')
+        .replace(/#(\w+)/g, '<span class="text-black font-semibold">#$1</span>')
 }
 
 const timeAgo = (dt) => {
-    const diff = (Date.now() - new Date(dt)) / 1000
+    // Parse as UTC if no timezone info present (MySQL datetimes have no 'Z')
+    const utc = dt && !dt.endsWith('Z') && !dt.includes('+') ? dt.replace(' ', 'T') + 'Z' : dt
+    const diff = (Date.now() - new Date(utc)) / 1000
     if (diff < 60)    return 'just now'
     if (diff < 3600)  return Math.floor(diff / 60) + 'm ago'
     if (diff < 86400) return Math.floor(diff / 3600) + 'h ago'
@@ -35,6 +37,15 @@ const timeAgo = (dt) => {
 }
 
 const initials = (name) => (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+
+const sharePost = async (post) => {
+    const url = `${window.location.origin}/feed/${post.id}`
+    if (navigator.share) {
+        try { await navigator.share({ title: post.user_name || 'KoCourt', text: post.caption || '', url }) } catch {}
+    } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent((post.caption || 'Check this out') + ' ' + url)}`, '_blank')
+    }
+}
 
 const fetchStories = async () => {
     storiesLoading.value = true
@@ -129,41 +140,42 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="min-h-full bg-slate-50">
+    <div class="min-h-full bg-white">
 
         <!-- Stories Row -->
-        <div class="bg-white border-b border-slate-100 overflow-hidden shadow-soft">
+        <div class="bg-white border-b border-gray-100 overflow-hidden shadow-soft">
             <div class="flex gap-4 px-5 py-4 overflow-x-auto scrollbar-hide">
                 <!-- User's own story "Plus" -->
-                <div class="flex flex-col items-center gap-1.5 shrink-0">
-                    <div class="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center border-2 border-dashed border-slate-300 relative group">
-                        <div class="w-13 h-13 rounded-full overflow-hidden bg-primary-light flex items-center justify-center">
+                <div @click="router.push('/post/create')"
+                    class="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 transition-transform">
+                    <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center border-2 border-dashed border-slate-300 relative group">
+                        <div class="w-13 h-13 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                             <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover opacity-60" />
-                            <span v-else class="text-xs font-bold text-primary opacity-60">{{ initials(auth.user?.name) }}</span>
+                            <span v-else class="text-xs font-bold text-black opacity-60">{{ initials(auth.user?.name) }}</span>
                         </div>
-                        <div class="absolute bottom-0 right-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center border-2 border-white ring-2 ring-primary/5 shadow-sm group-active:scale-90 transition-transform">
+                        <div class="absolute bottom-0 right-0 w-6 h-6 bg-black rounded-full flex items-center justify-center border-2 border-white ring-2 border border-gray-200 shadow-sm group-active:scale-90 transition-transform">
                             <AtSign :size="12" class="text-white" />
                         </div>
                     </div>
-                    <span class="text-[10px] font-bold text-slate-400">My Story</span>
+                    <span class="text-[10px] font-bold text-gray-400">My Story</span>
                 </div>
 
                 <!-- Trending Stories -->
                 <template v-if="storiesLoading">
                     <div v-for="i in 5" :key="i" class="flex flex-col items-center gap-1.5 shrink-0 animate-pulse">
-                        <div class="w-16 h-16 rounded-full bg-slate-100"></div>
-                        <div class="h-2 bg-slate-100 rounded w-10"></div>
+                        <div class="w-16 h-16 rounded-full bg-gray-100"></div>
+                        <div class="h-2 bg-gray-100 rounded w-10"></div>
                     </div>
                 </template>
                 <div v-for="item in stories" :key="item.id" 
-                    @click="router.push(`/court/${item.id}`)"
+                    @click="router.push(`/courts/${item.id}`)"
                     class="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 transition-transform">
-                    <div class="w-16 h-16 rounded-full p-[3px] ring-2 ring-primary shadow-sm">
+                    <div class="w-16 h-16 rounded-full p-[3px] ring-2 border border-black shadow-sm">
                         <div class="w-full h-full rounded-full overflow-hidden bg-slate-200">
                             <img :src="item.image_url" class="w-full h-full object-cover" />
                         </div>
                     </div>
-                    <span class="text-[10px] font-bold text-slate-900 truncate max-w-[64px]">{{ item.name }}</span>
+                    <span class="text-[10px] font-bold text-black truncate max-w-[64px]">{{ item.name }}</span>
                 </div>
             </div>
         </div>
@@ -172,12 +184,12 @@ onMounted(() => {
         <div v-if="auth.isLoggedIn" class="px-4 py-3">
             <button @click="router.push('/post/create')"
                 class="w-full bg-white rounded-2xl shadow-soft ring-1 ring-slate-100 px-4 py-3 flex items-center gap-3 active:scale-[0.98] transition-transform">
-                <div class="w-9 h-9 rounded-full overflow-hidden bg-primary-light flex items-center justify-center shrink-0">
+                <div class="w-9 h-9 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center shrink-0">
                     <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
-                    <span v-else class="text-xs font-extrabold text-primary">{{ initials(auth.user?.name) }}</span>
+                    <span v-else class="text-xs font-extrabold text-black">{{ initials(auth.user?.name) }}</span>
                 </div>
-                <span class="flex-1 text-sm text-slate-300 font-bold text-left">Share your match experience…</span>
-                <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
+                <span class="flex-1 text-sm text-gray-300 font-bold text-left">Share your match experience…</span>
+                <div class="w-8 h-8 rounded-full bg-black flex items-center justify-center shrink-0">
                     <Send :size="14" class="text-white" />
                 </div>
             </button>
@@ -200,8 +212,8 @@ onMounted(() => {
 
             <div v-else-if="posts.length === 0" class="text-center py-20 px-8">
                 <div class="text-5xl mb-4">🏆</div>
-                <p class="font-bold text-slate-700 text-base">No posts yet</p>
-                <p class="text-sm text-slate-400 mt-1">Be the first to share something with the community!</p>
+                <p class="font-bold text-gray-700 text-base">No posts yet</p>
+                <p class="text-sm text-gray-400 mt-1">Be the first to share something with the community!</p>
             </div>
 
             <div v-else class="space-y-4">
@@ -209,26 +221,26 @@ onMounted(() => {
                     <!-- Post Header -->
                     <div class="flex items-center justify-between gap-3 mb-4">
                         <div class="flex items-center gap-3 cursor-pointer" @click="router.push(`/feed/${post.id}`)">
-                            <div class="w-11 h-11 rounded-full p-[2px] ring-2 ring-primary/20 bg-white">
-                                <div class="w-full h-full rounded-full overflow-hidden bg-primary-light flex items-center justify-center">
+                            <div class="w-11 h-11 rounded-full p-[2px] ring-2 border border-gray-200 bg-white">
+                                <div class="w-full h-full rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                                     <img v-if="post.avatar_url || (post.user_id === auth.user?.id && auth.user?.avatar_url)"
                                         :src="post.avatar_url || auth.user?.avatar_url"
                                         class="w-full h-full object-cover" />
-                                    <span v-else class="text-[10px] font-extrabold text-primary">{{ initials(post.user_name) }}</span>
+                                    <span v-else class="text-[10px] font-extrabold text-black">{{ initials(post.user_name) }}</span>
                                 </div>
                             </div>
                             <div class="min-w-0">
-                                <p class="text-sm font-bold text-slate-900 leading-none mb-1">{{ post.user_name }}</p>
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{{ timeAgo(post.created_at) }}</p>
+                                <p class="text-sm font-bold text-black leading-none mb-1">{{ post.user_name }}</p>
+                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ timeAgo(post.created_at) }}</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
                             <button v-if="auth.user?.id === post.user_id"
                                 @click="deletePost(post)"
-                                class="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all active:scale-90">
+                                class="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all active:scale-90">
                                 <Trash2 :size="15" />
                             </button>
-                            <button class="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-slate-900 hover:bg-slate-50 transition-all">
+                            <button class="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-black hover:bg-white transition-all">
                                 <MoreHorizontal :size="18" />
                             </button>
                         </div>
@@ -236,12 +248,12 @@ onMounted(() => {
 
                     <!-- Post Content -->
                     <p v-if="post.content?.trim()"
-                        class="text-sm text-slate-800 mb-4 leading-relaxed cursor-pointer"
+                        class="text-sm text-black mb-4 leading-relaxed cursor-pointer"
                         v-html="renderContent(post.content)"
                         @click="router.push(`/feed/${post.id}`)"></p>
 
                     <!-- Image Media with Double Tap -->
-                    <div v-if="post.images?.length" class="relative rounded-[24px] overflow-hidden bg-slate-100 mb-4" @click="handleImageTap(post)">
+                    <div v-if="post.images?.length" class="relative rounded-[24px] overflow-hidden bg-gray-100 mb-4" @click="handleImageTap(post)">
                         <!-- 1 image -->
                         <div v-if="post.images.length === 1"
                             class="cursor-pointer"
@@ -293,7 +305,7 @@ onMounted(() => {
                         <div class="flex items-center gap-6">
                             <button @click="toggleLike(post)"
                                 class="flex items-center gap-2 text-xs font-bold transition-all active:scale-95 group"
-                                :class="post.is_liked ? 'text-red-500' : 'text-slate-600 hover:text-red-500'">
+                                :class="post.is_liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'">
                                 <div class="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
                                     :class="post.is_liked ? 'bg-red-50' : 'group-hover:bg-red-50'">
                                     <Heart :size="20"
@@ -303,14 +315,15 @@ onMounted(() => {
                                 <span class="tabular-nums">{{ post.likes_count || 'Like' }}</span>
                             </button>
                             <button @click="router.push(`/feed/${post.id}`)"
-                                class="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-primary active:scale-95 group">
-                                <div class="w-9 h-9 rounded-full flex items-center justify-center group-hover:bg-primary/5 transition-colors">
+                                class="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-black active:scale-95 group">
+                                <div class="w-9 h-9 rounded-full flex items-center justify-center group-hover:bg-gray-50 transition-colors">
                                     <MessageCircle :size="20" :stroke-width="2.5" />
                                 </div>
                                 <span>Comment</span>
                             </button>
-                            <button class="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 active:scale-95 group">
-                                <div class="w-9 h-9 rounded-full flex items-center justify-center group-hover:bg-slate-100 transition-colors">
+                            <button @click="sharePost(post)"
+                                class="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-black active:scale-95 group">
+                                <div class="w-9 h-9 rounded-full flex items-center justify-center group-hover:bg-gray-100 transition-colors">
                                     <Share2 :size="18" :stroke-width="2.5" />
                                 </div>
                                 <span class="hidden sm:inline">Share</span>
@@ -319,7 +332,7 @@ onMounted(() => {
 
                         <!-- Tiny summary -->
                         <div v-if="post.likes_count > 0" class="flex -space-x-2">
-                             <div class="w-6 h-6 rounded-full border-2 border-white bg-primary flex items-center justify-center shadow-sm">
+                             <div class="w-6 h-6 rounded-full border-2 border-white bg-black flex items-center justify-center shadow-sm">
                                  <Heart :size="10" class="text-white fill-white" />
                              </div>
                         </div>

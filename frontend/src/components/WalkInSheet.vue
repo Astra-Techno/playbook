@@ -124,13 +124,13 @@ const save = async () => {
                         <!-- Header -->
                         <div class="pt-3 shrink-0">
                             <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-3"></div>
-                            <div class="flex items-center justify-between px-5 pb-4 border-b border-slate-100">
+                            <div class="flex items-center justify-between px-5 pb-4 border-b border-gray-100">
                                 <div>
-                                    <p class="text-[10px] font-black text-primary uppercase tracking-wider">{{ court.name }}</p>
-                                    <h3 class="text-base font-extrabold text-slate-900">Walk-in Booking</h3>
+                                    <p class="text-[10px] font-black text-black uppercase tracking-wider">{{ court.name }}</p>
+                                    <h3 class="text-base font-extrabold text-black">Walk-in Booking</h3>
                                 </div>
-                                <button @click="close" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                                    <X :size="16" class="text-slate-500" />
+                                <button @click="close" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                                    <X :size="16" class="text-gray-500" />
                                 </button>
                             </div>
                         </div>
@@ -139,26 +139,26 @@ const save = async () => {
 
                             <!-- Guest info -->
                             <div class="space-y-3">
-                                <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider">Guest Details</p>
+                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider">Guest Details</p>
                                 <div class="relative">
-                                    <User :size="14" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <User :size="14" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                                     <input v-model="guestName" type="text" placeholder="Customer name *"
-                                        class="w-full pl-9 pr-4 py-3 ring-1 ring-slate-200 rounded-xl text-sm focus:ring-primary focus:outline-none" />
+                                        class="w-full pl-9 pr-4 py-3 ring-1 ring-slate-200 rounded-xl text-sm focus:border border-black focus:outline-none" />
                                 </div>
                                 <div class="relative">
-                                    <Phone :size="14" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <Phone :size="14" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
                                     <input v-model="guestPhone" type="tel" placeholder="Phone number (optional)"
-                                        class="w-full pl-9 pr-4 py-3 ring-1 ring-slate-200 rounded-xl text-sm focus:ring-primary focus:outline-none" />
+                                        class="w-full pl-9 pr-4 py-3 ring-1 ring-slate-200 rounded-xl text-sm focus:border border-black focus:outline-none" />
                                 </div>
                             </div>
 
                             <!-- Sub-court selector -->
                             <div v-if="subCourts.length">
-                                <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2">Select Court</p>
+                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2">Select Court</p>
                                 <div class="flex gap-2 flex-wrap">
                                     <button v-for="sc in subCourts" :key="sc.id" @click="subCourtId = sc.id"
                                         class="px-4 py-2 rounded-xl text-xs font-bold transition-all"
-                                        :class="subCourtId === sc.id ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'">
+                                        :class="subCourtId === sc.id ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'">
                                         {{ sc.name }}
                                     </button>
                                 </div>
@@ -166,13 +166,13 @@ const save = async () => {
 
                             <!-- Date picker -->
                             <div>
-                                <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                                     <CalendarDays :size="12" />Date
                                 </p>
                                 <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
                                     <button v-for="d in dateOptions" :key="d" @click="selectedDate = d"
                                         class="shrink-0 flex flex-col items-center px-3 py-2 rounded-xl text-xs font-bold transition-all"
-                                        :class="selectedDate === d ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600'">
+                                        :class="selectedDate === d ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'">
                                         <span class="text-[9px] uppercase">{{ new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'short'}) }}</span>
                                         <span class="text-sm font-extrabold">{{ new Date(d+'T00:00').getDate() }}</span>
                                     </button>
@@ -181,15 +181,15 @@ const save = async () => {
 
                             <!-- Hour selector -->
                             <div>
-                                <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                                     <Clock :size="12" />Start Time
                                 </p>
                                 <div class="grid grid-cols-4 gap-2">
                                     <button v-for="s in HOURS" :key="s.hour" @click="selectedHour = s.hour"
                                         class="py-2.5 rounded-xl text-xs font-bold border-2 transition-all"
                                         :class="selectedHour === s.hour
-                                            ? 'bg-primary border-primary text-white'
-                                            : 'bg-white border-slate-200 text-slate-700 hover:border-primary/40'">
+                                            ? 'bg-black border-black text-white'
+                                            : 'bg-white border-gray-200 text-gray-700 hover:border-black/40'">
                                         {{ s.label }}
                                     </button>
                                 </div>
@@ -197,11 +197,11 @@ const save = async () => {
 
                             <!-- Duration -->
                             <div>
-                                <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2">Duration</p>
+                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2">Duration</p>
                                 <div class="flex gap-2">
                                     <button v-for="h in [1,2,3,4]" :key="h" @click="duration = h"
                                         class="flex-1 py-2.5 rounded-xl text-xs font-bold border-2 transition-all"
-                                        :class="duration === h ? 'bg-primary border-primary text-white' : 'bg-white border-slate-200 text-slate-700'">
+                                        :class="duration === h ? 'bg-black border-black text-white' : 'bg-white border-gray-200 text-gray-700'">
                                         {{ h }}h
                                     </button>
                                 </div>
@@ -209,26 +209,26 @@ const save = async () => {
 
                             <!-- Notes -->
                             <div>
-                                <p class="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2">
-                                    Notes <span class="font-normal normal-case text-slate-300">(optional)</span>
+                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2">
+                                    Notes <span class="font-normal normal-case text-gray-300">(optional)</span>
                                 </p>
                                 <input v-model="notes" type="text" placeholder="Any special notes..."
-                                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-primary focus:outline-none" />
+                                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:border border-black focus:outline-none" />
                             </div>
 
                             <!-- Price summary -->
-                            <div v-if="selectedHour !== null" class="bg-slate-50 rounded-2xl px-4 py-3 flex items-center justify-between">
-                                <span class="text-sm font-bold text-slate-600">Total</span>
-                                <span v-if="loadingPrice" class="text-sm text-slate-400">Calculating...</span>
-                                <span v-else class="text-lg font-extrabold text-primary">
+                            <div v-if="selectedHour !== null" class="bg-white rounded-2xl px-4 py-3 flex items-center justify-between">
+                                <span class="text-sm font-bold text-gray-500">Total</span>
+                                <span v-if="loadingPrice" class="text-sm text-gray-400">Calculating...</span>
+                                <span v-else class="text-lg font-extrabold text-black">
                                     ₹{{ totalPrice?.toFixed(0) ?? '—' }}
-                                    <span class="text-xs font-normal text-slate-400">({{ duration }}h)</span>
+                                    <span class="text-xs font-normal text-gray-400">({{ duration }}h)</span>
                                 </span>
                             </div>
 
                             <!-- Save button -->
                             <button @click="save" :disabled="saving || !guestName.trim() || selectedHour === null"
-                                class="w-full bg-primary text-white font-extrabold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50">
+                                class="w-full bg-black text-white font-extrabold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50">
                                 <Loader2 v-if="saving" :size="15" class="animate-spin" />
                                 <UserPlus v-else :size="15" />
                                 Confirm Walk-in Booking

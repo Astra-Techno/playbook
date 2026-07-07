@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../Push.php';
 
 class MessageController {
 
@@ -140,6 +141,15 @@ class MessageController {
              SELECT ?, 'message', CONCAT(u.name, ' sent you a message'), ?
              FROM users u WHERE u.id=?"
         )->execute([$receiver_id, substr($body, 0, 120), $sender_id]);
+
+        // Push notification to receiver
+        $senderName = $authUser['name'] ?? 'Someone';
+        Push::sendToUser(
+            $receiver_id,
+            $senderName,
+            $body,
+            ['type' => 'message', 'booking_id' => (string)$booking_id]
+        );
 
         http_response_code(201);
         echo json_encode(['message' => 'Sent.', 'id' => $newId]);

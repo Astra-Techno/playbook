@@ -21,25 +21,31 @@ const router = createRouter({
             path: '/bookings',
             name: 'my-bookings',
             component: () => import('../views/MyBookingsView.vue'),
-            meta: { title: 'KoCourt', subtitle: 'Reservations' }
+            meta: { title: 'Bookings', subtitle: 'Reservations' }
         },
         {
             path: '/courts/:id',
             name: 'court-details',
             component: () => import('../views/CourtDetails.vue'),
-            meta: { title: 'Service Details' }
+            meta: { hideHeader: true }
         },
         {
             path: '/profile',
             name: 'profile',
             component: () => import('../views/ProfileView.vue'),
-            meta: { title: 'KoCourt', subtitle: 'Account' }
+            meta: { hideHeader: true }
         },
         {
             path: '/feed',
             name: 'feed',
             component: () => import('../views/FeedView.vue'),
             meta: { title: 'Community Feed', subtitle: 'Live Updates' }
+        },
+        {
+            path: '/matches',
+            name: 'matches',
+            component: () => import('../views/MatchRequestsView.vue'),
+            meta: { title: 'Find a Game', subtitle: 'Open Match Requests' }
         },
         {
             path: '/db-test',
@@ -213,7 +219,7 @@ const router = createRouter({
             path: '/booking-confirmation/:bookingId',
             name: 'booking-confirmation',
             component: () => import('../views/BookingConfirmationView.vue'),
-            meta: { title: 'Booking Confirmed' },
+            meta: { title: 'Booking Confirmed', requiresAuth: true },
         },
         {
             path: '/notifications',

@@ -26,8 +26,8 @@ const renderContent = (text) => {
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/\n/g, '<br>')
     return escaped
-        .replace(/@(\w+)/g, '<span class="text-primary font-semibold">@$1</span>')
-        .replace(/#(\w+)/g, '<span class="text-violet-600 font-semibold">#$1</span>')
+        .replace(/@(\w+)/g, '<span class="text-black font-semibold">@$1</span>')
+        .replace(/#(\w+)/g, '<span class="text-black font-semibold">#$1</span>')
 }
 
 const timeAgo = (dt) => {
@@ -162,31 +162,31 @@ onMounted(fetchPost)
             <!-- Author row -->
             <div class="flex items-center justify-between gap-3 px-5 py-5">
                 <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-full p-[2.5px] ring-2 ring-primary/20 bg-white shadow-sm">
-                        <div class="w-full h-full rounded-full overflow-hidden bg-primary-light flex items-center justify-center">
+                    <div class="w-12 h-12 rounded-full p-[2.5px] ring-2 border border-gray-200 bg-white shadow-sm">
+                        <div class="w-full h-full rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                             <img v-if="post.avatar_url || (post.user_id === auth.user?.id && auth.user?.avatar_url)"
                                 :src="post.avatar_url || auth.user?.avatar_url"
                                 class="w-full h-full object-cover" />
-                            <span v-else class="text-xs font-black text-primary">{{ initials(post.user_name) }}</span>
+                            <span v-else class="text-xs font-black text-black">{{ initials(post.user_name) }}</span>
                         </div>
                     </div>
                     <div>
-                        <p class="text-sm font-black text-slate-900 leading-none mb-1">{{ post.user_name }}</p>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{{ timeAgo(post.created_at) }}</p>
+                        <p class="text-sm font-black text-black leading-none mb-1">{{ post.user_name }}</p>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ timeAgo(post.created_at) }}</p>
                     </div>
                 </div>
-                <button class="w-9 h-9 rounded-full flex items-center justify-center text-slate-300 hover:text-slate-900 transition-all">
+                <button class="w-9 h-9 rounded-full flex items-center justify-center text-gray-300 hover:text-black transition-all">
                     <MoreHorizontal :size="20" />
                 </button>
             </div>
 
             <!-- Content -->
             <p v-if="post.content?.trim()"
-                class="px-5 text-base text-slate-800 leading-relaxed mb-5"
+                class="px-5 text-base text-black leading-relaxed mb-5"
                 v-html="renderContent(post.content)"></p>
 
             <!-- Images -->
-            <div v-if="post.images?.length" class="relative bg-slate-50 mb-6" @click="handleImageTap">
+            <div v-if="post.images?.length" class="relative bg-white mb-6" @click="handleImageTap">
                 <!-- Single image -->
                 <div v-if="post.images.length === 1" class="cursor-pointer" @click="openLightbox(0)">
                     <img :src="post.images[0]" class="w-full max-h-[520px] object-cover" loading="lazy" />
@@ -224,7 +224,7 @@ onMounted(fetchPost)
                     <div class="flex items-center gap-6">
                         <button @click="toggleLike"
                             class="flex items-center gap-2 text-xs font-bold transition-all active:scale-95 group"
-                            :class="post.is_liked ? 'text-red-500' : 'text-slate-600 hover:text-red-500'">
+                            :class="post.is_liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'">
                             <div class="w-10 h-10 rounded-full flex items-center justify-center transition-colors"
                                 :class="post.is_liked ? 'bg-red-50' : 'group-hover:bg-red-50'">
                                 <Heart :size="22"
@@ -233,14 +233,14 @@ onMounted(fetchPost)
                             </div>
                             <span class="tabular-nums">{{ post.likes_count || 'Like' }}</span>
                         </button>
-                        <button class="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-primary active:scale-95 group">
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center group-hover:bg-primary/5 transition-colors">
+                        <button class="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-black active:scale-95 group">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center group-hover:bg-gray-50 transition-colors">
                                 <MessageCircle :size="22" :stroke-width="2.5" />
                             </div>
                             <span>{{ post.comments?.length || 0 }}</span>
                         </button>
-                        <button class="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 active:scale-95 group">
-                            <div class="w-10 h-10 rounded-full flex items-center justify-center group-hover:bg-slate-100 transition-colors">
+                        <button class="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-black active:scale-95 group">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center group-hover:bg-gray-100 transition-colors">
                                 <Share2 :size="20" :stroke-width="2.5" />
                             </div>
                         </button>
@@ -248,7 +248,7 @@ onMounted(fetchPost)
                     <!-- Tiny like stack -->
                     <div v-if="post.likes_count > 0" class="flex -space-x-2">
                         <div v-for="i in Math.min(post.likes_count, 1)" :key="i"
-                            class="w-7 h-7 rounded-full border-2 border-white bg-primary flex items-center justify-center shadow-sm">
+                            class="w-7 h-7 rounded-full border-2 border-white bg-black flex items-center justify-center shadow-sm">
                             <Heart :size="12" class="text-white fill-white" />
                         </div>
                     </div>
@@ -256,29 +256,29 @@ onMounted(fetchPost)
 
                 <!-- Comments Section -->
                 <div class="mt-8 space-y-6">
-                    <h3 class="text-sm font-black text-slate-900 flex items-center gap-2">
-                        Comments <span class="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-[10px]">{{ post.comments?.length || 0 }}</span>
+                    <h3 class="text-sm font-black text-black flex items-center gap-2">
+                        Comments <span class="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full text-[10px]">{{ post.comments?.length || 0 }}</span>
                     </h3>
                     
                     <div v-if="!post.comments?.length" class="py-10 text-center">
                         <div class="text-3xl mb-3 opacity-30">💭</div>
-                        <p class="text-xs font-bold text-slate-400">No comments yet. Be the first to reply!</p>
+                        <p class="text-xs font-bold text-gray-400">No comments yet. Be the first to reply!</p>
                     </div>
                     
                     <div v-else class="space-y-6">
                         <div v-for="c in post.comments" :key="c.id" class="flex gap-3">
-                            <div class="w-8 h-8 rounded-full overflow-hidden bg-slate-100 shrink-0 shadow-sm border border-slate-50">
+                            <div class="w-8 h-8 rounded-full overflow-hidden bg-gray-100 shrink-0 shadow-sm border border-slate-50">
                                 <img v-if="c.avatar_url" :src="c.avatar_url" class="w-full h-full object-cover" />
-                                <div v-else class="w-full h-full flex items-center justify-center bg-primary-light text-[10px] font-black text-primary">
+                                <div v-else class="w-full h-full flex items-center justify-center bg-gray-100 text-[10px] font-black text-black">
                                     {{ initials(c.user_name) }}
                                 </div>
                             </div>
-                            <div class="flex-1 min-w-0 bg-slate-50 rounded-[20px] rounded-tl-none px-4 py-3">
+                            <div class="flex-1 min-w-0 bg-white rounded-[20px] rounded-tl-none px-4 py-3">
                                 <div class="flex items-center justify-between gap-2 mb-1">
-                                    <p class="text-xs font-black text-slate-900">{{ c.user_name }}</p>
-                                    <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">{{ timeAgo(c.created_at) }}</p>
+                                    <p class="text-xs font-black text-black">{{ c.user_name }}</p>
+                                    <p class="text-[9px] font-bold text-gray-400 uppercase tracking-wider">{{ timeAgo(c.created_at) }}</p>
                                 </div>
-                                <p class="text-sm text-slate-800 leading-relaxed">{{ c.content }}</p>
+                                <p class="text-sm text-black leading-relaxed">{{ c.content }}</p>
                             </div>
                         </div>
                     </div>
@@ -288,24 +288,24 @@ onMounted(fetchPost)
 
         <!-- Sticky Comment Input — above app bottom nav (same offset as other fixed CTAs) -->
         <div v-if="post"
-            class="fixed left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t border-slate-100 bg-white/95 px-4 pb-3 pt-3 backdrop-blur-md bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]"
+            class="fixed left-1/2 z-40 w-full max-w-[430px] -translate-x-1/2 border-t border-gray-100 bg-white/95 px-4 pb-3 pt-3 backdrop-blur-md bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))]"
             style="box-shadow: 0 -4px 20px rgba(0,0,0,0.06)">
             <div class="flex items-center gap-3 pb-[max(0.25rem,env(safe-area-inset-bottom,0px))]">
-                <div class="w-9 h-9 rounded-full overflow-hidden bg-primary-light flex items-center justify-center shrink-0 ring-4 ring-primary/5 shadow-sm">
+                <div class="w-9 h-9 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center shrink-0 ring-4 border border-gray-200 shadow-sm">
                     <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
-                    <span v-else class="text-[10px] font-black text-primary">{{ initials(auth.user?.name) }}</span>
+                    <span v-else class="text-[10px] font-black text-black">{{ initials(auth.user?.name) }}</span>
                 </div>
                 <div class="flex-1 relative">
                     <input
                         v-model="newComment"
                         @keyup.enter="submitComment"
                         placeholder="Add a comment..."
-                        class="w-full bg-slate-50 border-none rounded-full px-5 py-2.5 text-sm font-bold text-slate-900 placeholder:text-slate-300 focus:ring-2 focus:ring-primary/10 transition-all"
+                        class="w-full bg-white border-none rounded-full px-5 py-2.5 text-sm font-bold text-black placeholder:text-gray-300 focus:ring-2 focus:border border-gray-200 transition-all"
                     />
                     <button
                         @click="submitComment"
                         :disabled="!newComment.trim() || submittingComment"
-                        class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30 disabled:scale-100">
+                        class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black text-white flex items-center justify-center active:scale-90 transition-transform disabled:opacity-30 disabled:scale-100">
                         <Loader2 v-if="submittingComment" :size="14" class="animate-spin" />
                         <Send v-else :size="14" />
                     </button>

@@ -237,6 +237,9 @@ if (isset($seg[0]) && $seg[0] === 'auth') {
         Auth::require();
         $authController->getProfile(); exit();
     }
+    if (isset($seg[1]) && $seg[1] === 'fcm-token' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $authController->saveFcmToken(); exit();
+    }
 }
 
 // Court Routes
@@ -273,6 +276,10 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
     // PUT /courts/:id/verify  (before generic update)
     if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'verify') {
         Auth::requireAdmin(); $courtController->verify((int)$seg[1]); exit();
+    }
+    // PUT /courts/:id/featured
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'featured') {
+        Auth::requireAdmin(); $courtController->toggleFeatured((int)$seg[1]); exit();
     }
     if ($_SERVER['REQUEST_METHOD'] === 'PUT'    && isset($seg[1])) { Auth::requireOwner(); $courtController->update((int)$seg[1]); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { Auth::requireOwner(); $courtController->delete((int)$seg[1]); exit(); }
@@ -593,7 +600,7 @@ if (isset($seg[0]) && $seg[0] === 'admin') {
         Auth::requireAdmin(); $pc->adminContact((int)$seg[2]); exit();
     }
     // GET /admin/users
-    if (isset($seg[1]) && $seg[1] === 'users' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (isset($seg[1]) && $seg[1] === 'users' && $_SERVER['REQUEST_METHOD'] === 'GET' && !isset($seg[2])) {
         Auth::requireAdmin();
         $db     = Database::getConnection();
         $search = $_GET['search'] ?? '';
@@ -605,6 +612,38 @@ if (isset($seg[0]) && $seg[0] === 'admin') {
             $stmt->execute();
         }
         echo json_encode(['users' => $stmt->fetchAll(PDO::FETCH_ASSOC)]); exit();
+    }
+    // PUT /admin/users/:id/role  { role: 'player'|'owner'|'admin' }
+    if (isset($seg[1]) && $seg[1] === 'users' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'role' && $_SERVER['REQUEST_METHOD'] === 'PUT') {
+        Auth::requireAdmin();
+        $db   = Database::getConnection();
+        $data = json_decode(file_get_contents('php://input'));
+        $role = $data->role ?? '';
+        if (!in_array($role, ['player', 'owner', 'admin'])) {
+            http_response_code(400); echo json_encode(['message' => 'Invalid role']); exit();
+        }
+        $db->prepare("UPDATE users SET role = ? WHERE id = ?")->execute([$role, (int)$seg[2]]);
+        echo json_encode(['message' => 'Role updated', 'role' => $role]); exit();
+    }
+    // PUT /admin/payouts/:id  { amount, note? }  — record a payout to a court owner
+    if (isset($seg[1]) && $seg[1] === 'payouts' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        Auth::requireAdmin();
+        $db   = Database::getConnection();
+        $data = json_decode(file_get_contents('php://input'));
+        $owner_id = (int)($data->owner_id ?? 0);
+        $amount   = (float)($data->amount ?? 0);
+        $note     = trim($data->note ?? '');
+        if (!$owner_id || $amount <= 0) { http_response_code(400); echo json_encode(['message' => 'owner_id and amount required']); exit(); }
+        // Ensure payouts table exists
+        $db->exec("CREATE TABLE IF NOT EXISTS payouts (
+            id INT AUTO_INCREMENT PRIMARY KEY, owner_id INT NOT NULL,
+            amount DECIMAL(10,2) NOT NULL, note VARCHAR(255) DEFAULT NULL,
+            recorded_by INT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $adminUser = Auth::user();
+        $db->prepare("INSERT INTO payouts (owner_id, amount, note, recorded_by) VALUES (?,?,?,?)")
+           ->execute([$owner_id, $amount, $note ?: null, (int)$adminUser['id']]);
+        echo json_encode(['message' => 'Payout recorded', 'id' => (int)$db->lastInsertId()]); exit();
     }
     http_response_code(404); echo json_encode(['message' => 'Admin endpoint not found']); exit();
 }
@@ -764,12 +803,15 @@ if (isset($seg[0]) && $seg[0] === 'booking-players') {
             "INSERT INTO user_notifications (user_id, type, title, body, court_id) VALUES (?,?,?,?,?)"
         );
 
+        require_once __DIR__ . '/src/Push.php';
         $added = 0;
         foreach ($user_ids as $uid) {
             if ($uid === $invited_by) continue;   // don't add yourself
             $ins->execute([$booking_id, $uid, $invited_by]);
             if ($ins->rowCount()) {
                 $notif->execute([$uid, 'booking_invite', $title, $body_text, $info['court_id']]);
+                Push::sendToUser($uid, $title, $body_text,
+                    ['type' => 'booking_invite', 'booking_id' => (string)$booking_id]);
                 $added++;
             }
         }

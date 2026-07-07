@@ -7,7 +7,7 @@ class Database {
     private $pdo;
 
     // Bump this number whenever migrate() adds new tables/columns/indexes
-    private const SCHEMA_VERSION = 15;
+    private const SCHEMA_VERSION = 16;
 
     private function __construct() {
         $host    = getenv('DB_HOST') ?: 'localhost';
@@ -285,6 +285,12 @@ class Database {
             "ALTER TABLE blocked_slots ADD COLUMN block_kind VARCHAR(32) NOT NULL DEFAULT 'other'",
             "ALTER TABLE blocked_slots ADD COLUMN repeat_annually TINYINT(1) NOT NULL DEFAULT 0",
         ] as $s) { try { $this->pdo->exec($s); } catch(\PDOException $e) {} }
+
+        // Featured flag for stories row (v16)
+        try { $this->pdo->exec("ALTER TABLE courts ADD COLUMN is_featured TINYINT(1) NOT NULL DEFAULT 0"); } catch(\PDOException $e){}
+        try { $this->pdo->exec("ALTER TABLE courts ADD INDEX idx_courts_featured (is_featured)"); } catch(\PDOException $e){}
+        // FCM token storage per user (v16)
+        try { $this->pdo->exec("ALTER TABLE users ADD COLUMN fcm_token TEXT DEFAULT NULL"); } catch(\PDOException $e){}
 
         // Stamp schema version
         $this->pdo->exec("DELETE FROM schema_version");
