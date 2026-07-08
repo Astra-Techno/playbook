@@ -7,7 +7,7 @@ class Database {
     private $pdo;
 
     // Bump this number whenever migrate() adds new tables/columns/indexes
-    private const SCHEMA_VERSION = 16;
+    private const SCHEMA_VERSION = 17;
 
     private function __construct() {
         $host    = getenv('DB_HOST') ?: 'localhost';
@@ -291,6 +291,18 @@ class Database {
         try { $this->pdo->exec("ALTER TABLE courts ADD INDEX idx_courts_featured (is_featured)"); } catch(\PDOException $e){}
         // FCM token storage per user (v16)
         try { $this->pdo->exec("ALTER TABLE users ADD COLUMN fcm_token TEXT DEFAULT NULL"); } catch(\PDOException $e){}
+
+        // v17 — OTP tokens table for ping4sms (self-managed OTP lifecycle)
+        $this->pdo->exec("
+            CREATE TABLE IF NOT EXISTS otp_tokens (
+                id         INT AUTO_INCREMENT PRIMARY KEY,
+                phone      VARCHAR(20) NOT NULL,
+                otp        VARCHAR(10) NOT NULL,
+                expires_at DATETIME NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_otp_phone (phone)
+            ) ENGINE=InnoDB
+        ");
 
         // Stamp schema version
         $this->pdo->exec("DELETE FROM schema_version");

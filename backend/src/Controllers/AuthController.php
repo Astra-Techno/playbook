@@ -1,65 +1,76 @@
 <?php
 
 require_once __DIR__ . '/../Models/User.php';
-require_once __DIR__ . '/../../config/msg91.php';
+require_once __DIR__ . '/../../config/ping4sms.php';
 
 class AuthController {
 
-    // ── Private: send OTP via MSG91 (returns true on success) ─────────────────
-    private function formatPhone(string $phone): string {
+    // ── Private helpers ────────────────────────────────────────────────────────
+
+    /** Strip non-digits, return 10-digit number (drop leading 91 if present) */
+    private function normalizePhone(string $phone): string {
         $clean = preg_replace('/\D/', '', $phone);
-        // If it's 10 digits, prepend 91. If it's already 12 digits starting with 91, keep it.
-        if (strlen($clean) === 10) return '91' . $clean;
+        if (strlen($clean) === 12 && substr($clean, 0, 2) === '91') {
+            return substr($clean, 2);
+        }
         return $clean;
     }
 
-    private function sendViaMSG91(string $phone): bool {
-        $mobile = $this->formatPhone($phone);
-        $ch = curl_init(MSG91_BASE_URL . '/otp');
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST           => true,
-            CURLOPT_POSTFIELDS     => json_encode([
-                'template_id' => MSG91_TEMPLATE_ID,
-                'mobile'      => $mobile,
-                'otp_length'  => 4,
-            ]),
-            CURLOPT_HTTPHEADER     => [
-                'authkey: '    . MSG91_AUTH_KEY,
-                'Content-Type: application/json',
-                'Accept: application/json',
-            ],
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_TIMEOUT        => 10,
-        ]);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        $result = json_decode($response, true);
-        return $httpCode === 200 && ($result['type'] ?? '') === 'success';
-    }
+    /** Generate a 4-digit OTP, store in otp_tokens, send via ping4sms.
+     *  Returns true on success, false on SMS failure. Demo mode skips sending. */
+    private function generateAndSendOtp(string $phone): bool {
+        $otp     = str_pad((string)random_int(1000, 9999), 4, '0', STR_PAD_LEFT);
+        $expires = date('Y-m-d H:i:s', time() + 15 * 60); // 15 minutes
 
-    // ── Private: verify OTP via MSG91 ─────────────────────────────────────────
-    private function verifyViaMSG91(string $phone, string $otp): bool {
-        $mobile = $this->formatPhone($phone);
-        $url = MSG91_BASE_URL . '/otp/verify?mobile=' . urlencode($mobile) . '&otp=' . urlencode($otp);
+        $db = Database::getConnection();
+        // Delete any old tokens for this phone, then insert new one
+        $db->prepare("DELETE FROM otp_tokens WHERE phone = ?")->execute([$phone]);
+        $db->prepare("INSERT INTO otp_tokens (phone, otp, expires_at) VALUES (?,?,?)")
+           ->execute([$phone, $otp, $expires]);
+
+        // Demo mode — no ping4sms key configured
+        if (!PING4SMS_KEY || !PING4SMS_TEMPLATE_ID) {
+            return true; // OTP stored as 4-digit random; caller returns demo=true
+        }
+
+        $number  = $this->normalizePhone($phone);
+        $message = 'Dear User, your OTP to login to KoCourt is ' . $otp
+                 . '. This OTP is valid for 15 minutes. Do not share this OTP. - KoCourt';
+        $url = PING4SMS_BASE_URL . '?' . http_build_query([
+            'key'        => PING4SMS_KEY,
+            'route'      => PING4SMS_ROUTE,
+            'sender'     => PING4SMS_SENDER,
+            'number'     => $number,
+            'sms'        => $message,
+            'templateid' => PING4SMS_TEMPLATE_ID,
+        ]);
+
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_HTTPHEADER     => [
-                'authkey: ' . MSG91_AUTH_KEY,
-                'Accept: application/json',
-            ],
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_TIMEOUT        => 10,
         ]);
-        $response = curl_exec($ch);
+        curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        $result = json_decode($response, true);
-        return $httpCode === 200 && ($result['type'] ?? '') === 'success';
+
+        return $httpCode === 200;
     }
-    
+
+    /** Verify OTP from otp_tokens table. Deletes the token on success. */
+    private function verifyOtpFromDB(string $phone, string $otp): bool {
+        $db   = Database::getConnection();
+        $stmt = $db->prepare(
+            "SELECT id FROM otp_tokens WHERE phone = ? AND otp = ? AND expires_at > NOW() LIMIT 1"
+        );
+        $stmt->execute([$phone, $otp]);
+        $row = $stmt->fetch();
+        if (!$row) return false;
+        $db->prepare("DELETE FROM otp_tokens WHERE phone = ?")->execute([$phone]);
+        return true;
+    }
+
     // POST /api/auth/send-otp { "phone": "9876543210" }
     public function sendOtp() {
         $data = json_decode(file_get_contents("php://input"));
@@ -69,16 +80,12 @@ class AuthController {
             return;
         }
 
-        // Dev/demo mode — no MSG91 keys configured
-        if (!MSG91_AUTH_KEY || !MSG91_TEMPLATE_ID) {
-            http_response_code(200);
-            echo json_encode(["message" => "OTP sent", "demo" => true]);
-            return;
-        }
+        $demo = !PING4SMS_KEY || !PING4SMS_TEMPLATE_ID;
+        $sent = $this->generateAndSendOtp($data->phone);
 
-        if ($this->sendViaMSG91($data->phone)) {
+        if ($sent) {
             http_response_code(200);
-            echo json_encode(["message" => "OTP sent"]);
+            echo json_encode(array_filter(["message" => "OTP sent", "demo" => $demo ?: null]));
         } else {
             http_response_code(502);
             echo json_encode(["message" => "Failed to send OTP. Please try again."]);
@@ -114,20 +121,15 @@ class AuthController {
             return;
         }
 
-        // OTP verification — MSG91 if configured, else demo mode (accept "1234")
-        if (MSG91_AUTH_KEY && MSG91_TEMPLATE_ID) {
-            if (!$this->verifyViaMSG91($data->phone, $data->otp)) {
-                http_response_code(401);
-                echo json_encode(["message" => "Invalid or expired OTP"]);
-                return;
-            }
-        } else {
-            // Demo mode fallback
-            if ($data->otp !== '1234') {
-                http_response_code(401);
-                echo json_encode(["message" => "Invalid OTP (demo: use 1234)"]);
-                return;
-            }
+        // OTP verification — check otp_tokens table (set by send-otp)
+        // Demo fallback: if no SMS key configured, also accept "1234"
+        $demo = !PING4SMS_KEY || !PING4SMS_TEMPLATE_ID;
+        $valid = $this->verifyOtpFromDB($data->phone, $data->otp);
+        if (!$valid && $demo && $data->otp === '1234') $valid = true;
+        if (!$valid) {
+            http_response_code(401);
+            echo json_encode(["message" => "Invalid or expired OTP"]);
+            return;
         }
 
         $user = new User();
