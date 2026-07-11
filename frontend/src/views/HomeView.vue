@@ -326,8 +326,8 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
         <!-- Teleport: search bar + sport pills into header extra slot -->
         <Teleport to="#header-extra">
             <!-- Search bar -->
-            <div class="page-gutter pb-3">
-                <div class="flex h-[52px] w-full items-stretch rounded-full bg-gray-100">
+            <div class="page-gutter pb-2">
+                <div class="flex h-[44px] w-full items-stretch rounded-full bg-gray-100">
                     <div class="flex items-center pl-4 text-gray-400">
                         <Search :size="17" :stroke-width="2" />
                     </div>
@@ -355,10 +355,10 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
             </div>
 
             <!-- Sport category pills -->
-            <div class="page-gutter flex gap-2 overflow-x-auto scrollbar-hide pb-5">
+            <div class="page-gutter flex gap-2 overflow-x-auto scrollbar-hide pb-2">
                 <button v-for="c in categories" :key="c.id"
                     @click="selectedSport = c.id"
-                    class="shrink-0 px-5 py-2.5 rounded-full text-[14px] font-semibold transition-all active:scale-95"
+                    class="shrink-0 px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all active:scale-95"
                     :class="selectedSport === c.id
                         ? 'bg-black text-white font-bold shadow-float'
                         : 'bg-white text-black border border-gray-200 hover:border-black'">

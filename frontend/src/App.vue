@@ -148,7 +148,7 @@ const submitPromptRating = async () => {
             :class="[
                 route.meta.fullScreen ? 'overflow-hidden' : 'overflow-y-auto',
                 auth.isLoggedIn && !route.meta.fullScreen && !route.meta.hideBottomNav
-                    ? 'pb-[calc(7rem+env(safe-area-inset-bottom,0px))]'
+                    ? 'pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]'
                     : ''
             ]">
             <RouterView />
@@ -156,41 +156,41 @@ const submitPromptRating = async () => {
 
         <!-- Bottom Nav — shown when logged in -->
         <nav v-if="auth.isLoggedIn && !route.meta.hideBottomNav"
-            class="absolute bottom-0 inset-x-0 glass-blur border-t border-gray-100 z-50 px-8 pt-4 flex justify-between items-center pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] sm:rounded-b-[3rem]">
+            class="absolute bottom-0 inset-x-0 glass-blur border-t border-gray-100 z-50 px-6 pt-2 flex justify-between items-center pb-[max(0.6rem,env(safe-area-inset-bottom,0px))] sm:rounded-b-[3rem]">
 
             <RouterLink to="/"
-                class="flex flex-col items-center gap-1.5 transition-opacity"
-                :class="isActive('/') ? 'opacity-100' : 'opacity-40 hover:opacity-100'">
-                <Compass :size="24" :stroke-width="isActive('/') ? 2.5 : 2" class="text-black" />
-                <span class="text-[10px] font-bold text-black">Explore</span>
+                class="flex flex-col items-center gap-1 transition-opacity"
+                :class="isActive('/') ? 'opacity-100' : 'opacity-35 hover:opacity-100'">
+                <Compass :size="22" :stroke-width="isActive('/') ? 2.5 : 1.75" class="text-black" />
+                <span class="text-[9px] font-bold text-black">Explore</span>
             </RouterLink>
 
             <RouterLink to="/feed"
-                class="flex flex-col items-center gap-1.5 transition-opacity"
-                :class="isActive('/feed') ? 'opacity-100' : 'opacity-40 hover:opacity-100'">
-                <Rss :size="24" :stroke-width="isActive('/feed') ? 2.5 : 2" class="text-black" />
-                <span class="text-[10px] font-bold text-black">Feed</span>
+                class="flex flex-col items-center gap-1 transition-opacity"
+                :class="isActive('/feed') ? 'opacity-100' : 'opacity-35 hover:opacity-100'">
+                <Rss :size="22" :stroke-width="isActive('/feed') ? 2.5 : 1.75" class="text-black" />
+                <span class="text-[9px] font-bold text-black">Feed</span>
             </RouterLink>
 
             <RouterLink to="/matches"
-                class="flex flex-col items-center gap-1.5 transition-opacity"
-                :class="isActive('/matches') ? 'opacity-100' : 'opacity-40 hover:opacity-100'">
-                <Users :size="24" :stroke-width="isActive('/matches') ? 2.5 : 2" class="text-black" />
-                <span class="text-[10px] font-bold text-black">Matches</span>
+                class="flex flex-col items-center gap-1 transition-opacity"
+                :class="isActive('/matches') ? 'opacity-100' : 'opacity-35 hover:opacity-100'">
+                <Users :size="22" :stroke-width="isActive('/matches') ? 2.5 : 1.75" class="text-black" />
+                <span class="text-[9px] font-bold text-black">Matches</span>
             </RouterLink>
 
             <RouterLink to="/bookings"
-                class="flex flex-col items-center gap-1.5 transition-opacity"
-                :class="isActive('/bookings') ? 'opacity-100' : 'opacity-40 hover:opacity-100'">
-                <CalendarDays :size="24" :stroke-width="isActive('/bookings') ? 2.5 : 2" class="text-black" />
-                <span class="text-[10px] font-bold text-black">Bookings</span>
+                class="flex flex-col items-center gap-1 transition-opacity"
+                :class="isActive('/bookings') ? 'opacity-100' : 'opacity-35 hover:opacity-100'">
+                <CalendarDays :size="22" :stroke-width="isActive('/bookings') ? 2.5 : 1.75" class="text-black" />
+                <span class="text-[9px] font-bold text-black">Bookings</span>
             </RouterLink>
 
             <RouterLink to="/profile"
-                class="flex flex-col items-center gap-1.5 transition-opacity"
-                :class="isActive('/profile') ? 'opacity-100' : 'opacity-40 hover:opacity-100'">
-                <User :size="24" :stroke-width="isActive('/profile') ? 2.5 : 2" class="text-black" />
-                <span class="text-[10px] font-bold text-black">Profile</span>
+                class="flex flex-col items-center gap-1 transition-opacity"
+                :class="isActive('/profile') ? 'opacity-100' : 'opacity-35 hover:opacity-100'">
+                <User :size="22" :stroke-width="isActive('/profile') ? 2.5 : 1.75" class="text-black" />
+                <span class="text-[9px] font-bold text-black">Profile</span>
             </RouterLink>
 
         </nav>

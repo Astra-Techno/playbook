@@ -26,9 +26,9 @@ const hasNotifications = computed(() => notifications.count > 0)
     <header class="sticky top-0 z-40 bg-white glass-blur sm:rounded-t-[3rem]"
         :class="isHome ? 'border-b-0' : 'border-b border-gray-100'">
 
-        <div class="page-gutter flex items-start justify-between pb-2"
-            :class="isHome ? 'mb-4' : 'pb-3'"
-            :style="{ paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))' }">
+        <div class="page-gutter flex items-center justify-between"
+            :class="isHome ? 'pb-2' : 'pb-2'"
+            :style="{ paddingTop: 'max(0.6rem, env(safe-area-inset-top, 0px))' }">
 
             <div class="flex items-center gap-3 flex-1 min-w-0">
                 <button v-if="isDetail" @click="router.back()"
@@ -37,9 +37,9 @@ const hasNotifications = computed(() => notifications.count > 0)
                 </button>
 
                 <div class="min-w-0 flex-1">
-                    <div id="header-subtitle" class="text-[13px] font-semibold text-ink-muted leading-none mb-1"></div>
+                    <div id="header-subtitle" class="text-[11px] font-semibold text-ink-muted leading-none mb-0.5"></div>
 
-                    <h1 v-if="isHome" class="text-[32px] font-extrabold text-black leading-none tracking-tight">
+                    <h1 v-if="isHome" class="text-[22px] font-extrabold text-black leading-none tracking-tight">
                         Find a court.
                     </h1>
                     <h1 v-else class="text-[17px] font-bold text-black leading-tight truncate">
