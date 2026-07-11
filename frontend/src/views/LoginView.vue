@@ -103,90 +103,89 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
 </script>
 
 <template>
-    <div class="min-h-full flex flex-col bg-white">
+    <!-- Full page scroll — keyboard pushes content up, user scrolls to input -->
+    <div class="bg-white">
 
-        <!-- STEP 1: Full gradient hero -->
+        <!-- ── STEP 1: Phone ─────────────────────────────── -->
         <template v-if="step === 1">
-            <div class="bg-gradient-to-br from-black via-gray-900 to-black px-6 pt-14 pb-8 relative overflow-hidden shrink-0">
-                <div class="absolute -top-14 -right-14 w-48 h-48 bg-white/5 rounded-full pointer-events-none"></div>
-                <div class="absolute -bottom-10 -left-10 w-36 h-36 bg-white/5 rounded-full pointer-events-none"></div>
-
-                <div class="flex items-center gap-3 mb-5">
-                    <img src="/logo.png" alt="KoCourt" class="w-11 h-11 rounded-2xl shadow-xl object-cover" />
+            <!-- Compact brand bar -->
+            <div class="bg-black px-5 pt-14 pb-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <img src="/logo.png" alt="KoCourt" class="w-10 h-10 rounded-xl object-cover" />
                     <div>
-                        <h1 class="text-white font-extrabold text-xl leading-none tracking-tight">KoCourt</h1>
-                        <p class="text-white/50 text-[10px] font-semibold mt-0.5 tracking-widest">SPORTS · GYM · CLUB</p>
+                        <p class="text-white font-extrabold text-base leading-none">KoCourt</p>
+                        <p class="text-white/40 text-[9px] font-semibold tracking-widest mt-0.5">SPORTS · GYM · CLUB</p>
                     </div>
                 </div>
-
-                <p class="text-white/55 text-[11px] font-semibold uppercase tracking-wider mb-1">Get Started</p>
-                <h2 class="text-white text-xl font-bold leading-snug">Enter your mobile number</h2>
-
-                <div class="flex gap-2 mt-4 flex-wrap">
-                    <span v-for="c in categories" :key="c"
-                        class="bg-white/10 text-white/70 text-[10px] font-semibold px-2.5 py-1 rounded-full tracking-wide">
-                        {{ c }}
-                    </span>
-                </div>
+                <p class="text-white/50 text-[11px] font-semibold uppercase tracking-widest mb-0.5">Get Started</p>
+                <h2 class="text-white text-2xl font-extrabold leading-tight">Enter your mobile<br>number</h2>
             </div>
 
-            <div class="flex-1 px-5 pt-7 pb-8">
+            <!-- Form (no flex-1 — sits in document flow, page scrolls) -->
+            <div class="px-5 pt-6 pb-10">
                 <div v-if="error"
                     class="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm font-semibold px-4 py-3 rounded-2xl mb-5">
                     ⚠ {{ error }}
                 </div>
 
-                <label class="block text-sm font-semibold text-gray-500 mb-2">Mobile Number</label>
-                <div class="flex rounded-2xl border-2 border-gray-200 focus-within:border-black transition-colors overflow-hidden mb-5">
-                    <div class="flex items-center gap-1.5 px-4 bg-gray-50 border-r border-gray-200 shrink-0">
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Mobile Number</label>
+                <div class="flex rounded-2xl border-2 border-gray-200 focus-within:border-black transition-colors overflow-hidden mb-4 bg-gray-50 focus-within:bg-white">
+                    <div class="flex items-center gap-1.5 px-4 border-r border-gray-200 shrink-0">
                         <span class="text-base">🇮🇳</span>
                         <span class="text-sm font-bold text-gray-500">+91</span>
                     </div>
                     <input v-model="phone" type="tel" inputmode="numeric" maxlength="10"
                         placeholder="98765 43210"
                         @keyup.enter="handlePhoneSubmit"
-                        class="flex-1 px-4 py-4 text-xl font-bold tracking-widest bg-transparent border-none focus:ring-0 placeholder:text-gray-300 placeholder:font-normal placeholder:tracking-normal placeholder:text-base" />
+                        class="flex-1 px-4 py-4 text-2xl font-bold tracking-widest bg-transparent border-none focus:ring-0 focus:outline-none placeholder:text-gray-300 placeholder:font-normal placeholder:text-lg placeholder:tracking-normal" />
                 </div>
 
                 <button @click="handlePhoneSubmit" :disabled="loading"
-                    class="w-full btn-primary flex items-center justify-center gap-2 py-4 text-base font-bold">
+                    class="w-full btn-primary flex items-center justify-center gap-2 py-4 text-base font-bold mb-6">
                     <Loader2 v-if="loading" :size="18" class="animate-spin" />
                     <template v-else>Continue <ArrowRight :size="18" /></template>
                 </button>
 
-                <p class="text-center text-[11px] text-gray-400 mt-5 leading-relaxed">
+                <p class="text-center text-[11px] text-gray-400 leading-relaxed">
                     By continuing you agree to our
                     <RouterLink to="/terms" class="text-black font-semibold">Terms</RouterLink> &amp;
                     <RouterLink to="/privacy" class="text-black font-semibold">Privacy Policy</RouterLink>
                 </p>
+
+                <!-- Sport chips at bottom — decorative, below the fold is fine -->
+                <div class="flex gap-2 mt-8 flex-wrap justify-center">
+                    <span v-for="c in categories" :key="c"
+                        class="bg-gray-100 text-gray-500 text-[11px] font-semibold px-3 py-1.5 rounded-full">
+                        {{ c }}
+                    </span>
+                </div>
             </div>
         </template>
 
-        <!-- STEP 2: OTP — compact header so keyboard doesn't bury the boxes -->
+        <!-- ── STEP 2: OTP ────────────────────────────────── -->
         <template v-else-if="step === 2">
-            <!-- Compact header bar -->
-            <div class="bg-black px-5 pt-12 pb-5 shrink-0 relative">
+            <!-- Compact header -->
+            <div class="bg-black px-5 pt-14 pb-6 relative">
                 <button @click="goBack"
-                    class="absolute top-12 left-4 w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 transition-transform">
+                    class="absolute top-14 left-4 w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 transition-transform">
                     <ArrowLeft :size="18" />
                 </button>
-                <div class="text-center">
-                    <p class="text-white/50 text-[11px] font-semibold uppercase tracking-widest mb-1">Verification</p>
-                    <h2 class="text-white text-lg font-bold">OTP sent to</h2>
-                    <p class="text-white/70 text-sm font-semibold mt-0.5">+91 {{ phone }}</p>
+                <div class="pl-10">
+                    <p class="text-white/50 text-[11px] font-semibold uppercase tracking-widest mb-0.5">Verification</p>
+                    <h2 class="text-white text-xl font-extrabold leading-tight">OTP sent to</h2>
+                    <p class="text-white/60 text-sm font-semibold mt-0.5">+91 {{ phone }}</p>
                 </div>
             </div>
 
-            <!-- Form -->
-            <div class="flex-1 px-5 pt-8 pb-8">
+            <div class="px-5 pt-7 pb-10">
                 <div v-if="error"
                     class="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm font-semibold px-4 py-3 rounded-2xl mb-5">
                     ⚠ {{ error }}
                 </div>
 
-                <p class="text-center text-sm font-semibold text-gray-500 mb-5">Enter 4-digit OTP</p>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 text-center">Enter 4-digit OTP</label>
 
-                <!-- Responsive OTP grid — always fills full width -->
+                <!-- Responsive OTP grid — 4 equal columns, fills full width -->
                 <div class="grid grid-cols-4 gap-3 mb-7">
                     <input v-for="(_, i) in otp" :key="i"
                         :ref="el => otpRefs[i] = el"
@@ -194,55 +193,56 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
                         type="tel" inputmode="numeric" maxlength="1"
                         @input="handleOtpInput(i, $event)"
                         @keydown="handleOtpKeydown(i, $event)"
-                        class="aspect-square w-full text-center text-3xl font-extrabold border-2 rounded-2xl bg-gray-50 focus:bg-white focus:outline-none transition-all"
-                        :class="otp[i] ? 'border-black bg-black text-white shadow-lg' : 'border-gray-200 text-black'" />
+                        class="aspect-square w-full text-center text-3xl font-extrabold border-2 rounded-2xl focus:outline-none transition-all"
+                        :class="otp[i] ? 'border-black bg-black text-white shadow-lg' : 'border-gray-200 bg-gray-50 text-black'" />
                 </div>
 
                 <button @click="verifyOtp" :disabled="loading || otpString.length < 4"
-                    class="w-full btn-primary flex items-center justify-center gap-2 py-4 text-base font-bold disabled:opacity-40">
+                    class="w-full btn-primary flex items-center justify-center gap-2 py-4 text-base font-bold disabled:opacity-40 mb-5">
                     <Loader2 v-if="loading" :size="18" class="animate-spin" />
                     <template v-else>Verify &amp; Continue <CheckCircle2 :size="18" /></template>
                 </button>
 
-                <p class="text-center text-sm text-gray-400 mt-5">
+                <p class="text-center text-sm text-gray-400">
                     Didn't receive the OTP?
                     <button @click="resendOtp" class="text-black font-bold ml-1 underline underline-offset-2">Resend</button>
                 </p>
             </div>
         </template>
 
-        <!-- STEP 3: New user name — compact header -->
+        <!-- ── STEP 3: Name ───────────────────────────────── -->
         <template v-else>
-            <!-- Compact header bar -->
-            <div class="bg-black px-5 pt-12 pb-5 shrink-0 relative">
+            <!-- Compact header -->
+            <div class="bg-black px-5 pt-14 pb-6 relative">
                 <button @click="goBack"
-                    class="absolute top-12 left-4 w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 transition-transform">
+                    class="absolute top-14 left-4 w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 transition-transform">
                     <ArrowLeft :size="18" />
                 </button>
-                <div class="text-center">
-                    <p class="text-white/50 text-[11px] font-semibold uppercase tracking-widest mb-1">New Account</p>
-                    <h2 class="text-white text-lg font-bold">Complete your profile</h2>
+                <div class="pl-10">
+                    <p class="text-white/50 text-[11px] font-semibold uppercase tracking-widest mb-0.5">New Account</p>
+                    <h2 class="text-white text-xl font-extrabold">Complete your profile</h2>
                 </div>
             </div>
 
-            <div class="flex-1 px-5 pt-8 pb-8">
+            <div class="px-5 pt-7 pb-10">
                 <div v-if="error"
                     class="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm font-semibold px-4 py-3 rounded-2xl mb-5">
                     ⚠ {{ error }}
                 </div>
 
-                <div class="flex items-center gap-3 bg-gray-50 rounded-2xl px-4 py-3 mb-6">
-                    <div class="w-10 h-10 bg-black rounded-full flex items-center justify-center shrink-0">
-                        <span class="text-xl">👋</span>
-                    </div>
-                    <p class="text-sm text-gray-500 leading-snug">Welcome! You're registering with <span class="font-bold text-black">+91 {{ phone }}</span></p>
+                <div class="flex items-center gap-3 bg-gray-50 rounded-2xl px-4 py-3 mb-6 border border-gray-100">
+                    <span class="text-2xl shrink-0">👋</span>
+                    <p class="text-sm text-gray-500 leading-snug">
+                        Welcome! Signing up with<br>
+                        <span class="font-bold text-black">+91 {{ phone }}</span>
+                    </p>
                 </div>
 
-                <label class="block text-sm font-semibold text-gray-500 mb-2">Your Full Name</label>
+                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Your Full Name</label>
                 <input v-model="name" type="text" placeholder="e.g. Mathavan Kumar"
                     @keyup.enter="handleRegisterSubmit"
                     autofocus
-                    class="w-full px-4 py-4 text-lg font-semibold rounded-2xl border-2 border-gray-200 focus:border-black focus:outline-none bg-gray-50 focus:bg-white transition-colors mb-6 placeholder:text-gray-300 placeholder:font-normal" />
+                    class="w-full px-4 py-4 text-xl font-semibold rounded-2xl border-2 border-gray-200 focus:border-black focus:outline-none bg-gray-50 focus:bg-white transition-colors mb-5 placeholder:text-gray-300 placeholder:font-normal placeholder:text-base" />
 
                 <button @click="handleRegisterSubmit" :disabled="loading"
                     class="w-full btn-primary flex items-center justify-center gap-2 py-4 text-base font-bold">
