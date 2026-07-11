@@ -7,8 +7,10 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans:    ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
-                display: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+                sans:       ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+                display:    ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+                condensed:  ['"Barlow Condensed"', 'system-ui', 'sans-serif'],
+                barlow:     ['"Barlow"', 'system-ui', 'sans-serif'],
             },
             colors: {
                 primary:  '#000000',
@@ -22,12 +24,13 @@ export default {
                 },
             },
             boxShadow: {
-                'card':     '0 20px 40px -15px rgba(0,0,0,0.05)',
-                'card-lg':  '0 30px 60px -15px rgba(0,0,0,0.1)',
-                'nav':      '0 -10px 40px rgba(0,0,0,0.05)',
-                'fab':      '0 10px 40px -10px rgba(0,0,0,0.15)',
-                'premium':  '0 20px 40px -15px rgba(0,0,0,0.05)',
-                'float':    '0 10px 40px -10px rgba(0,0,0,0.15)',
+                'card':     '0 2px 12px rgba(0,0,0,0.08)',
+                'card-lg':  '0 4px 24px rgba(0,0,0,0.12)',
+                'nav':      '0 -1px 0 rgba(0,0,0,0.06)',
+                'fab':      '0 4px 16px rgba(0,0,0,0.18)',
+                'premium':  '0 2px 12px rgba(0,0,0,0.08)',
+                'float':    '0 4px 16px rgba(0,0,0,0.18)',
+                'soft':     '0 1px 4px rgba(0,0,0,0.06)',
             },
         },
     },

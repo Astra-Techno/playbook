@@ -4,7 +4,7 @@ import axios from 'axios'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import {
-    Search, MapPin, SlidersHorizontal, Heart,
+    Search, MapPin, SlidersHorizontal, Heart, ChevronRight,
     Wind, CircleDot, Target, Flag, Activity, Layers3,
     Dumbbell, Waves, Swords, Loader2, Star, Flame, Map,
     Lock, Bell, X, RotateCcw, KeyRound
@@ -315,60 +315,52 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
 <template>
     <div class="min-h-full bg-white">
 
-        <!-- Teleport: location label into header subtitle slot -->
-        <Teleport to="#header-subtitle">
-            <button @click="openLocPicker"
-                class="text-[12px] font-semibold text-gray-400 hover:text-black active:opacity-60 transition-colors leading-none mb-1 block">
-                {{ locationLabel }}
-            </button>
-        </Teleport>
-
-        <!-- Teleport: search bar + sport pills into header extra slot -->
-        <Teleport to="#header-extra">
-            <!-- Search bar -->
-            <div class="page-gutter pb-2">
-                <div class="flex h-[44px] w-full items-stretch rounded-full bg-gray-100">
-                    <div class="flex items-center pl-4 text-gray-400">
-                        <Search :size="17" :stroke-width="2" />
-                    </div>
+        <!-- ── Sticky search bar + pills (Zomato pattern — inside scroll, stays visible) -->
+        <div class="sticky top-0 z-20 bg-white border-b border-gray-100">
+            <!-- Location + search row -->
+            <div class="px-4 pt-2.5 pb-2">
+                <!-- Location tap -->
+                <button @click="openLocPicker"
+                    class="flex items-center gap-1 text-[11px] font-semibold text-gray-400 mb-2 active:opacity-60 transition-opacity">
+                    <MapPin :size="11" class="shrink-0" />
+                    <span class="truncate max-w-[200px]">{{ locationLabel }}</span>
+                    <ChevronRight :size="10" class="text-gray-300" />
+                </button>
+                <!-- Search input -->
+                <div class="flex items-center gap-2 h-10 rounded-2xl bg-gray-100 px-3">
+                    <Search :size="15" class="text-gray-400 shrink-0" />
                     <input v-model="searchText" @input="onSearchInput"
-                        type="search"
-                        placeholder="Where do you want to play?"
-                        class="flex-1 px-3 text-[14px] bg-transparent border-none focus:ring-0 placeholder:text-gray-400 text-black outline-none" />
-                    <!-- GPS -->
-                    <button @click="detectLocation" :disabled="locating"
-                        class="flex items-center justify-center pr-2 text-gray-400 disabled:opacity-50">
-                        <Loader2 v-if="locating" :size="17" class="animate-spin" />
-                        <MapPin v-else :size="17" :class="userLat && userLng ? 'text-black' : 'text-gray-400'" />
+                        type="search" placeholder="City, area or venue name…"
+                        class="flex-1 text-sm bg-transparent border-none focus:ring-0 focus:outline-none text-black placeholder:text-gray-400" />
+                    <button @click="detectLocation" :disabled="locating" class="shrink-0 disabled:opacity-50">
+                        <Loader2 v-if="locating" :size="15" class="animate-spin text-gray-400" />
+                        <MapPin v-else :size="15" :class="userLat && userLng ? 'text-black' : 'text-gray-400'" />
                     </button>
-                    <div class="w-px bg-gray-200 my-3 mx-1"></div>
-                    <!-- Filter -->
-                    <button @click="openFilters"
-                        class="relative flex items-center justify-center px-3.5 text-gray-500">
-                        <SlidersHorizontal :size="17" :stroke-width="2" :class="activeFilterCount > 0 ? 'text-black' : ''" />
+                    <div class="w-px bg-gray-300 h-4 mx-0.5"></div>
+                    <button @click="openFilters" class="relative shrink-0">
+                        <SlidersHorizontal :size="15" :class="activeFilterCount > 0 ? 'text-black' : 'text-gray-400'" />
                         <span v-if="activeFilterCount > 0"
-                            class="absolute top-2 right-1.5 w-3 h-3 bg-black text-white text-[7px] font-black rounded-full flex items-center justify-center">
+                            class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-black rounded-full text-white text-[6px] font-black flex items-center justify-center">
                             {{ activeFilterCount }}
                         </span>
                     </button>
                 </div>
             </div>
-
-            <!-- Sport category pills -->
-            <div class="page-gutter flex gap-2 overflow-x-auto scrollbar-hide pb-2">
+            <!-- Category pills -->
+            <div class="flex gap-2 px-4 pb-2.5 overflow-x-auto scrollbar-hide">
                 <button v-for="c in categories" :key="c.id"
                     @click="selectedSport = c.id"
-                    class="shrink-0 px-4 py-1.5 rounded-full text-[13px] font-semibold transition-all active:scale-95"
+                    class="shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-bold transition-all active:scale-95"
                     :class="selectedSport === c.id
-                        ? 'bg-black text-white font-bold shadow-float'
-                        : 'bg-white text-black border border-gray-200 hover:border-black'">
+                        ? 'bg-black text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
                     {{ c.label }}
                 </button>
             </div>
-        </Teleport>
+        </div>
 
-        <!-- ── Main content (same 24px gutter as header/search) ── -->
-        <div class="page-gutter pt-2 pb-4">
+        <!-- ── Main content ── -->
+        <div class="px-4 pt-3 pb-4">
 
             <!-- No location yet -->
             <div v-if="!fetched && !hasLocation && !locating" class="flex flex-col items-center py-20 text-center px-6">
@@ -418,47 +410,50 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                 </p>
             </div>
 
-            <!-- Venue cards -->
-            <div v-else class="space-y-8">
-                <div v-for="(venue, idx) in courts" :key="venue.id"
+            <!-- Venue cards — Zomato-style -->
+            <div v-else class="space-y-3">
+                <div v-for="venue in courts" :key="venue.id"
                     @click="router.push('/courts/' + venue.id)"
-                    class="cursor-pointer group">
+                    class="bg-white rounded-2xl overflow-hidden shadow-card cursor-pointer active:scale-[0.99] transition-transform">
 
-                    <!-- Image -->
-                    <div class="relative w-full aspect-[4/3] rounded-3xl overflow-hidden mb-4 bg-gray-100">
+                    <!-- Image: 16:9 -->
+                    <div class="relative w-full aspect-video bg-gray-100">
                         <img :src="getImage(venue)" :alt="venue.name"
-                            class="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                            class="w-full h-full object-cover"
                             loading="lazy"
                             onerror="this.src='https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=600&q=80'" />
 
-                        <!-- Heart -->
-                        <div @click.stop="toggleFavorite($event, venue.id)"
-                            class="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-sm cursor-pointer z-10 active:scale-90 transition-transform">
-                            <Heart :size="18"
-                                :class="favorites.has(venue.id) ? 'fill-red-500 text-red-500' : 'text-black'" />
-                        </div>
-
-                        <!-- Type badge -->
-                        <div class="absolute top-4 left-4 z-10">
-                            <span class="bg-white/90 backdrop-blur text-black text-[11px] font-bold px-4 py-2 rounded-full tracking-widest uppercase flex items-center gap-1.5 shadow-sm">
-                                <component :is="categories.find(c => c.id === venue.type)?.icon" :size="12" :stroke-width="3" />
+                        <!-- Sport badge — bottom left -->
+                        <div class="absolute bottom-3 left-3 z-10">
+                            <span class="bg-black/75 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider flex items-center gap-1">
+                                <component :is="categories.find(c => c.id === venue.type)?.icon" :size="10" :stroke-width="2.5" />
                                 {{ categories.find(c => c.id === venue.type)?.label || venue.type }}
                             </span>
                         </div>
+
+                        <!-- Heart — top right -->
+                        <button @click.stop="toggleFavorite($event, venue.id)"
+                            class="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-soft z-10 active:scale-90 transition-transform">
+                            <Heart :size="15"
+                                :class="favorites.has(venue.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'" />
+                        </button>
                     </div>
 
-                    <!-- Card body -->
-                    <div class="flex justify-between items-start gap-4">
-                        <div>
-                            <h3 class="font-extrabold text-black text-[18px] leading-tight mb-1">{{ venue.name }}</h3>
-                            <div class="flex items-center gap-1 text-gray-500 text-[14px]">
-                                <span class="truncate">{{ venue.location || 'Location not set' }}</span>
-                                <span v-if="venue.distance_km != null"> · {{ venue.distance_km }} km</span>
+                    <!-- Card info -->
+                    <div class="px-3.5 py-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0 flex-1">
+                                <h3 class="font-bold text-black text-[15px] leading-snug truncate" style="font-family:'Barlow Condensed',sans-serif;font-size:17px;letter-spacing:-0.2px">{{ venue.name }}</h3>
+                                <div class="flex items-center gap-1 text-gray-400 text-[12px] mt-0.5">
+                                    <MapPin :size="10" class="shrink-0" />
+                                    <span class="truncate">{{ venue.location || 'Location not set' }}</span>
+                                    <span v-if="venue.distance_km != null" class="shrink-0">· {{ venue.distance_km }} km</span>
+                                </div>
                             </div>
-                        </div>
-                        <div class="text-right shrink-0 ml-4">
-                            <p class="text-black font-extrabold text-[16px] leading-tight">₹{{ venue.hourly_rate }}</p>
-                            <p class="text-[12px] font-medium text-gray-500">per hour</p>
+                            <div class="text-right shrink-0">
+                                <p class="text-black font-extrabold text-[15px] leading-none">₹{{ venue.hourly_rate }}</p>
+                                <p class="text-[10px] text-gray-400 mt-0.5">per hr</p>
+                            </div>
                         </div>
                     </div>
                 </div>

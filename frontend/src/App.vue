@@ -148,7 +148,7 @@ const submitPromptRating = async () => {
             :class="[
                 route.meta.fullScreen ? 'overflow-hidden' : 'overflow-y-auto',
                 auth.isLoggedIn && !route.meta.fullScreen && !route.meta.hideBottomNav
-                    ? 'pb-[calc(4.5rem+env(safe-area-inset-bottom,0px))]'
+                    ? 'pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]'
                     : ''
             ]">
             <RouterView />
@@ -156,41 +156,26 @@ const submitPromptRating = async () => {
 
         <!-- Bottom Nav — shown when logged in -->
         <nav v-if="auth.isLoggedIn && !route.meta.hideBottomNav"
-            class="absolute bottom-0 inset-x-0 glass-blur border-t border-gray-100 z-50 px-6 pt-2 flex justify-between items-center pb-[max(0.6rem,env(safe-area-inset-bottom,0px))] sm:rounded-b-[3rem]">
+            class="absolute bottom-0 inset-x-0 bg-white border-t border-gray-100 z-50 flex justify-around items-stretch sm:rounded-b-[3rem]"
+            :style="{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }">
 
-            <RouterLink to="/"
-                class="flex flex-col items-center gap-1 transition-opacity"
-                :class="isActive('/') ? 'opacity-100' : 'opacity-35 hover:opacity-100'">
-                <Compass :size="22" :stroke-width="isActive('/') ? 2.5 : 1.75" class="text-black" />
-                <span class="text-[9px] font-bold text-black">Explore</span>
-            </RouterLink>
-
-            <RouterLink to="/feed"
-                class="flex flex-col items-center gap-1 transition-opacity"
-                :class="isActive('/feed') ? 'opacity-100' : 'opacity-35 hover:opacity-100'">
-                <Rss :size="22" :stroke-width="isActive('/feed') ? 2.5 : 1.75" class="text-black" />
-                <span class="text-[9px] font-bold text-black">Feed</span>
-            </RouterLink>
-
-            <RouterLink to="/matches"
-                class="flex flex-col items-center gap-1 transition-opacity"
-                :class="isActive('/matches') ? 'opacity-100' : 'opacity-35 hover:opacity-100'">
-                <Users :size="22" :stroke-width="isActive('/matches') ? 2.5 : 1.75" class="text-black" />
-                <span class="text-[9px] font-bold text-black">Matches</span>
-            </RouterLink>
-
-            <RouterLink to="/bookings"
-                class="flex flex-col items-center gap-1 transition-opacity"
-                :class="isActive('/bookings') ? 'opacity-100' : 'opacity-35 hover:opacity-100'">
-                <CalendarDays :size="22" :stroke-width="isActive('/bookings') ? 2.5 : 1.75" class="text-black" />
-                <span class="text-[9px] font-bold text-black">Bookings</span>
-            </RouterLink>
-
-            <RouterLink to="/profile"
-                class="flex flex-col items-center gap-1 transition-opacity"
-                :class="isActive('/profile') ? 'opacity-100' : 'opacity-35 hover:opacity-100'">
-                <User :size="22" :stroke-width="isActive('/profile') ? 2.5 : 1.75" class="text-black" />
-                <span class="text-[9px] font-bold text-black">Profile</span>
+            <RouterLink v-for="item in [
+                { to: '/',         icon: Compass,     label: 'Explore'  },
+                { to: '/feed',     icon: Rss,         label: 'Feed'     },
+                { to: '/matches',  icon: Users,       label: 'Matches'  },
+                { to: '/bookings', icon: CalendarDays,label: 'Bookings' },
+                { to: '/profile',  icon: User,        label: 'Profile'  },
+            ]" :key="item.to" :to="item.to"
+                class="flex flex-col items-center justify-center gap-1 flex-1 pt-2.5 pb-1 transition-all active:scale-90"
+                :class="isActive(item.to) ? 'text-black' : 'text-gray-400'">
+                <div class="relative">
+                    <component :is="item.icon" :size="22"
+                        :stroke-width="isActive(item.to) ? 2.5 : 1.75" />
+                    <!-- Active dot indicator -->
+                    <span v-if="isActive(item.to)"
+                        class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-black rounded-full"></span>
+                </div>
+                <span class="text-[9px] font-bold tracking-wide" style="font-family:'Barlow',sans-serif">{{ item.label }}</span>
             </RouterLink>
 
         </nav>

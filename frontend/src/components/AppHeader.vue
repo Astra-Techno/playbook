@@ -23,57 +23,61 @@ const hasNotifications = computed(() => notifications.count > 0)
 </script>
 
 <template>
-    <header class="sticky top-0 z-40 bg-white glass-blur sm:rounded-t-[3rem]"
-        :class="isHome ? 'border-b-0' : 'border-b border-gray-100'">
+    <header class="sticky top-0 z-40 bg-white border-b border-gray-100 sm:rounded-t-[3rem]">
+        <div class="px-4 flex items-center justify-between gap-3"
+            :style="{ paddingTop: 'max(0.5rem, env(safe-area-inset-top, 0px))', paddingBottom: '0.5rem' }">
 
-        <div class="page-gutter flex items-center justify-between"
-            :class="isHome ? 'pb-2' : 'pb-2'"
-            :style="{ paddingTop: 'max(0.6rem, env(safe-area-inset-top, 0px))' }">
-
-            <div class="flex items-center gap-3 flex-1 min-w-0">
+            <!-- Left: back or brand/title -->
+            <div class="flex items-center gap-2.5 flex-1 min-w-0">
                 <button v-if="isDetail" @click="router.back()"
-                    class="w-11 h-11 rounded-full bg-white shadow-premium flex items-center justify-center shrink-0 active:scale-95 transition-transform border border-gray-100">
-                    <ChevronLeft :size="22" :stroke-width="2.5" class="text-black" />
+                    class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center shrink-0 active:scale-90 transition-transform">
+                    <ChevronLeft :size="20" :stroke-width="2.5" class="text-black" />
                 </button>
 
-                <div class="min-w-0 flex-1">
-                    <div id="header-subtitle" class="text-[11px] font-semibold text-ink-muted leading-none mb-0.5"></div>
+                <!-- Home: logo + brand -->
+                <div v-if="isHome" class="flex items-center gap-2">
+                    <img src="/logo.png" alt="KoCourt" class="w-7 h-7 rounded-lg object-cover" />
+                    <span class="font-condensed font-extrabold text-[17px] tracking-tight text-black" style="font-family:'Barlow Condensed',sans-serif">KoCourt</span>
+                </div>
 
-                    <h1 v-if="isHome" class="text-[22px] font-extrabold text-black leading-none tracking-tight">
-                        Find a court.
-                    </h1>
-                    <h1 v-else class="text-[17px] font-bold text-black leading-tight truncate">
+                <!-- Inner pages: title -->
+                <div v-else class="min-w-0">
+                    <p class="text-[11px] font-semibold text-gray-400 leading-none mb-0.5">
+                        <span id="header-subtitle"></span>
+                    </p>
+                    <h1 class="text-[16px] font-bold text-black leading-tight truncate">
                         <span v-if="isDetail" id="header-subject"></span>
                         <span v-else>{{ title || 'KoCourt' }}</span>
                     </h1>
                 </div>
             </div>
 
-            <div class="flex items-center gap-2 ml-3 shrink-0">
-                <div id="header-action" class="flex items-center gap-2"></div>
+            <!-- Right: actions -->
+            <div class="flex items-center gap-1.5 shrink-0">
+                <div id="header-action" class="flex items-center gap-1.5"></div>
 
                 <template v-if="auth.isLoggedIn">
                     <button @click="router.push('/notifications')"
-                        class="relative w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-black active:scale-95 transition-transform">
-                        <Bell :size="18" :stroke-width="2" />
+                        class="relative w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 active:scale-90 transition-transform">
+                        <Bell :size="17" :stroke-width="2" class="text-black" />
                         <span v-if="hasNotifications"
-                            class="absolute top-1.5 right-1.5 min-w-[8px] h-2 w-2 bg-red-500 rounded-full border-[1.5px] border-white">
+                            class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-[1.5px] border-white">
                         </span>
                     </button>
-                    <div @click="router.push('/profile')"
-                        class="w-11 h-11 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center cursor-pointer active:scale-95 transition-transform shrink-0">
+                    <button @click="router.push('/profile')"
+                        class="w-9 h-9 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center active:scale-90 transition-transform shrink-0">
                         <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
-                        <span v-else class="text-[13px] font-bold text-black">{{ userInitials }}</span>
-                    </div>
+                        <span v-else class="text-[12px] font-bold text-black">{{ userInitials }}</span>
+                    </button>
                 </template>
-
                 <button v-else @click="router.push('/login')"
-                    class="text-[13px] font-bold text-white bg-black px-5 py-2.5 rounded-full active:scale-95 transition-transform">
+                    class="text-[13px] font-bold text-white bg-black px-4 py-2 rounded-full active:scale-95 transition-transform">
                     Sign in
                 </button>
             </div>
         </div>
 
+        <!-- Slot for inner page extra content (search bars, tabs, etc) -->
         <div id="header-extra"></div>
     </header>
 </template>
