@@ -55,7 +55,8 @@ const markAllRead = async () => {
 }
 
 const timeAgo = (dt) => {
-    const diff = (Date.now() - new Date(dt).getTime()) / 1000
+    const utc = dt && !dt.endsWith('Z') && !dt.includes('+') ? dt.replace(' ', 'T') + 'Z' : dt
+    const diff = (Date.now() - new Date(utc).getTime()) / 1000
     if (diff < 60)   return 'just now'
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`

@@ -58,17 +58,21 @@ class AuthController {
         return $httpCode === 200;
     }
 
-    /** Verify OTP from otp_tokens table. Deletes the token on success. */
+    /** Check OTP against otp_tokens table without consuming it. */
     private function verifyOtpFromDB(string $phone, string $otp): bool {
         $db   = Database::getConnection();
         $stmt = $db->prepare(
             "SELECT id FROM otp_tokens WHERE phone = ? AND otp = ? AND expires_at > NOW() LIMIT 1"
         );
         $stmt->execute([$phone, $otp]);
-        $row = $stmt->fetch();
-        if (!$row) return false;
-        $db->prepare("DELETE FROM otp_tokens WHERE phone = ?")->execute([$phone]);
-        return true;
+        return (bool)$stmt->fetch();
+    }
+
+    /** Consume (delete) the OTP token after successful login/register. */
+    private function consumeOtp(string $phone): void {
+        Database::getConnection()
+            ->prepare("DELETE FROM otp_tokens WHERE phone = ?")
+            ->execute([$phone]);
     }
 
     // POST /api/auth/send-otp { "phone": "9876543210" }
@@ -136,11 +140,13 @@ class AuthController {
         $user->phone = $data->phone;
 
         if($user->phoneExists()) {
-            // Login existing user
+            // Login existing user — consume the OTP token now
+            $this->consumeOtp($data->phone);
             $this->sendTokenResponse($user);
         } else {
             // Register new user
             if(empty($data->name)) {
+                // Don't consume the OTP yet — user still needs to submit their name (step 3)
                 http_response_code(404);
                 echo json_encode(["new_user" => true, "message" => "New user — name required."]);
                 return;
@@ -151,8 +157,9 @@ class AuthController {
 
             try {
                 if($user->create()) {
-                    // Fetch the new user's ID and data
+                    // Fetch the new user's ID and data, then consume the OTP
                     $user->phoneExists();
+                    $this->consumeOtp($data->phone);
                     $this->sendTokenResponse($user);
                 } else {
                     http_response_code(503);

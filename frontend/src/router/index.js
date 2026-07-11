@@ -33,7 +33,7 @@ const router = createRouter({
             path: '/profile',
             name: 'profile',
             component: () => import('../views/ProfileView.vue'),
-            meta: { hideHeader: true }
+            meta: { hideHeader: true, requiresAuth: true }
         },
         {
             path: '/feed',

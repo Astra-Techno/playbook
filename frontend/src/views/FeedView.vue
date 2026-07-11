@@ -172,7 +172,9 @@ onMounted(() => {
                     class="flex flex-col items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 transition-transform">
                     <div class="w-16 h-16 rounded-full p-[3px] ring-2 border border-black shadow-sm">
                         <div class="w-full h-full rounded-full overflow-hidden bg-slate-200">
-                            <img :src="item.image_url" class="w-full h-full object-cover" />
+                            <img :src="item.image_url || 'https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=120&q=80'"
+                                class="w-full h-full object-cover"
+                                onerror="this.src='https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=120&q=80'" />
                         </div>
                     </div>
                     <span class="text-[10px] font-bold text-black truncate max-w-[64px]">{{ item.name }}</span>

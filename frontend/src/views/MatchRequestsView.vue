@@ -73,8 +73,8 @@ const leaveRequest = async (req) => {
 
 const formatPlayTime = (r) => {
     if (!r.play_time) return ''
-    const utc  = r.play_time.includes('T') ? r.play_time : r.play_time.replace(' ', 'T') + 'Z'
-    const d    = new Date(utc)
+    // Parse as local time (DB stores local datetime, not UTC)
+    const d = new Date(r.play_time.includes('T') ? r.play_time : r.play_time.replace(' ', 'T'))
     const date = d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
     const time = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
     return `${date} · ${time}`
@@ -103,7 +103,7 @@ const sportLabel = (id) => SPORTS.find(s => s.id === id)?.label || id
 
         <!-- Post a request CTA -->
         <div v-if="auth.isLoggedIn" class="px-4 pt-4">
-            <button @click="router.push('/courts')"
+            <button @click="router.push('/')"
                 class="w-full bg-black text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
                 <Plus :size="16" />
                 Post a Match Request at a Court
