@@ -13,7 +13,7 @@
     }
 
     body {
-        @apply bg-[#f2f2f7] text-black antialiased;
+        @apply bg-surface text-on-surface antialiased;
         overscroll-behavior: none;
         margin: 0;
         min-height: 100%;
@@ -47,74 +47,80 @@
 
 @layer components {
     .btn-primary {
-        @apply bg-black text-white font-bold py-4 px-8 rounded-full shadow-lg
-               active:scale-[0.97] transition-transform duration-300
+        @apply bg-primary text-on-primary font-bold py-3.5 px-8 rounded-xl
+               shadow-fab active:scale-[0.97] active:translate-y-0.5
+               transition-all duration-200
                disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100;
     }
 
     .btn-secondary {
-        @apply bg-white text-black font-bold py-4 px-8 rounded-full
-               border border-gray-200 hover:border-black active:scale-[0.97]
-               transition-all duration-300;
+        @apply bg-surface-container-lowest text-on-surface font-bold py-3.5 px-8 rounded-xl
+               border border-on-surface/20 active:scale-[0.97]
+               transition-all duration-200;
     }
 
     .btn-ghost {
-        @apply text-gray-500 font-bold py-3 px-6 rounded-full
-               hover:bg-gray-100 active:scale-[0.97] transition-all duration-300;
+        @apply text-on-surface-variant font-bold py-3 px-6 rounded-xl
+               hover:bg-surface-container active:scale-[0.97] transition-all duration-200;
     }
 
     .card {
-        @apply bg-white rounded-3xl overflow-hidden;
+        @apply bg-surface-container-lowest rounded-2xl overflow-hidden
+               shadow-card border border-surface-variant/30;
     }
 
     .input-field {
-        @apply w-full bg-gray-100 rounded-full px-5 py-4
-               focus:ring-2 focus:ring-black transition-all placeholder-gray-400
-               text-black font-semibold border-none outline-none;
+        @apply w-full bg-surface-container-lowest border border-surface-variant/50
+               rounded-xl px-4 py-3.5 text-on-surface font-medium
+               focus:ring-4 focus:ring-primary/5 focus:border-primary
+               transition-all placeholder:text-on-surface-variant/40
+               outline-none shadow-soft;
     }
 
     .section-title {
-        @apply text-[20px] font-bold text-black;
+        @apply text-[22px] font-black text-on-surface tracking-tight;
     }
 
     .page-title {
-        @apply text-[32px] font-extrabold tracking-tight text-black leading-none;
+        @apply text-[32px] font-extrabold tracking-tight text-on-surface leading-none;
     }
 
     .badge {
-        @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold;
+        @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold;
     }
 
     .chip-active {
-        @apply bg-black text-white shadow-float;
+        @apply bg-primary text-on-primary shadow-fab;
     }
 
     .chip-inactive {
-        @apply bg-white text-black border border-gray-200 font-semibold;
+        @apply bg-surface-container-lowest text-on-surface border border-surface-variant/40 font-semibold;
     }
 
     .menu-row {
-        @apply w-full flex items-center justify-between px-6 py-5 hover:bg-gray-50 transition-colors text-left;
+        @apply w-full flex items-center justify-between px-5 py-4
+               hover:bg-surface-container transition-colors text-left;
     }
 
     .divider-band {
-        @apply w-full h-2 bg-gray-50;
+        @apply w-full h-2 bg-surface-container;
     }
 
     .premium-card {
-        @apply bg-white rounded-3xl overflow-hidden;
+        @apply bg-surface-container-lowest rounded-2xl overflow-hidden
+               shadow-card border border-surface-variant/30;
     }
 
     .page-gutter {
-        @apply px-6;
+        @apply px-5;
     }
 
     .shadow-soft {
-        box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
 
     .shadow-elite {
-        box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
     }
 }
 

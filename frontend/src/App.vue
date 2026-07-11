@@ -120,8 +120,8 @@ const submitPromptRating = async () => {
 </script>
 
 <template>
-    <div class="flex w-full flex-1 min-h-0 justify-center overflow-hidden bg-[#f2f2f7] sm:py-6">
-    <div id="app-root" class="relative flex w-full max-w-[430px] mx-auto flex-1 min-h-0 flex-col overflow-hidden bg-white sm:rounded-[3rem] sm:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.2)] sm:ring-[12px] sm:ring-white">
+    <div class="flex w-full flex-1 min-h-0 justify-center overflow-hidden bg-surface-container-low sm:py-6">
+    <div id="app-root" class="relative flex w-full max-w-[430px] mx-auto flex-1 min-h-0 flex-col overflow-hidden bg-surface sm:rounded-[3rem] sm:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.2)] sm:ring-[12px] sm:ring-white">
 
         <!-- Toast overlay -->
         <div class="absolute inset-x-4 z-[200] space-y-2 pointer-events-none top-[max(1rem,calc(env(safe-area-inset-top,0px)+0.5rem))]">
@@ -155,27 +155,25 @@ const submitPromptRating = async () => {
         </main>
 
         <!-- Bottom Nav — shown when logged in -->
+        <!-- Bottom nav — Kinetic Stadium: frosted glass, orange active, uppercase labels -->
         <nav v-if="auth.isLoggedIn && !route.meta.hideBottomNav"
-            class="absolute bottom-0 inset-x-0 bg-white border-t border-gray-100 z-50 flex justify-around items-stretch sm:rounded-b-[3rem]"
-            :style="{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))' }">
+            class="absolute bottom-0 inset-x-0 z-50 flex justify-around items-center px-6 pt-3
+                   shadow-[0_-10px_30px_rgba(0,0,0,0.06)] border-t border-surface-variant/20 sm:rounded-b-[3rem]"
+            style="background:rgba(248,249,250,0.85);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)"
+            :style="{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))' }">
 
             <RouterLink v-for="item in [
-                { to: '/',         icon: Compass,     label: 'Explore'  },
-                { to: '/feed',     icon: Rss,         label: 'Feed'     },
+                { to: '/',         icon: Compass,     label: 'Home'     },
+                { to: '/feed',     icon: Rss,         label: 'Posts'    },
                 { to: '/matches',  icon: Users,       label: 'Matches'  },
                 { to: '/bookings', icon: CalendarDays,label: 'Bookings' },
                 { to: '/profile',  icon: User,        label: 'Profile'  },
             ]" :key="item.to" :to="item.to"
-                class="flex flex-col items-center justify-center gap-1 flex-1 pt-2.5 pb-1 transition-all active:scale-90"
-                :class="isActive(item.to) ? 'text-black' : 'text-gray-400'">
-                <div class="relative">
-                    <component :is="item.icon" :size="22"
-                        :stroke-width="isActive(item.to) ? 2.5 : 1.75" />
-                    <!-- Active dot indicator -->
-                    <span v-if="isActive(item.to)"
-                        class="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-black rounded-full"></span>
-                </div>
-                <span class="text-[9px] font-bold tracking-wide" style="font-family:'Barlow',sans-serif">{{ item.label }}</span>
+                class="flex flex-col items-center justify-center gap-1 transition-all active:scale-90"
+                :class="isActive(item.to) ? 'text-primary' : 'text-on-surface-variant/60'">
+                <component :is="item.icon" :size="24"
+                    :stroke-width="isActive(item.to) ? 2.5 : 1.75" />
+                <span class="text-[10px] font-black mt-0.5 uppercase tracking-wider">{{ item.label }}</span>
             </RouterLink>
 
         </nav>

@@ -7,7 +7,7 @@ import {
     Search, MapPin, SlidersHorizontal, Heart, ChevronRight,
     Wind, CircleDot, Target, Flag, Activity, Layers3,
     Dumbbell, Waves, Swords, Loader2, Star, Flame, Map,
-    Lock, Bell, X, RotateCcw, KeyRound
+    Lock, Bell, X, RotateCcw, KeyRound, Clock
 } from 'lucide-vue-next'
 import ClaimVenueSheet from '../components/ClaimVenueSheet.vue'
 
@@ -315,52 +315,72 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
 <template>
     <div class="min-h-full bg-white">
 
-        <!-- ── Sticky search bar + pills (Zomato pattern — inside scroll, stays visible) -->
-        <div class="sticky top-0 z-20 bg-white border-b border-gray-100">
-            <!-- Location + search row -->
-            <div class="px-4 pt-2.5 pb-2">
-                <!-- Location tap -->
-                <button @click="openLocPicker"
-                    class="flex items-center gap-1 text-[11px] font-semibold text-gray-400 mb-2 active:opacity-60 transition-opacity">
-                    <MapPin :size="11" class="shrink-0" />
-                    <span class="truncate max-w-[200px]">{{ locationLabel }}</span>
-                    <ChevronRight :size="10" class="text-gray-300" />
-                </button>
+        <!-- Location label — teleports into header slot -->
+        <Teleport to="#header-subtitle">
+            <button @click="openLocPicker"
+                class="flex items-center gap-1 active:opacity-60 transition-opacity">
+                <MapPin :size="13" class="text-primary shrink-0" style="fill:currentColor" />
+                <span class="text-[13px] font-bold tracking-tight text-on-surface truncate max-w-[160px]">{{ locationLabel }}</span>
+                <ChevronRight :size="15" class="text-on-surface-variant/60" />
+            </button>
+        </Teleport>
+
+        <!-- ── Search bar (inside scroll — Zomato pattern) ── -->
+        <div class="px-5 mt-2">
+            <div class="flex gap-2">
                 <!-- Search input -->
-                <div class="flex items-center gap-2 h-10 rounded-2xl bg-gray-100 px-3">
-                    <Search :size="15" class="text-gray-400 shrink-0" />
+                <div class="relative flex-1">
+                    <div class="absolute left-3.5 top-1/2 -translate-y-1/2 z-10">
+                        <Search :size="18" class="text-primary" />
+                    </div>
                     <input v-model="searchText" @input="onSearchInput"
-                        type="search" placeholder="City, area or venue name…"
-                        class="flex-1 text-sm bg-transparent border-none focus:ring-0 focus:outline-none text-black placeholder:text-gray-400" />
-                    <button @click="detectLocation" :disabled="locating" class="shrink-0 disabled:opacity-50">
-                        <Loader2 v-if="locating" :size="15" class="animate-spin text-gray-400" />
-                        <MapPin v-else :size="15" :class="userLat && userLng ? 'text-black' : 'text-gray-400'" />
-                    </button>
-                    <div class="w-px bg-gray-300 h-4 mx-0.5"></div>
-                    <button @click="openFilters" class="relative shrink-0">
-                        <SlidersHorizontal :size="15" :class="activeFilterCount > 0 ? 'text-black' : 'text-gray-400'" />
-                        <span v-if="activeFilterCount > 0"
-                            class="absolute -top-1 -right-1 w-2.5 h-2.5 bg-black rounded-full text-white text-[6px] font-black flex items-center justify-center">
-                            {{ activeFilterCount }}
-                        </span>
+                        type="search"
+                        placeholder="Search for Badminton, Gyms..."
+                        class="w-full h-12 pl-10 pr-10 bg-surface-container-lowest border border-surface-variant/50
+                               rounded-xl text-sm focus:ring-4 focus:ring-primary/5 focus:border-primary
+                               transition-all shadow-soft placeholder:text-on-surface-variant/40 font-medium outline-none" />
+                    <button @click="detectLocation" :disabled="locating"
+                        class="absolute right-3 top-1/2 -translate-y-1/2 disabled:opacity-50">
+                        <Loader2 v-if="locating" :size="18" class="animate-spin text-on-surface-variant/60" />
+                        <MapPin v-else :size="18" class="text-on-surface-variant/60"
+                            :class="userLat && userLng ? '!text-primary' : ''" />
                     </button>
                 </div>
+                <!-- Filter button -->
+                <button @click="openFilters"
+                    class="h-12 w-12 flex items-center justify-center bg-surface-container-lowest border border-surface-variant/50 rounded-xl shadow-soft active:bg-surface-container transition-colors relative shrink-0">
+                    <SlidersHorizontal :size="18" class="text-on-surface" />
+                    <span v-if="activeFilterCount > 0"
+                        class="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-primary text-white text-[8px] font-black rounded-full flex items-center justify-center">
+                        {{ activeFilterCount }}
+                    </span>
+                </button>
             </div>
-            <!-- Category pills -->
-            <div class="flex gap-2 px-4 pb-2.5 overflow-x-auto scrollbar-hide">
+        </div>
+
+        <!-- ── Square sport category chips ── -->
+        <div class="mt-3">
+            <div class="flex overflow-x-auto scrollbar-hide gap-3 px-5 pb-1">
                 <button v-for="c in categories" :key="c.id"
                     @click="selectedSport = c.id"
-                    class="shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-bold transition-all active:scale-95"
-                    :class="selectedSport === c.id
-                        ? 'bg-black text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
-                    {{ c.label }}
+                    class="flex flex-col items-center gap-2 min-w-[72px] shrink-0 active:scale-95 duration-200">
+                    <!-- Square icon box -->
+                    <div class="w-16 h-16 rounded-2xl flex items-center justify-center transition-all"
+                        :class="selectedSport === c.id
+                            ? 'bg-primary text-on-primary shadow-lg shadow-primary/25 border-b-2 border-primary-container -translate-y-0.5'
+                            : 'bg-surface-container-lowest text-on-surface-variant/80 shadow-soft border border-surface-variant/40'">
+                        <component :is="c.icon" :size="28" :stroke-width="selectedSport === c.id ? 2 : 1.5" />
+                    </div>
+                    <span class="text-[12px] font-bold tracking-tight"
+                        :class="selectedSport === c.id ? 'text-primary' : 'text-on-surface-variant'">
+                        {{ c.label }}
+                    </span>
                 </button>
             </div>
         </div>
 
         <!-- ── Main content ── -->
-        <div class="px-4 pt-3 pb-4">
+        <div class="px-5 pt-5 pb-4">
 
             <!-- No location yet -->
             <div v-if="!fetched && !hasLocation && !locating" class="flex flex-col items-center py-20 text-center px-6">
@@ -410,50 +430,94 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                 </p>
             </div>
 
-            <!-- Venue cards — Zomato-style -->
-            <div v-else class="space-y-3">
-                <div v-for="venue in courts" :key="venue.id"
-                    @click="router.push('/courts/' + venue.id)"
-                    class="bg-white rounded-2xl overflow-hidden shadow-card cursor-pointer active:scale-[0.99] transition-transform">
+            <!-- Section header -->
+            <div class="flex justify-between items-end mb-3">
+                <div>
+                    <h2 class="font-black tracking-tight text-[22px] text-on-surface">Venues near you</h2>
+                    <p class="text-on-surface-variant text-[13px] font-medium mt-0.5">Handpicked for your game today</p>
+                </div>
+                <button @click="router.push('/find-courts')"
+                    class="text-primary font-bold text-[13px] flex items-center gap-0.5 bg-primary/5 px-3 py-1.5 rounded-full border border-primary/10 active:bg-primary/10 transition-colors">
+                    See all <ChevronRight :size="14" />
+                </button>
+            </div>
 
-                    <!-- Image: 16:9 -->
-                    <div class="relative w-full aspect-video bg-gray-100">
+            <!-- Venue cards — Kinetic Stadium design -->
+            <div class="space-y-4">
+                <div v-for="(venue, idx) in courts" :key="venue.id"
+                    @click="router.push('/courts/' + venue.id)"
+                    class="rounded-2xl overflow-hidden bg-surface-container-lowest cursor-pointer
+                           shadow-md shadow-black/5 border border-surface-variant/30
+                           transition-all active:scale-[0.98]">
+
+                    <!-- Image h-52 with gradient overlay -->
+                    <div class="relative h-52 w-full overflow-hidden">
                         <img :src="getImage(venue)" :alt="venue.name"
-                            class="w-full h-full object-cover"
+                            class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                             loading="lazy"
                             onerror="this.src='https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=600&q=80'" />
+                        <!-- Bottom gradient -->
+                        <div class="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
 
-                        <!-- Sport badge — bottom left -->
-                        <div class="absolute bottom-3 left-3 z-10">
-                            <span class="bg-black/75 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-lg uppercase tracking-wider flex items-center gap-1">
-                                <component :is="categories.find(c => c.id === venue.type)?.icon" :size="10" :stroke-width="2.5" />
-                                {{ categories.find(c => c.id === venue.type)?.label || venue.type }}
+                        <!-- Top-left: Bestseller badge (first card) or Trending (rest) -->
+                        <div class="absolute top-3 left-3 z-10">
+                            <span v-if="idx === 0"
+                                class="bg-primary text-white px-2.5 py-1 rounded-lg text-[10px] font-black tracking-widest uppercase shadow-lg border border-white/20">
+                                Bestseller
+                            </span>
+                            <span v-else-if="venue.is_featured"
+                                class="bg-secondary text-on-secondary px-2.5 py-1 rounded-lg text-[10px] font-black tracking-widest uppercase shadow-lg border border-white/10">
+                                Featured
                             </span>
                         </div>
 
-                        <!-- Heart — top right -->
-                        <button @click.stop="toggleFavorite($event, venue.id)"
-                            class="absolute top-3 right-3 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-soft z-10 active:scale-90 transition-transform">
-                            <Heart :size="15"
-                                :class="favorites.has(venue.id) ? 'fill-red-500 text-red-500' : 'text-gray-600'" />
-                        </button>
+                        <!-- Bottom-right: price badge on image -->
+                        <div class="absolute bottom-3 right-3 z-10">
+                            <div class="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-on-surface font-black text-sm shadow-sm">
+                                ₹{{ venue.hourly_rate }}<span class="text-[10px] text-on-surface-variant font-medium ml-0.5">/slot</span>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Card info -->
-                    <div class="px-3.5 py-3">
-                        <div class="flex items-start justify-between gap-2">
-                            <div class="min-w-0 flex-1">
-                                <h3 class="font-bold text-black text-[15px] leading-snug truncate" style="font-family:'Barlow Condensed',sans-serif;font-size:17px;letter-spacing:-0.2px">{{ venue.name }}</h3>
-                                <div class="flex items-center gap-1 text-gray-400 text-[12px] mt-0.5">
-                                    <MapPin :size="10" class="shrink-0" />
-                                    <span class="truncate">{{ venue.location || 'Location not set' }}</span>
-                                    <span v-if="venue.distance_km != null" class="shrink-0">· {{ venue.distance_km }} km</span>
+                    <!-- Card body -->
+                    <div class="p-4">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-[17px] font-bold text-on-surface leading-tight hover:text-primary transition-colors">{{ venue.name }}</h3>
+                                <div class="flex items-center gap-3 mt-1.5 text-on-surface-variant text-[12px] font-medium">
+                                    <div class="flex items-center gap-1">
+                                        <MapPin :size="13" class="text-primary shrink-0" style="fill:currentColor" />
+                                        {{ venue.distance_km != null ? venue.distance_km + ' km' : (venue.location || 'Nearby') }}
+                                    </div>
+                                    <div class="flex items-center gap-1">
+                                        <Clock :size="13" class="text-primary shrink-0" />
+                                        {{ venue.availability || 'Open today' }}
+                                    </div>
                                 </div>
                             </div>
-                            <div class="text-right shrink-0">
-                                <p class="text-black font-extrabold text-[15px] leading-none">₹{{ venue.hourly_rate }}</p>
-                                <p class="text-[10px] text-gray-400 mt-0.5">per hr</p>
+                            <!-- Rating badge -->
+                            <div v-if="venue.avg_rating"
+                                class="flex items-center gap-1 bg-surface-container px-2 py-1 rounded-lg text-on-surface font-bold text-[13px] border border-surface-variant/40 shrink-0 ml-3">
+                                {{ parseFloat(venue.avg_rating).toFixed(1) }}
+                                <Star :size="11" class="text-primary" style="fill:currentColor" />
                             </div>
+                        </div>
+
+                        <!-- Footer: social proof + reviews -->
+                        <div class="mt-3.5 pt-3 border-t border-surface-variant/30 flex justify-between items-center">
+                            <div class="flex items-center gap-2">
+                                <!-- Animated ping dot -->
+                                <div class="flex h-2 w-2 relative shrink-0">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                                </div>
+                                <span class="text-[11px] font-bold text-primary tracking-tight">
+                                    {{ venue.booking_count ? venue.booking_count + ' booked today' : 'Available now' }}
+                                </span>
+                            </div>
+                            <span v-if="venue.review_count" class="text-[11px] font-semibold text-on-surface-variant/70">
+                                {{ venue.review_count }}+ reviews
+                            </span>
                         </div>
                     </div>
                 </div>
