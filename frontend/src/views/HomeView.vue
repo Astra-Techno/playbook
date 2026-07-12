@@ -621,14 +621,14 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                                     class="flex items-center gap-1.5 bg-gray-100 text-gray-700 text-[13px] font-bold px-5 py-3 rounded-full active:scale-95 disabled:opacity-60 transition-all shrink-0">
                                     <Loader2 v-if="requestingId === place.id" :size="12" class="animate-spin" />
                                     <Bell v-else :size="12" :stroke-width="2.5" />
-                                    Notify Me
+                                    Send Interest
                                 </button>
                                 <div v-else
                                     class="flex items-center gap-1.5 bg-gray-100 text-black text-[13px] font-bold px-5 py-3 rounded-full shrink-0">
                                     <svg viewBox="0 0 12 12" fill="none" class="w-3 h-3 text-black">
                                         <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                                     </svg>
-                                    Notified
+                                    Interest Sent
                                 </div>
                             </div>
                         </div>
