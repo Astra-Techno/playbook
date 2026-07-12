@@ -177,7 +177,7 @@ const sportLabel = (id) => SPORTS.find(s => s.id === id)?.label || id
                 <!-- Participants -->
                 <div v-if="req.participants?.length" class="flex items-center gap-2 mb-3">
                     <div class="flex -space-x-1.5">
-                        <div v-for="(p, i) in req.participants.slice(0, 5)" :key="p.user_id"
+                        <div v-for="p in req.participants.slice(0, 5)" :key="p.user_id"
                             class="w-6 h-6 rounded-full bg-black flex items-center justify-center text-[9px] font-bold text-white border-2 border-white">
                             {{ (p.name || '?')[0].toUpperCase() }}
                         </div>

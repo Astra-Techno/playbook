@@ -32,6 +32,9 @@ const bookings = ref([])
 const loading = ref(true)
 const searchQuery = ref('')
 
+const newCourt      = ref({ image_url: '' })
+const imagePreview  = ref(null)
+const uploadLoading = ref(false)
 
 const handleImageSelect = async (event) => {
     const file = event.target.files[0]
