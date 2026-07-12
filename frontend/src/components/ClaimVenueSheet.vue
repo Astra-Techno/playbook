@@ -149,7 +149,7 @@ const submit = async () => {
                         </div>
 
                         <!-- ── CLAIM FORM ── -->
-                        <div v-else class="flex-1 overflow-y-auto px-5 pb-8 space-y-5 pt-4">
+                        <div v-else class="flex-1 overflow-y-auto scrollbar-hide px-5 pb-8 space-y-5 pt-4">
 
                             <!-- Venue preview card -->
                             <div class="rounded-2xl overflow-hidden ring-1 ring-slate-100 shadow-sm">
