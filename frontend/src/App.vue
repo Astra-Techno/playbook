@@ -120,8 +120,8 @@ const submitPromptRating = async () => {
 </script>
 
 <template>
-    <div class="flex w-full flex-1 min-h-0 justify-center overflow-hidden bg-surface-container-low sm:py-6">
-    <div id="app-root" class="relative flex w-full max-w-[430px] mx-auto flex-1 min-h-0 flex-col overflow-hidden bg-surface sm:rounded-[3rem] sm:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.2)] sm:ring-[12px] sm:ring-white">
+    <div class="flex w-full flex-1 min-h-0 justify-center overflow-hidden bg-surface-container-low">
+    <div id="app-root" class="relative flex w-full max-w-[430px] mx-auto flex-1 min-h-0 flex-col overflow-hidden bg-surface">
 
         <!-- Toast overlay -->
         <div class="absolute inset-x-4 z-[200] space-y-2 pointer-events-none top-[max(1rem,calc(env(safe-area-inset-top,0px)+0.5rem))]">
@@ -158,7 +158,7 @@ const submitPromptRating = async () => {
         <!-- Bottom nav — Kinetic Stadium: frosted glass, orange active, uppercase labels -->
         <nav v-if="auth.isLoggedIn && !route.meta.hideBottomNav"
             class="absolute bottom-0 inset-x-0 z-50 flex justify-around items-center px-6 pt-3
-                   shadow-[0_-10px_30px_rgba(0,0,0,0.06)] border-t border-surface-variant/20 sm:rounded-b-[3rem]"
+                   shadow-[0_-10px_30px_rgba(0,0,0,0.06)] border-t border-surface-variant/20"
             style="background:rgba(248,249,250,0.85);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)"
             :style="{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))' }">
 

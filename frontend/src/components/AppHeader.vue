@@ -24,7 +24,7 @@ const hasNotifications = computed(() => notifications.count > 0)
 
 <template>
     <!-- Frosted glass header — matches Kinetic Stadium design -->
-    <header class="sticky top-0 z-40 border-b border-surface-variant/30 sm:rounded-t-[3rem]"
+    <header class="sticky top-0 z-40 border-b border-surface-variant/30"
         style="background:rgba(248,249,250,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)">
 
         <div class="px-5 flex items-center justify-between gap-3"
