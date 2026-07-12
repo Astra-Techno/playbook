@@ -21,7 +21,7 @@ const router = createRouter({
             path: '/bookings',
             name: 'my-bookings',
             component: () => import('../views/MyBookingsView.vue'),
-            meta: { title: 'Bookings', subtitle: 'Reservations' }
+            meta: { title: 'Bookings', subtitle: 'Reservations', requiresAuth: true }
         },
         {
             path: '/courts/:id',

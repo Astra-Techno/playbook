@@ -109,7 +109,7 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
         <!-- ── STEP 1: Phone ─────────────────────────────── -->
         <template v-if="step === 1">
             <!-- Compact brand bar -->
-            <div class="bg-black px-5 pt-14 pb-6">
+            <div class="bg-black px-5 pb-6" :style="{ paddingTop: 'max(3.5rem, calc(env(safe-area-inset-top, 0px) + 1rem))' }">
                 <div class="flex items-center gap-3 mb-4">
                     <img src="/logo.png" alt="KoCourt" class="w-10 h-10 rounded-xl object-cover" />
                     <div>
@@ -165,9 +165,9 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
         <!-- ── STEP 2: OTP ────────────────────────────────── -->
         <template v-else-if="step === 2">
             <!-- Compact header -->
-            <div class="bg-black px-5 pt-14 pb-6 relative">
+            <div class="bg-black px-5 pb-6 relative" :style="{ paddingTop: 'max(3.5rem, calc(env(safe-area-inset-top, 0px) + 1rem))' }">
                 <button @click="goBack"
-                    class="absolute top-14 left-4 w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 transition-transform">
+                    class="absolute left-4 w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 transition-transform" style="top: max(3.5rem, calc(env(safe-area-inset-top, 0px) + 1rem))">
                     <ArrowLeft :size="18" />
                 </button>
                 <div class="pl-10">
@@ -213,9 +213,9 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
         <!-- ── STEP 3: Name ───────────────────────────────── -->
         <template v-else>
             <!-- Compact header -->
-            <div class="bg-black px-5 pt-14 pb-6 relative">
+            <div class="bg-black px-5 pb-6 relative" :style="{ paddingTop: 'max(3.5rem, calc(env(safe-area-inset-top, 0px) + 1rem))' }">
                 <button @click="goBack"
-                    class="absolute top-14 left-4 w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 transition-transform">
+                    class="absolute left-4 w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 transition-transform" style="top: max(3.5rem, calc(env(safe-area-inset-top, 0px) + 1rem))">
                     <ArrowLeft :size="18" />
                 </button>
                 <div class="pl-10">

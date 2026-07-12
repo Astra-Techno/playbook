@@ -431,7 +431,7 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
             </div>
 
             <!-- Section header -->
-            <div class="flex justify-between items-end mb-3">
+            <div v-if="courts.length > 0" class="flex justify-between items-end mb-3">
                 <div>
                     <h2 class="font-black tracking-tight text-[22px] text-on-surface">Venues near you</h2>
                     <p class="text-on-surface-variant text-[13px] font-medium mt-0.5">Handpicked for your game today</p>
@@ -473,7 +473,7 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
 
                         <!-- Bottom-right: price badge on image -->
                         <div class="absolute bottom-3 right-3 z-10">
-                            <div class="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-on-surface font-black text-sm shadow-sm">
+                            <div v-if="venue.hourly_rate" class="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-on-surface font-black text-sm shadow-sm">
                                 ₹{{ venue.hourly_rate }}<span class="text-[10px] text-on-surface-variant font-medium ml-0.5">/slot</span>
                             </div>
                         </div>
@@ -489,9 +489,9 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                                         <MapPin :size="13" class="text-primary shrink-0" style="fill:currentColor" />
                                         {{ venue.distance_km != null ? venue.distance_km + ' km' : (venue.location || 'Nearby') }}
                                     </div>
-                                    <div class="flex items-center gap-1">
+                                    <div v-if="venue.court_count || venue.space_count" class="flex items-center gap-1">
                                         <Clock :size="13" class="text-primary shrink-0" />
-                                        {{ venue.availability || 'Open today' }}
+                                        {{ venue.court_count || venue.space_count }} court{{ (venue.court_count || venue.space_count) > 1 ? 's' : '' }}
                                     </div>
                                 </div>
                             </div>
@@ -551,6 +551,7 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                 <!-- Ghost cards -->
                 <div v-else class="space-y-6">
                     <div v-for="place in ghostPlaces" :key="place.id"
+                        @click="openClaim(place)"
                         class="cursor-pointer group">
 
                         <!-- Image with desaturated overlay -->
