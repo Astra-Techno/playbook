@@ -92,6 +92,27 @@ class ReviewController {
                 "INSERT INTO reviews (court_id, user_id, booking_id, rating, comment) VALUES (?,?,?,?,?)"
             );
             $stmt->execute([$court_id, $user_id, $booking_id, $rating, $comment]);
+
+            // In-app notification for venue owner
+            $courtStmt = $db->prepare("SELECT name, owner_id FROM courts WHERE id = ?");
+            $courtStmt->execute([$court_id]);
+            $courtRow = $courtStmt->fetch(PDO::FETCH_ASSOC);
+            if ($courtRow && !empty($courtRow['owner_id'])) {
+                $reviewerName = $authUser['name'] ?? 'Someone';
+                $courtName    = $courtRow['name'] ?? 'your venue';
+                try {
+                    $db->prepare(
+                        "INSERT INTO user_notifications (user_id, type, title, body, court_id) VALUES (?,?,?,?,?)"
+                    )->execute([
+                        (int)$courtRow['owner_id'],
+                        'review',
+                        'New Review',
+                        "{$reviewerName} left a {$rating}-star review on {$courtName}",
+                        $court_id
+                    ]);
+                } catch (\PDOException $e) {}
+            }
+
             http_response_code(201);
             echo json_encode(["message" => "Review submitted!"]);
         } catch (\PDOException $e) {
@@ -102,7 +123,7 @@ class ReviewController {
 
     // PUT /api/reviews/:id/reply  { reply }
     public function reply($id) {
-        $authUser = Auth::requireOwner();
+        $authUser = Auth::require();
         $owner_id = (int)$authUser['id'];
         $data     = json_decode(file_get_contents("php://input"));
         $reply    = htmlspecialchars(strip_tags(trim($data->reply ?? '')));

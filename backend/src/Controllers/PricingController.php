@@ -52,7 +52,7 @@ class PricingController
     // POST /pricing-rules  { court_id, sub_court_id?, name, day_type, start_hour, end_hour, price, valid_from?, valid_to? }
     public function create(): void
     {
-        $authUser     = Auth::requireOwner();
+        $authUser     = Auth::require();
         $owner_id     = (int)$authUser['id'];
         $data         = json_decode(file_get_contents('php://input'));
         $court_id     = (int)($data->court_id ?? 0);
@@ -88,7 +88,7 @@ class PricingController
     // DELETE /pricing-rules/:id
     public function delete(int $id): void
     {
-        $authUser = Auth::requireOwner();
+        $authUser = Auth::require();
         $owner_id = (int)$authUser['id'];
         $data     = json_decode(file_get_contents('php://input'));
         $chk = $this->db->prepare("SELECT pr.id FROM pricing_rules pr JOIN courts c ON c.id=pr.court_id WHERE pr.id=? AND c.owner_id=?");

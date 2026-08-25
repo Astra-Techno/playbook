@@ -192,7 +192,7 @@ class CourtController {
 
     // POST /api/courts
     public function create() {
-        $authUser = Auth::requireOwner();
+        $authUser = Auth::require();
         $data     = json_decode(file_get_contents("php://input"));
 
         if (!empty($data->name) && !empty($data->hourly_rate)) {
@@ -479,7 +479,7 @@ class CourtController {
 
     // PUT /api/courts/:id
     public function update($id) {
-        $authUser = Auth::requireOwner();
+        $authUser = Auth::require();
         $owner_id = (int)$authUser['id'];
         $data     = json_decode(file_get_contents("php://input"));
         $db   = Database::getConnection();
@@ -536,7 +536,7 @@ class CourtController {
 
     // DELETE /api/courts/:id
     public function delete($id) {
-        $authUser = Auth::requireOwner();
+        $authUser = Auth::require();
         $owner_id = (int)$authUser['id'];
         $db  = Database::getConnection();
         $chk = $db->prepare("SELECT id FROM courts WHERE id=? AND owner_id=?");

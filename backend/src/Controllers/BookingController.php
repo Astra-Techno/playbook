@@ -72,6 +72,28 @@ class BookingController {
         if ($upd->execute([$id])) {
             http_response_code(200);
             echo json_encode(["message" => "Booking cancelled"]);
+
+            // Notify venue owner when a player cancels
+            if ($isBookingOwner && !$isCourtOwner) {
+                $db = Database::getConnection();
+                $cStmt = $db->prepare("SELECT name FROM courts WHERE id = ?");
+                $cStmt->execute([$b['court_id']]);
+                $courtRow = $cStmt->fetch(PDO::FETCH_ASSOC);
+                $playerName = $authUser['name'] ?? 'A player';
+                $courtName  = $courtRow['name'] ?? 'your venue';
+                $dateStr    = date('D, d M', strtotime($b['start_time']));
+                try {
+                    $db->prepare(
+                        "INSERT INTO user_notifications (user_id, type, title, body, court_id) VALUES (?,?,?,?,?)"
+                    )->execute([
+                        (int)$b['owner_id'],
+                        'cancellation',
+                        'Booking Cancelled',
+                        "{$playerName} cancelled their booking at {$courtName} on {$dateStr}",
+                        (int)$b['court_id']
+                    ]);
+                } catch (\PDOException $e) {}
+            }
         } else {
             http_response_code(503);
             echo json_encode(["message" => "Failed to cancel"]);
@@ -290,6 +312,19 @@ class BookingController {
                         "{$playerName} booked {$courtName} on {$dateStr}",
                         ['type' => 'booking', 'booking_id' => (string)$newId, 'court_id' => (string)$court['id']]
                     );
+
+                    // In-app notification for venue owner
+                    try {
+                        $db->prepare(
+                            "INSERT INTO user_notifications (user_id, type, title, body, court_id) VALUES (?,?,?,?,?)"
+                        )->execute([
+                            (int)$court['owner_id'],
+                            'booking',
+                            'New Booking',
+                            "{$playerName} booked {$courtName} on {$dateStr}",
+                            (int)$court['id']
+                        ]);
+                    } catch (\PDOException $e) {}
                 }
             } else {
                 http_response_code(503);

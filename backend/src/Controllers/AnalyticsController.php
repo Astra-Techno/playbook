@@ -12,7 +12,7 @@ class AnalyticsController
     // GET /analytics?period=30  (period in days, default 30)
     public function index(): void
     {
-        $authUser = Auth::requireOwner();
+        $authUser = Auth::require();
         $owner_id = (int)$authUser['id'];
         $period   = max(7, min(365, (int)($_GET['period'] ?? 30)));
 

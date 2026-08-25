@@ -28,7 +28,7 @@ class StaffController
     // GET /court-staff?court_id=X
     public function list(): void
     {
-        $authUser = Auth::requireOwner();
+        $authUser = Auth::require();
         $owner_id = (int)$authUser['id'];
         $court_id = (int)($_GET['court_id'] ?? 0);
 
@@ -60,7 +60,7 @@ class StaffController
     // POST /court-staff  { court_id, phone, role? }
     public function add(): void
     {
-        $authUser = Auth::requireOwner();
+        $authUser = Auth::require();
         $owner_id = (int)$authUser['id'];
         $data     = json_decode(file_get_contents('php://input'));
         $court_id = (int)($data->court_id ?? 0);
@@ -128,7 +128,7 @@ class StaffController
     // DELETE /court-staff/:id
     public function remove(int $id): void
     {
-        $authUser = Auth::requireOwner();
+        $authUser = Auth::require();
         $owner_id = (int)$authUser['id'];
 
         // Verify the record belongs to a court owned by this owner

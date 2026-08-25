@@ -59,7 +59,7 @@ class SubCourtController
     // POST /sub-courts  { court_id, name, description?, hourly_rate? }
     public function create(): void
     {
-        $authUser = Auth::requireOwner();
+        $authUser = Auth::require();
         $owner_id = (int)$authUser['id'];
         $data     = json_decode(file_get_contents('php://input'));
         $court_id = (int)($data->court_id ?? 0);
@@ -103,7 +103,7 @@ class SubCourtController
     // PUT /sub-courts/:id  { name?, description?, hourly_rate? }
     public function update(int $id): void
     {
-        $authUser = Auth::requireOwner();
+        $authUser = Auth::require();
         $owner_id = (int)$authUser['id'];
         $data     = json_decode(file_get_contents('php://input'));
         $chk = $this->db->prepare("SELECT sc.id FROM sub_courts sc JOIN courts c ON c.id=sc.court_id WHERE sc.id=? AND c.owner_id=?");
@@ -133,7 +133,7 @@ class SubCourtController
     // DELETE /sub-courts/:id
     public function delete(int $id): void
     {
-        $authUser = Auth::requireOwner();
+        $authUser = Auth::require();
         $owner_id = (int)$authUser['id'];
         $data     = json_decode(file_get_contents('php://input'));
         $chk = $this->db->prepare("SELECT sc.id FROM sub_courts sc JOIN courts c ON c.id=sc.court_id WHERE sc.id=? AND c.owner_id=?");
