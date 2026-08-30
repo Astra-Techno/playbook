@@ -830,6 +830,16 @@ if (isset($seg[0]) && $seg[0] === 'court-photos') {
     if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { $photoCtrl->delete((int)$seg[1]); exit(); }
 }
 
+// Slot Chat Routes (group messaging for same-slot players)
+if (isset($seg[0]) && $seg[0] === 'slot-chat') {
+    require_once __DIR__ . '/src/Controllers/SlotChatController.php';
+    $slotChat = new SlotChatController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'messages')   { $slotChat->messages();  exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'members')    { $slotChat->members();   exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'my-groups')  { $slotChat->myGroups();  exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'messages')  { $slotChat->send();      exit(); }
+}
+
 // Messages Routes
 if (isset($seg[0]) && $seg[0] === 'messages') {
     require_once __DIR__ . '/src/Controllers/MessageController.php';

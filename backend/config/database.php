@@ -7,7 +7,7 @@ class Database {
     private $pdo;
 
     // Bump this number whenever migrate() adds new tables/columns/indexes
-    private const SCHEMA_VERSION = 17;
+    private const SCHEMA_VERSION = 18;
 
     private function __construct() {
         $host    = getenv('DB_HOST') ?: 'localhost';
@@ -303,6 +303,20 @@ class Database {
                 INDEX idx_otp_phone (phone)
             ) ENGINE=InnoDB
         ");
+
+        // v18 — Slot group messages (same-slot players group chat)
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS slot_messages (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            court_id    INT NOT NULL,
+            slot_date   DATE NOT NULL,
+            slot_time   TIME NOT NULL,
+            sender_id   INT NOT NULL,
+            body        TEXT NOT NULL,
+            created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (court_id)  REFERENCES courts(id)  ON DELETE CASCADE,
+            FOREIGN KEY (sender_id) REFERENCES users(id)   ON DELETE CASCADE,
+            INDEX idx_slot_msg (court_id, slot_date, slot_time)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
         // Stamp schema version
         $this->pdo->exec("DELETE FROM schema_version");
