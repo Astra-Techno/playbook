@@ -82,6 +82,14 @@ class BookingController {
                 $playerName = $authUser['name'] ?? 'A player';
                 $courtName  = $courtRow['name'] ?? 'your venue';
                 $dateStr    = date('D, d M', strtotime($b['start_time']));
+
+                Push::sendToUser(
+                    (int)$b['owner_id'],
+                    'Booking Cancelled',
+                    "{$playerName} cancelled their booking at {$courtName} on {$dateStr}",
+                    ['type' => 'cancellation', 'court_id' => (string)$b['court_id']]
+                );
+
                 try {
                     $db->prepare(
                         "INSERT INTO user_notifications (user_id, type, title, body, court_id) VALUES (?,?,?,?,?)"
@@ -90,6 +98,35 @@ class BookingController {
                         'cancellation',
                         'Booking Cancelled',
                         "{$playerName} cancelled their booking at {$courtName} on {$dateStr}",
+                        (int)$b['court_id']
+                    ]);
+                } catch (\PDOException $e) {}
+            }
+
+            // Notify player when owner/staff cancels their booking
+            if ($isCourtOwner && !$isBookingOwner && (int)$b['user_id'] > 0) {
+                $db = Database::getConnection();
+                $cStmt = $db->prepare("SELECT name FROM courts WHERE id = ?");
+                $cStmt->execute([$b['court_id']]);
+                $courtRow = $cStmt->fetch(PDO::FETCH_ASSOC);
+                $courtName = $courtRow['name'] ?? 'a venue';
+                $dateStr   = date('D, d M', strtotime($b['start_time']));
+
+                Push::sendToUser(
+                    (int)$b['user_id'],
+                    'Booking Cancelled',
+                    "Your booking at {$courtName} on {$dateStr} was cancelled by the venue",
+                    ['type' => 'cancellation', 'court_id' => (string)$b['court_id']]
+                );
+
+                try {
+                    $db->prepare(
+                        "INSERT INTO user_notifications (user_id, type, title, body, court_id) VALUES (?,?,?,?,?)"
+                    )->execute([
+                        (int)$b['user_id'],
+                        'cancellation',
+                        'Booking Cancelled',
+                        "Your booking at {$courtName} on {$dateStr} was cancelled by the venue",
                         (int)$b['court_id']
                     ]);
                 } catch (\PDOException $e) {}

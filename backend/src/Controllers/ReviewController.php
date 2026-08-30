@@ -100,6 +100,14 @@ class ReviewController {
             if ($courtRow && !empty($courtRow['owner_id'])) {
                 $reviewerName = $authUser['name'] ?? 'Someone';
                 $courtName    = $courtRow['name'] ?? 'your venue';
+
+                Push::sendToUser(
+                    (int)$courtRow['owner_id'],
+                    'New Review',
+                    "{$reviewerName} left a {$rating}-star review on {$courtName}",
+                    ['type' => 'review', 'court_id' => (string)$court_id]
+                );
+
                 try {
                     $db->prepare(
                         "INSERT INTO user_notifications (user_id, type, title, body, court_id) VALUES (?,?,?,?,?)"
