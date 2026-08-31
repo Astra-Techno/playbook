@@ -210,6 +210,11 @@ if (isset($seg[0]) && $seg[0] === 'payments') {
         $paymentController->verify();
         exit();
     }
+    if (isset($seg[1]) && $seg[1] === 'history' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        Auth::require();
+        $paymentController->history();
+        exit();
+    }
     http_response_code(404);
     echo json_encode(['message' => 'Payment endpoint not found']);
     exit();

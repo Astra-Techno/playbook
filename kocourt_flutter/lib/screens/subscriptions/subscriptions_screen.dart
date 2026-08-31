@@ -4,6 +4,7 @@ import '../../core/api.dart';
 import '../../core/icons.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/payment_service.dart';
 
 class SubscriptionsScreen extends StatefulWidget {
   const SubscriptionsScreen({super.key});
@@ -33,13 +34,38 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     setState(() => _loading = false);
   }
 
-  Future<void> _renew(int subId) async {
-    try {
-      await Api().post('/subscriptions/renew', data: {'subscription_id': subId});
+  Future<void> _renew(Map<String, dynamic> sub) async {
+    final price = double.tryParse('${sub['plan_price'] ?? 0}') ?? 0;
+    if (price <= 0) {
+      // Free plan or missing price — renew directly
+      try {
+        await Api().post('/subscriptions/renew', data: {'subscription_id': sub['id']});
+        _load();
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Renewed!'), backgroundColor: AppColors.secondary));
+      } catch (_) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Renewal failed'), backgroundColor: AppColors.error));
+      }
+      return;
+    }
+
+    final result = await PaymentService.processPayment(
+      amount: price,
+      type: 'subscription',
+      payload: {
+        'plan_id': sub['plan_id'],
+        'court_id': sub['court_id'],
+        'slot_type': sub['slot_type'] ?? 'full_day',
+        'duration_days': sub['duration_days'] ?? 30,
+      },
+    );
+
+    if (!mounted) return;
+
+    if (result.success) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Subscription renewed!'), backgroundColor: AppColors.secondary));
       _load();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Renewed!'), backgroundColor: AppColors.secondary));
-    } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Renewal failed'), backgroundColor: AppColors.error));
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.error ?? 'Renewal failed'), backgroundColor: AppColors.error));
     }
   }
 
@@ -120,7 +146,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                               SizedBox(
                                 width: double.infinity, height: 40,
                                 child: ElevatedButton(
-                                  onPressed: () => _renew(s['id']),
+                                  onPressed: () => _renew(s),
                                   child: const Text('Renew', style: TextStyle(fontWeight: FontWeight.w700)),
                                 ),
                               ),

@@ -36,6 +36,8 @@ dependencies:
   url_launcher: ^6.3.1
   # Intl for date formatting
   intl: ^0.20.3
+  # Cashfree payment gateway
+  flutter_cashfree_pg_sdk: ^2.4.0+52
 
 dev_dependencies:
   flutter_test:

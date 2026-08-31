@@ -7,23 +7,65 @@ require_once __DIR__ . '/../PeakAccess.php';
 class PaymentController {
 
     public function __construct() {
-        // Auto-create payments table so demo mode works without running migrations
+        // Auto-create/migrate payments table so demo mode works
         $db = Database::getConnection();
-        $db->exec("
-            CREATE TABLE IF NOT EXISTS payments (
-                id            INT AUTO_INCREMENT PRIMARY KEY,
-                user_id       INT            NOT NULL,
-                cf_order_id   VARCHAR(100)   NOT NULL UNIQUE,
-                cf_payment_id VARCHAR(100)   DEFAULT NULL,
-                amount        DECIMAL(10,2)  NOT NULL,
-                type          ENUM('booking','subscription') NOT NULL DEFAULT 'booking',
-                payload       JSON,
-                status        ENUM('created','demo','paid','refund_pending','failed') NOT NULL DEFAULT 'created',
-                reference_id  INT            DEFAULT NULL,
-                created_at    DATETIME       DEFAULT CURRENT_TIMESTAMP,
-                updated_at    DATETIME       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-        ");
+
+        // Check if the table has the new schema (cf_order_id column)
+        $hasNewSchema = false;
+        try {
+            $cols = $db->query("SHOW COLUMNS FROM payments LIKE 'cf_order_id'")->fetchAll();
+            $hasNewSchema = count($cols) > 0;
+        } catch (\PDOException $e) {
+            // Table doesn't exist yet
+        }
+
+        if (!$hasNewSchema) {
+            // Drop old schema (booking_id/transaction_id based) and recreate
+            $db->exec("DROP TABLE IF EXISTS payments");
+            $db->exec("
+                CREATE TABLE payments (
+                    id            INT AUTO_INCREMENT PRIMARY KEY,
+                    user_id       INT            NOT NULL,
+                    cf_order_id   VARCHAR(100)   NOT NULL UNIQUE,
+                    cf_payment_id VARCHAR(100)   DEFAULT NULL,
+                    amount        DECIMAL(10,2)  NOT NULL,
+                    type          ENUM('booking','subscription') NOT NULL DEFAULT 'booking',
+                    payload       JSON,
+                    status        ENUM('created','demo','paid','refund_pending','failed') NOT NULL DEFAULT 'created',
+                    reference_id  INT            DEFAULT NULL,
+                    created_at    DATETIME       DEFAULT CURRENT_TIMESTAMP,
+                    updated_at    DATETIME       DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+            ");
+        } else {
+            // Ensure 'demo' is in the status enum (may be missing from older migration)
+            try {
+                $db->exec("ALTER TABLE payments MODIFY COLUMN status ENUM('created','demo','paid','refund_pending','failed') NOT NULL DEFAULT 'created'");
+            } catch (\PDOException $e) {}
+            // Ensure updated_at column exists
+            try {
+                $db->exec("ALTER TABLE payments ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+            } catch (\PDOException $e) {}
+        }
+    }
+
+    /** GET /payments/history — list user's payment records */
+    public function history(): void {
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
+        $db = Database::getConnection();
+
+        $stmt = $db->prepare(
+            "SELECT id, cf_order_id, amount, type, status, reference_id, created_at
+             FROM payments
+             WHERE user_id = ?
+             ORDER BY created_at DESC
+             LIMIT 50"
+        );
+        $stmt->execute([$user_id]);
+        $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode(['records' => $records]);
     }
 
     /** GET /payments/config — frontend uses this to detect demo mode before showing payment UI */

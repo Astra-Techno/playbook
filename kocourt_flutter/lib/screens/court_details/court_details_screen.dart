@@ -11,6 +11,7 @@ import '../../core/api.dart';
 import '../../core/theme.dart';
 import '../../core/constants.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/payment_service.dart';
 import '../../widgets/sheets/review_sheet.dart';
 
 class CourtDetailsScreen extends StatefulWidget {
@@ -36,12 +37,14 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
   List<String> _photos = [];
   double? _avgRating;
   int _reviewCount = 0;
+  List<Map<String, dynamic>> _plans = [];
+  bool _subscribing = false;
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadCourt();
   }
 
@@ -84,6 +87,15 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
         photos = photoList.map((p) => p['url']?.toString() ?? '').where((u) => u.isNotEmpty).toList();
       } catch (_) {}
 
+      // Load plans
+      List<Map<String, dynamic>> plans = [];
+      try {
+        final plRes = await Api().get('/plans', params: {'court_id': widget.courtId});
+        plans = List<Map<String, dynamic>>.from(
+          (plRes.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
+        );
+      } catch (_) {}
+
       setState(() {
         _court = court;
         _spaces = spaces;
@@ -92,6 +104,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
         _photos = photos;
         _avgRating = avgRating;
         _reviewCount = reviewCount;
+        _plans = plans;
         _loading = false;
       });
 
@@ -172,27 +185,56 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     }
 
     setState(() => _bookingLoading = true);
+
     try {
-      for (final slotKey in _selectedSlots) {
+      final rate = double.tryParse('${_court!['hourly_rate'] ?? 0}') ?? 0;
+      final totalPrice = rate * _selectedSlots.length;
+
+      // Build slots array for multi-slot payment
+      final slots = _selectedSlots.map((slotKey) {
         final parts = slotKey.split('-');
-        await Api().post('/bookings', data: {
-          'court_id': widget.courtId,
-          'user_id': auth.userId,
-          'date': _selectedDate,
-          'start_time': parts[0],
-          'end_time': parts[1],
-          if (_selectedSpaceId != null) 'sub_court_id': _selectedSpaceId,
-        });
-      }
-      if (mounted) {
+        return {
+          'start_time': '$_selectedDate ${parts[0]}:00',
+          'end_time': '$_selectedDate ${parts[1]}:00',
+          'total_price': rate,
+        };
+      }).toList();
+
+      final payload = {
+        'court_id': widget.courtId,
+        if (_selectedSpaceId != null) 'sub_court_id': _selectedSpaceId,
+        'slots': slots,
+        'type': 'hourly',
+        'total_price': totalPrice,
+      };
+
+      final result = await PaymentService.processPayment(
+        amount: totalPrice,
+        type: 'booking',
+        payload: payload,
+      );
+
+      if (!mounted) return;
+
+      if (result.success) {
         HapticFeedback.heavyImpact();
+        final bookedCount = (result.verifyData?['booking_ids'] as List?)?.length ?? 1;
+        final skipped = result.verifyData?['skipped'] as List? ?? [];
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Row(
+            content: Row(
               children: [
-                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                SizedBox(width: 10),
-                Text('Booking confirmed!', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    skipped.isEmpty
+                        ? '$bookedCount slot${bookedCount > 1 ? 's' : ''} booked!'
+                        : '$bookedCount booked, ${skipped.length} unavailable',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
               ],
             ),
             backgroundColor: AppColors.secondary,
@@ -201,7 +243,18 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
             margin: const EdgeInsets.all(16),
           ),
         );
+        setState(() => _selectedSlots = {});
         _loadSlots();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.error ?? 'Payment failed'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -216,7 +269,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
         );
       }
     } finally {
-      setState(() => _bookingLoading = false);
+      if (mounted) setState(() => _bookingLoading = false);
     }
   }
 
@@ -532,6 +585,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                 tabs: [
                   const Tab(text: 'Book Slots'),
                   Tab(text: 'Reviews ($_reviewCount)'),
+                  Tab(text: 'Plans (${_plans.length})'),
                 ],
               ),
             ),
@@ -552,6 +606,12 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                         _buildSlotsGrid(),
                       ],
                     ),
+                  );
+                }
+                if (_tabController.index == 2) {
+                  return Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: _buildPlans(),
                   );
                 }
                 return Padding(
@@ -882,6 +942,168 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
           },
         ),
       ],
+    );
+  }
+
+  Future<void> _subscribeToPlan(Map<String, dynamic> plan) async {
+    final auth = context.read<AuthProvider>();
+    if (!auth.isLoggedIn) {
+      context.go('/login');
+      return;
+    }
+
+    setState(() => _subscribing = true);
+    try {
+      final price = double.tryParse('${plan['price'] ?? 0}') ?? 0;
+
+      final payload = {
+        'plan_id': plan['id'],
+        'court_id': widget.courtId,
+        'slot_type': plan['slot_type'] ?? 'full_day',
+        'duration_days': plan['duration_days'] ?? 30,
+      };
+
+      final result = await PaymentService.processPayment(
+        amount: price,
+        type: 'subscription',
+        payload: payload,
+      );
+
+      if (!mounted) return;
+
+      if (result.success) {
+        HapticFeedback.heavyImpact();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                SizedBox(width: 10),
+                Text('Subscription activated!', style: TextStyle(fontWeight: FontWeight.w700)),
+              ],
+            ),
+            backgroundColor: AppColors.secondary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.error ?? 'Subscription failed'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Subscription failed: $e'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _subscribing = false);
+    }
+  }
+
+  Widget _buildPlans() {
+    if (_plans.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 40),
+          child: Column(
+            children: [
+              Icon(Icons.card_membership_rounded, size: 40, color: Colors.grey[300]),
+              const SizedBox(height: 12),
+              Text('No plans available', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: _plans.map((plan) {
+        final price = double.tryParse('${plan['price'] ?? 0}') ?? 0;
+        final days = plan['duration_days'] ?? 30;
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.borderLight),
+            boxShadow: AppShadows.card,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      plan['name'] ?? 'Plan',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: Text(
+                      '$days days',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (plan['slot_type'] != null)
+                Text(
+                  'Access: ${plan['slot_type']}'.replaceAll('_', ' '),
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Text(
+                    '\u20B9${price.toStringAsFixed(0)}',
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.primary),
+                  ),
+                  const Spacer(),
+                  SizedBox(
+                    height: 40,
+                    child: ElevatedButton(
+                      onPressed: _subscribing ? null : () => _subscribeToPlan(plan),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      child: _subscribing
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Subscribe', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 

@@ -2135,3 +2135,273 @@ test.describe('Player Complete Flow Tests', () => {
     expect(true).toBeTruthy();
   });
 });
+
+// ============================================================
+// SECTION 5: Payment Flow E2E Tests
+// ============================================================
+test.describe('Section 5: Payment Flow Tests', () => {
+  test.describe.configure({ mode: 'serial' });
+  let playerToken;
+  let courtId;
+  let demoOrderId;
+
+  test.beforeAll(async ({ request }) => {
+    // Get player token
+    const res = await request.post(`${API}/auth/verify-otp`, {
+      data: { phone: '9900000001', otp: '1234' },
+    });
+    const data = await res.json();
+    playerToken = data.token;
+
+    // Get a court for booking
+    const courts = await request.get(`${API}/courts`);
+    const courtData = await courts.json();
+    const records = courtData.records || [];
+    if (records.length > 0) courtId = records[0].id;
+  });
+
+  // ── Config ──
+  test('PAY01. GET /payments/config returns demo flag', async ({ request }) => {
+    const res = await request.get(`${API}/payments/config`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveProperty('demo');
+    expect(data).toHaveProperty('environment');
+    expect(typeof data.demo).toBe('boolean');
+  });
+
+  // ── Create Order (booking) ──
+  test('PAY02. Create booking order (demo mode)', async ({ request }) => {
+    if (!courtId) { test.skip(); return; }
+    // Use random hour on a far-future date to avoid conflicts with previous runs
+    const rndDay = Math.floor(Math.random() * 28) + 1;
+    const rndHour = Math.floor(Math.random() * 12) + 6;
+    const futureDate = new Date(2028, 5, rndDay, rndHour, 0, 0);
+    const endDate = new Date(futureDate.getTime() + 3600000);
+    const fmt = (d) => d.toISOString().slice(0, 19).replace('T', ' ');
+
+    const res = await request.post(`${API}/payments/create-order`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: {
+        amount: 500,
+        type: 'booking',
+        payload: {
+          court_id: courtId,
+          total_price: 500,
+          type: 'hourly',
+          slots: [{ start_time: fmt(futureDate), end_time: fmt(endDate) }],
+        },
+      },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.order_id).toBeDefined();
+    expect(data.amount).toBe(500);
+    // In demo mode, order_id starts with demo_
+    if (data.demo) {
+      expect(data.order_id).toMatch(/^demo_/);
+    }
+    demoOrderId = data.order_id;
+  });
+
+  // ── Verify Order ──
+  test('PAY03. Verify order creates booking', async ({ request }) => {
+    if (!demoOrderId) { test.skip(); return; }
+    const res = await request.post(`${API}/payments/verify`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { order_id: demoOrderId },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.message).toContain('booked');
+    expect(data.booking_ids).toBeDefined();
+    expect(data.booking_ids.length).toBeGreaterThan(0);
+  });
+
+  // ── Verify already-processed order fails ──
+  test('PAY04. Re-verify same order fails (already processed)', async ({ request }) => {
+    if (!demoOrderId) { test.skip(); return; }
+    const res = await request.post(`${API}/payments/verify`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { order_id: demoOrderId },
+    });
+    expect(res.status()).toBe(404);
+    const data = await res.json();
+    expect(data.message).toContain('already processed');
+  });
+
+  // ── Create subscription order ──
+  let subOrderId;
+  test('PAY05. Create subscription order (demo mode)', async ({ request }) => {
+    if (!courtId) { test.skip(); return; }
+    // Get plans for this court
+    const planRes = await request.get(`${API}/plans?court_id=${courtId}`);
+    const plans = (await planRes.json()).records || [];
+    if (plans.length === 0) { test.skip(); return; }
+
+    const plan = plans[0];
+    const price = parseFloat(plan.price || '100');
+
+    const res = await request.post(`${API}/payments/create-order`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: {
+        amount: price > 0 ? price : 100,
+        type: 'subscription',
+        payload: {
+          plan_id: plan.id,
+          court_id: courtId,
+          slot_type: plan.slot_type || 'full_day',
+          duration_days: plan.duration_days || 30,
+        },
+      },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.order_id).toBeDefined();
+    subOrderId = data.order_id;
+  });
+
+  test('PAY06. Verify subscription order activates subscription', async ({ request }) => {
+    if (!subOrderId) { test.skip(); return; }
+    const res = await request.post(`${API}/payments/verify`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { order_id: subOrderId },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.message).toContain('Subscription');
+  });
+
+  // ── Invalid amount ──
+  test('PAY07. Create order with zero amount fails', async ({ request }) => {
+    const res = await request.post(`${API}/payments/create-order`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { amount: 0, type: 'booking', payload: {} },
+    });
+    expect(res.status()).toBe(400);
+  });
+
+  // ── Missing order_id ──
+  test('PAY08. Verify with empty order_id fails', async ({ request }) => {
+    const res = await request.post(`${API}/payments/verify`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { order_id: '' },
+    });
+    expect(res.status()).toBe(400);
+  });
+
+  // ── Verify nonexistent order ──
+  test('PAY09. Verify nonexistent order fails', async ({ request }) => {
+    const res = await request.post(`${API}/payments/verify`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { order_id: 'demo_fake_9999999' },
+    });
+    expect(res.status()).toBe(404);
+  });
+
+  // ── Payment history ──
+  test('PAY10. GET /payments/history returns records', async ({ request }) => {
+    const res = await request.get(`${API}/payments/history`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.records).toBeDefined();
+    expect(Array.isArray(data.records)).toBe(true);
+    // Should have at least the orders we created above
+    expect(data.records.length).toBeGreaterThan(0);
+
+    // Verify record structure
+    const rec = data.records[0];
+    expect(rec).toHaveProperty('cf_order_id');
+    expect(rec).toHaveProperty('amount');
+    expect(rec).toHaveProperty('type');
+    expect(rec).toHaveProperty('status');
+    expect(rec).toHaveProperty('created_at');
+  });
+
+  // ── Auth guards ──
+  test('PAY11. Create order without auth fails', async ({ request }) => {
+    const res = await request.post(`${API}/payments/create-order`, {
+      data: { amount: 100, type: 'booking', payload: {} },
+    });
+    expect(res.status()).toBe(401);
+  });
+
+  test('PAY12. Verify without auth fails', async ({ request }) => {
+    const res = await request.post(`${API}/payments/verify`, {
+      data: { order_id: 'demo_test' },
+    });
+    expect(res.status()).toBe(401);
+  });
+
+  test('PAY13. Payment history without auth fails', async ({ request }) => {
+    const res = await request.get(`${API}/payments/history`);
+    expect(res.status()).toBe(401);
+  });
+
+  // ── Multi-slot booking order ──
+  test('PAY14. Multi-slot booking order via payment', async ({ request }) => {
+    if (!courtId) { test.skip(); return; }
+    // Use crypto-random values for unique dates that don't collide across runs
+    const year = 2030 + Math.floor(Math.random() * 5);
+    const month = Math.floor(Math.random() * 12);
+    const day = Math.floor(Math.random() * 25) + 1;
+    const hour = Math.floor(Math.random() * 10) + 6;
+    const base = new Date(year, month, day, hour, 0, 0);
+    const fmt = (d) => d.toISOString().slice(0, 19).replace('T', ' ');
+    const slots = [];
+    for (let i = 0; i < 3; i++) {
+      const start = new Date(base.getTime() + i * 3600000);
+      const end = new Date(start.getTime() + 3600000);
+      slots.push({ start_time: fmt(start), end_time: fmt(end) });
+    }
+
+    const res = await request.post(`${API}/payments/create-order`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: {
+        amount: 1500,
+        type: 'booking',
+        payload: { court_id: courtId, total_price: 1500, type: 'hourly', slots },
+      },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    const orderId = data.order_id;
+
+    // Verify — 200 means booked, 409 means slots taken (acceptable in re-runs)
+    const vRes = await request.post(`${API}/payments/verify`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { order_id: orderId },
+    });
+    expect([200, 409]).toContain(vRes.status());
+    if (vRes.status() === 200) {
+      const vData = await vRes.json();
+      expect(vData.booking_ids.length).toBe(3);
+    }
+  });
+
+  // ── Payment history shows correct types ──
+  test('PAY15. Payment history contains both booking and subscription types', async ({ request }) => {
+    const res = await request.get(`${API}/payments/history`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    const types = new Set(data.records.map(r => r.type));
+    // We created both booking and subscription orders above
+    if (subOrderId) {
+      expect(types.has('booking')).toBe(true);
+      expect(types.has('subscription')).toBe(true);
+    }
+  });
+
+  // ── Invalid type defaults to booking ──
+  test('PAY16. Negative amount rejected', async ({ request }) => {
+    const res = await request.post(`${API}/payments/create-order`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { amount: -50, type: 'booking', payload: {} },
+    });
+    expect(res.status()).toBe(400);
+  });
+});

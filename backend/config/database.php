@@ -171,28 +171,21 @@ class Database {
         )");
 
         // payments table — Cashfree orders linked to bookings/subscriptions
+        // Note: PaymentController constructor handles migration from old schema
         $this->pdo->exec("CREATE TABLE IF NOT EXISTS payments (
             id              INT AUTO_INCREMENT PRIMARY KEY,
             user_id         INT NOT NULL,
             cf_order_id     VARCHAR(100) NOT NULL,
             cf_payment_id   VARCHAR(100) DEFAULT NULL,
             amount          DECIMAL(10,2) NOT NULL,
-            currency        VARCHAR(10) DEFAULT 'INR',
-            type            ENUM('booking','subscription') NOT NULL,
-            payload         TEXT,
-            status          ENUM('created','paid','failed','refund_pending') DEFAULT 'created',
+            type            ENUM('booking','subscription') NOT NULL DEFAULT 'booking',
+            payload         JSON,
+            status          ENUM('created','demo','paid','refund_pending','failed') NOT NULL DEFAULT 'created',
             reference_id    INT DEFAULT NULL,
-            created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY idx_cf_order (cf_order_id)
-        )");
-
-        // Migrate old Razorpay columns to Cashfree columns (for existing installs)
-        foreach ([
-            "ALTER TABLE payments CHANGE razorpay_order_id   cf_order_id   VARCHAR(100) NOT NULL",
-            "ALTER TABLE payments CHANGE razorpay_payment_id cf_payment_id VARCHAR(100) DEFAULT NULL",
-            "ALTER TABLE payments DROP INDEX idx_rz_order",
-            "ALTER TABLE payments ADD UNIQUE KEY idx_cf_order (cf_order_id)",
-        ] as $s) { try { $this->pdo->exec($s); } catch(\PDOException $e){} }
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
         // payouts table — admin records manual payouts to owners
         $this->pdo->exec("CREATE TABLE IF NOT EXISTS payouts (

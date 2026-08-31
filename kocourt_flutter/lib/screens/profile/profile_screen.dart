@@ -18,6 +18,7 @@ import '../static/faq_screen.dart';
 import '../static/terms_screen.dart';
 import '../static/privacy_screen.dart';
 import '../owner/edit_venue_screen.dart';
+import '../payments/payment_history_screen.dart';
 import '../../widgets/sheets/profile_edit_sheet.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -286,6 +287,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           icon: AppIcons.award,
                           label: 'My Memberships',
                           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionsScreen())),
+                        ),
+                        _MenuItem(
+                          icon: AppIcons.wallet,
+                          label: 'Payment History',
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentHistoryScreen())),
                         ),
                         _MenuItem(
                           icon: AppIcons.mapPin,

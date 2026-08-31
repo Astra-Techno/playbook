@@ -35,6 +35,7 @@ import '../screens/chat/chat_threads_screen.dart';
 import '../screens/static/faq_screen.dart';
 import '../screens/static/terms_screen.dart';
 import '../screens/static/privacy_screen.dart';
+import '../screens/payments/payment_history_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -228,6 +229,7 @@ GoRouter createRouter(AuthProvider auth) {
 
       // Player
       GoRoute(path: '/subscriptions', builder: (_, __) => const SubscriptionsScreen()),
+      GoRoute(path: '/payment-history', builder: (_, __) => const PaymentHistoryScreen()),
       GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
       GoRoute(path: '/find-courts', builder: (_, __) => const FindCourtsScreen()),
       GoRoute(path: '/reviews', builder: (_, __) => const ReviewsScreen()),
