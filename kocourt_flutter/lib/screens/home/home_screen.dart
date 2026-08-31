@@ -91,8 +91,10 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _locating = true);
     try {
       LocationPermission perm = await Geolocator.checkPermission();
+      if (!mounted) return;
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
+        if (!mounted) return;
       }
       if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) {
         _loadVenues();
@@ -101,35 +103,40 @@ class _HomeScreenState extends State<HomeScreen> {
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium, timeLimit: Duration(seconds: 8)),
       );
+      if (!mounted) return;
       final venues = context.read<VenueProvider>();
       venues.setLocation(pos.latitude, pos.longitude);
       // Reverse geocode to get city name
       try {
         final placemarks = await geocoding.Geocoding().placemarkFromCoordinates(pos.latitude, pos.longitude);
+        if (!mounted) return;
         if (placemarks.isNotEmpty) {
           final p = placemarks.first;
           final city = p.locality ?? p.subAdministrativeArea ?? p.administrativeArea ?? '';
           final area = p.subLocality ?? '';
-          if (mounted) setState(() => _locationLabel = area.isNotEmpty ? '$area, $city' : city);
+          setState(() => _locationLabel = area.isNotEmpty ? '$area, $city' : city);
         }
       } catch (_) {
         if (mounted) setState(() => _locationLabel = 'Near You');
       }
+      if (!mounted) return;
       venues.fetchVenues();
       venues.fetchGhostPlaces(userId: context.read<AuthProvider>().userId);
       _loadFavorites();
     } catch (_) {
       _loadVenues();
     } finally {
-      setState(() => _locating = false);
+      if (mounted) setState(() => _locating = false);
     }
   }
 
   void _loadVenues() {
+    if (!mounted) return;
     context.read<VenueProvider>().fetchVenues();
   }
 
   void _loadFavorites() {
+    if (!mounted) return;
     final auth = context.read<AuthProvider>();
     if (auth.isLoggedIn) {
       context.read<VenueProvider>().fetchFavorites(auth.userId!);
@@ -351,6 +358,182 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ],
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showFilterSheet() {
+    final venues = context.read<VenueProvider>();
+    double minPrice = venues.minPrice;
+    double maxPrice = venues.maxPrice;
+    double minRating = venues.minRating;
+    String sortBy = venues.sortBy;
+    int radius = venues.selectedRadius;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Container(
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.8),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 24, right: 24, top: 16,
+                  bottom: MediaQuery.of(ctx).padding.bottom + 16,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40, height: 4,
+                        decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Filters', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                        GestureDetector(
+                          onTap: () {
+                            setSheetState(() {
+                              minPrice = 0; maxPrice = 5000; minRating = 0; sortBy = 'distance'; radius = 25;
+                            });
+                          },
+                          child: const Text('Reset', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Sort by
+                    const Text('SORT BY', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textMuted, letterSpacing: 1.5)),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        ('distance', 'Nearest'),
+                        ('price_low', 'Price: Low'),
+                        ('price_high', 'Price: High'),
+                        ('rating', 'Top Rated'),
+                      ].map((e) {
+                        final selected = sortBy == e.$1;
+                        return GestureDetector(
+                          onTap: () => setSheetState(() => sortBy = e.$1),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: selected ? AppColors.primary : AppColors.surface,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(e.$2, style: TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w700,
+                              color: selected ? Colors.white : AppColors.textSecondary,
+                            )),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Price range
+                    Text('PRICE RANGE  \u20B9${minPrice.toInt()} - \u20B9${maxPrice.toInt()}',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textMuted, letterSpacing: 1.5)),
+                    const SizedBox(height: 4),
+                    RangeSlider(
+                      values: RangeValues(minPrice, maxPrice),
+                      min: 0, max: 5000, divisions: 50,
+                      activeColor: AppColors.primary,
+                      inactiveColor: AppColors.surfaceDim,
+                      onChanged: (v) => setSheetState(() { minPrice = v.start; maxPrice = v.end; }),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Min rating
+                    Text('MINIMUM RATING  ${minRating > 0 ? '${minRating.toStringAsFixed(0)}+ stars' : 'Any'}',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textMuted, letterSpacing: 1.5)),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [0.0, 3.0, 3.5, 4.0, 4.5].map((r) {
+                        final selected = minRating == r;
+                        final label = r == 0 ? 'Any' : '${r.toStringAsFixed(r == r.roundToDouble() ? 0 : 1)}+';
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: GestureDetector(
+                            onTap: () => setSheetState(() => minRating = r),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: selected ? AppColors.primary : AppColors.surface,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (r > 0) ...[
+                                    Icon(Icons.star_rounded, size: 13, color: selected ? Colors.white : AppColors.accent),
+                                    const SizedBox(width: 3),
+                                  ],
+                                  Text(label, style: TextStyle(
+                                    fontSize: 13, fontWeight: FontWeight.w700,
+                                    color: selected ? Colors.white : AppColors.textSecondary,
+                                  )),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Distance
+                    Text('SEARCH RADIUS  ${radius} km',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textMuted, letterSpacing: 1.5)),
+                    const SizedBox(height: 4),
+                    Slider(
+                      value: radius.toDouble(),
+                      min: 5, max: 100, divisions: 19,
+                      activeColor: AppColors.primary,
+                      inactiveColor: AppColors.surfaceDim,
+                      onChanged: (v) => setSheetState(() => radius = v.round()),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Apply
+                    SizedBox(
+                      width: double.infinity,
+                      height: 54,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          final v = context.read<VenueProvider>();
+                          v.setRadius(radius);
+                          v.setFilters(minPrice: minPrice, maxPrice: maxPrice, minRating: minRating, sortBy: sortBy);
+                          Navigator.pop(ctx);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        child: const Text('Apply Filters', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -610,15 +793,28 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(width: 10),
           GestureDetector(
-            onTap: () {},
-            child: Container(
-              height: 50,
-              width: 50,
-              decoration: BoxDecoration(
-                color: AppColors.textPrimary,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(AppIcons.slidersHorizontal, size: 18, color: Colors.white),
+            onTap: _showFilterSheet,
+            child: Stack(
+              children: [
+                Container(
+                  height: 50,
+                  width: 50,
+                  decoration: BoxDecoration(
+                    color: AppColors.textPrimary,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(AppIcons.slidersHorizontal, size: 18, color: Colors.white),
+                ),
+                if (context.watch<VenueProvider>().hasActiveFilters)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      width: 8, height: 8,
+                      decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],

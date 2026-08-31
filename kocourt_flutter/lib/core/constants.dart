@@ -40,7 +40,7 @@ const venueImages = {
 };
 
 String getVenueImage(Map<String, dynamic> venue) {
-  return venue['image_url'] ??
-      venueImages[venue['type']] ??
-      venueImages['other']!;
+  final img = venue['image_url'];
+  if (img is String && img.isNotEmpty) return img;
+  return venueImages[venue['type']] ?? venueImages['other']!;
 }

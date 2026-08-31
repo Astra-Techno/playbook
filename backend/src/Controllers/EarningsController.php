@@ -96,7 +96,7 @@ class EarningsController {
         $credits = [];
 
         if ($type === 'all' || $type === 'booking') {
-            $extra = "AND p.status = 'paid'";
+            $extra = "AND p.status = 'success' AND p.booking_id IS NOT NULL";
             $params = [$owner_id];
             if ($from) { $extra .= " AND p.created_at >= ?"; $params[] = $from; }
             if ($to)   { $extra .= " AND p.created_at <= ?"; $params[] = $to . ' 23:59:59'; }
@@ -105,7 +105,7 @@ class EarningsController {
                 SELECT p.id, 'booking' AS kind, p.amount, p.created_at AS dated,
                        c.name AS label, u.name AS party
                 FROM payments p
-                JOIN bookings b ON p.reference_id = b.id AND p.type = 'booking'
+                JOIN bookings b ON p.booking_id = b.id
                 JOIN courts c ON b.court_id = c.id
                 JOIN users u ON b.user_id = u.id
                 WHERE c.owner_id = ? $extra
@@ -116,7 +116,7 @@ class EarningsController {
         }
 
         if ($type === 'all' || $type === 'subscription') {
-            $extra = "AND p.status = 'paid'";
+            $extra = "AND p.status = 'success' AND p.subscription_id IS NOT NULL";
             $params = [$owner_id];
             if ($from) { $extra .= " AND p.created_at >= ?"; $params[] = $from; }
             if ($to)   { $extra .= " AND p.created_at <= ?"; $params[] = $to . ' 23:59:59'; }
@@ -125,7 +125,7 @@ class EarningsController {
                 SELECT p.id, 'subscription' AS kind, p.amount, p.created_at AS dated,
                        c.name AS label, u.name AS party
                 FROM payments p
-                JOIN user_subscriptions s ON p.reference_id = s.id AND p.type = 'subscription'
+                JOIN user_subscriptions s ON p.subscription_id = s.id
                 JOIN courts c ON s.court_id = c.id
                 JOIN users u ON s.user_id = u.id
                 WHERE c.owner_id = ? $extra
@@ -324,12 +324,6 @@ class EarningsController {
     // ── Private helpers ────────────────────────────────────────────────────────
 
     private function sumEarnings($db, int $owner_id, ?string $from, ?string $to): float {
-        $where = "c.owner_id = ? AND p.status = 'paid'";
-        $params = [$owner_id, $owner_id];
-        if ($from) { $where .= " AND p.created_at >= ?"; $params[] = $from; $params[] = $from; }
-        if ($to)   { $where .= " AND p.created_at <= ?"; $params[] = $to;   $params[] = $to;   }
-
-        // Rebuild params for two UNION arms
         $p1 = [$owner_id];
         $p2 = [$owner_id];
         $extra = '';
@@ -340,15 +334,15 @@ class EarningsController {
             SELECT COALESCE(SUM(amt),0) FROM (
                 SELECT p.amount AS amt
                 FROM payments p
-                JOIN bookings b ON p.reference_id = b.id AND p.type = 'booking'
+                JOIN bookings b ON p.booking_id = b.id
                 JOIN courts c ON b.court_id = c.id
-                WHERE c.owner_id = ? AND p.status = 'paid' $extra
+                WHERE c.owner_id = ? AND p.status = 'success' AND p.booking_id IS NOT NULL $extra
                 UNION ALL
                 SELECT p.amount AS amt
                 FROM payments p
-                JOIN user_subscriptions s ON p.reference_id = s.id AND p.type = 'subscription'
+                JOIN user_subscriptions s ON p.subscription_id = s.id
                 JOIN courts c ON s.court_id = c.id
-                WHERE c.owner_id = ? AND p.status = 'paid' $extra
+                WHERE c.owner_id = ? AND p.status = 'success' AND p.subscription_id IS NOT NULL $extra
             ) t
         ";
         $stmt = $db->prepare($sql);
@@ -358,25 +352,29 @@ class EarningsController {
 
     private function getTransactions($db, int $owner_id, int $limit): array {
         $sql = "
-            SELECT p.id, p.amount, p.type, p.created_at,
+            SELECT p.id, p.amount,
+                   CASE WHEN p.booking_id IS NOT NULL THEN 'booking' ELSE 'subscription' END AS type,
+                   p.created_at,
                    c.name AS court_name, u.name AS customer_name,
                    b.start_time AS slot_time
             FROM payments p
-            JOIN bookings b ON p.reference_id = b.id AND p.type = 'booking'
+            JOIN bookings b ON p.booking_id = b.id
             JOIN courts c ON b.court_id = c.id
             JOIN users u ON b.user_id = u.id
-            WHERE c.owner_id = ? AND p.status = 'paid'
+            WHERE c.owner_id = ? AND p.status = 'success' AND p.booking_id IS NOT NULL
 
             UNION ALL
 
-            SELECT p.id, p.amount, p.type, p.created_at,
+            SELECT p.id, p.amount,
+                   'subscription' AS type,
+                   p.created_at,
                    c.name AS court_name, u.name AS customer_name,
                    s.start_date AS slot_time
             FROM payments p
-            JOIN user_subscriptions s ON p.reference_id = s.id AND p.type = 'subscription'
+            JOIN user_subscriptions s ON p.subscription_id = s.id
             JOIN courts c ON s.court_id = c.id
             JOIN users u ON s.user_id = u.id
-            WHERE c.owner_id = ? AND p.status = 'paid'
+            WHERE c.owner_id = ? AND p.status = 'success' AND p.subscription_id IS NOT NULL
 
             ORDER BY created_at DESC
             LIMIT ?

@@ -18,7 +18,8 @@ class GhostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = place['image_url'] ?? venueImages['other']!;
+    final rawImg = place['image_url'];
+    final imageUrl = (rawImg is String && rawImg.isNotEmpty) ? rawImg : venueImages['other']!;
     final category = sportCategories.firstWhere(
       (c) => c.id == place['type'],
       orElse: () => sportCategories.first,

@@ -49,7 +49,7 @@ class MessageController {
             "SELECT b.id AS booking_id, b.start_time, c.id AS court_id, c.name AS court_name,
                     c.image_url AS court_image,
                     last_msg.body AS last_message, last_msg.created_at AS last_at,
-                    unread.cnt AS unread_count,
+                    COALESCE(unread.cnt, 0) AS unread_count,
                     other_user.id AS other_user_id, other_user.name AS other_user_name,
                     other_user.avatar_url AS other_user_avatar
              FROM bookings b
@@ -62,8 +62,8 @@ class MessageController {
                      SELECT MAX(id) FROM messages GROUP BY booking_id
                  )
              ) last_msg ON last_msg.booking_id = b.id
-             -- Unread count for this user
-             JOIN (
+             -- Unread count for this user (LEFT JOIN to include threads with 0 unread)
+             LEFT JOIN (
                  SELECT booking_id, COUNT(*) AS cnt
                  FROM messages
                  WHERE receiver_id = ? AND is_read = 0
@@ -72,7 +72,7 @@ class MessageController {
              -- Other participant (sender or receiver that isn't this user)
              JOIN (
                  SELECT booking_id,
-                        IF(sender_id = ?, receiver_id, sender_id) AS id
+                        IF(MIN(sender_id) = ?, MIN(receiver_id), MIN(sender_id)) AS id
                  FROM messages
                  WHERE sender_id = ? OR receiver_id = ?
                  GROUP BY booking_id

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Api {
@@ -7,7 +8,9 @@ class Api {
   Api._internal();
 
   // Change this to your production URL
-  static const String baseUrl = 'https://www.kocourt.com/api';
+  static final String baseUrl = (kIsWeb && kDebugMode)
+      ? 'http://localhost/playbook/backend'
+      : 'https://www.kocourt.com/api';
 
   late final Dio dio;
   String? _token;
@@ -69,7 +72,7 @@ class Api {
 
   Future<Response> uploadFile(String path, dynamic file) async {
     final formData = FormData.fromMap({
-      'file': await MultipartFile.fromFile(file.path),
+      'image': await MultipartFile.fromFile(file.path),
     });
     return dio.post(path, data: formData);
   }
