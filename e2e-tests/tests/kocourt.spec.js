@@ -1242,3 +1242,896 @@ test.describe('Owner Complete Flow Tests', () => {
     }
   });
 });
+
+// ============================================================
+// SECTION 4: Player Complete Flow Tests
+// ============================================================
+test.describe('Player Complete Flow Tests', () => {
+  test.describe.configure({ mode: 'serial' });
+
+  let playerToken;   // phone 9900000001 (Ravi Kumar, id=1 or 3)
+  let player2Token;  // phone 9900000002 (Priya Sharma)
+  let ownerToken;    // phone 9900000010 (owner, id=7)
+  let playerId;
+  let player2Id;
+  let testBookingId;
+  let testPostId;
+  let testMatchId;
+
+  test.beforeAll(async ({ request }) => {
+    let res = await request.post(`${API}/auth/verify-otp`, { data: { phone: '9900000001', otp: '1234' } });
+    let d = await res.json();
+    playerToken = d.token;
+    playerId = d.user.id;
+
+    res = await request.post(`${API}/auth/verify-otp`, { data: { phone: '9900000002', otp: '1234' } });
+    d = await res.json();
+    player2Token = d.token;
+    player2Id = d.user.id;
+
+    res = await request.post(`${API}/auth/verify-otp`, { data: { phone: '9900000010', otp: '1234' } });
+    ownerToken = (await res.json()).token;
+  });
+
+  // ===================== AUTH & PROFILE =====================
+  test('P01. Check phone exists', async ({ request }) => {
+    const res = await request.post(`${API}/auth/check-phone`, { data: { phone: '9900000001' } });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.exists).toBeDefined();
+  });
+
+  test('P02. Update profile (name, bio, skill, preferences)', async ({ request }) => {
+    const res = await request.post(`${API}/auth/profile`, {
+      headers: { Authorization: `Bearer ${playerToken}`, 'X-HTTP-Method-Override': 'PUT' },
+      data: {
+        name: 'Ravi Kumar',
+        bio: 'Badminton enthusiast',
+        skill_level: 'intermediate',
+        sport_preferences: ['badminton', 'tennis'],
+      },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.user.bio).toBe('Badminton enthusiast');
+    expect(data.user.skill_level).toBe('intermediate');
+  });
+
+  test('P03. Verify profile reflects updates', async ({ request }) => {
+    const res = await request.get(`${API}/auth/profile`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.user.bio).toBe('Badminton enthusiast');
+    expect(data.user.skill_level).toBe('intermediate');
+  });
+
+  test('P04. Save FCM token', async ({ request }) => {
+    const res = await request.post(`${API}/auth/fcm-token`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { token: 'fcm_test_token_playwright_12345' },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+  });
+
+  test('P05. FCM token without value returns 400', async ({ request }) => {
+    const res = await request.post(`${API}/auth/fcm-token`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { token: '' },
+    });
+    expect(res.status()).toBe(400);
+  });
+
+  // ===================== COURT DISCOVERY =====================
+  test('P06. Search courts by location text', async ({ request }) => {
+    const res = await request.get(`${API}/courts?location=Chennai`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.records).toBeDefined();
+  });
+
+  test('P07. Search courts by type filter', async ({ request }) => {
+    const res = await request.get(`${API}/courts?type=shuttle`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.records).toBeDefined();
+    if (data.records.length > 0) {
+      expect(data.records[0].type).toBe('shuttle');
+    }
+  });
+
+  test('P08. Search courts by GPS (lat/lng)', async ({ request }) => {
+    const res = await request.get(`${API}/courts?lat=13.085&lng=80.21&radius=50`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.records).toBeDefined();
+  });
+
+  test('P09. Court detail includes full info', async ({ request }) => {
+    const res = await request.get(`${API}/courts/2`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.court.name).toBeDefined();
+    expect(data.court.hourly_rate).toBeDefined();
+    expect(data.court.open_time).toBeDefined();
+    expect(data.court.close_time).toBeDefined();
+    expect(data.court.amenities).toBeDefined();
+    expect(data.court.lat).toBeDefined();
+    expect(data.court.lng).toBeDefined();
+  });
+
+  test('P10. Court photos gallery', async ({ request }) => {
+    const res = await request.get(`${API}/court-photos?court_id=2`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.photos).toBeDefined();
+  });
+
+  test('P11. Court regulars list', async ({ request }) => {
+    const res = await request.get(`${API}/courts/2/regulars?exclude_user=${playerId}`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.players).toBeDefined();
+  });
+
+  test('P12. Non-existent court returns 404', async ({ request }) => {
+    const res = await request.get(`${API}/courts/99999`);
+    expect(res.status()).toBe(404);
+  });
+
+  test('P13. Sub-courts for a court', async ({ request }) => {
+    const res = await request.get(`${API}/sub-courts?court_id=2`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.sub_courts).toBeDefined();
+    if (data.sub_courts.length > 0) {
+      expect(data.sub_courts[0].name).toBeDefined();
+      expect(data.sub_courts[0].hourly_rate).toBeDefined();
+    }
+  });
+
+  // ===================== PRICING & AVAILABILITY =====================
+  test('P14. Calculate slot price', async ({ request }) => {
+    const res = await request.get(`${API}/pricing-rules/calculate?court_id=2&date=2026-09-07&hour=10`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.effective_price).toBeDefined();
+    expect(data.base_price).toBeDefined();
+  });
+
+  test('P15. Calculate full day prices', async ({ request }) => {
+    const res = await request.get(`${API}/pricing-rules/calculate-day?court_id=2&date=2026-09-07`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.prices).toBeDefined();
+    expect(Object.keys(data.prices).length).toBe(24);
+  });
+
+  test('P16. View blocked slots', async ({ request }) => {
+    const res = await request.get(`${API}/blocked-slots?court_id=2`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.blocks).toBeDefined();
+  });
+
+  test('P17. Busy days calendar', async ({ request }) => {
+    const res = await request.get(`${API}/bookings/busy-days?court_id=2&month=2026-09`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.busy_days).toBeDefined();
+  });
+
+  // ===================== BOOKINGS =====================
+  test('P18. Create booking', async ({ request }) => {
+    const res = await request.post(`${API}/bookings`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: {
+        court_id: 2,
+        start_time: '2026-10-15 10:00:00',
+        end_time: '2026-10-15 11:00:00',
+        type: 'hourly',
+        total_price: 400,
+      },
+    });
+    expect(res.status()).toBe(201);
+    const data = await res.json();
+    expect(data.id).toBeDefined();
+    testBookingId = data.id;
+  });
+
+  test('P19. View booking detail', async ({ request }) => {
+    const res = await request.get(`${API}/bookings/${testBookingId}`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.booking).toBeDefined();
+    expect(data.booking.court_name).toBeDefined();
+    expect(data.booking.start_time).toContain('2026-10-15');
+    expect(data.booking.status).toBe('confirmed');
+  });
+
+  test('P20. List my bookings', async ({ request }) => {
+    const res = await request.get(`${API}/bookings?user_id=${playerId}`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.records.length).toBeGreaterThan(0);
+    const found = data.records.some(b => String(b.id) === String(testBookingId));
+    expect(found).toBeTruthy();
+  });
+
+  test('P21. Create booking with sub-court', async ({ request }) => {
+    // Get a sub-court first
+    let res = await request.get(`${API}/sub-courts?court_id=2`);
+    const subs = (await res.json()).sub_courts;
+    if (!subs || subs.length === 0) { test.skip(); return; }
+
+    res = await request.post(`${API}/bookings`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: {
+        court_id: 2,
+        sub_court_id: subs[0].id,
+        start_time: '2026-10-16 14:00:00',
+        end_time: '2026-10-16 15:00:00',
+        type: 'hourly',
+        total_price: 400,
+      },
+    });
+    expect(res.status()).toBe(201);
+    const data = await res.json();
+    expect(data.id).toBeDefined();
+
+    // Cleanup: cancel it
+    await request.post(`${API}/bookings/${data.id}`, {
+      headers: { Authorization: `Bearer ${playerToken}`, 'X-HTTP-Method-Override': 'DELETE' },
+    });
+  });
+
+  test('P22. Create recurring booking', async ({ request }) => {
+    const res = await request.post(`${API}/bookings/recurring`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: {
+        court_id: 6,
+        start_time: '2026-11-02 08:00:00',
+        end_time: '2026-11-02 09:00:00',
+        recurrence_days: [1, 3, 5], // Mon, Wed, Fri
+        recurrence_end_date: '2026-11-14',
+      },
+    });
+    expect(res.status()).toBe(201);
+    const data = await res.json();
+    expect(data.bookings).toBeDefined();
+    expect(data.bookings.length).toBeGreaterThan(0);
+    expect(data.message).toContain('booking(s) created');
+
+    // Cleanup: cancel all created bookings
+    for (const id of data.bookings) {
+      await request.post(`${API}/bookings/${id}`, {
+        headers: { Authorization: `Bearer ${playerToken}`, 'X-HTTP-Method-Override': 'DELETE' },
+      });
+    }
+  });
+
+  test('P23. Double-booking same slot fails', async ({ request }) => {
+    // testBookingId already occupies 2026-10-15 10:00-11:00 on court 2
+    const res = await request.post(`${API}/bookings`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: {
+        court_id: 2,
+        start_time: '2026-10-15 10:00:00',
+        end_time: '2026-10-15 11:00:00',
+        type: 'hourly',
+        total_price: 400,
+      },
+    });
+    // Should be 409 conflict or 400
+    expect([400, 409]).toContain(res.status());
+  });
+
+  test('P24. Cancel booking', async ({ request }) => {
+    const res = await request.post(`${API}/bookings/${testBookingId}`, {
+      headers: { Authorization: `Bearer ${playerToken}`, 'X-HTTP-Method-Override': 'DELETE' },
+    });
+    expect(res.status()).toBe(200);
+    expect((await res.json()).message).toContain('cancelled');
+  });
+
+  test('P25. Cancel already-cancelled booking fails', async ({ request }) => {
+    const res = await request.post(`${API}/bookings/${testBookingId}`, {
+      headers: { Authorization: `Bearer ${playerToken}`, 'X-HTTP-Method-Override': 'DELETE' },
+    });
+    // Should fail — already cancelled or not found
+    expect([400, 404]).toContain(res.status());
+  });
+
+  // ===================== BOOKING PLAYERS (Invite) =====================
+  test('P26. Create booking for invite tests', async ({ request }) => {
+    const d = 10 + Math.floor(Math.random() * 18);
+    const h = 6 + Math.floor(Math.random() * 12);
+    const res = await request.post(`${API}/bookings`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: {
+        court_id: 6,
+        start_time: `2027-01-${String(d).padStart(2,'0')} ${String(h).padStart(2,'0')}:00:00`,
+        end_time: `2027-01-${String(d).padStart(2,'0')} ${String(h+1).padStart(2,'0')}:00:00`,
+        type: 'hourly',
+        total_price: 250,
+      },
+    });
+    expect(res.status()).toBe(201);
+    testBookingId = (await res.json()).id;
+  });
+
+  test('P27. Invite players to booking', async ({ request }) => {
+    const res = await request.post(`${API}/booking-players`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { booking_id: testBookingId, user_ids: [player2Id] },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.added).toBeGreaterThanOrEqual(1);
+  });
+
+  test('P28. List booking players', async ({ request }) => {
+    const res = await request.get(`${API}/booking-players?booking_id=${testBookingId}`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.players).toBeDefined();
+    const found = data.players.some(p => String(p.id) === String(player2Id));
+    expect(found).toBeTruthy();
+  });
+
+  // ===================== REVIEWS =====================
+  test('P29. Submit review for booking', async ({ request }) => {
+    // Use the booking we just created (P26)
+    const res = await request.post(`${API}/reviews`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: {
+        court_id: 6,
+        booking_id: testBookingId,
+        rating: 4,
+        comment: 'Great court, well maintained! — Playwright test',
+      },
+    });
+    // 201 success or 403 if booking isn't "completed" yet
+    if (res.status() === 201) {
+      expect((await res.json()).message).toContain('Review submitted');
+    } else {
+      // Booking may need to be in the past — acceptable
+      expect([201, 403]).toContain(res.status());
+    }
+  });
+
+  test('P30. List reviews for court', async ({ request }) => {
+    const res = await request.get(`${API}/reviews?court_id=2`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.records).toBeDefined();
+    expect(data.avg_rating).toBeDefined();
+    if (data.records.length > 0) {
+      expect(data.records[0].rating).toBeDefined();
+      expect(data.records[0].user_name).toBeDefined();
+    }
+  });
+
+  // ===================== FAVORITES =====================
+  test('P31. Toggle favorite on', async ({ request }) => {
+    const res = await request.post(`${API}/favorites`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { court_id: 6 },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.favorited).toBeDefined();
+  });
+
+  test('P32. List favorites includes court', async ({ request }) => {
+    const res = await request.get(`${API}/favorites?user_id=${playerId}`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.ids).toBeDefined();
+  });
+
+  test('P33. Toggle favorite off', async ({ request }) => {
+    // Toggle again — should remove
+    const res = await request.post(`${API}/favorites`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { court_id: 6 },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.favorited).toBeDefined();
+  });
+
+  // ===================== PLANS & SUBSCRIPTIONS =====================
+  test('P34. List plans for court', async ({ request }) => {
+    const res = await request.get(`${API}/plans?court_id=2`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.records).toBeDefined();
+  });
+
+  test('P35. Subscribe to a plan', async ({ request }) => {
+    // Get a plan first
+    let res = await request.get(`${API}/plans?court_id=2`);
+    const plans = (await res.json()).records;
+    if (!plans || plans.length === 0) { test.skip(); return; }
+
+    res = await request.post(`${API}/subscriptions`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { plan_id: plans[0].id },
+    });
+    // 201 or 409 if already subscribed
+    expect([201, 409]).toContain(res.status());
+  });
+
+  test('P36. List my subscriptions', async ({ request }) => {
+    const res = await request.get(`${API}/subscriptions`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.records).toBeDefined();
+  });
+
+  test('P37. Check subscription for specific court', async ({ request }) => {
+    const res = await request.get(`${API}/subscriptions?court_id=2`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    // Returns { active: {...} | null }
+    expect(data).toHaveProperty('active');
+  });
+
+  // ===================== SOCIAL FEED =====================
+  test('P38. Create post', async ({ request }) => {
+    const res = await request.post(`${API}/posts`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: {
+        content: 'Amazing game today at Smash Badminton! #playwright',
+        visibility: 'public',
+        court_id: 2,
+      },
+    });
+    expect(res.status()).toBe(201);
+    const data = await res.json();
+    expect(data.id).toBeDefined();
+    expect(data.content).toContain('Amazing game');
+    expect(data.user_name).toBeDefined();
+    testPostId = data.id;
+  });
+
+  test('P39. Feed includes my post', async ({ request }) => {
+    const res = await request.get(`${API}/posts`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.records).toBeDefined();
+    const found = data.records.some(p => String(p.id) === String(testPostId));
+    expect(found).toBeTruthy();
+  });
+
+  test('P40. Get single post with comments', async ({ request }) => {
+    const res = await request.get(`${API}/posts/${testPostId}`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.id).toBe(testPostId);
+    expect(data.comments).toBeDefined();
+  });
+
+  test('P41. Like post (toggle on)', async ({ request }) => {
+    const res = await request.post(`${API}/posts/${testPostId}/like`, {
+      headers: { Authorization: `Bearer ${player2Token}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.liked).toBe(true);
+    expect(data.likes_count).toBeGreaterThanOrEqual(1);
+  });
+
+  test('P42. Unlike post (toggle off)', async ({ request }) => {
+    const res = await request.post(`${API}/posts/${testPostId}/like`, {
+      headers: { Authorization: `Bearer ${player2Token}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.liked).toBe(false);
+  });
+
+  test('P43. Comment on post', async ({ request }) => {
+    const res = await request.post(`${API}/posts/${testPostId}/comment`, {
+      headers: { Authorization: `Bearer ${player2Token}` },
+      data: { content: 'Nice game! See you next week.' },
+    });
+    expect([200, 201]).toContain(res.status());
+    const data = await res.json();
+    expect(data.id).toBeDefined();
+    expect(data.content).toContain('Nice game');
+    expect(data.user_name).toBeDefined();
+  });
+
+  test('P44. Post now shows comment', async ({ request }) => {
+    const res = await request.get(`${API}/posts/${testPostId}`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.comments.length).toBeGreaterThanOrEqual(1);
+    const found = data.comments.some(c => c.content.includes('Nice game'));
+    expect(found).toBeTruthy();
+  });
+
+  test('P45. Cannot delete another user\'s post', async ({ request }) => {
+    const res = await request.post(`${API}/posts/${testPostId}`, {
+      headers: { Authorization: `Bearer ${player2Token}`, 'X-HTTP-Method-Override': 'DELETE' },
+    });
+    expect(res.status()).toBe(403);
+  });
+
+  test('P46. Delete my post', async ({ request }) => {
+    const res = await request.post(`${API}/posts/${testPostId}`, {
+      headers: { Authorization: `Bearer ${playerToken}`, 'X-HTTP-Method-Override': 'DELETE' },
+    });
+    expect(res.status()).toBe(200);
+    expect((await res.json()).message).toContain('Deleted');
+  });
+
+  // ===================== MATCH REQUESTS =====================
+  test('P47. Create match request', async ({ request }) => {
+    const res = await request.post(`${API}/match-requests`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: {
+        court_id: 2,
+        play_time: '2026-10-25 17:00:00',
+        sport: 'badminton',
+        slots_needed: 3,
+        notes: 'Looking for intermediate players — Playwright test',
+      },
+    });
+    expect(res.status()).toBe(201);
+    const data = await res.json();
+    expect(data.id).toBeDefined();
+    testMatchId = data.id;
+  });
+
+  test('P48. List match requests', async ({ request }) => {
+    const res = await request.get(`${API}/match-requests`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.requests).toBeDefined();
+    const found = data.requests.some(r => String(r.id) === String(testMatchId));
+    expect(found).toBeTruthy();
+  });
+
+  test('P49. Join match request', async ({ request }) => {
+    const res = await request.post(`${API}/match-requests/${testMatchId}/join`, {
+      headers: { Authorization: `Bearer ${player2Token}` },
+    });
+    expect(res.status()).toBe(200);
+    expect((await res.json()).message).toContain('Joined');
+  });
+
+  test('P50. Cannot join same match twice', async ({ request }) => {
+    const res = await request.post(`${API}/match-requests/${testMatchId}/join`, {
+      headers: { Authorization: `Bearer ${player2Token}` },
+    });
+    expect(res.status()).toBe(409);
+  });
+
+  test('P51. Leave match request', async ({ request }) => {
+    const res = await request.post(`${API}/match-requests/${testMatchId}/leave`, {
+      headers: { Authorization: `Bearer ${player2Token}`, 'X-HTTP-Method-Override': 'DELETE' },
+    });
+    expect(res.status()).toBe(200);
+    expect((await res.json()).message).toContain('Left');
+  });
+
+  test('P52. Cancel match request (creator)', async ({ request }) => {
+    const res = await request.post(`${API}/match-requests/${testMatchId}`, {
+      headers: { Authorization: `Bearer ${playerToken}`, 'X-HTTP-Method-Override': 'DELETE' },
+    });
+    expect(res.status()).toBe(200);
+    expect((await res.json()).message).toContain('Cancelled');
+  });
+
+  test('P53. Non-creator cannot cancel match', async ({ request }) => {
+    // Create a new match as player1
+    let res = await request.post(`${API}/match-requests`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { court_id: 2, play_time: '2026-10-26 18:00:00', sport: 'badminton', slots_needed: 2 },
+    });
+    const id = (await res.json()).id;
+
+    // Player2 tries to cancel
+    res = await request.post(`${API}/match-requests/${id}`, {
+      headers: { Authorization: `Bearer ${player2Token}`, 'X-HTTP-Method-Override': 'DELETE' },
+    });
+    expect(res.status()).toBe(403);
+
+    // Cleanup
+    await request.post(`${API}/match-requests/${id}`, {
+      headers: { Authorization: `Bearer ${playerToken}`, 'X-HTTP-Method-Override': 'DELETE' },
+    });
+  });
+
+  // ===================== MESSAGES (Booking Chat) =====================
+  test('P54. Send message in booking thread', async ({ request }) => {
+    // Use testBookingId from P26 (court 6, player's booking)
+    // Need to find the owner of court 6
+    const courtRes = await request.get(`${API}/courts/6`);
+    const ownerId = (await courtRes.json()).court.owner_id;
+
+    const res = await request.post(`${API}/messages`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: {
+        booking_id: testBookingId,
+        receiver_id: ownerId,
+        body: 'Hi, is parking available? — Playwright test',
+      },
+    });
+    expect(res.status()).toBe(201);
+    const data = await res.json();
+    expect(data.id).toBeDefined();
+  });
+
+  test('P55. Get messages for booking thread', async ({ request }) => {
+    const res = await request.get(`${API}/messages?booking_id=${testBookingId}`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.messages).toBeDefined();
+    const found = data.messages.some(m => m.body.includes('parking available'));
+    expect(found).toBeTruthy();
+  });
+
+  test('P56. Get message threads', async ({ request }) => {
+    const res = await request.get(`${API}/messages/threads`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.threads).toBeDefined();
+  });
+
+  test('P57. Get unread message count', async ({ request }) => {
+    const res = await request.get(`${API}/messages/unread-count`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(typeof data.count).toBe('number');
+  });
+
+  // ===================== NOTIFICATIONS =====================
+  test('P58. List in-app notifications', async ({ request }) => {
+    const res = await request.get(`${API}/notifications/list`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.notifications).toBeDefined();
+    expect(typeof data.unread_count).toBe('number');
+  });
+
+  test('P59. Mark all notifications read', async ({ request }) => {
+    const res = await request.post(`${API}/notifications/read-all`, {
+      headers: { Authorization: `Bearer ${playerToken}`, 'X-HTTP-Method-Override': 'PUT' },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+  });
+
+  test('P60. Mark single notification read', async ({ request }) => {
+    // Get a notification first
+    let res = await request.get(`${API}/notifications/list`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    const notifs = (await res.json()).notifications;
+    if (!notifs || notifs.length === 0) { test.skip(); return; }
+
+    res = await request.post(`${API}/notifications/${notifs[0].id}/read`, {
+      headers: { Authorization: `Bearer ${playerToken}`, 'X-HTTP-Method-Override': 'PUT' },
+    });
+    expect(res.status()).toBe(200);
+    expect((await res.json()).success).toBe(true);
+  });
+
+  test('P61. Legacy subscription notifications', async ({ request }) => {
+    const res = await request.get(`${API}/notifications?user_id=${playerId}`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+  });
+
+  // ===================== USER SEARCH =====================
+  test('P62. Search user by phone', async ({ request }) => {
+    const res = await request.get(`${API}/users/search?phone=9900000002`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.user).toBeDefined();
+    expect(data.user.name).toBe('Priya Sharma');
+  });
+
+  test('P63. Search user by non-existent phone', async ({ request }) => {
+    const res = await request.get(`${API}/users/search?phone=0000000000`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.user).toBeNull();
+  });
+
+  test('P64. Tag search for users', async ({ request }) => {
+    const res = await request.get(`${API}/tag-search?q=Ravi&type=users`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.results).toBeDefined();
+    if (data.results.length > 0) {
+      expect(data.results[0].kind).toBe('user');
+    }
+  });
+
+  test('P65. Tag search for courts', async ({ request }) => {
+    const res = await request.get(`${API}/tag-search?q=Smash&type=courts`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.results).toBeDefined();
+    if (data.results.length > 0) {
+      expect(data.results[0].kind).toBe('court');
+    }
+  });
+
+  // ===================== GHOST LISTINGS =====================
+  test('P66. Nearby places (ghost listings)', async ({ request }) => {
+    const res = await request.get(`${API}/nearby-places?lat=13.085&lng=80.21`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.places).toBeDefined();
+  });
+
+  test('P67. Service request (Notify Me)', async ({ request }) => {
+    // Get a nearby place first
+    let res = await request.get(`${API}/nearby-places?lat=13.085&lng=80.21`);
+    const places = (await res.json()).places;
+    if (!places || places.length === 0) { test.skip(); return; }
+
+    res = await request.post(`${API}/service-requests`, {
+      data: { place_id: places[0].id, user_id: playerId },
+    });
+    // 200 success or already requested
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.success).toBe(true);
+  });
+
+  // ===================== PAYMENTS =====================
+  test('P68. Payments config (demo mode check)', async ({ request }) => {
+    const res = await request.get(`${API}/payments/config`);
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveProperty('demo');
+  });
+
+  // ===================== SLOT CHAT =====================
+  test('P69. Slot chat: my groups', async ({ request }) => {
+    const res = await request.get(`${API}/slot-chat/my-groups`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const data = await res.json();
+    expect(data.groups).toBeDefined();
+  });
+
+  test('P70. Slot chat: send + read message', async ({ request }) => {
+    // Find a slot group the player is in
+    let res = await request.get(`${API}/slot-chat/my-groups`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    const groups = (await res.json()).groups;
+    if (!groups || groups.length === 0) { test.skip(); return; }
+    const g = groups[0];
+    const gDate = g.slot_date || g.date;
+    const gTime = g.slot_time || g.time;
+
+    // Send message
+    res = await request.post(`${API}/slot-chat/messages`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { court_id: g.court_id, date: gDate, time: gTime, body: 'Player flow test message' },
+    });
+    expect(res.status()).toBe(201);
+
+    // Read messages
+    res = await request.get(`${API}/slot-chat/messages?court_id=${g.court_id}&date=${gDate}&time=${gTime}`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(200);
+    const msgs = (await res.json()).messages;
+    const found = msgs.some(m => m.body === 'Player flow test message');
+    expect(found).toBeTruthy();
+  });
+
+  // ===================== AUTH GUARDS =====================
+  test('P71. Player cannot create court', async ({ request }) => {
+    const res = await request.post(`${API}/courts`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { name: 'Hacked Court', type: 'shuttle', hourly_rate: 100 },
+    });
+    expect(res.status()).toBe(403);
+  });
+
+  test('P72. Player cannot access analytics', async ({ request }) => {
+    const res = await request.get(`${API}/analytics?period=30`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(403);
+  });
+
+  test('P73. Player cannot access earnings', async ({ request }) => {
+    const res = await request.get(`${API}/earnings?owner_id=7`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(403);
+  });
+
+  test('P74. Player cannot add staff', async ({ request }) => {
+    const res = await request.post(`${API}/court-staff`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { court_id: 2, phone: '9900000003', role: 'viewer' },
+    });
+    expect(res.status()).toBe(403);
+  });
+
+  test('P75. Player cannot block slots', async ({ request }) => {
+    const res = await request.post(`${API}/blocked-slots`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+      data: { court_id: 2, start_time: '2026-12-01 06:00:00', end_time: '2026-12-01 22:00:00', reason: 'hack' },
+    });
+    expect(res.status()).toBe(403);
+  });
+
+  test('P76. Player cannot access owner calendar', async ({ request }) => {
+    const res = await request.get(`${API}/courts/2/calendar?date=2026-09-01`, {
+      headers: { Authorization: `Bearer ${playerToken}` },
+    });
+    expect(res.status()).toBe(403);
+  });
+
+  test('P77. Unauthenticated booking fails', async ({ request }) => {
+    const res = await request.post(`${API}/bookings`, {
+      data: { court_id: 2, start_time: '2026-10-20 10:00:00', end_time: '2026-10-20 11:00:00', type: 'hourly', total_price: 400 },
+    });
+    expect(res.status()).toBe(401);
+  });
+
+  test('P78. Unauthenticated message fails', async ({ request }) => {
+    const res = await request.post(`${API}/messages`, {
+      data: { booking_id: 1, receiver_id: 7, body: 'hello' },
+    });
+    expect(res.status()).toBe(401);
+  });
+
+  // ===================== CLEANUP =====================
+  test('P79. Cleanup: cancel test booking', async ({ request }) => {
+    if (!testBookingId) { test.skip(); return; }
+    await request.post(`${API}/bookings/${testBookingId}`, {
+      headers: { Authorization: `Bearer ${playerToken}`, 'X-HTTP-Method-Override': 'DELETE' },
+    });
+    // Don't assert — may already be cancelled
+    expect(true).toBeTruthy();
+  });
+});
