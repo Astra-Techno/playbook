@@ -8,7 +8,7 @@ import '../reviews/reviews_screen.dart';
 import '../subscriptions/subscriptions_screen.dart';
 import '../search/find_courts_screen.dart';
 import '../notifications/notifications_screen.dart';
-import '../chat/chat_threads_screen.dart';
+import '../chat/chat_list_screen.dart';
 import '../static/faq_screen.dart';
 import '../static/terms_screen.dart';
 import '../static/privacy_screen.dart';
@@ -203,7 +203,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _MenuItem(
                           icon: AppIcons.messageCircle,
                           label: 'Messages',
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatThreadsScreen())),
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatListScreen())),
                         ),
                         _MenuItem(
                           icon: AppIcons.bell,

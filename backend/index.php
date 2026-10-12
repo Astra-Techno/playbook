@@ -877,7 +877,76 @@ if (isset($seg[0]) && $seg[0] === 'slot-chat') {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'messages')  { $slotChat->send();      exit(); }
 }
 
-// Messages Routes
+// Chat Routes (WhatsApp-style groups + DMs)
+if (isset($seg[0]) && $seg[0] === 'chat') {
+    require_once __DIR__ . '/src/Controllers/ChatGroupController.php';
+    require_once __DIR__ . '/src/Controllers/ChatMessageController.php';
+    $chatGrp = new ChatGroupController();
+    $chatMsg = new ChatMessageController();
+
+    // GET /chat/groups — list user's groups
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'groups' && !isset($seg[2])) {
+        $chatGrp->index(); exit();
+    }
+    // POST /chat/groups — create group/DM
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'groups' && !isset($seg[2])) {
+        $chatGrp->create(); exit();
+    }
+    // GET /chat/groups/:id — group detail + members
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'groups' && isset($seg[2]) && !isset($seg[3])) {
+        $chatGrp->show((int)$seg[2]); exit();
+    }
+    // PUT /chat/groups/:id — update group info
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && $seg[1] === 'groups' && isset($seg[2]) && !isset($seg[3])) {
+        $chatGrp->update((int)$seg[2]); exit();
+    }
+    // DELETE /chat/groups/:id — delete group
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1]) && $seg[1] === 'groups' && isset($seg[2]) && !isset($seg[3])) {
+        $chatGrp->delete((int)$seg[2]); exit();
+    }
+    // POST /chat/groups/:id/members — add members
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'groups' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'members') {
+        $chatGrp->addMembers((int)$seg[2]); exit();
+    }
+    // DELETE /chat/groups/:id/members/:userId — remove member / leave
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1]) && $seg[1] === 'groups' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'members' && isset($seg[4])) {
+        $chatGrp->removeMember((int)$seg[2], (int)$seg[4]); exit();
+    }
+    // PUT /chat/groups/:id/mute — toggle mute
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && $seg[1] === 'groups' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'mute') {
+        $chatGrp->toggleMute((int)$seg[2]); exit();
+    }
+    // GET /chat/groups/:id/messages — list messages
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'groups' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'messages') {
+        $chatMsg->index((int)$seg[2]); exit();
+    }
+    // POST /chat/groups/:id/messages — send message
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'groups' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'messages') {
+        $chatMsg->create((int)$seg[2]); exit();
+    }
+    // POST /chat/groups/:id/read — mark read
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'groups' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'read') {
+        $chatMsg->markRead((int)$seg[2]); exit();
+    }
+    // GET /chat/groups/:id/read-status — read receipts
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'groups' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'read-status') {
+        $chatMsg->readStatus((int)$seg[2]); exit();
+    }
+    // POST /chat/messages/:id/reactions — toggle reaction
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'messages' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'reactions') {
+        $chatMsg->toggleReaction((int)$seg[2]); exit();
+    }
+    // GET /chat/unread-count — total unread across all groups
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'unread-count') {
+        $chatMsg->totalUnread(); exit();
+    }
+    // GET /chat/users/search?q= — search users for member picker
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'users' && isset($seg[2]) && $seg[2] === 'search') {
+        $chatGrp->searchUsers(); exit();
+    }
+}
+
+// Legacy Messages Routes
 if (isset($seg[0]) && $seg[0] === 'messages') {
     require_once __DIR__ . '/src/Controllers/MessageController.php';
     $msgCtrl = new MessageController();

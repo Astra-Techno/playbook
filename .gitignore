@@ -20,8 +20,9 @@ backend/uploads/
 .claude/settings.local.json
 .claude1/
 
-# ── Database dumps ────────────────────────────────────────────────────────────
+# ── Database dumps (but keep migration SQL files) ────────────────────────────
 *.sql
+!backend/migrations/*.sql
 
 # ── OS / editor ────────────────────────────────────────────────────────────────
 .DS_Store

@@ -233,6 +233,30 @@ const router = createRouter({
             component: () => import('../views/FindCourtsView.vue'),
             meta: { title: 'Available now' },
         },
+        {
+            path: '/chats',
+            name: 'chats',
+            component: () => import('../views/ChatListView.vue'),
+            meta: { requiresAuth: true, title: 'Chats' },
+        },
+        {
+            path: '/chats/new',
+            name: 'new-chat',
+            component: () => import('../views/NewChatView.vue'),
+            meta: { requiresAuth: true, title: 'New Chat', hideBottomNav: true },
+        },
+        {
+            path: '/chats/:id',
+            name: 'chat-room',
+            component: () => import('../views/ChatRoomView.vue'),
+            meta: { requiresAuth: true, hideHeader: true, hideBottomNav: true, fullScreen: true },
+        },
+        {
+            path: '/chats/:id/info',
+            name: 'chat-info',
+            component: () => import('../views/ChatInfoView.vue'),
+            meta: { requiresAuth: true, hideHeader: true, hideBottomNav: true },
+        },
         { path: '/waitlist', redirect: '/find-courts' },
         // legacy redirects
         { path: '/my-services', redirect: '/my-venues' },

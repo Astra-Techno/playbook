@@ -18,6 +18,9 @@ import '../screens/reviews/reviews_screen.dart';
 import '../screens/map/map_screen.dart';
 import '../screens/chat/chat_screen.dart';
 import '../screens/chat/chat_threads_screen.dart';
+import '../screens/chat/chat_list_screen.dart';
+import '../screens/chat/group_chat_screen.dart';
+import '../screens/chat/group_info_screen.dart';
 import '../screens/static/faq_screen.dart';
 import '../screens/static/terms_screen.dart';
 import '../screens/static/privacy_screen.dart';
@@ -128,7 +131,24 @@ GoRouter createRouter(AuthProvider auth) {
       // Map
       GoRoute(path: '/map', builder: (_, __) => const MapScreen()),
 
-      // Chat
+      // Chat (new system)
+      GoRoute(path: '/chats', builder: (_, __) => const ChatListScreen()),
+      GoRoute(
+        path: '/chats/:groupId',
+        pageBuilder: (_, state) => _slideFadePage(
+          GroupChatScreen(groupId: int.tryParse(state.pathParameters['groupId'] ?? '') ?? 0),
+          state,
+        ),
+      ),
+      GoRoute(
+        path: '/chats/:groupId/info',
+        pageBuilder: (_, state) => _slideFadePage(
+          GroupInfoScreen(groupId: int.tryParse(state.pathParameters['groupId'] ?? '') ?? 0),
+          state,
+        ),
+      ),
+
+      // Legacy chat (booking-based)
       GoRoute(path: '/messages', builder: (_, __) => const ChatThreadsScreen()),
       GoRoute(
         path: '/chat/:bookingId',

@@ -363,6 +363,11 @@ class BookingController {
                         ]);
                     } catch (\PDOException $e) {}
                 }
+
+                // Auto-add player to a slot-based chat group
+                if (!$isWalkIn) {
+                    try { $this->autoJoinSlotChat($db, $authId, (int)$data->court_id, $data->start_time, $court['name'] ?? ''); } catch (\Exception $e) {}
+                }
             } else {
                 http_response_code(503);
                 echo json_encode(["message" => "Unable to create booking."]);
@@ -528,5 +533,58 @@ class BookingController {
         http_response_code(201);
         echo json_encode(['bookings' => $booked, 'skipped' => $skipped,
                           'message' => count($booked) . ' booking(s) created' . (count($skipped) ? ', ' . count($skipped) . ' date(s) skipped (conflict)' : '')]);
+    }
+
+    /**
+     * Auto-create or join a slot-based chat group when a booking is confirmed.
+     * Group name: "CourtName · Date · Time"
+     */
+    private function autoJoinSlotChat(PDO $db, int $userId, int $courtId, string $startTime, string $courtName): void {
+        $date = date('Y-m-d', strtotime($startTime));
+        $time = date('H:i', strtotime($startTime));
+        $groupName = trim($courtName) . ' · ' . date('D, d M', strtotime($startTime)) . ' · ' . date('g:i A', strtotime($startTime));
+
+        // Look for existing auto group for this court+date+time
+        $stmt = $db->prepare("
+            SELECT g.id FROM chat_groups g
+            WHERE g.type = 'auto' AND g.description = ?
+            LIMIT 1
+        ");
+        // Use a stable key as description for matching
+        $key = "court:{$courtId}|date:{$date}|time:{$time}";
+        $stmt->execute([$key]);
+        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($existing) {
+            // Add user to existing group if not already a member
+            $db->prepare("INSERT IGNORE INTO chat_members (group_id, user_id, role) VALUES (?, ?, 'member')")
+               ->execute([$existing['id'], $userId]);
+            // Also add court owner
+            $ow = $db->prepare("SELECT owner_id FROM courts WHERE id = ?");
+            $ow->execute([$courtId]);
+            $ownerId = (int)$ow->fetchColumn();
+            if ($ownerId) {
+                $db->prepare("INSERT IGNORE INTO chat_members (group_id, user_id, role) VALUES (?, ?, 'admin')")
+                   ->execute([$existing['id'], $ownerId]);
+            }
+        } else {
+            // Create new auto group
+            $db->prepare("INSERT INTO chat_groups (name, description, type, created_by) VALUES (?, ?, 'auto', ?)")
+               ->execute([$groupName, $key, $userId]);
+            $groupId = (int)$db->lastInsertId();
+
+            // Add booking user
+            $db->prepare("INSERT INTO chat_members (group_id, user_id, role) VALUES (?, ?, 'member')")
+               ->execute([$groupId, $userId]);
+
+            // Add court owner as admin
+            $ow = $db->prepare("SELECT owner_id FROM courts WHERE id = ?");
+            $ow->execute([$courtId]);
+            $ownerId = (int)$ow->fetchColumn();
+            if ($ownerId && $ownerId !== $userId) {
+                $db->prepare("INSERT INTO chat_members (group_id, user_id, role) VALUES (?, ?, 'admin')")
+                   ->execute([$groupId, $ownerId]);
+            }
+        }
     }
 }
