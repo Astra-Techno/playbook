@@ -1,0 +1,25 @@
+name: kocourt_shared
+description: "Shared code for KoCourt player and owner apps"
+publish_to: 'none'
+version: 1.0.0
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.1.2
+  dio: ^5.7.0
+  shared_preferences: ^2.3.4
+  cached_network_image: ^3.4.1
+  google_fonts: ^6.3.3
+  image_picker: ^1.1.2
+  intl: ^0.20.3
+  flutter_cashfree_pg_sdk: ^2.4.0+52
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

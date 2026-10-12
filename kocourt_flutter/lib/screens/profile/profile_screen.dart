@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../../core/api.dart';
-import '../../core/icons.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../core/theme.dart';
-import '../../providers/auth_provider.dart';
 import '../bookings/bookings_screen.dart';
-import '../owner/owner_dashboard_screen.dart';
-import '../owner/venue_earnings_screen.dart';
 import '../reviews/reviews_screen.dart';
 import '../subscriptions/subscriptions_screen.dart';
 import '../search/find_courts_screen.dart';
@@ -17,9 +12,7 @@ import '../chat/chat_threads_screen.dart';
 import '../static/faq_screen.dart';
 import '../static/terms_screen.dart';
 import '../static/privacy_screen.dart';
-import '../owner/edit_venue_screen.dart';
 import '../payments/payment_history_screen.dart';
-import '../../widgets/sheets/profile_edit_sheet.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -29,26 +22,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  int _venueCount = 0;
-  bool _venueChecked = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkVenues();
-  }
-
-  Future<void> _checkVenues() async {
-    final auth = context.read<AuthProvider>();
-    if (!auth.isLoggedIn) return;
-    try {
-      final res = await Api().get('/courts', params: {'owner_id': auth.userId});
-      final records = res.data['records'] as List? ?? [];
-      if (mounted) setState(() { _venueCount = records.length; _venueChecked = true; });
-    } catch (_) {
-      if (mounted) setState(() => _venueChecked = true);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,15 +75,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         }
 
-        final bool hasVenues = _venueCount > 0;
-
         return Scaffold(
           backgroundColor: AppColors.surface,
           body: SafeArea(
             child: RefreshIndicator(
               onRefresh: () async {
                 await auth.refreshUser();
-                await _checkVenues();
               },
               color: AppColors.primary,
               child: SingleChildScrollView(
@@ -201,74 +171,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
 
                     const SizedBox(height: 16),
-
-                    // Venue management section — data-driven
-                    if (hasVenues) ...[
-                      _MenuSection(
-                        children: [
-                          _MenuItem(
-                            icon: AppIcons.layoutGrid,
-                            label: 'My Venues',
-                            badge: '$_venueCount',
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerDashboardScreen())).then((_) => _checkVenues()),
-                          ),
-                          _MenuItem(
-                            icon: AppIcons.wallet,
-                            label: 'Earnings',
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const VenueEarningsScreen(courtId: 0))),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-
-                    if (!hasVenues && _venueChecked) ...[
-                      // CTA to list a venue
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 20),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(AppRadius.lg),
-                          boxShadow: AppShadows.card,
-                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: const Icon(AppIcons.plus, size: 22, color: AppColors.primary),
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'List Your Venue',
-                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    'Add your court, gym or arena',
-                                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(AppIcons.chevronRight, size: 18, color: AppColors.textDisabled),
-                          ],
-                        ),
-                      ).wrapTap(() {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const EditVenueScreen())).then((_) => _checkVenues());
-                      }),
-                      const SizedBox(height: 12),
-                    ],
 
                     // Main menu section
                     _MenuSection(

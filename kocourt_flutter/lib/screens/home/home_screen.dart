@@ -5,20 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../../core/api.dart';
-import '../../core/icons.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart' as geocoding;
 import 'package:shimmer/shimmer.dart';
-import '../../core/theme.dart';
-import '../../core/constants.dart';
-import '../../providers/auth_provider.dart';
-import '../../providers/venue_provider.dart';
-import '../../widgets/sheets/claim_venue_sheet.dart';
 import '../court_details/court_details_screen.dart';
 import '../notifications/notifications_screen.dart';
-import '../owner/owner_dashboard_screen.dart';
 import 'widgets/venue_card.dart';
 import 'widgets/ghost_card.dart';
 import 'widgets/sport_chips.dart';
@@ -35,17 +28,12 @@ class _HomeScreenState extends State<HomeScreen> {
   String _locationLabel = 'All Venues';
   bool _locating = false;
 
-  // Owner quick stats
-  int _myVenueCount = 0;
-  int _todayBookings = 0;
-  List<Map<String, dynamic>> _todaySchedule = [];
   int _unreadNotifications = 0;
 
   @override
   void initState() {
     super.initState();
     _detectLocation();
-    _loadOwnerStats();
     _loadNotificationCount();
   }
 
@@ -57,33 +45,6 @@ class _HomeScreenState extends State<HomeScreen> {
       final list = res.data['notifications'] as List? ?? [];
       final unread = list.where((n) => n['read_at'] == null && n['is_read'] != 1).length;
       if (mounted) setState(() => _unreadNotifications = unread);
-    } catch (_) {}
-  }
-
-  Future<void> _loadOwnerStats() async {
-    final auth = context.read<AuthProvider>();
-    if (!auth.isLoggedIn) return;
-    try {
-      final res = await Api().get('/courts', params: {'owner_id': auth.userId});
-      final courts = res.data['records'] as List? ?? [];
-      if (courts.isEmpty) return;
-      // Fetch today's bookings for owner
-      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      final bRes = await Api().get('/bookings', params: {'owner_id': auth.userId});
-      final bookings = List<Map<String, dynamic>>.from(
-        (bRes.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
-      );
-      final todayBookings = bookings.where((b) {
-        final d = b['date']?.toString() ?? b['start_time']?.toString().substring(0, 10) ?? '';
-        return d == today && b['status'] != 'cancelled';
-      }).toList();
-      if (mounted) {
-        setState(() {
-          _myVenueCount = courts.length;
-          _todayBookings = todayBookings.length;
-          _todaySchedule = todayBookings.take(3).toList();
-        });
-      }
     } catch (_) {}
   }
 
@@ -412,7 +373,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         GestureDetector(
                           onTap: () {
                             setSheetState(() {
-                              minPrice = 0; maxPrice = 5000; minRating = 0; sortBy = 'distance'; radius = 25;
+                              minPrice = 0; maxPrice = 10000; minRating = 0; sortBy = 'distance'; radius = 25;
                             });
                           },
                           child: const Text('Reset', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primary)),
@@ -457,7 +418,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 4),
                     RangeSlider(
                       values: RangeValues(minPrice, maxPrice),
-                      min: 0, max: 5000, divisions: 50,
+                      min: 0, max: 10000, divisions: 100,
                       activeColor: AppColors.primary,
                       inactiveColor: AppColors.surfaceDim,
                       onChanged: (v) => setSheetState(() { minPrice = v.start; maxPrice = v.end; }),
@@ -551,7 +512,6 @@ class _HomeScreenState extends State<HomeScreen> {
       body: RefreshIndicator(
         onRefresh: () async {
           await _detectLocation();
-          _loadOwnerStats();
         },
         color: AppColors.primary,
         child: CustomScrollView(
@@ -560,7 +520,6 @@ class _HomeScreenState extends State<HomeScreen> {
           slivers: [
             _buildHeader(),
             SliverToBoxAdapter(child: _buildSearchBar()),
-            if (_myVenueCount > 0) SliverToBoxAdapter(child: _buildOwnerBanner()),
             SliverToBoxAdapter(child: SportChips()),
             _buildVenueList(),
             _buildGhostSection(),
@@ -822,92 +781,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildOwnerBanner() {
-    return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerDashboardScreen())).then((_) => _loadOwnerStats()),
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.85)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.3),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _todayBookings > 0
-                        ? '$_todayBookings booking${_todayBookings > 1 ? 's' : ''} today'
-                        : 'No bookings today',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$_myVenueCount venue${_myVenueCount > 1 ? 's' : ''} managed',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (_todaySchedule.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    ..._todaySchedule.map((b) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 4, height: 4,
-                            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              '${b['start_time']?.toString().substring(0, 5) ?? ''} - ${b['court_name'] ?? ''} ${b['user_name'] != null ? '\u2022 ${b['user_name']}' : ''}',
-                              style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 12, fontWeight: FontWeight.w500),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(AppIcons.chevronRight, size: 20, color: Colors.white),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildVenueList() {
     return Consumer<VenueProvider>(
       builder: (context, venues, _) {
@@ -1120,14 +993,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                     child: GhostCard(
                       place: place,
-                      onClaim: () {
-                        final auth = context.read<AuthProvider>();
-                        if (!auth.isLoggedIn) {
-                          context.go('/login');
-                          return;
-                        }
-                        ClaimVenueSheet.show(context, place, auth.userId!);
-                      },
                       onInterest: () {
                         final auth = context.read<AuthProvider>();
                         if (!auth.isLoggedIn) {

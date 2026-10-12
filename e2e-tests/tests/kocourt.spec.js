@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
-const BASE = 'http://localhost:8787';
-const API = 'http://localhost/playbook/backend';
+const BASE = process.env.E2E_BASE_URL || 'http://127.0.0.1:8787';
+const API = process.env.E2E_API_BASE_URL || 'http://127.0.0.1:8000';
 
 // Helper: wait for Flutter app to fully render
 async function waitForFlutter(page, timeout = 30000) {
@@ -68,7 +68,7 @@ test.describe('Flutter App Visual Tests', () => {
   });
 
   test('04. Court details renders', async () => {
-    await page.goto(`${BASE}/#/court/2`);
+    await page.goto(`${BASE}/#/courts/2`);
     await waitForFlutter(page);
     await page.waitForTimeout(2000);
     await screenshotNotBlank(page, '04-court-details');
@@ -114,7 +114,7 @@ test.describe('Flutter App Visual Tests', () => {
     await waitForFlutter(page);
     const homeShot = await page.screenshot();
 
-    await page.goto(`${BASE}/#/court/2`);
+    await page.goto(`${BASE}/#/courts/2`);
     await waitForFlutter(page);
     await page.waitForTimeout(2000);
     const courtShot = await page.screenshot();
@@ -213,7 +213,7 @@ test.describe('API Integration Tests', () => {
   test('19. Create booking', async ({ request }) => {
     const res = await request.post(`${API}/bookings`, {
       headers: { Authorization: `Bearer ${token}` },
-      data: (() => { const d = 10 + Math.floor(Math.random() * 20); const h = 6 + Math.floor(Math.random() * 12); return { court_id: 6, start_time: `2026-10-${String(d).padStart(2,'0')} ${String(h).padStart(2,'0')}:00:00`, end_time: `2026-10-${String(d).padStart(2,'0')} ${String(h+1).padStart(2,'0')}:00:00`, type: 'hourly', total_price: 250 }; })(),
+      data: (() => { const d = 10 + Math.floor(Math.random() * 20); const h = 6 + Math.floor(Math.random() * 12); return { court_id: 5, start_time: `2026-10-${String(d).padStart(2,'0')} ${String(h).padStart(2,'0')}:00:00`, end_time: `2026-10-${String(d).padStart(2,'0')} ${String(h+1).padStart(2,'0')}:00:00`, type: 'hourly', total_price: 250 }; })(),
     });
     expect(res.status()).toBe(201);
     const data = await res.json();
@@ -226,7 +226,7 @@ test.describe('API Integration Tests', () => {
     // Create one to cancel
     let res = await request.post(`${API}/bookings`, {
       headers: { Authorization: `Bearer ${token}` },
-      data: { court_id: 6, start_time: '2026-09-11 09:00:00', end_time: '2026-09-11 10:00:00', type: 'hourly', total_price: 250 },
+      data: { court_id: 5, start_time: '2026-09-11 09:00:00', end_time: '2026-09-11 10:00:00', type: 'hourly', total_price: 250 },
     });
     const { id } = await res.json();
 
@@ -354,14 +354,14 @@ test.describe('API Integration Tests', () => {
 
   // --- Owner ---
   test('33. Owner: list my courts', async ({ request }) => {
-    const res = await request.get(`${API}/courts?owner_id=7`, { headers: { Authorization: `Bearer ${ownerToken}` } });
+    const res = await request.get(`${API}/courts?owner_id=5`, { headers: { Authorization: `Bearer ${ownerToken}` } });
     expect(res.status()).toBe(200);
     const data = await res.json();
     expect(data.records.length).toBeGreaterThanOrEqual(3);
   });
 
   test('34. Owner: list venue bookings', async ({ request }) => {
-    const res = await request.get(`${API}/bookings?owner_id=7`, { headers: { Authorization: `Bearer ${ownerToken}` } });
+    const res = await request.get(`${API}/bookings?owner_id=5`, { headers: { Authorization: `Bearer ${ownerToken}` } });
     expect(res.status()).toBe(200);
     const data = await res.json();
     expect(data.records.length).toBeGreaterThan(0);
@@ -481,7 +481,7 @@ test.describe('Owner Complete Flow Tests', () => {
   test.describe.configure({ mode: 'serial' });
   let ownerToken;
   let playerToken;
-  const ownerId = 7; // phone 9900000010
+  const ownerId = 5; // phone 9900000010 in the reset fixture
   let testCourtId;
   let testSubCourtId;
   let testBlockId;
@@ -1496,7 +1496,7 @@ test.describe('Player Complete Flow Tests', () => {
     const res = await request.post(`${API}/bookings/recurring`, {
       headers: { Authorization: `Bearer ${playerToken}` },
       data: {
-        court_id: 6,
+        court_id: 5,
         start_time: '2026-11-02 08:00:00',
         end_time: '2026-11-02 09:00:00',
         recurrence_days: [1, 3, 5], // Mon, Wed, Fri
@@ -1556,7 +1556,7 @@ test.describe('Player Complete Flow Tests', () => {
     const res = await request.post(`${API}/bookings`, {
       headers: { Authorization: `Bearer ${playerToken}` },
       data: {
-        court_id: 6,
+        court_id: 5,
         start_time: `2027-01-${String(d).padStart(2,'0')} ${String(h).padStart(2,'0')}:00:00`,
         end_time: `2027-01-${String(d).padStart(2,'0')} ${String(h+1).padStart(2,'0')}:00:00`,
         type: 'hourly',
@@ -1594,7 +1594,7 @@ test.describe('Player Complete Flow Tests', () => {
     const res = await request.post(`${API}/reviews`, {
       headers: { Authorization: `Bearer ${playerToken}` },
       data: {
-        court_id: 6,
+        court_id: 5,
         booking_id: testBookingId,
         rating: 4,
         comment: 'Great court, well maintained! — Playwright test',
@@ -1625,7 +1625,7 @@ test.describe('Player Complete Flow Tests', () => {
   test('P31. Toggle favorite on', async ({ request }) => {
     const res = await request.post(`${API}/favorites`, {
       headers: { Authorization: `Bearer ${playerToken}` },
-      data: { court_id: 6 },
+      data: { court_id: 5 },
     });
     expect(res.status()).toBe(200);
     const data = await res.json();
@@ -1645,7 +1645,7 @@ test.describe('Player Complete Flow Tests', () => {
     // Toggle again — should remove
     const res = await request.post(`${API}/favorites`, {
       headers: { Authorization: `Bearer ${playerToken}` },
-      data: { court_id: 6 },
+      data: { court_id: 5 },
     });
     expect(res.status()).toBe(200);
     const data = await res.json();
@@ -1871,8 +1871,7 @@ test.describe('Player Complete Flow Tests', () => {
 
   // ===================== MESSAGES (Booking Chat) =====================
   test('P54. Send message in booking thread', async ({ request }) => {
-    // Use testBookingId from P26 (court 6, player's booking)
-    // Need to find the owner of court 6
+    // Use testBookingId from P26 (court 6, player's booking).
     const courtRes = await request.get(`${API}/courts/6`);
     const ownerId = (await courtRes.json()).court.owner_id;
 
@@ -2082,7 +2081,7 @@ test.describe('Player Complete Flow Tests', () => {
   });
 
   test('P73. Player cannot access earnings', async ({ request }) => {
-    const res = await request.get(`${API}/earnings?owner_id=7`, {
+    const res = await request.get(`${API}/earnings?owner_id=5`, {
       headers: { Authorization: `Bearer ${playerToken}` },
     });
     expect(res.status()).toBe(403);

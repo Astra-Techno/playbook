@@ -2,9 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../core/api.dart';
-import '../../core/theme.dart';
-import '../../providers/auth_provider.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class SlotChatScreen extends StatefulWidget {
   final int courtId;
@@ -190,7 +188,7 @@ class _SlotChatScreenState extends State<SlotChatScreen> {
                       ],
                     ),
                   ),
-                  if (m['member_type'] == 'owner')
+                  if (m['member_type'] == 'host')
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
@@ -198,7 +196,7 @@ class _SlotChatScreenState extends State<SlotChatScreen> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text(
-                        'Owner',
+                        'Host',
                         style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.accent),
                       ),
                     ),

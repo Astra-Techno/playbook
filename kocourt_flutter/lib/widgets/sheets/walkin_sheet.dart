@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/api.dart';
-import '../../core/theme.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class WalkInSheet extends StatefulWidget {
   final int courtId;
@@ -84,7 +83,7 @@ class _WalkInSheetState extends State<WalkInSheet> {
       });
       if (mounted) Navigator.pop(context, true);
     } catch (_) {
-      setState(() => _submitting = false);
+      if (mounted) setState(() => _submitting = false);
     }
   }
 

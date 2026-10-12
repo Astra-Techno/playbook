@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../core/api.dart';
-import '../../core/icons.dart';
-import '../../core/theme.dart';
-import '../../core/constants.dart';
 import '../court_details/court_details_screen.dart';
 
 class FindCourtsScreen extends StatefulWidget {

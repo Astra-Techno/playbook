@@ -1,8 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../core/icons.dart';
-import '../core/theme.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 import 'home/home_screen.dart';
 import 'feed/feed_screen.dart';
 import 'matches/matches_screen.dart';

@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../core/api.dart';
-import '../../core/icons.dart';
-import '../../core/theme.dart';
-import '../../core/constants.dart';
-import '../../providers/toast_provider.dart';
-import '../../providers/venue_provider.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class CreateMatchSheet extends StatefulWidget {
   final VoidCallback onCreated;
@@ -72,7 +67,7 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
         if (isStart) {
           _startTime = picked;
           if (_endTime.hour <= picked.hour) {
-            _endTime = TimeOfDay(hour: picked.hour + 1, minute: picked.minute);
+            _endTime = TimeOfDay(hour: (picked.hour + 1).clamp(0, 23), minute: picked.minute);
           }
         } else {
           _endTime = picked;

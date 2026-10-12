@@ -1,34 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 import '../screens/app_shell.dart';
 import '../screens/login/login_screen.dart';
 import '../screens/onboarding/onboarding_screen.dart';
 import '../screens/court_details/court_details_screen.dart';
 import '../screens/bookings/bookings_screen.dart';
 import '../screens/bookings/booking_confirmation_screen.dart';
-import '../screens/bookings/block_slots_screen.dart';
 import '../screens/feed/create_post_screen.dart';
 import '../screens/feed/post_detail_screen.dart';
 import '../screens/profile/profile_screen.dart';
-import '../screens/owner/owner_dashboard_screen.dart';
-import '../screens/owner/venue_detail_screen.dart';
-import '../screens/owner/edit_venue_screen.dart';
-import '../screens/owner/manage_plans_screen.dart';
-import '../screens/owner/venue_earnings_screen.dart';
-import '../screens/owner/spaces_screen.dart';
-import '../screens/owner/space_detail_screen.dart';
-import '../screens/owner/venue_members_screen.dart';
-import '../screens/owner/staff_screen.dart';
-import '../screens/owner/pricing_screen.dart';
-import '../screens/owner/calendar_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../screens/subscriptions/subscriptions_screen.dart';
 import '../screens/search/find_courts_screen.dart';
 import '../screens/reviews/reviews_screen.dart';
-import '../screens/admin/admin_screen.dart';
-import '../screens/admin/ledger_screen.dart';
 import '../screens/map/map_screen.dart';
 import '../screens/chat/chat_screen.dart';
 import '../screens/chat/chat_threads_screen.dart';
@@ -81,9 +67,6 @@ GoRouter createRouter(AuthProvider auth) {
       // Guest-only routes (login, onboarding)
       if (loggedIn && (isLoginRoute || isGuestRoute)) return '/';
 
-      // Admin route guard
-      if (state.matchedLocation == '/admin' && !loggedIn) return '/login';
-
       // Auth-required routes
       if (!loggedIn && !isPublic && !isLoginRoute && !isGuestRoute) return '/login';
 
@@ -135,98 +118,6 @@ GoRouter createRouter(AuthProvider auth) {
       ),
       GoRoute(path: '/post/create', builder: (_, __) => const CreatePostScreen()),
 
-      // Owner venues
-      GoRoute(path: '/my-venues', builder: (_, __) => const OwnerDashboardScreen()),
-      GoRoute(path: '/my-venues/new', builder: (_, __) => const EditVenueScreen()),
-      GoRoute(
-        path: '/my-venues/:id',
-        builder: (_, state) => VenueDetailScreen(
-          courtId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-        ),
-      ),
-      GoRoute(
-        path: '/my-venues/:id/edit',
-        builder: (_, state) => EditVenueScreen(
-          courtId: int.tryParse(state.pathParameters['id'] ?? ''),
-        ),
-      ),
-      GoRoute(
-        path: '/my-venues/:id/plans',
-        builder: (_, state) => ManagePlansScreen(
-          courtId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-        ),
-      ),
-      GoRoute(
-        path: '/my-venues/:id/earnings',
-        builder: (_, state) => VenueEarningsScreen(
-          courtId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-        ),
-      ),
-      GoRoute(
-        path: '/my-venues/:id/spaces',
-        builder: (_, state) => SpacesScreen(
-          courtId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-        ),
-      ),
-      GoRoute(
-        path: '/my-venues/:id/spaces/:spaceId',
-        builder: (_, state) => SpaceDetailScreen(
-          courtId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-          spaceId: int.tryParse(state.pathParameters['spaceId'] ?? '') ?? 0,
-        ),
-      ),
-      GoRoute(
-        path: '/my-venues/:id/spaces/:spaceId/pricing',
-        builder: (_, state) => PricingScreen(
-          courtId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-          spaceId: int.tryParse(state.pathParameters['spaceId'] ?? ''),
-        ),
-      ),
-      GoRoute(
-        path: '/my-venues/:id/spaces/:spaceId/plans',
-        builder: (_, state) => ManagePlansScreen(
-          courtId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-          spaceId: int.tryParse(state.pathParameters['spaceId'] ?? ''),
-        ),
-      ),
-      GoRoute(
-        path: '/my-venues/:id/spaces/:spaceId/block',
-        builder: (_, state) => BlockSlotsScreen(
-          courtId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-          spaceId: int.tryParse(state.pathParameters['spaceId'] ?? ''),
-        ),
-      ),
-      GoRoute(
-        path: '/my-venues/:id/members',
-        builder: (_, state) => VenueMembersScreen(
-          courtId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-        ),
-      ),
-      GoRoute(
-        path: '/my-venues/:id/staff',
-        builder: (_, state) => StaffScreen(
-          courtId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-        ),
-      ),
-      GoRoute(
-        path: '/my-venues/:id/pricing',
-        builder: (_, state) => PricingScreen(
-          courtId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-        ),
-      ),
-      GoRoute(
-        path: '/my-venues/:id/block',
-        builder: (_, state) => BlockSlotsScreen(
-          courtId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-        ),
-      ),
-      GoRoute(
-        path: '/my-venues/:id/calendar',
-        builder: (_, state) => CalendarScreen(
-          courtId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
-        ),
-      ),
-
       // Player
       GoRoute(path: '/subscriptions', builder: (_, __) => const SubscriptionsScreen()),
       GoRoute(path: '/payment-history', builder: (_, __) => const PaymentHistoryScreen()),
@@ -245,10 +136,6 @@ GoRouter createRouter(AuthProvider auth) {
           bookingId: int.tryParse(state.pathParameters['bookingId'] ?? '') ?? 0,
         ),
       ),
-
-      // Admin
-      GoRoute(path: '/admin', builder: (_, __) => const AdminScreen()),
-      GoRoute(path: '/ledger', builder: (_, __) => const LedgerScreen()),
 
       // Static
       GoRoute(path: '/faq', builder: (_, __) => const FaqScreen()),

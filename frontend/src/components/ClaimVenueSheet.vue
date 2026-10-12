@@ -183,12 +183,12 @@ const submit = async () => {
                                 </div>
                             </div>
 
-                            <!-- Role upgrade notice -->
-                            <div v-if="auth.isLoggedIn && !auth.isOwner"
+                            <!-- Claim notice -->
+                            <div v-if="auth.isLoggedIn"
                                 class="flex items-start gap-3 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
                                 <BadgeCheck :size="18" class="text-amber-600 shrink-0 mt-0.5" />
                                 <p class="text-xs text-amber-800 font-medium leading-relaxed">
-                                    Your account will be upgraded to <strong>Venue Owner</strong> once your claim is approved.
+                                    You'll be able to manage this venue once your claim is approved.
                                 </p>
                             </div>
 

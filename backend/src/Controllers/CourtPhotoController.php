@@ -21,17 +21,18 @@ class CourtPhotoController {
         echo json_encode(['photos' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
     }
 
-    // POST /api/court-photos  { court_id, owner_id, url, sort_order? }
+    // POST /api/court-photos  { court_id, url, sort_order? }
     public function create() {
+        $authUser = Auth::require();
+        $owner_id = (int)$authUser['id'];
         $data     = json_decode(file_get_contents('php://input'));
         $court_id = (int)($data->court_id ?? 0);
-        $owner_id = (int)($data->owner_id ?? 0);
         $url      = trim($data->url ?? '');
         $sort     = (int)($data->sort_order ?? 0);
 
-        if (!$court_id || !$owner_id || !$url) {
+        if (!$court_id || !$url) {
             http_response_code(400);
-            echo json_encode(['message' => 'court_id, owner_id, url required']);
+            echo json_encode(['message' => 'court_id and url required']);
             return;
         }
 
@@ -54,13 +55,13 @@ class CourtPhotoController {
         echo json_encode(['message' => 'Photo added.', 'id' => $newId]);
     }
 
-    // DELETE /api/court-photos/:id  body: { owner_id }
+    // DELETE /api/court-photos/:id
     public function delete($id) {
-        $data     = json_decode(file_get_contents('php://input'));
-        $owner_id = (int)($data->owner_id ?? 0);
-        if (!$id || !$owner_id) {
+        $authUser = Auth::require();
+        $owner_id = (int)$authUser['id'];
+        if (!$id) {
             http_response_code(400);
-            echo json_encode(['message' => 'id and owner_id required']);
+            echo json_encode(['message' => 'photo id required']);
             return;
         }
         $db  = Database::getConnection();

@@ -153,7 +153,7 @@ class AuthController {
             }
 
             $user->name = $data->name;
-            $user->role = 'player'; // all new users are player by default
+            $user->role = 'user'; // all new users default to 'user'
 
             try {
                 if($user->create()) {

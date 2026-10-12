@@ -7,7 +7,7 @@ class Database {
     private $pdo;
 
     // Bump this number whenever migrate() adds new tables/columns/indexes
-    private const SCHEMA_VERSION = 18;
+    private const SCHEMA_VERSION = 20;
 
     private function __construct() {
         $host    = getenv('DB_HOST') ?: 'localhost';
@@ -47,7 +47,7 @@ class Database {
                 email VARCHAR(255) UNIQUE,
                 password VARCHAR(255),
                 phone VARCHAR(20) UNIQUE,
-                role ENUM('admin', 'owner', 'player') DEFAULT 'player',
+                role VARCHAR(20) DEFAULT 'user',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ");
@@ -170,8 +170,23 @@ class Database {
             FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
         )");
 
+        // v19: retain legacy payments rather than deleting them at request time.
+        // The pre-Cashfree table used a structurally incompatible schema.
+        $paymentsExist = (bool)$this->pdo->query("SHOW TABLES LIKE 'payments'")->fetchColumn();
+        $paymentColumns = $paymentsExist
+            ? $this->pdo->query("SHOW COLUMNS FROM payments")->fetchAll(PDO::FETCH_COLUMN)
+            : [];
+        $legacyTable = null;
+        if ($paymentColumns && !in_array('cf_order_id', $paymentColumns, true)) {
+            $legacyTable = 'payments_legacy_v1';
+            $legacyExists = (bool)$this->pdo->query("SHOW TABLES LIKE '$legacyTable'")->fetchColumn();
+            if ($legacyExists) {
+                throw new RuntimeException('Legacy payments table exists; manual payment migration is required.');
+            }
+            $this->pdo->exec("RENAME TABLE payments TO $legacyTable");
+        }
+
         // payments table — Cashfree orders linked to bookings/subscriptions
-        // Note: PaymentController constructor handles migration from old schema
         $this->pdo->exec("CREATE TABLE IF NOT EXISTS payments (
             id              INT AUTO_INCREMENT PRIMARY KEY,
             user_id         INT NOT NULL,
@@ -187,15 +202,38 @@ class Database {
             UNIQUE KEY idx_cf_order (cf_order_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+        // Make historic booking payments visible in the new ledger while the
+        // original table remains available as payments_legacy_v1 for audit.
+        if ($legacyTable !== null) {
+            $this->pdo->exec("INSERT INTO payments (user_id, cf_order_id, amount, type, payload, status, reference_id, created_at)
+                SELECT b.user_id, CONCAT('legacy_', lp.id), lp.amount, 'booking',
+                       JSON_OBJECT('legacy_payment_id', lp.id, 'transaction_id', lp.transaction_id),
+                       CASE WHEN lp.status = 'success' THEN 'paid' WHEN lp.status = 'failed' THEN 'failed' ELSE 'created' END,
+                       lp.booking_id, lp.created_at
+                FROM $legacyTable lp
+                JOIN bookings b ON b.id = lp.booking_id
+                WHERE lp.booking_id IS NOT NULL
+                UNION ALL
+                SELECT us.user_id, CONCAT('legacy_subscription_', lp.id), lp.amount, 'subscription',
+                       JSON_OBJECT('legacy_payment_id', lp.id, 'transaction_id', lp.transaction_id),
+                       CASE WHEN lp.status = 'success' THEN 'paid' WHEN lp.status = 'failed' THEN 'failed' ELSE 'created' END,
+                       lp.subscription_id, lp.created_at
+                FROM $legacyTable lp
+                JOIN user_subscriptions us ON us.id = lp.subscription_id
+                WHERE lp.subscription_id IS NOT NULL");
+        }
+
         // payouts table — admin records manual payouts to owners
         $this->pdo->exec("CREATE TABLE IF NOT EXISTS payouts (
-            id         INT AUTO_INCREMENT PRIMARY KEY,
-            owner_id   INT NOT NULL,
-            amount     DECIMAL(10,2) NOT NULL,
-            note       VARCHAR(255) DEFAULT NULL,
-            paid_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            owner_id    INT NOT NULL,
+            amount      DECIMAL(10,2) NOT NULL,
+            note        VARCHAR(255) DEFAULT NULL,
+            recorded_by INT DEFAULT NULL,
+            paid_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
         )");
+        try { $this->pdo->exec("ALTER TABLE payouts ADD COLUMN recorded_by INT DEFAULT NULL AFTER note"); } catch (Exception $e) {}
 
         // favorites table
         $this->pdo->exec("CREATE TABLE IF NOT EXISTS favorites (
@@ -310,6 +348,10 @@ class Database {
             FOREIGN KEY (sender_id) REFERENCES users(id)   ON DELETE CASCADE,
             INDEX idx_slot_msg (court_id, slot_date, slot_time)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // v20: Simplify roles — only 'admin' and 'user'. Merge player/owner into user.
+        try { $this->pdo->exec("ALTER TABLE users MODIFY COLUMN role VARCHAR(20) DEFAULT 'user'"); } catch (Exception $e) {}
+        try { $this->pdo->exec("UPDATE users SET role = 'user' WHERE role IN ('player', 'owner')"); } catch (Exception $e) {}
 
         // Stamp schema version
         $this->pdo->exec("DELETE FROM schema_version");

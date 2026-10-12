@@ -3,7 +3,7 @@
  * KoCourt – One-Click Deployer
  *
  * Place this file at the ROOT of your hosting (public_html/deploy.php).
- * Visit: https://kocourt.com/deploy.php?key=YOUR_DEPLOY_KEY
+ * Run: curl -H "X-Deploy-Key: YOUR_DEPLOY_KEY" https://kocourt.com/deploy.php
  *
  * What it does:
  *   1. Downloads latest code from GitHub
@@ -41,13 +41,13 @@ if (file_exists($envFile)) {
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 $deployKey = $_ENV['DEPLOY_KEY'] ?? '';
-$givenKey  = $_GET['key'] ?? '';
+$givenKey  = $_SERVER['HTTP_X_DEPLOY_KEY'] ?? '';
 
 header('Content-Type: text/html; charset=UTF-8');
 
-if (!$deployKey || $givenKey !== $deployKey) {
+if (!$deployKey || !$givenKey || !hash_equals($deployKey, $givenKey)) {
     http_response_code(403);
-    die(page('Access Denied', '<div class="err">403 – Invalid or missing key.<br>Set DEPLOY_KEY in backend/.env</div>'));
+    die(page('Access Denied', '<div class="err">403 – Invalid or missing deployment key.<br>Send it in the X-Deploy-Key header.</div>'));
 }
 
 // ── Config ───────────────────────────────────────────────────────────────────

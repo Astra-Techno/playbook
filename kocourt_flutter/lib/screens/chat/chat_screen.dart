@@ -2,9 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../core/api.dart';
-import '../../core/theme.dart';
-import '../../providers/auth_provider.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class ChatScreen extends StatefulWidget {
   final int bookingId;

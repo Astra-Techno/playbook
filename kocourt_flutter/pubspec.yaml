@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
+  kocourt_shared:
+    path: ../kocourt_shared
   # State management
   provider: ^6.1.2
   # HTTP

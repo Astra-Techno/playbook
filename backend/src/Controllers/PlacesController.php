@@ -82,13 +82,14 @@ class PlacesController
 
     public function requestService(): void
     {
-        $data    = json_decode(file_get_contents('php://input'), true) ?? [];
-        $placeId = (int)($data['place_id'] ?? 0);
-        $userId  = (int)($data['user_id']  ?? 0);
+        $authUser = Auth::require();
+        $userId   = (int)$authUser['id'];
+        $data     = json_decode(file_get_contents('php://input'), true) ?? [];
+        $placeId  = (int)($data['place_id'] ?? 0);
 
-        if (!$placeId || !$userId) {
+        if (!$placeId) {
             http_response_code(400);
-            echo json_encode(['error' => 'place_id and user_id are required']);
+            echo json_encode(['error' => 'place_id is required']);
             return;
         }
 

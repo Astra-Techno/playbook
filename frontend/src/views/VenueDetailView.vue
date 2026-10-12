@@ -42,7 +42,7 @@ const deleteCourt = async () => {
     if (!confirm(`Delete "${court.value.name}"? This cannot be undone.`)) return
     deleteLoading.value = true
     try {
-        await axios.delete(`/courts/${court.value.id}`)
+        await axios.delete(`/courts/${court.value.id}`, { data: { owner_id: auth.user?.id } })
         toast.success('Venue deleted')
         router.replace('/my-venues')
     } catch {

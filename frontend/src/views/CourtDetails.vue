@@ -501,15 +501,15 @@ onMounted(async () => {
 
 watch(selectedSpace, () => {
     selectedSlots.value = []
+    fetchSlotPrices()
 })
-
-watch([selectedDate, selectedSpace], () => { fetchSlotPrices() })
 
 watch(selectedDate, async (date) => {
     selectedSlots.value = []
     lockedSlotPeak.value = null
     bookedSlots.value  = []
     blockedSlots.value = []
+    fetchSlotPrices()
     if (date && court.value) {
         try {
             const [bRes, blkRes] = await Promise.all([
@@ -526,11 +526,12 @@ watch(selectedDate, async (date) => {
 
 const submitReview = async () => {
     if (!reviewRating.value) { toast.error('Please select a rating'); return }
+    if (!userPastBooking.value) return
     reviewSubmitting.value = true
     try {
         await axios.post('/reviews', {
             court_id:   court.value.id,
-            user_id:    auth.user.id,
+            user_id:    auth.user?.id,
             booking_id: userPastBooking.value.id,
             rating:     reviewRating.value,
             comment:    reviewComment.value.trim(),
@@ -671,11 +672,10 @@ const confirmBooking = async () => {
         return acc
     }, [])
 
-    const hourPrice = price.value
     const slots = groups.map(group => ({
         start_time:  `${selectedDate.value} ${group[0].pad}:00`,
         end_time:    `${selectedDate.value} ${String(group[group.length - 1].hour + 1).padStart(2, '0')}:00:00`,
-        total_price: group.length * hourPrice,
+        total_price: group.reduce((sum, s) => sum + slotPrice(s.pad), 0),
     }))
 
     bookingLoading.value = true

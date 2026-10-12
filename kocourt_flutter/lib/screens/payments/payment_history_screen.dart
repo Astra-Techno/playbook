@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/api.dart';
-import '../../core/icons.dart';
-import '../../core/theme.dart';
-import '../../providers/auth_provider.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:intl/intl.dart';
 
 class PaymentHistoryScreen extends StatefulWidget {

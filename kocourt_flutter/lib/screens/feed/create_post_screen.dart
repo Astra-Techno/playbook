@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
-import '../../core/api.dart';
-import '../../core/icons.dart';
-import '../../core/theme.dart';
-import '../../providers/auth_provider.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class CreatePostScreen extends StatefulWidget {
   const CreatePostScreen({super.key});
@@ -26,7 +23,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     try {
       final formData = FormData.fromMap({'image': await MultipartFile.fromFile(file.path)});
       final res = await Api().dio.post('${Api.baseUrl}/upload', data: formData);
-      setState(() => _imageUrl = res.data['url']);
+      if (mounted) setState(() => _imageUrl = res.data['url']);
     } catch (_) {}
   }
 
@@ -44,7 +41,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to post'), backgroundColor: AppColors.error));
     }
-    setState(() => _posting = false);
+    if (mounted) setState(() => _posting = false);
   }
 
   @override

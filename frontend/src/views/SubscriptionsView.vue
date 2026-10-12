@@ -33,7 +33,7 @@ const fetchSubs = async () => {
     loading.value = true
     error.value   = false
     try {
-        const res  = await axios.get(`/subscriptions?user_id=${auth.user.id}`)
+        const res  = await axios.get(`/subscriptions?user_id=${auth.user?.id}`)
         subs.value = res.data.records || []
     } catch { error.value = true }
     finally  { loading.value = false }

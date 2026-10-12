@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../core/icons.dart';
-import '../../core/api.dart';
-import '../../core/theme.dart';
-import '../../providers/auth_provider.dart';
-import '../../providers/toast_provider.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 import 'create_match_sheet.dart';
 
 
@@ -29,12 +25,14 @@ class _MatchesScreenState extends State<MatchesScreen> {
   Future<void> _loadMatches() async {
     try {
       final res = await Api().get('/match-requests');
-      setState(() {
-        _matches = List<Map<String, dynamic>>.from(
-          (res.data['requests'] ?? []).map((e) => Map<String, dynamic>.from(e)),
-        );
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _matches = List<Map<String, dynamic>>.from(
+            (res.data['requests'] ?? []).map((e) => Map<String, dynamic>.from(e)),
+          );
+          _loading = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -320,7 +318,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
               ),
             ),
           ],
-          if (match['notes'] != null && (match['notes'] as String).isNotEmpty) ...[
+          if (match['notes']?.toString().isNotEmpty == true) ...[
             const SizedBox(height: 8),
             Text(
               match['notes'],

@@ -350,17 +350,8 @@ class CourtController {
     }
 
     public function approveClaim($court_id) {
-        $data     = json_decode(file_get_contents("php://input"));
-        $admin_id = (int)($data->admin_id ?? 0);
+        $authUser = Auth::requireAdmin();
         $db = Database::getConnection();
-
-        // Verify requester is admin
-        $aStmt = $db->prepare("SELECT role FROM users WHERE id = ?");
-        $aStmt->execute([$admin_id]);
-        $admin = $aStmt->fetch(PDO::FETCH_ASSOC);
-        if (!$admin || $admin['role'] !== 'admin') {
-            http_response_code(403); echo json_encode(['message' => 'Not authorised']); return;
-        }
 
         // Get court + owner
         $cStmt = $db->prepare("SELECT owner_id, claim_status FROM courts WHERE id = ?");
@@ -368,11 +359,9 @@ class CourtController {
         $court = $cStmt->fetch(PDO::FETCH_ASSOC);
         if (!$court) { http_response_code(404); echo json_encode(['message' => 'Court not found']); return; }
 
-        // Approve: update court status, upgrade owner role, mark place onboarded
+        // Approve: update court status, mark place onboarded
         $db->prepare("UPDATE courts SET claim_status = 'approved' WHERE id = ?")
            ->execute([$court_id]);
-        $db->prepare("UPDATE users SET role = 'owner' WHERE id = ? AND role = 'player'")
-           ->execute([$court['owner_id']]);
         $db->prepare("UPDATE places SET status = 'onboarded' WHERE court_id = ?")
            ->execute([$court_id]);
 
@@ -381,17 +370,10 @@ class CourtController {
     }
 
     public function rejectClaim($court_id) {
+        $authUser = Auth::requireAdmin();
         $data     = json_decode(file_get_contents("php://input"));
-        $admin_id = (int)($data->admin_id ?? 0);
         $reason   = trim($data->reason ?? 'Claim rejected by admin.');
         $db = Database::getConnection();
-
-        $aStmt = $db->prepare("SELECT role FROM users WHERE id = ?");
-        $aStmt->execute([$admin_id]);
-        $admin = $aStmt->fetch(PDO::FETCH_ASSOC);
-        if (!$admin || $admin['role'] !== 'admin') {
-            http_response_code(403); echo json_encode(['message' => 'Not authorised']); return;
-        }
 
         $db->prepare("UPDATE courts SET claim_status = 'rejected', claim_rejection_reason = ? WHERE id = ?")
            ->execute([$reason, $court_id]);

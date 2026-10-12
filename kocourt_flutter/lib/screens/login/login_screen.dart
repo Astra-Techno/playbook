@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../../core/icons.dart';
-import '../../core/theme.dart';
-import '../../providers/auth_provider.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -72,7 +71,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     if (result['new_user'] == true) {
       setState(() => _step = 3);
     } else if (result['success'] == true) {
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) context.go('/');
     } else {
       setState(() => _error = result['error'] ?? 'Something went wrong');
     }
@@ -84,7 +83,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       if (_step > 1) {
         _step--;
       } else {
-        Navigator.of(context).pop();
+        context.pop();
       }
     });
   }

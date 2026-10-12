@@ -1,0 +1,68 @@
+name: kocourt_owner
+description: "KoCourt Owner - Venue Management App"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  # Shared package
+  kocourt_shared:
+    path: ../kocourt_shared
+  # State management
+  provider: ^6.1.2
+  # HTTP
+  dio: ^5.7.0
+  # Local storage
+  shared_preferences: ^2.3.4
+  # Image caching
+  cached_network_image: ^3.4.1
+  # Routing
+  go_router: ^14.8.1
+  # Google Fonts
+  google_fonts: ^6.3.3
+  # Image picker
+  image_picker: ^1.1.2
+  # URL launcher
+  url_launcher: ^6.3.1
+  # Intl for date formatting
+  intl: ^0.20.3
+  # Cashfree payment gateway
+  flutter_cashfree_pg_sdk: ^2.4.0+52
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.3
+  flutter_native_splash: ^2.4.5
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/logo.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/logo.png"
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: "assets/images/logo.png"
+  image_dark: "assets/images/logo.png"
+  color_dark: "#1a1a2e"
+  android_12:
+    color: "#FFFFFF"
+    image: "assets/images/logo.png"
+    color_dark: "#1a1a2e"
+    image_dark: "assets/images/logo.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/
+    - assets/images/

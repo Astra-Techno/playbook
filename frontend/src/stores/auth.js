@@ -19,8 +19,6 @@ export const useAuthStore = defineStore('auth', () => {
 
     const isLoggedIn = computed(() => !!token.value && !!user.value)
     const isAdmin    = computed(() => user.value?.role === 'admin')
-    const isOwner    = computed(() => user.value?.role === 'owner')
-    const isPlayer   = computed(() => user.value?.role === 'player')
 
     function setAuth(userData, tokenData) {
         user.value = userData
@@ -83,5 +81,5 @@ export const useAuthStore = defineStore('auth', () => {
         } catch { /* silent — use cached user on failure */ }
     }
 
-    return { user, token, isLoggedIn, isAdmin, isOwner, isPlayer, setAuth, logout, updateAvatar, refreshUser }
+    return { user, token, isLoggedIn, isAdmin, setAuth, logout, updateAvatar, refreshUser }
 })

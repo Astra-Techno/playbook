@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/icons.dart';
-import '../../core/theme.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 import '../login/login_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {

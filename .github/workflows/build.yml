@@ -1,63 +1,179 @@
-name: Build Frontend
+name: Quality Gate and Web Build
 
 on:
+  pull_request:
   push:
     branches: [main]
   workflow_dispatch:
-    paths:
-      - 'frontend/src/**'
-      - 'frontend/index.html'
-      - 'frontend/package.json'
-      - 'frontend/vite.config.js'
-      - 'frontend/tailwind.config.js'
-      - 'frontend/postcss.config.js'
-      - 'frontend/public/**'
-      - 'frontend/.env.production'
-      - '.htaccess'
 
 permissions:
   contents: write
 
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build:
+  web:
+    name: Vue quality
+    if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]')
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          cache: npm
           cache-dependency-path: frontend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
         working-directory: frontend
-
-      - name: Lint
-        run: npm run lint
+      - run: npm run lint
         working-directory: frontend
-
-      - name: Build
-        run: npm run build
+      - run: npm run build
         working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
 
-      - name: Copy dist → public_html/
+  flutter:
+    name: Flutter ${{ matrix.app }}
+    if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [kocourt_flutter, kocourt_owner]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+        working-directory: kocourt_shared
+      - run: flutter analyze
+        working-directory: kocourt_shared
+      - run: flutter test
+        working-directory: kocourt_shared
+      - run: flutter pub get
+        working-directory: ${{ matrix.app }}
+      - run: flutter analyze
+        working-directory: ${{ matrix.app }}
+      - run: flutter test
+        working-directory: ${{ matrix.app }}
+      - run: flutter build apk --debug
+        working-directory: ${{ matrix.app }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-debug-apk
+          path: ${{ matrix.app }}/build/app/outputs/flutter-apk/app-debug.apk
+
+  api-and-ui:
+    name: API and player UI E2E
+    if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]')
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: kocourt_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, curl, fileinfo
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: e2e-tests/package-lock.json
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: PHP syntax check
+        run: find backend -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Configure isolated API
         run: |
-          rm -rf public_html
-          cp -r frontend/dist public_html
-
-      - name: Commit built files
+          cat > backend/.env <<'EOF'
+          APP_ENV=test
+          APP_DEBUG=false
+          DB_HOST=127.0.0.1
+          DB_PORT=3306
+          DB_NAME=kocourt_test
+          DB_USER=root
+          DB_PASS=root
+          E2E_RESET_KEY=local-ci-reset-key
+          ALLOWED_ORIGINS=http://127.0.0.1:8787,http://localhost:8787
+          EOF
+      - name: Reset and seed test data
+        run: php backend/scripts/seed_e2e.php --key=local-ci-reset-key
+      - name: Build isolated player web app
         run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          flutter pub get
+          flutter build web --release --dart-define=API_BASE_URL=http://127.0.0.1:8000
+        working-directory: kocourt_flutter
+      - name: Start API and UI servers
+        run: |
+          php -S 127.0.0.1:8000 backend/index.php > /tmp/kocourt-api.log 2>&1 &
+          npx --yes serve kocourt_flutter/build/web -l 8787 > /tmp/kocourt-ui.log 2>&1 &
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:8000/courts > /dev/null && break
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:8000/courts > /dev/null
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:8787 > /dev/null && break
+            sleep 1
+          done
+          curl --fail --silent http://127.0.0.1:8787 > /dev/null
+      - name: Install Playwright and run end-to-end tests
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          mkdir -p screenshots
+          npm test
+        working-directory: e2e-tests
+        env:
+          E2E_BASE_URL: http://127.0.0.1:8787
+          E2E_API_BASE_URL: http://127.0.0.1:8000
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-diagnostics
+          path: |
+            e2e-tests/screenshots
+            e2e-tests/test-results
+            e2e-tests/playwright-report
+            /tmp/kocourt-api.log
+            /tmp/kocourt-ui.log
+          if-no-files-found: ignore
+
+  publish-web-build:
+    name: Publish verified web build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip ci]')
+    needs: [web, flutter, api-and-ui]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: public_html
+      - name: Commit verified build artifact
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
           git add public_html/
-          git diff --staged --quiet && echo "Nothing to commit" || (
-            git commit -m "build: update public_html [skip ci]"
-            git push
-          )
+          git diff --staged --quiet || git commit -m 'build: update public_html [skip ci]'
+          git push

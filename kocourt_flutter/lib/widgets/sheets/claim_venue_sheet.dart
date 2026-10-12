@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
-import '../../core/api.dart';
-import '../../core/theme.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class ClaimVenueSheet extends StatefulWidget {
   final Map<String, dynamic> place;
@@ -56,7 +55,7 @@ class _ClaimVenueSheetState extends State<ClaimVenueSheet> {
         _uploading = false;
       });
     } catch (_) {
-      setState(() => _uploading = false);
+      if (mounted) setState(() => _uploading = false);
     }
   }
 
@@ -76,7 +75,7 @@ class _ClaimVenueSheetState extends State<ClaimVenueSheet> {
       });
       if (mounted) Navigator.pop(context, true);
     } catch (_) {
-      setState(() => _submitting = false);
+      if (mounted) setState(() => _submitting = false);
     }
   }
 

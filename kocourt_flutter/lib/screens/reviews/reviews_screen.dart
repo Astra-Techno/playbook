@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/api.dart';
-import '../../core/icons.dart';
-import '../../core/theme.dart';
-import '../../providers/auth_provider.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class ReviewsScreen extends StatefulWidget {
   final int? courtId; // null = my reviews
@@ -37,7 +34,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
         (res.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
     } catch (_) {}
-    setState(() => _loading = false);
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -75,7 +72,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                                 Expanded(child: Text(r['user_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14))),
                                 Row(
                                   children: List.generate(5, (j) => Icon(
-                                    j < (r['rating'] ?? 0) ? AppIcons.star : Icons.star_border,
+                                    j < (int.tryParse('${r['rating'] ?? 0}') ?? 0) ? AppIcons.star : Icons.star_border,
                                     size: 14,
                                     color: Colors.amber,
                                   )),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/api.dart';
-import '../../core/icons.dart';
-import '../../core/theme.dart';
+import 'package:go_router/go_router.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class BookingConfirmationScreen extends StatefulWidget {
   final int bookingId;
@@ -99,13 +98,13 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
               SizedBox(
                 width: double.infinity, height: 52,
                 child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                  onPressed: () => context.go('/'),
                   child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                 ),
               ),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => context.go('/bookings'),
                 child: const Text('View My Bookings', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textMuted)),
               ),
             ],

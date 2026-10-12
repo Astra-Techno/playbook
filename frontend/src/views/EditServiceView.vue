@@ -83,7 +83,7 @@ const pageTitle = computed(() => isCreate ? 'Add Venue' : 'Edit Venue')
 const saveLabel = computed(() => isCreate ? 'Add Venue' : 'Save Changes')
 
 onMounted(async () => {
-    if (!auth.isOwner && !auth.isAdmin) { router.replace('/'); return }
+    if (!auth.isLoggedIn) { router.replace('/login'); return }
     if (isCreate) return
     try {
         const [courtRes, photosRes] = await Promise.all([

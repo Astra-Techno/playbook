@@ -134,7 +134,7 @@ class SlotChatController {
              WHERE b.court_id = ? AND b.start_time = ? AND b.status = 'confirmed'
              UNION
              SELECT u.id, u.name, u.avatar_url, u.skill_level,
-                    'owner' AS member_type
+                    'host' AS member_type
              FROM courts c
              JOIN users u ON u.id = c.owner_id
              WHERE c.id = ?"

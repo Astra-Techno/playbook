@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/theme.dart';
-import '../../providers/venue_provider.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 import '../court_details/court_details_screen.dart';
 
 class MapScreen extends StatelessWidget {

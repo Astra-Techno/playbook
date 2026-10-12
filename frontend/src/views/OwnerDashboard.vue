@@ -183,7 +183,8 @@ const todayBookings = computed(() => {
     return bookings.value.filter(b => b.start_time?.startsWith(today))
 })
 
-const formatTime = (dt) => new Date(dt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+const parseLocal = (dt) => { const [d, t] = String(dt).split(' '); return new Date(`${d}T${t || '00:00:00'}`) }
+const formatTime = (dt) => parseLocal(dt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
 
 // ── Owner Reviews ─────────────────────────────────────────────────────────────
 const ownerReviews   = ref([])
@@ -493,8 +494,8 @@ const handleAvatarUpload = async (event) => {
                         class="flex flex-col bg-white rounded-xl overflow-hidden shadow-sm ring-1 ring-slate-100 p-4">
                         <div class="flex items-start gap-3">
                             <div class="shrink-0 w-12 h-12 bg-black rounded-xl flex flex-col items-center justify-center text-white">
-                                <span class="text-base font-bold leading-none">{{ new Date(booking.start_time).getDate() }}</span>
-                                <span class="text-[9px] font-semibold uppercase">{{ new Date(booking.start_time).toLocaleDateString('en-IN', { month: 'short' }) }}</span>
+                                <span class="text-base font-bold leading-none">{{ parseLocal(booking.start_time).getDate() }}</span>
+                                <span class="text-[9px] font-semibold uppercase">{{ parseLocal(booking.start_time).toLocaleDateString('en-IN', { month: 'short' }) }}</span>
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="font-bold text-black text-sm truncate">{{ booking.court_name }}</p>

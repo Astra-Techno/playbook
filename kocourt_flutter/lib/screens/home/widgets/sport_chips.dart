@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../../core/theme.dart';
-import '../../../core/constants.dart';
-import '../../../providers/venue_provider.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class SportChips extends StatelessWidget {
   const SportChips({super.key});

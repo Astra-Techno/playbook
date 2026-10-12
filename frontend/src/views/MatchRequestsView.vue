@@ -53,7 +53,7 @@ const joinRequest = async (req) => {
     if (!auth.isLoggedIn) { router.push('/login'); return }
     joiningId.value = req.id
     try {
-        await axios.post(`/match-requests/${req.id}/join`, { user_id: auth.user.id })
+        await axios.post(`/match-requests/${req.id}/join`, { user_id: auth.user?.id })
         toast.success('Joined the match!')
         await fetchRequests()
     } catch (err) {
@@ -62,9 +62,10 @@ const joinRequest = async (req) => {
 }
 
 const leaveRequest = async (req) => {
+    if (!auth.isLoggedIn) return
     leavingId.value = req.id
     try {
-        await axios.delete(`/match-requests/${req.id}/leave`, { data: { user_id: auth.user.id } })
+        await axios.delete(`/match-requests/${req.id}/leave`, { data: { user_id: auth.user?.id } })
         toast.success('Left the match')
         await fetchRequests()
     } catch { toast.error('Failed to leave') }

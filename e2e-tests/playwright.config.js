@@ -6,13 +6,16 @@ module.exports = defineConfig({
   expect: { timeout: 10000 },
   fullyParallel: false,
   retries: 0,
-  reporter: [['list']],
+  reporter: [
+    ['list'],
+    ['html', { outputFolder: 'playwright-report', open: 'never' }],
+  ],
   use: {
-    baseURL: 'http://localhost:8787',
+    baseURL: process.env.E2E_BASE_URL || 'http://127.0.0.1:8787',
     viewport: { width: 400, height: 800 },
     actionTimeout: 10000,
     screenshot: 'only-on-failure',
-    trace: 'off',
+    trace: 'retain-on-failure',
   },
   projects: [
     {

@@ -58,7 +58,14 @@ register_shutdown_function(function () use ($_debug) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
-header("Access-Control-Allow-Origin: *");
+// Browser clients are limited to configured origins. Native clients have no
+// Origin header and continue to use the API normally.
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$allowedOrigins = array_values(array_filter(array_map('trim', explode(',', getenv('ALLOWED_ORIGINS') ?: 'https://www.kocourt.com,https://kocourt.com,http://localhost:5173'))));
+if ($origin !== '' && in_array($origin, $allowedOrigins, true)) {
+    header("Access-Control-Allow-Origin: $origin");
+    header('Vary: Origin');
+}
 header("Content-Type: application/json; charset=UTF-8");
 header("Cache-Control: no-store, no-cache, must-revalidate");
 header("Pragma: no-cache");
@@ -74,6 +81,10 @@ if ($methodOverride && in_array(strtoupper($methodOverride), ['DELETE', 'PUT', '
 }
 
 if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    if ($origin !== '' && !in_array($origin, $allowedOrigins, true)) {
+        http_response_code(403);
+        exit();
+    }
     http_response_code(200);
     exit();
 }
@@ -292,9 +303,9 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
     }
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { $courtController->index(); exit(); }
     // PUT  /courts/claims/:id/approve
-    if ($_SERVER['REQUEST_METHOD'] === 'PUT'  && isset($seg[1]) && $seg[1] === 'claims' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'approve') { $courtController->approveClaim((int)$seg[2]); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT'  && isset($seg[1]) && $seg[1] === 'claims' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'approve') { Auth::requireAdmin(); $courtController->approveClaim((int)$seg[2]); exit(); }
     // PUT  /courts/claims/:id/reject
-    if ($_SERVER['REQUEST_METHOD'] === 'PUT'  && isset($seg[1]) && $seg[1] === 'claims' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'reject')  { $courtController->rejectClaim((int)$seg[2]); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT'  && isset($seg[1]) && $seg[1] === 'claims' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'reject')  { Auth::requireAdmin(); $courtController->rejectClaim((int)$seg[2]); exit(); }
     // POST /courts/claim — must check before generic create
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'claim') { Auth::require(); $courtController->claim(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::requireOwner(); $courtController->create(); exit(); }
@@ -544,6 +555,7 @@ if (isset($seg[0]) && $seg[0] === 'nearby-places' && $_SERVER['REQUEST_METHOD'] 
 
 // Service Requests — POST /service-requests
 if (isset($seg[0]) && $seg[0] === 'service-requests' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    Auth::require();
     require_once __DIR__ . '/src/Controllers/PlacesController.php';
     (new PlacesController())->requestService();
     exit();
@@ -638,14 +650,14 @@ if (isset($seg[0]) && $seg[0] === 'admin') {
         }
         echo json_encode(['users' => $stmt->fetchAll(PDO::FETCH_ASSOC)]); exit();
     }
-    // PUT /admin/users/:id/role  { role: 'player'|'owner'|'admin' }
+    // PUT /admin/users/:id/role  { role: 'user'|'admin' }
     if (isset($seg[1]) && $seg[1] === 'users' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'role' && $_SERVER['REQUEST_METHOD'] === 'PUT') {
         Auth::requireAdmin();
         $db   = Database::getConnection();
         $data = json_decode(file_get_contents('php://input'));
         $role = $data->role ?? '';
-        if (!in_array($role, ['player', 'owner', 'admin'])) {
-            http_response_code(400); echo json_encode(['message' => 'Invalid role']); exit();
+        if (!in_array($role, ['user', 'admin'])) {
+            http_response_code(400); echo json_encode(['message' => 'Invalid role. Must be user or admin.']); exit();
         }
         $db->prepare("UPDATE users SET role = ? WHERE id = ?")->execute([$role, (int)$seg[2]]);
         echo json_encode(['message' => 'Role updated', 'role' => $role]); exit();
@@ -851,8 +863,8 @@ if (isset($seg[0]) && $seg[0] === 'court-photos') {
     require_once __DIR__ . '/src/Controllers/CourtPhotoController.php';
     $photoCtrl = new CourtPhotoController();
     if ($_SERVER['REQUEST_METHOD'] === 'GET')    { $photoCtrl->index();           exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'POST')   { $photoCtrl->create();          exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { $photoCtrl->delete((int)$seg[1]); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST')   { Auth::require(); $photoCtrl->create();          exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { Auth::require(); $photoCtrl->delete((int)$seg[1]); exit(); }
 }
 
 // Slot Chat Routes (group messaging for same-slot players)

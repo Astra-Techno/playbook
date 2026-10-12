@@ -6,10 +6,16 @@ class EarningsController {
 
     // GET /earnings?owner_id=X
     public function index(): void {
+        $authUser = Auth::require();
         $owner_id = (int)($_GET['owner_id'] ?? 0);
         if (!$owner_id) {
             http_response_code(400);
             echo json_encode(['message' => 'owner_id required']);
+            return;
+        }
+        if ((int)$authUser['id'] !== $owner_id && ($authUser['role'] ?? '') !== 'admin') {
+            http_response_code(403);
+            echo json_encode(['message' => 'Forbidden']);
             return;
         }
 
@@ -56,6 +62,7 @@ class EarningsController {
 
     // POST /payouts  { owner_id, amount, note }  — admin records a manual payout
     public function createPayout(): void {
+        $authUser = Auth::requireAdmin();
         $data     = json_decode(file_get_contents('php://input'));
         $owner_id = (int)($data->owner_id ?? 0);
         $amount   = round(floatval($data->amount ?? 0), 2);
@@ -69,9 +76,9 @@ class EarningsController {
 
         $db   = Database::getConnection();
         $stmt = $db->prepare(
-            "INSERT INTO payouts (owner_id, amount, note) VALUES (?, ?, ?)"
+            "INSERT INTO payouts (owner_id, amount, note, recorded_by) VALUES (?, ?, ?, ?)"
         );
-        $stmt->execute([$owner_id, $amount, $note ?: null]);
+        $stmt->execute([$owner_id, $amount, $note ?: null, (int)$authUser['id']]);
 
         http_response_code(201);
         echo json_encode(['message' => 'Payout recorded', 'id' => $db->lastInsertId()]);
@@ -79,10 +86,16 @@ class EarningsController {
 
     // GET /earnings/ledger?owner_id=X[&type=booking|subscription|payout][&from=YYYY-MM-DD][&to=YYYY-MM-DD]
     public function ledger(): void {
+        $authUser = Auth::require();
         $owner_id = (int)($_GET['owner_id'] ?? 0);
         if (!$owner_id) {
             http_response_code(400);
             echo json_encode(['message' => 'owner_id required']);
+            return;
+        }
+        if ((int)$authUser['id'] !== $owner_id && ($authUser['role'] ?? '') !== 'admin') {
+            http_response_code(403);
+            echo json_encode(['message' => 'Forbidden']);
             return;
         }
 
@@ -190,23 +203,32 @@ class EarningsController {
         ]);
     }
 
-    // GET /earnings/venue?court_id=X&owner_id=Y
+    // GET /earnings/venue?court_id=X
     // Returns booking-based earnings summary + transaction list for a single venue
     public function venue(): void {
+        $authUser = Auth::require();
         $court_id = (int)($_GET['court_id'] ?? 0);
-        $owner_id = (int)($_GET['owner_id'] ?? 0);
-        if (!$court_id || !$owner_id) {
+        $owner_id = (int)$authUser['id'];
+        if (!$court_id) {
             http_response_code(400);
-            echo json_encode(['message' => 'court_id and owner_id required']);
+            echo json_encode(['message' => 'court_id required']);
             return;
         }
 
         $db = Database::getConnection();
 
-        // Verify ownership
-        $chk = $db->prepare("SELECT id FROM courts WHERE id = ? AND owner_id = ?");
-        $chk->execute([$court_id, $owner_id]);
-        if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
+        // Verify ownership (admin can view any)
+        if (($authUser['role'] ?? '') === 'admin') {
+            $chk = $db->prepare("SELECT owner_id FROM courts WHERE id = ?");
+            $chk->execute([$court_id]);
+            $row = $chk->fetch(PDO::FETCH_ASSOC);
+            if (!$row) { http_response_code(404); echo json_encode(['message' => 'Court not found']); return; }
+            $owner_id = (int)$row['owner_id'];
+        } else {
+            $chk = $db->prepare("SELECT id FROM courts WHERE id = ? AND owner_id = ?");
+            $chk->execute([$court_id, $owner_id]);
+            if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
+        }
 
         $monthStart = date('Y-m-01');
         $weekStart  = date('Y-m-d', strtotime('monday this week'));
@@ -261,26 +283,28 @@ class EarningsController {
         ]);
     }
 
-    // GET /earnings/export?court_id=X&owner_id=Y[&from=YYYY-MM-DD][&to=YYYY-MM-DD]
+    // GET /earnings/export?court_id=X[&from=YYYY-MM-DD][&to=YYYY-MM-DD]
     // Returns a CSV download of all confirmed bookings for a venue
     public function export(): void {
+        $authUser = Auth::require();
         $court_id = (int)($_GET['court_id'] ?? 0);
-        $owner_id = (int)($_GET['owner_id'] ?? 0);
         $from     = $_GET['from'] ?? null;
         $to       = $_GET['to']   ?? null;
 
-        if (!$court_id || !$owner_id) {
+        if (!$court_id) {
             http_response_code(400);
-            echo json_encode(['message' => 'court_id and owner_id required']);
+            echo json_encode(['message' => 'court_id required']);
             return;
         }
 
         $db = Database::getConnection();
 
-        // Verify ownership
-        $chk = $db->prepare("SELECT id FROM courts WHERE id = ? AND owner_id = ?");
-        $chk->execute([$court_id, $owner_id]);
-        if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
+        // Verify ownership (admin can export any)
+        if (($authUser['role'] ?? '') !== 'admin') {
+            $chk = $db->prepare("SELECT id FROM courts WHERE id = ? AND owner_id = ?");
+            $chk->execute([$court_id, (int)$authUser['id']]);
+            if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
+        }
 
         $sql = "
             SELECT DATE(b.start_time) AS date,

@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../core/icons.dart';
-import '../../../core/theme.dart';
-import '../../../core/constants.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class GhostCard extends StatelessWidget {
   final Map<String, dynamic> place;
-  final VoidCallback onClaim;
   final VoidCallback onInterest;
 
   const GhostCard({
     super.key,
     required this.place,
-    required this.onClaim,
     required this.onInterest,
   });
 
@@ -205,14 +201,34 @@ class GhostCard extends StatelessWidget {
 
                 const SizedBox(height: 14),
 
-                // CTA buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: 44,
-                        child: ElevatedButton(
-                          onPressed: onClaim,
+                // Express Interest button only
+                SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: userRequested
+                      ? Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.secondary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.check_rounded, size: 14, color: AppColors.secondary),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Interest Sent',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.secondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ElevatedButton(
+                          onPressed: onInterest,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.textPrimary,
                             foregroundColor: Colors.white,
@@ -222,57 +238,12 @@ class GhostCard extends StatelessWidget {
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(AppIcons.keyRound, size: 13),
+                              Icon(AppIcons.bell, size: 13),
                               SizedBox(width: 6),
-                              Text('Claim Venue', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                              Text('Express Interest', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                             ],
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      height: 44,
-                      child: userRequested
-                          ? Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              decoration: BoxDecoration(
-                                color: AppColors.secondary.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(AppRadius.md),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.check_rounded, size: 14, color: AppColors.secondary),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Sent',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.secondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : OutlinedButton(
-                              onPressed: onInterest,
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.textSecondary,
-                                side: const BorderSide(color: AppColors.border),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
-                              ),
-                              child: const Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(AppIcons.bell, size: 12),
-                                  SizedBox(width: 4),
-                                  Text('Notify Me', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                                ],
-                              ),
-                            ),
-                    ),
-                  ],
                 ),
               ],
             ),

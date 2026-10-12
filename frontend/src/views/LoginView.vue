@@ -57,7 +57,7 @@ const verifyOtp = async () => {
         if (step.value === 3) {
             if (!name.value.trim()) { error.value = 'Enter your name'; return }
             payload.name = name.value.trim()
-            payload.role = 'player'
+            payload.role = 'user'
         }
         const res  = await axios.post('/auth/verify-otp', payload)
         const data = res.data

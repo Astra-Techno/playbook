@@ -51,7 +51,7 @@ const fetchStories = async () => {
     storiesLoading.value = true
     try {
         const res = await axios.get('/courts?featured=1')
-        stories.value = res.data.records || res.data // Fallback to records
+        stories.value = res.data.records || []
     } catch { stories.value = [] }
     finally { storiesLoading.value = false }
 }
@@ -108,9 +108,10 @@ const handleImageTap = (post) => {
 }
 
 const deletePost = async (post) => {
+    if (!auth.isLoggedIn) return
     if (!confirm('Delete this post?')) return
     try {
-        await axios.delete(`/posts/${post.id}`, { data: { user_id: auth.user.id } })
+        await axios.delete(`/posts/${post.id}`, { data: { user_id: auth.user?.id } })
         posts.value = posts.value.filter(p => p.id !== post.id)
         toast.success('Post deleted')
     } catch { toast.error('Could not delete') }

@@ -1,14 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'core/api.dart';
-import 'core/theme.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 import 'core/router.dart';
-import 'providers/auth_provider.dart';
-import 'providers/venue_provider.dart';
-import 'providers/toast_provider.dart';
-import 'providers/notifications_provider.dart';
-import 'widgets/toast_overlay.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +14,10 @@ void main() async {
 
   await Api().init();
 
-  final authProvider = AuthProvider()..init();
+  final authProvider = AuthProvider();
+  // Resolve persisted identity before the router evaluates role-protected
+  // routes, avoiding a guest-route flash on cold start.
+  await authProvider.init();
 
   runApp(
     MultiProvider(

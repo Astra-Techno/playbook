@@ -264,7 +264,7 @@ const goTo = (s) => {
     if (s === 'claims')       fetchClaims(true)
 }
 
-const roleBadge = { admin: 'bg-gray-100 text-black', owner: 'bg-amber-50 text-amber-700', player: 'bg-gray-100 text-gray-500' }
+const roleBadge = { admin: 'bg-gray-100 text-black', user: 'bg-gray-100 text-gray-500' }
 
 onMounted(() => {
     fetchDemand()
@@ -571,17 +571,17 @@ onMounted(() => {
                         </div>
                         <!-- Role actions + payout -->
                         <div class="flex gap-2 flex-wrap">
-                            <button v-if="user.role !== 'owner'" @click="changeRole(user, 'owner')"
+                            <button v-if="user.role !== 'admin'" @click="changeRole(user, 'admin')"
                                 :disabled="changingRoleId === user.id"
                                 class="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 disabled:opacity-50">
-                                → Owner
+                                → Admin
                             </button>
-                            <button v-if="user.role !== 'player'" @click="changeRole(user, 'player')"
+                            <button v-if="user.role !== 'user'" @click="changeRole(user, 'user')"
                                 :disabled="changingRoleId === user.id"
                                 class="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 disabled:opacity-50">
-                                → Player
+                                → User
                             </button>
-                            <button v-if="user.role === 'owner'" @click="openPayoutModal(user)"
+                            <button @click="openPayoutModal(user)"
                                 class="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700">
                                 Record Payout
                             </button>

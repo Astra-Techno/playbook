@@ -51,7 +51,7 @@ const router = createRouter({
             path: '/db-test',
             name: 'db-test',
             component: () => import('../views/DbTestView.vue'),
-            meta: { title: 'DB Connection Test' }
+            meta: { title: 'DB Connection Test', requiresAdmin: true }
         },
         {
             path: '/my-venues',
@@ -261,6 +261,12 @@ router.beforeEach((to, from, next) => {
 
     if (to.meta.requiresAdmin && (!isLoggedIn || user?.role !== 'admin')) {
         return next({ name: 'home' })
+    }
+
+    // Venue management routes require login (any user can manage venues)
+    const isVenueRoute = to.path === '/ledger' || to.path.startsWith('/my-venues')
+    if (isVenueRoute && !isLoggedIn) {
+        return next({ name: 'login' })
     }
 
     if (to.meta.requiresAuth && !isLoggedIn) {

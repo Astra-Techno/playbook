@@ -220,18 +220,14 @@ const debugSendTestPush = async () => {
     }
 }
 
-const isOwner = computed(() => auth.user?.role === 'owner')
-
 const menuGroups = computed(() => [
     {
         group: 'Activity',
         items: [
             { label: 'My Bookings',    icon: CalendarDays, action: () => router.push('/bookings') },
             { label: 'My Venues',      icon: LayoutGrid,   action: () => router.push('/my-venues') },
-            ...(isOwner.value ? [
-                { label: 'Earnings', icon: Wallet, action: () => router.push('/my-venues?tab=earnings') },
-                { label: 'Reviews',  icon: Star,   action: () => router.push('/my-venues?tab=reviews') },
-            ] : []),
+            { label: 'Earnings', icon: Wallet, action: () => router.push('/my-venues?tab=earnings') },
+            { label: 'Reviews',  icon: Star,   action: () => router.push('/my-venues?tab=reviews') },
             { label: 'My Memberships', icon: Award,    action: () => router.push('/subscriptions') },
             { label: 'Find available courts', icon: MapPin, action: () => router.push('/find-courts') },
         ],

@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../../core/icons.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../core/api.dart';
-import '../../core/theme.dart';
-import '../../providers/auth_provider.dart';
 import 'create_post_screen.dart';
 import 'post_detail_screen.dart';
 
@@ -29,14 +26,16 @@ class _FeedScreenState extends State<FeedScreen> {
   Future<void> _loadPosts() async {
     try {
       final res = await Api().get('/posts');
-      setState(() {
-        _posts = List<Map<String, dynamic>>.from(
-          (res.data['posts'] ?? []).map((e) => Map<String, dynamic>.from(e)),
-        );
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _posts = List<Map<String, dynamic>>.from(
+            (res.data['posts'] ?? []).map((e) => Map<String, dynamic>.from(e)),
+          );
+          _loading = false;
+        });
+      }
     } catch (_) {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -113,7 +112,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
   Widget _buildPostCard(Map<String, dynamic> post) {
     final liked = post['user_liked'] == true;
-    final likeCount = post['like_count'] ?? 0;
+    final likeCount = post['likes_count'] ?? 0;
     final commentCount = post['comment_count'] ?? 0;
 
     return Container(

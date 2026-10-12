@@ -4,15 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../core/icons.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
-import '../../core/api.dart';
-import '../../core/theme.dart';
-import '../../core/constants.dart';
-import '../../providers/auth_provider.dart';
-import '../../services/payment_service.dart';
-import '../../widgets/sheets/review_sheet.dart';
 
 class CourtDetailsScreen extends StatefulWidget {
   final int courtId;
@@ -73,7 +67,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
       try {
         final rvRes = await Api().get('/reviews', params: {'court_id': widget.courtId});
         reviews = List<Map<String, dynamic>>.from(
-          (rvRes.data['reviews'] ?? []).map((e) => Map<String, dynamic>.from(e)),
+          (rvRes.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
         );
         avgRating = double.tryParse('${rvRes.data['avg_rating'] ?? ''}');
         reviewCount = rvRes.data['review_count'] ?? reviews.length;
@@ -134,7 +128,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
           'date': _selectedDate,
           if (_selectedSpaceId != null) 'sub_court_id': _selectedSpaceId,
         });
-        final bSlots = bRes.data['blocked_slots'] ?? [];
+        final bSlots = bRes.data['blocks'] ?? [];
         for (final b in bSlots) {
           blocked.add('${b['start_time']}-${b['end_time']}');
         }
@@ -289,7 +283,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     }
 
     final imageUrl = getVenueImage(_court!);
-    final totalPrice = (_court!['hourly_rate'] ?? 0) * _selectedSlots.length;
+    final totalPrice = (double.tryParse('${_court!['hourly_rate'] ?? 0}') ?? 0) * _selectedSlots.length;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -664,7 +658,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '\u20B9$totalPrice',
+                          '₹${totalPrice == totalPrice.toInt() ? totalPrice.toInt() : totalPrice.toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
@@ -1116,7 +1110,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     final result = await ReviewSheet.show(
       context,
       courtId: widget.courtId,
-      userId: auth.userId!,
+      userId: auth.userId ?? 0,
       courtName: _court?['name'],
     );
     if (result == true) _loadCourt();
@@ -1187,7 +1181,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                             child: Icon(
                               Icons.star_rounded,
                               size: 14,
-                              color: i < (r['rating'] ?? 0) ? AppColors.accent : AppColors.textDisabled,
+                              color: i < (int.tryParse('${r['rating'] ?? 0}') ?? 0) ? AppColors.accent : AppColors.textDisabled,
                             ),
                           )),
                         ),

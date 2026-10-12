@@ -2,9 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../core/api.dart';
-import '../../core/theme.dart';
-import '../../providers/auth_provider.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 import 'slot_chat_screen.dart';
 
 class SlotGroupsScreen extends StatefulWidget {
@@ -130,7 +128,7 @@ class _SlotGroupsScreenState extends State<SlotGroupsScreen> {
         HapticFeedback.selectionClick();
         Navigator.push(context, MaterialPageRoute(
           builder: (_) => SlotChatScreen(
-            courtId: group['court_id'] is int ? group['court_id'] : int.parse('${group['court_id']}'),
+            courtId: group['court_id'] is int ? group['court_id'] : (int.tryParse('${group['court_id']}') ?? 0),
             date: slotDate,
             time: slotTime,
             courtName: courtName,

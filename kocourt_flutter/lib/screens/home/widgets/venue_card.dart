@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../core/icons.dart';
-import '../../../core/theme.dart';
-import '../../../core/constants.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class VenueCard extends StatefulWidget {
   final Map<String, dynamic> venue;
@@ -78,8 +76,8 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
     final imageUrl = getVenueImage(widget.venue);
     final rate = widget.venue['hourly_rate'];
     final rating = widget.venue['avg_rating'];
-    final bookingCount = widget.venue['booking_count'];
-    final reviewCount = widget.venue['review_count'];
+    final bookingCount = int.tryParse('${widget.venue['booking_count'] ?? 0}') ?? 0;
+    final reviewCount = int.tryParse('${widget.venue['review_count'] ?? 0}') ?? 0;
     final sportType = widget.venue['sport_type'] ?? '';
     final category = sportCategories.firstWhere(
       (c) => c.id == sportType,
@@ -279,7 +277,7 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                                 const Icon(Icons.star_rounded, size: 14, color: Colors.white),
                                 const SizedBox(width: 3),
                                 Text(
-                                  double.parse(rating.toString()).toStringAsFixed(1),
+                                  (double.tryParse('$rating') ?? 0).toStringAsFixed(1),
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w900,
@@ -360,7 +358,7 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                               decoration: BoxDecoration(
-                                color: bookingCount != null && bookingCount > 0
+                                color: bookingCount > 0
                                     ? AppColors.warningLight
                                     : AppColors.secondary.withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(8),
@@ -373,20 +371,20 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                                     height: 6,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: bookingCount != null && bookingCount > 0
+                                      color: bookingCount > 0
                                           ? AppColors.warning
                                           : AppColors.secondary,
                                     ),
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    bookingCount != null && bookingCount > 0
+                                    bookingCount > 0
                                         ? '$bookingCount booked today'
                                         : 'Available now',
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
-                                      color: bookingCount != null && bookingCount > 0
+                                      color: bookingCount > 0
                                           ? AppColors.accentDark
                                           : AppColors.secondary,
                                     ),
@@ -394,7 +392,7 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                                 ],
                               ),
                             ),
-                            if (reviewCount != null && reviewCount > 0)
+                            if (reviewCount > 0)
                               Row(
                                 children: [
                                   Icon(Icons.chat_bubble_outline_rounded, size: 13, color: AppColors.textMuted),

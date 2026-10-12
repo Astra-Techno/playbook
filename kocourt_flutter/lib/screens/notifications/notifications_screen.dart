@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../../core/api.dart';
-import '../../core/icons.dart';
-import '../../core/theme.dart';
-import '../../providers/auth_provider.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -25,7 +22,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _load() async {
     try {
-      final res = await Api().get('/user-notifications');
+      final res = await Api().get('/notifications/list');
       _notifications = List<Map<String, dynamic>>.from(
         (res.data['notifications'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
@@ -35,7 +32,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _markRead(int id) async {
     try {
-      await Api().put('/user-notifications/$id/read');
+      await Api().put('/notifications/$id/read');
       final idx = _notifications.indexWhere((n) => n['id'] == id);
       if (idx >= 0) {
         _notifications[idx]['read_at'] = DateTime.now().toIso8601String();

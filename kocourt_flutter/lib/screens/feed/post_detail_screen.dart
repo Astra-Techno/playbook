@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../core/api.dart';
-import '../../core/icons.dart';
-import '../../core/theme.dart';
-import '../../providers/auth_provider.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final int postId;
@@ -34,7 +31,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
         (_post!['comments'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
     } catch (_) {}
-    setState(() => _loading = false);
+    if (mounted) setState(() => _loading = false);
   }
 
   Future<void> _comment() async {

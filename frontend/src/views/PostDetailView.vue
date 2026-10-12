@@ -60,7 +60,7 @@ const toggleLike = async () => {
     post.value.likes_count += wasLiked ? -1 : 1
     
     try {
-        const res = await axios.post(`/posts/${post.value.id}/like`, { user_id: auth.user.id })
+        const res = await axios.post(`/posts/${post.value.id}/like`, { user_id: auth.user?.id })
         post.value.is_liked    = res.data.liked
         post.value.likes_count = res.data.likes_count
     } catch {
@@ -104,7 +104,7 @@ const submitComment = async () => {
 const deletePost = async () => {
     if (!confirm('Delete this post?')) return
     try {
-        await axios.delete(`/posts/${post.value.id}`, { data: { user_id: auth.user.id } })
+        await axios.delete(`/posts/${post.value.id}`, { data: { user_id: auth.user?.id } })
         toast.success('Post deleted')
         router.back()
     } catch { toast.error('Could not delete') }

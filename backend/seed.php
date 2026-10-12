@@ -18,12 +18,12 @@ function generateToken(): string {
 
 // --- 1. Create test users ---
 $users = [
-    ['name' => 'Ravi Kumar',     'phone' => '9900000001', 'role' => 'player'],
-    ['name' => 'Priya Sharma',   'phone' => '9900000002', 'role' => 'player'],
-    ['name' => 'Arun Prakash',   'phone' => '9900000003', 'role' => 'player'],
-    ['name' => 'Deepa Menon',    'phone' => '9900000004', 'role' => 'player'],
-    ['name' => 'Venue Owner 1',  'phone' => '9900000010', 'role' => 'player'],
-    ['name' => 'Venue Owner 2',  'phone' => '9900000011', 'role' => 'player'],
+    ['name' => 'Ravi Kumar',     'phone' => '9900000001', 'role' => 'user'],
+    ['name' => 'Priya Sharma',   'phone' => '9900000002', 'role' => 'user'],
+    ['name' => 'Arun Prakash',   'phone' => '9900000003', 'role' => 'user'],
+    ['name' => 'Deepa Menon',    'phone' => '9900000004', 'role' => 'user'],
+    ['name' => 'Venue Owner 1',  'phone' => '9900000010', 'role' => 'user'],
+    ['name' => 'Venue Owner 2',  'phone' => '9900000011', 'role' => 'user'],
 ];
 
 $userIds = [];
@@ -48,6 +48,33 @@ $playerId4 = $userIds['9900000004'];
 echo "Users created: " . json_encode($userIds) . "\n";
 
 // --- 2. Create test venues ---
+// Keep the public fixture IDs stable. The E2E suite uses court 2 as the
+// primary owner-managed venue, so reserve court 1 for this neutral fixture.
+$fixtureCourt = [
+    'owner_id' => $ownerId1,
+    'name' => 'E2E Reference Court',
+    'type' => 'shuttle',
+    'location' => 'Chennai',
+    'hourly_rate' => 100,
+    'description' => 'Reference fixture used to keep automated test IDs stable.',
+    'lat' => 13.0500,
+    'lng' => 80.2000,
+    'open_time' => '06:00',
+    'close_time' => '22:00',
+    'amenities' => json_encode(['Parking']),
+    'is_verified' => 1,
+];
+$insertFixtureCourt = $db->prepare(
+    "INSERT IGNORE INTO courts (owner_id, name, type, location, hourly_rate, description, lat, lng, open_time, close_time, amenities, is_verified, created_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW())"
+);
+$insertFixtureCourt->execute([
+    $fixtureCourt['owner_id'], $fixtureCourt['name'], $fixtureCourt['type'],
+    $fixtureCourt['location'], $fixtureCourt['hourly_rate'], $fixtureCourt['description'],
+    $fixtureCourt['lat'], $fixtureCourt['lng'], $fixtureCourt['open_time'],
+    $fixtureCourt['close_time'], $fixtureCourt['amenities'], $fixtureCourt['is_verified'],
+]);
+
 $venues = [
     [
         'owner_id' => $ownerId1,

@@ -3,10 +3,13 @@
 /**
  * Auth helper — validates Bearer token from Authorization header.
  *
+ * Roles: 'admin' (full access) and 'user' (default).
+ * Venue ownership is determined by courts.owner_id, not user role.
+ * Staff access is via the court_staff table.
+ *
  * Usage:
  *   $user = Auth::user();          // returns user row or null
  *   Auth::require();               // halts with 401 if not authenticated
- *   Auth::requireOwner();          // halts with 401/403 if not owner/admin
  *   Auth::requireAdmin();          // halts with 401/403 if not admin
  *   Auth::requireSelf(int $id);    // halts unless token belongs to $id or admin
  */
@@ -61,16 +64,13 @@ class Auth
         return $user;
     }
 
-    /** Halt unless authenticated user is owner or admin. Returns user row. */
+    /**
+     * @deprecated Use Auth::require() instead. Any authenticated user can manage venues.
+     * Kept as alias to avoid breaking existing calls during migration.
+     */
     public static function requireOwner(): array
     {
-        $user = self::require();
-        if (!in_array($user['role'], ['owner', 'admin'], true)) {
-            http_response_code(403);
-            echo json_encode(['error' => 'Owner account required']);
-            exit();
-        }
-        return $user;
+        return self::require();
     }
 
     /** Halt unless authenticated user is admin. Returns user row. */

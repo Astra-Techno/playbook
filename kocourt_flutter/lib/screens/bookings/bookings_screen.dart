@@ -1,14 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../../core/icons.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:intl/intl.dart';
-import '../../core/api.dart';
-import '../../core/theme.dart';
-import '../../providers/auth_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../providers/toast_provider.dart';
-import '../../widgets/sheets/review_sheet.dart';
 import '../court_details/court_details_screen.dart';
 import '../chat/chat_screen.dart';
 import '../chat/slot_chat_screen.dart';
@@ -43,7 +38,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
     _dismissedReviews.add(bookingId);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('dismissed_reviews', _dismissedReviews.toList());
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadBookings() async {
@@ -312,7 +307,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
 
     try {
       await Api().delete('/bookings/$bookingId');
-      context.read<ToastProvider>().success('Booking cancelled');
+      if (mounted) context.read<ToastProvider>().success('Booking cancelled');
       _loadBookings();
     } catch (_) {
       if (mounted) context.read<ToastProvider>().error('Failed to cancel booking');
@@ -385,7 +380,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                 final result = await ReviewSheet.show(
                   context,
                   courtId: booking['court_id'],
-                  userId: auth.userId!,
+                  userId: auth.userId ?? 0,
                   courtName: courtName,
                   bookingId: booking['id'],
                 );

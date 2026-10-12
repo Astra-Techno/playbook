@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/api.dart';
-import '../../core/icons.dart';
-import '../../core/theme.dart';
-import '../../providers/auth_provider.dart';
-import '../../services/payment_service.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class SubscriptionsScreen extends StatefulWidget {
   const SubscriptionsScreen({super.key});
@@ -31,7 +27,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
         (res.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
     } catch (_) {}
-    setState(() => _loading = false);
+    if (mounted) setState(() => _loading = false);
   }
 
   Future<void> _renew(Map<String, dynamic> sub) async {
@@ -98,7 +94,8 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                     itemBuilder: (_, i) {
                       final s = _subs[i];
                       final isActive = s['status'] == 'active';
-                      final isExpiring = s['days_remaining'] != null && (s['days_remaining'] as num) <= 7;
+                      final daysRemaining = int.tryParse('${s['days_remaining'] ?? 100}') ?? 100;
+                      final isExpiring = s['days_remaining'] != null && daysRemaining <= 7;
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(16),
@@ -137,7 +134,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                                 children: [
                                   Icon(Icons.warning_amber_rounded, size: 14, color: Colors.orange[700]),
                                   const SizedBox(width: 4),
-                                  Text('Expiring in ${s['days_remaining']} days', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.orange[700])),
+                                  Text('Expiring in $daysRemaining days', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.orange[700])),
                                 ],
                               ),
                             ],
