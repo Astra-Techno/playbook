@@ -14,9 +14,14 @@ deploy_package/
 
 # ── Uploads (user-generated content) ──────────────────────────────────────────
 backend/public/uploads/
+backend/uploads/
 
 # ── Claude Code (contains API keys / tokens) ───────────────────────────────────
 .claude/settings.local.json
+.claude1/
+
+# ── Database dumps ────────────────────────────────────────────────────────────
+*.sql
 
 # ── OS / editor ────────────────────────────────────────────────────────────────
 .DS_Store
