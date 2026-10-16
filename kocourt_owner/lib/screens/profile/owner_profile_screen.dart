@@ -66,10 +66,20 @@ class OwnerProfileScreen extends StatelessWidget {
             _menuItem(Icons.notifications_outlined, 'Notifications', () {
               context.push('/notifications');
             }),
+            _menuItem(Icons.account_balance_outlined, 'Payout Settings', () {
+              context.push('/payout-settings');
+            }),
             if (auth.isAdmin)
               _menuItem(Icons.admin_panel_settings_outlined, 'Admin Panel', () {
                 context.push('/admin');
               }),
+            const Divider(height: 32),
+            _menuItem(Icons.receipt_long_outlined, 'Refund & Cancellation', () {
+              context.push('/refund-policy');
+            }),
+            _menuItem(Icons.support_agent_outlined, 'Contact Support', () {
+              context.push('/contact');
+            }),
             const Divider(height: 32),
             _menuItem(Icons.logout, 'Logout', () async {
               final confirm = await showDialog<bool>(

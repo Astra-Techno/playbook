@@ -8,7 +8,7 @@ import {
     User, Phone, LogOut, ChevronRight, Bell,
     Shield, HelpCircle, FileText, Camera,
     LayoutGrid, CalendarDays, Award, Pencil, Check, X, Loader2,
-    Wallet, Star, MapPin
+    Wallet, Star, MapPin, Building2
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -227,6 +227,7 @@ const menuGroups = computed(() => [
             { label: 'My Bookings',    icon: CalendarDays, action: () => router.push('/bookings') },
             { label: 'My Venues',      icon: LayoutGrid,   action: () => router.push('/my-venues') },
             { label: 'Earnings', icon: Wallet, action: () => router.push('/my-venues?tab=earnings') },
+            { label: 'Payout Settings', icon: Building2, action: () => router.push('/payout-settings') },
             { label: 'Reviews',  icon: Star,   action: () => router.push('/my-venues?tab=reviews') },
             { label: 'My Memberships', icon: Award,    action: () => router.push('/subscriptions') },
             { label: 'Find available courts', icon: MapPin, action: () => router.push('/find-courts') },

@@ -90,6 +90,12 @@ const router = createRouter({
             meta: { requiresAuth: true, title: 'Earnings' },
         },
         {
+            path: '/payout-settings',
+            name: 'payout-settings',
+            component: () => import('../views/PayoutSettingsView.vue'),
+            meta: { requiresAuth: true, title: 'Payout Settings' },
+        },
+        {
             path: '/my-venues/:id/spaces',
             name: 'venue-spaces',
             component: () => import('../views/SpacesView.vue'),
@@ -190,6 +196,18 @@ const router = createRouter({
             name: 'privacy',
             component: () => import('../views/PrivacyView.vue'),
             meta: { title: 'Privacy Policy' },
+        },
+        {
+            path: '/refund-policy',
+            name: 'refund-policy',
+            component: () => import('../views/RefundPolicyView.vue'),
+            meta: { title: 'Refund & Cancellation Policy' },
+        },
+        {
+            path: '/contact',
+            name: 'contact',
+            component: () => import('../views/ContactView.vue'),
+            meta: { title: 'Contact KoCourt' },
         },
         {
             path: '/subscriptions',

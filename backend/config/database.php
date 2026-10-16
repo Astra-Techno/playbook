@@ -7,7 +7,7 @@ class Database {
     private $pdo;
 
     // Bump this number whenever migrate() adds new tables/columns/indexes
-    private const SCHEMA_VERSION = 22;
+    private const SCHEMA_VERSION = 23;
 
     private function __construct() {
         $host    = getenv('DB_HOST') ?: 'localhost';
@@ -412,6 +412,24 @@ class Database {
             `key`      VARCHAR(100) NOT NULL PRIMARY KEY,
             `value`    TEXT DEFAULT NULL,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // v23: Vendor profiles for Cashfree Easy Split (owner payouts)
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS vendor_profiles (
+            id               INT AUTO_INCREMENT PRIMARY KEY,
+            user_id          INT NOT NULL UNIQUE,
+            cf_vendor_id     VARCHAR(100) DEFAULT NULL,
+            cf_vendor_status ENUM('pending','active','blocked') DEFAULT 'pending',
+            account_type     ENUM('bank_account','upi') NOT NULL DEFAULT 'bank_account',
+            account_holder   VARCHAR(255) DEFAULT NULL,
+            account_number   VARCHAR(50) DEFAULT NULL,
+            ifsc_code        VARCHAR(20) DEFAULT NULL,
+            upi_vpa          VARCHAR(100) DEFAULT NULL,
+            pan_number       VARCHAR(20) DEFAULT NULL,
+            commission_pct   DECIMAL(5,2) DEFAULT NULL,
+            created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
         // v20: Simplify roles — only 'admin' and 'user'. Merge player/owner into user.

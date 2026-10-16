@@ -620,6 +620,14 @@ if (isset($seg[0]) && $seg[0] === 'court-staff') {
     if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1]))                          { Auth::requireOwner(); $sc->remove((int)$seg[1]); exit(); }
 }
 
+// Vendor Profile Routes (owner payout settings)
+if (isset($seg[0]) && $seg[0] === 'vendor') {
+    require_once __DIR__ . '/src/Controllers/VendorController.php';
+    $vc = new VendorController();
+    if (isset($seg[1]) && $seg[1] === 'profile' && $_SERVER['REQUEST_METHOD'] === 'GET')  { $vc->profile(); exit(); }
+    if (isset($seg[1]) && $seg[1] === 'profile' && $_SERVER['REQUEST_METHOD'] === 'POST') { $vc->save();    exit(); }
+}
+
 // Admin Routes
 if (isset($seg[0]) && $seg[0] === 'admin') {
     require_once __DIR__ . '/src/Controllers/PlacesController.php';

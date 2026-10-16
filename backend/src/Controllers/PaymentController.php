@@ -72,6 +72,39 @@ class PaymentController {
         return ['code' => $httpCode, 'data' => json_decode($response, true)];
     }
 
+    /**
+     * Build split info for Easy Split — returns null if owner has no active vendor.
+     */
+    private function buildSplit(PDO $db, int $courtId, float $amount): ?array {
+        // Find court owner
+        $stmt = $db->prepare("SELECT owner_id FROM courts WHERE id = ?");
+        $stmt->execute([$courtId]);
+        $ownerId = (int)$stmt->fetchColumn();
+        if (!$ownerId) return null;
+
+        // Check if owner has an active vendor profile
+        $vStmt = $db->prepare("SELECT cf_vendor_id, commission_pct FROM vendor_profiles WHERE user_id = ? AND cf_vendor_status = 'active'");
+        $vStmt->execute([$ownerId]);
+        $vendor = $vStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$vendor || !$vendor['cf_vendor_id']) return null;
+
+        // Commission: per-vendor override or platform default
+        $commPct = $vendor['commission_pct'];
+        if ($commPct === null) {
+            $cStmt = $db->prepare("SELECT `value` FROM config WHERE `key` = 'platform_commission_pct'");
+            $cStmt->execute();
+            $commPct = (float)($cStmt->fetchColumn() ?: 10);
+        }
+
+        $vendorAmount = round($amount * (1 - $commPct / 100), 2);
+        if ($vendorAmount <= 0) return null;
+
+        return [
+            'vendor_id' => $vendor['cf_vendor_id'],
+            'amount'    => $vendorAmount,
+        ];
+    }
+
     /** Returns true when real Cashfree credentials are not yet configured */
     private function isDemoMode(): bool {
         return !CASHFREE_APP_ID
@@ -121,8 +154,8 @@ class PaymentController {
         $phone = preg_replace('/\D/', '', $user['phone'] ?? '9999999999');
         if (strlen($phone) < 10) $phone = '9999999999';
 
-        // Create order on Cashfree
-        $result = $this->cfRequest('POST', '/orders', [
+        // Build order body
+        $orderBody = [
             'order_id'         => $orderId,
             'order_amount'     => $amount,
             'order_currency'   => 'INR',
@@ -132,7 +165,24 @@ class PaymentController {
                 'customer_phone' => $phone,
             ],
             'order_meta' => ['notify_url' => ''],
-        ]);
+        ];
+
+        // Easy Split: if booking for a venue with an active vendor, split payment
+        $courtId = (int)($data->payload->court_id ?? 0);
+        if ($courtId && $type === 'booking') {
+            $split = $this->buildSplit($db, $courtId, $amount);
+            if ($split) {
+                $orderBody['order_splits'] = [$split];
+            }
+        } elseif ($courtId && $type === 'subscription') {
+            $split = $this->buildSplit($db, $courtId, $amount);
+            if ($split) {
+                $orderBody['order_splits'] = [$split];
+            }
+        }
+
+        // Create order on Cashfree
+        $result = $this->cfRequest('POST', '/orders', $orderBody);
 
         if ($result['code'] !== 200 || empty($result['data']['payment_session_id'])) {
             http_response_code(502);

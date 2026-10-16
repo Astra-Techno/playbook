@@ -20,6 +20,7 @@ import '../screens/chat/chat_threads_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../screens/admin/admin_screen.dart';
 import '../screens/admin/ledger_screen.dart';
+import '../screens/owner/payout_settings_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -54,9 +55,11 @@ GoRouter createOwnerRouter(AuthProvider auth) {
       final loggedIn = auth.isLoggedIn;
       final isLoginRoute = state.matchedLocation == '/login';
       final isAdminRoute = state.matchedLocation == '/admin';
+      final isPublicRoute = state.matchedLocation == '/refund-policy' ||
+          state.matchedLocation == '/contact';
 
       if (loggedIn && isLoginRoute) return '/';
-      if (!loggedIn && !isLoginRoute) return '/login';
+      if (!loggedIn && !isLoginRoute && !isPublicRoute) return '/login';
       if (isAdminRoute && !auth.isAdmin) return '/';
 
       return null;
@@ -73,6 +76,8 @@ GoRouter createOwnerRouter(AuthProvider auth) {
         path: '/login',
         pageBuilder: (_, state) => _slideFadePage(const LoginScreen(), state),
       ),
+      GoRoute(path: '/refund-policy', builder: (_, __) => const RefundCancellationScreen()),
+      GoRoute(path: '/contact', builder: (_, __) => const ContactSupportScreen()),
 
       // Venue management
       GoRoute(path: '/venues', builder: (_, __) => const OwnerDashboardScreen()),
@@ -160,6 +165,7 @@ GoRouter createOwnerRouter(AuthProvider auth) {
       // Admin
       GoRoute(path: '/admin', builder: (_, __) => const AdminScreen()),
       GoRoute(path: '/ledger', builder: (_, __) => const LedgerScreen()),
+      GoRoute(path: '/payout-settings', builder: (_, __) => const PayoutSettingsScreen()),
     ],
   );
 }
