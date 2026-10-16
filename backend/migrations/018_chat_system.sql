@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS chat_groups (
     name        VARCHAR(255) DEFAULT NULL,
     icon_url    VARCHAR(500) DEFAULT NULL,
     description TEXT DEFAULT NULL,
-    type        ENUM('dm','group','auto') NOT NULL DEFAULT 'group',
+    type        ENUM('dm','group') NOT NULL DEFAULT 'group',
     created_by  INT DEFAULT NULL,
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL

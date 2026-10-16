@@ -1,34 +1,37 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useToastStore } from '../stores/toast'
-import { ChevronLeft, Search } from 'lucide-vue-next'
+import { ChevronLeft, Search, Users } from 'lucide-vue-next'
 
 const router  = useRouter()
 const toast   = useToastStore()
 
+const allConnected  = ref([])
 const searchQuery   = ref('')
-const results       = ref([])
 const selected      = ref(new Set())
-const searching     = ref(false)
+const loading       = ref(true)
 const creating      = ref(false)
 const isGroup       = ref(false)
 const groupName     = ref('')
 
-let debounce = null
-const onSearch = (q) => {
-    clearTimeout(debounce)
-    if (q.length < 2) { results.value = []; return }
-    searching.value = true
-    debounce = setTimeout(async () => {
-        try {
-            const res = await axios.get('/chat/users/search', { params: { q } })
-            results.value = res.data.users || []
-        } catch { /* ignore */ }
-        searching.value = false
-    }, 400)
-}
+onMounted(async () => {
+    try {
+        const res = await axios.get('/chat/users/search', { params: { q: '' } })
+        allConnected.value = res.data.users || []
+    } catch { /* ignore */ }
+    loading.value = false
+})
+
+const filtered = computed(() => {
+    const q = searchQuery.value.trim().toLowerCase()
+    if (!q) return allConnected.value
+    return allConnected.value.filter(u =>
+        (u.name || '').toLowerCase().includes(q) ||
+        (u.phone || '').toLowerCase().includes(q)
+    )
+})
 
 const toggle = (id) => {
     const s = new Set(selected.value)
@@ -88,15 +91,15 @@ const create = async () => {
         <span v-for="id in selected" :key="id"
           @click="toggle(id)"
           class="bg-primary/10 text-primary text-sm font-semibold px-3 py-1 rounded-full cursor-pointer">
-          {{ (results.find(u => u.id === id))?.name || 'User' }} ×
+          {{ (allConnected.find(u => u.id === id))?.name || 'User' }} ×
         </span>
       </div>
 
-      <!-- Search -->
+      <!-- Search filter -->
       <div class="relative mb-4">
         <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input v-model="searchQuery" @input="onSearch(searchQuery)" type="text"
-          placeholder="Search by name or phone..." class="input-field !pl-10" autofocus />
+        <input v-model="searchQuery" type="text"
+          placeholder="Filter by name or phone..." class="input-field !pl-10" />
       </div>
 
       <!-- Group checkbox -->
@@ -105,12 +108,24 @@ const create = async () => {
         Create group chat
       </label>
 
-      <!-- Results -->
-      <p v-if="searching" class="text-center text-gray-400 text-sm py-8">Searching...</p>
-      <p v-else-if="searchQuery.length < 2" class="text-center text-gray-400 text-sm py-8">Type to search users</p>
-      <p v-else-if="results.length === 0" class="text-center text-gray-400 text-sm py-8">No users found</p>
+      <!-- Loading -->
+      <p v-if="loading" class="text-center text-gray-400 text-sm py-8">Loading connections...</p>
+
+      <!-- Empty state -->
+      <div v-else-if="allConnected.length === 0" class="text-center py-16">
+        <Users :size="48" class="mx-auto text-gray-200 mb-4" />
+        <p class="font-bold text-gray-500 mb-2">No connections yet</p>
+        <p class="text-gray-400 text-sm leading-relaxed max-w-xs mx-auto">
+          You can chat with people you've played with, share a venue membership, or interacted with on posts.
+        </p>
+      </div>
+
+      <!-- No filter results -->
+      <p v-else-if="filtered.length === 0" class="text-center text-gray-400 text-sm py-8">No matches</p>
+
+      <!-- User list -->
       <div v-else class="space-y-1">
-        <div v-for="u in results" :key="u.id" @click="toggle(u.id)"
+        <div v-for="u in filtered" :key="u.id" @click="toggle(u.id)"
           class="flex items-center gap-3 py-3 cursor-pointer rounded-xl hover:bg-gray-50 px-2">
           <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
             <img v-if="u.avatar_url" :src="u.avatar_url" class="w-full h-full object-cover" />

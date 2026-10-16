@@ -91,6 +91,8 @@ class ChatGroupController {
         $memberIds = array_map('intval', $data['member_ids'] ?? []);
         $type      = ($data['type'] ?? 'group') === 'dm' ? 'dm' : 'group';
 
+        $db = Database::getConnection();
+
         if ($type === 'dm') {
             if (count($memberIds) !== 1) {
                 http_response_code(400);
@@ -98,8 +100,13 @@ class ChatGroupController {
                 return;
             }
             $otherId = $memberIds[0];
+            // Enforce connection rule
+            if (!$this->areConnected($db, $userId, $otherId)) {
+                http_response_code(403);
+                echo json_encode(['message' => 'You can only message people you are connected with (co-players, venue mates, or post interactions)']);
+                return;
+            }
             // Check if DM already exists between these two users
-            $db = Database::getConnection();
             $existing = $db->prepare("
                 SELECT g.id FROM chat_groups g
                 JOIN chat_members cm1 ON cm1.group_id = g.id AND cm1.user_id = ?
@@ -124,9 +131,16 @@ class ChatGroupController {
                 echo json_encode(['message' => 'At least one member required']);
                 return;
             }
+            // Enforce connection rule for all group members
+            $connected = $this->getConnectedUserIds($db, $userId);
+            $notConnected = array_diff($memberIds, $connected);
+            if (!empty($notConnected)) {
+                http_response_code(403);
+                echo json_encode(['message' => 'You can only add people you are connected with']);
+                return;
+            }
         }
 
-        $db = Database::getConnection();
         $db->beginTransaction();
         try {
             $stmt = $db->prepare("INSERT INTO chat_groups (name, description, type, created_by) VALUES (?,?,?,?)");
@@ -276,6 +290,15 @@ class ChatGroupController {
             return;
         }
 
+        // Enforce connection rule
+        $connected = $this->getConnectedUserIds($db, $userId);
+        $notConnected = array_diff($userIds, $connected);
+        if (!empty($notConnected)) {
+            http_response_code(403);
+            echo json_encode(['message' => 'You can only add people you are connected with']);
+            return;
+        }
+
         $group = $db->prepare("SELECT name FROM chat_groups WHERE id = ?");
         $group->execute([$groupId]);
         $groupName = $group->fetchColumn() ?: 'a group';
@@ -349,26 +372,154 @@ class ChatGroupController {
 
     /**
      * GET /api/chat/users/search?q=name_or_phone
-     * Search users for member picker.
+     * Search users the caller is connected to (co-players, venue mates, post interactions, match partners).
      */
     public function searchUsers() {
-        Auth::require();
-        $q = trim($_GET['q'] ?? '');
-        if (strlen($q) < 2) {
+        $authUser = Auth::require();
+        $userId   = (int)$authUser['id'];
+        $q        = trim($_GET['q'] ?? '');
+        $db       = Database::getConnection();
+
+        // Build the set of connected user IDs
+        $connectedIds = $this->getConnectedUserIds($db, $userId);
+
+        if (empty($connectedIds)) {
             echo json_encode(['users' => []]);
             return;
         }
 
-        $db   = Database::getConnection();
-        $like = "%$q%";
+        $placeholders = implode(',', array_fill(0, count($connectedIds), '?'));
+        $params = $connectedIds;
+
+        $where = "u.id IN ($placeholders) AND u.id != ?";
+        $params[] = $userId;
+
+        // Optional text filter
+        if (strlen($q) >= 2) {
+            $where .= " AND (u.name LIKE ? OR u.phone LIKE ?)";
+            $like = "%$q%";
+            $params[] = $like;
+            $params[] = $like;
+        }
+
         $stmt = $db->prepare("
-            SELECT id, name, avatar_url, phone
-            FROM users
-            WHERE name LIKE ? OR phone LIKE ?
-            LIMIT 20
+            SELECT u.id, u.name, u.avatar_url, u.phone
+            FROM users u
+            WHERE $where
+            ORDER BY u.name ASC
+            LIMIT 30
         ");
-        $stmt->execute([$like, $like]);
+        $stmt->execute($params);
         echo json_encode(['users' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    }
+
+    /**
+     * Returns an array of user IDs that the given user is connected to.
+     * Connections: co-players (shared booking), venue mates (same court subscription),
+     * post interactions (liked/commented each other), match partners.
+     */
+    private function getConnectedUserIds(PDO $db, int $userId): array {
+        $ids = [];
+
+        // 1. Co-players: users who booked the same court + overlapping time slot
+        $stmt = $db->prepare("
+            SELECT DISTINCT b2.user_id
+            FROM bookings b1
+            JOIN bookings b2 ON b2.court_id = b1.court_id
+                AND b2.start_time = b1.start_time
+                AND b2.user_id != b1.user_id
+            WHERE b1.user_id = ? AND b1.status = 'confirmed' AND b2.status = 'confirmed'
+        ");
+        $stmt->execute([$userId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) $ids[(int)$id] = true;
+
+        // 2. Venue mates: users with active subscriptions at the same court
+        $stmt = $db->prepare("
+            SELECT DISTINCT us2.user_id
+            FROM user_subscriptions us1
+            JOIN user_subscriptions us2 ON us2.court_id = us1.court_id
+                AND us2.user_id != us1.user_id
+                AND us2.end_date >= CURDATE()
+            WHERE us1.user_id = ? AND us1.end_date >= CURDATE()
+        ");
+        $stmt->execute([$userId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) $ids[(int)$id] = true;
+
+        // 3. Court owners of venues I've booked at (and vice versa)
+        $stmt = $db->prepare("
+            SELECT DISTINCT c.owner_id
+            FROM bookings b
+            JOIN courts c ON c.id = b.court_id
+            WHERE b.user_id = ? AND c.owner_id != ? AND c.owner_id IS NOT NULL
+        ");
+        $stmt->execute([$userId, $userId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) $ids[(int)$id] = true;
+
+        // Players who booked at my courts
+        $stmt = $db->prepare("
+            SELECT DISTINCT b.user_id
+            FROM bookings b
+            JOIN courts c ON c.id = b.court_id
+            WHERE c.owner_id = ? AND b.user_id != ?
+        ");
+        $stmt->execute([$userId, $userId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) $ids[(int)$id] = true;
+
+        // 4. Post interactions: people who liked/commented on my posts, or whose posts I liked/commented on
+        $stmt = $db->prepare("
+            SELECT DISTINCT pl.user_id
+            FROM post_likes pl
+            JOIN posts p ON p.id = pl.post_id
+            WHERE p.user_id = ? AND pl.user_id != ?
+        ");
+        $stmt->execute([$userId, $userId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) $ids[(int)$id] = true;
+
+        $stmt = $db->prepare("
+            SELECT DISTINCT p.user_id
+            FROM post_likes pl
+            JOIN posts p ON p.id = pl.post_id
+            WHERE pl.user_id = ? AND p.user_id != ?
+        ");
+        $stmt->execute([$userId, $userId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) $ids[(int)$id] = true;
+
+        $stmt = $db->prepare("
+            SELECT DISTINCT pc.user_id
+            FROM post_comments pc
+            JOIN posts p ON p.id = pc.post_id
+            WHERE p.user_id = ? AND pc.user_id != ?
+        ");
+        $stmt->execute([$userId, $userId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) $ids[(int)$id] = true;
+
+        $stmt = $db->prepare("
+            SELECT DISTINCT p.user_id
+            FROM post_comments pc
+            JOIN posts p ON p.id = pc.post_id
+            WHERE pc.user_id = ? AND p.user_id != ?
+        ");
+        $stmt->execute([$userId, $userId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) $ids[(int)$id] = true;
+
+        // 5. Match partners: accepted match requests
+        $stmt = $db->prepare("
+            SELECT DISTINCT CASE WHEN requester_id = ? THEN opponent_id ELSE requester_id END AS partner_id
+            FROM match_requests
+            WHERE (requester_id = ? OR opponent_id = ?) AND status = 'accepted'
+        ");
+        $stmt->execute([$userId, $userId, $userId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) $ids[(int)$id] = true;
+
+        return array_keys($ids);
+    }
+
+    /**
+     * Check if two users are connected (for DM/group creation validation).
+     */
+    private function areConnected(PDO $db, int $userId, int $otherUserId): bool {
+        $connected = $this->getConnectedUserIds($db, $userId);
+        return in_array($otherUserId, $connected);
     }
 
     // -- Helpers --
