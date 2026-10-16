@@ -7,7 +7,7 @@ class Database {
     private $pdo;
 
     // Bump this number whenever migrate() adds new tables/columns/indexes
-    private const SCHEMA_VERSION = 21;
+    private const SCHEMA_VERSION = 22;
 
     private function __construct() {
         $host    = getenv('DB_HOST') ?: 'localhost';
@@ -405,6 +405,13 @@ class Database {
             UNIQUE KEY idx_reaction_unique (message_id, user_id, emoji),
             FOREIGN KEY (message_id) REFERENCES chat_messages(id) ON DELETE CASCADE,
             FOREIGN KEY (user_id)    REFERENCES users(id)         ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+        // v22: App config key-value store (Cashfree keys, SMS keys, etc.)
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS config (
+            `key`      VARCHAR(100) NOT NULL PRIMARY KEY,
+            `value`    TEXT DEFAULT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
         // v20: Simplify roles — only 'admin' and 'user'. Merge player/owner into user.

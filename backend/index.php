@@ -682,6 +682,32 @@ if (isset($seg[0]) && $seg[0] === 'admin') {
            ->execute([$owner_id, $amount, $note ?: null, (int)$adminUser['id']]);
         echo json_encode(['message' => 'Payout recorded', 'id' => (int)$db->lastInsertId()]); exit();
     }
+    // GET /admin/config — list all config key-value pairs
+    if (isset($seg[1]) && $seg[1] === 'config' && $_SERVER['REQUEST_METHOD'] === 'GET' && !isset($seg[2])) {
+        Auth::requireAdmin();
+        $db = Database::getConnection();
+        $stmt = $db->query("SELECT `key`, `value`, updated_at FROM config ORDER BY `key`");
+        echo json_encode(['config' => $stmt->fetchAll(PDO::FETCH_ASSOC)]); exit();
+    }
+    // PUT /admin/config  { key, value }  — set a config value
+    if (isset($seg[1]) && $seg[1] === 'config' && $_SERVER['REQUEST_METHOD'] === 'PUT') {
+        Auth::requireAdmin();
+        $db   = Database::getConnection();
+        $data = json_decode(file_get_contents('php://input'));
+        $key  = trim($data->key ?? '');
+        $val  = $data->value ?? '';
+        if (!$key) { http_response_code(400); echo json_encode(['message' => 'key is required']); exit(); }
+        $db->prepare("INSERT INTO config (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)")
+           ->execute([$key, $val]);
+        echo json_encode(['message' => 'Config saved', 'key' => $key]); exit();
+    }
+    // DELETE /admin/config/:key — delete a config entry
+    if (isset($seg[1]) && $seg[1] === 'config' && isset($seg[2]) && $_SERVER['REQUEST_METHOD'] === 'DELETE') {
+        Auth::requireAdmin();
+        $db = Database::getConnection();
+        $db->prepare("DELETE FROM config WHERE `key` = ?")->execute([$seg[2]]);
+        echo json_encode(['message' => 'Config deleted']); exit();
+    }
     http_response_code(404); echo json_encode(['message' => 'Admin endpoint not found']); exit();
 }
 
