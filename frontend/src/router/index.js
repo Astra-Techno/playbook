@@ -210,6 +210,12 @@ const router = createRouter({
             meta: { title: 'Contact KoCourt' },
         },
         {
+            path: '/download',
+            name: 'download',
+            component: () => import('../views/DownloadView.vue'),
+            meta: { title: 'Download KoCourt', fullScreen: true },
+        },
+        {
             path: '/subscriptions',
             name: 'subscriptions',
             component: () => import('../views/SubscriptionsView.vue'),

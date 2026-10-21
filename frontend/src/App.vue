@@ -161,6 +161,7 @@ const submitPromptRating = async () => {
                     <RouterLink to="/privacy" class="underline underline-offset-4">Privacy</RouterLink>
                     <RouterLink to="/refund-policy" class="underline underline-offset-4">Refund & Cancellation</RouterLink>
                     <RouterLink to="/contact" class="underline underline-offset-4">Contact</RouterLink>
+                    <RouterLink to="/download" class="underline underline-offset-4">Download App</RouterLink>
                 </div>
                 <a href="tel:+919994439081" class="mt-3 inline-block text-xs font-bold text-primary">Support: +91 99944 39081</a>
             </footer>
