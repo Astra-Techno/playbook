@@ -233,6 +233,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           label: 'Privacy Policy',
                           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyScreen())),
                         ),
+                        _MenuItem(
+                          icon: AppIcons.wallet,
+                          label: 'Refund & Cancellation',
+                          onTap: () => context.push('/refund-policy'),
+                        ),
+                        _MenuItem(
+                          icon: AppIcons.phone,
+                          label: 'Contact Support',
+                          onTap: () => context.push('/contact'),
+                        ),
                       ],
                     ),
 

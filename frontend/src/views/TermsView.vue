@@ -15,7 +15,7 @@ const router = useRouter()
             </button>
             <div>
                 <h1 class="text-lg font-bold text-black">Terms & Conditions</h1>
-                <p class="text-xs text-gray-400">Last updated: April 2026</p>
+                <p class="text-xs text-gray-400">Last updated: 15 October 2026</p>
             </div>
         </div>
 
@@ -63,7 +63,7 @@ const router = useRouter()
                     All payments are processed securely via Cashfree. KoCourt does not store your card or bank details.
                 </p>
                 <ul class="text-sm text-gray-500 leading-relaxed space-y-2 list-disc list-inside">
-                    <li>Cancellations made <strong class="text-gray-700">24 hours before</strong> the slot are eligible for a full refund.</li>
+                    <li>Cancellations made at least <strong class="text-gray-700">24 hours before</strong> the slot are eligible for a full refund.</li>
                     <li>Cancellations within 24 hours of the slot are non-refundable.</li>
                     <li>If a venue cancels or the slot is unavailable due to a technical error, you will receive a full refund within 5–7 business days.</li>
                     <li>Membership/subscription payments are non-refundable once the plan period has begun.</li>
@@ -114,8 +114,8 @@ const router = useRouter()
             <section>
                 <h2 class="text-base font-bold text-black mb-2">Contact Us</h2>
                 <p class="text-sm text-gray-500 leading-relaxed">
-                    For questions or concerns, email us at
-                    <a href="mailto:support@kocourt.com" class="text-black font-semibold">support@kocourt.com</a>.
+                    For questions or concerns, call <a href="tel:+919994439081" class="text-black font-semibold">+91 99944 39081</a>
+                    or email <a href="mailto:support@kocourt.com" class="text-black font-semibold">support@kocourt.com</a>.
                 </p>
             </section>
 

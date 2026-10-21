@@ -29,3 +29,12 @@ backend/uploads/
 Thumbs.db
 .vscode/
 *.log
+
+# Apple signing credentials
+*.p12
+*.p8
+*.mobileprovision
+distribution.key
+distribution.csr
+distribution.cer
+distribution.pem

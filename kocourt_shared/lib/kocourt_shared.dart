@@ -19,5 +19,7 @@ export 'services/payment_service.dart';
 
 // Widgets
 export 'widgets/toast_overlay.dart';
+export 'widgets/tactile_surface.dart';
+export 'widgets/legal_screens.dart';
 export 'widgets/sheets/review_sheet.dart';
 export 'widgets/sheets/profile_edit_sheet.dart';

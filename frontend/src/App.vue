@@ -152,6 +152,18 @@ const submitPromptRating = async () => {
                     : ''
             ]">
             <RouterView />
+
+            <!-- Public compliance links: visible without an account and crawlable by payment providers. -->
+            <footer v-if="!auth.isLoggedIn && !route.meta.fullScreen" class="border-t border-gray-100 bg-white px-5 py-5 text-center">
+                <p class="mb-3 text-xs font-semibold text-gray-500">KoCourt sports venue booking</p>
+                <div class="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs font-semibold text-gray-700">
+                    <RouterLink to="/terms" class="underline underline-offset-4">Terms</RouterLink>
+                    <RouterLink to="/privacy" class="underline underline-offset-4">Privacy</RouterLink>
+                    <RouterLink to="/refund-policy" class="underline underline-offset-4">Refund & Cancellation</RouterLink>
+                    <RouterLink to="/contact" class="underline underline-offset-4">Contact</RouterLink>
+                </div>
+                <a href="tel:+919994439081" class="mt-3 inline-block text-xs font-bold text-primary">Support: +91 99944 39081</a>
+            </footer>
         </main>
 
         <!-- Bottom Nav — shown when logged in -->

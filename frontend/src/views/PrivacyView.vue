@@ -15,7 +15,7 @@ const router = useRouter()
             </button>
             <div>
                 <h1 class="text-lg font-bold text-black">Privacy Policy</h1>
-                <p class="text-xs text-gray-400">Last updated: April 2026</p>
+                <p class="text-xs text-gray-400">Last updated: 15 October 2026</p>
             </div>
         </div>
 

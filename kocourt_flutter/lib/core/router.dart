@@ -63,6 +63,8 @@ GoRouter createRouter(AuthProvider auth) {
           state.matchedLocation == '/faq' ||
           state.matchedLocation == '/terms' ||
           state.matchedLocation == '/privacy' ||
+          state.matchedLocation == '/refund-policy' ||
+          state.matchedLocation == '/contact' ||
           state.matchedLocation == '/find-courts' ||
           state.matchedLocation.startsWith('/courts/') ||
           state.matchedLocation.startsWith('/feed');
@@ -161,6 +163,8 @@ GoRouter createRouter(AuthProvider auth) {
       GoRoute(path: '/faq', builder: (_, __) => const FaqScreen()),
       GoRoute(path: '/terms', builder: (_, __) => const TermsScreen()),
       GoRoute(path: '/privacy', builder: (_, __) => const PrivacyScreen()),
+      GoRoute(path: '/refund-policy', builder: (_, __) => const RefundCancellationScreen()),
+      GoRoute(path: '/contact', builder: (_, __) => const ContactSupportScreen()),
     ],
   );
 }

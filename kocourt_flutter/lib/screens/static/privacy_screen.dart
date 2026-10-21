@@ -13,7 +13,7 @@ class PrivacyScreen extends StatelessWidget {
         child: Text(
           '''Privacy Policy
 
-Last updated: August 2026
+Last updated: 16 October 2026
 
 1. Information We Collect
 We collect your phone number, name, location data, and booking history to provide our services.

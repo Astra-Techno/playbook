@@ -104,6 +104,18 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       children: [
                         // My venues
                         if (_courts.isNotEmpty) ...[
+                          _portfolioHero(),
+                          const SizedBox(height: 18),
+                          const Text(
+                            'YOUR VENUES',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textMuted,
+                              letterSpacing: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
                           ..._courts.map((c) => _venueCard(c)),
                         ],
 
@@ -133,20 +145,59 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     );
   }
 
+  Widget _portfolioHero() {
+    final venueLabel = _courts.length == 1 ? 'active venue' : 'active venues';
+    return TactileSurface(
+      radius: 22,
+      accentColor: AppColors.primary,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+        child: Row(
+          children: [
+            Container(
+              width: 54,
+              height: 54,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.18),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+              ),
+              child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 28),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${_courts.length} $venueLabel',
+                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Your venue portfolio is ready to manage.',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.84), fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _venueCard(Map<String, dynamic> c) {
     final img = getVenueImage(c);
-    return GestureDetector(
+    return TactileSurface(
       onTap: () => Navigator.push(context, MaterialPageRoute(
         builder: (_) => VenueDetailScreen(courtId: c['id']),
       )).then((_) => _load()),
+      margin: const EdgeInsets.only(bottom: 12),
+      radius: 16,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey[100]!),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
-        ),
         child: Row(
           children: [
             ClipRRect(

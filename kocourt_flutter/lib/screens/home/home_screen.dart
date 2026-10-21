@@ -607,7 +607,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               // Notification bell with badge
-              GestureDetector(
+              Semantics(
+                button: true,
+                label: 'Open notifications',
+                child: GestureDetector(
                 onTap: () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen())).then((_) => _loadNotificationCount());
                 },
@@ -643,6 +646,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                   ],
+                ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -751,7 +755,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          GestureDetector(
+          Semantics(
+            button: true,
+            label: 'Open search filters',
+            child: GestureDetector(
             onTap: _showFilterSheet,
             child: Stack(
               children: [
@@ -774,6 +781,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
               ],
+            ),
             ),
           ),
         ],
