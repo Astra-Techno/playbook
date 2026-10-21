@@ -216,6 +216,12 @@ const router = createRouter({
             meta: { title: 'Download KoCourt', fullScreen: true },
         },
         {
+            path: '/apps',
+            name: 'apps',
+            component: () => import('../views/AppsView.vue'),
+            meta: { requiresAdmin: true, title: 'App Builds' },
+        },
+        {
             path: '/subscriptions',
             name: 'subscriptions',
             component: () => import('../views/SubscriptionsView.vue'),

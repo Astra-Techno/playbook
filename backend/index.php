@@ -716,6 +716,75 @@ if (isset($seg[0]) && $seg[0] === 'admin') {
         $db->prepare("DELETE FROM config WHERE `key` = ?")->execute([$seg[2]]);
         echo json_encode(['message' => 'Config deleted']); exit();
     }
+    // POST /admin/builds/trigger  { workflow: 'build'|'ios', inputs?: {} }
+    if (isset($seg[1]) && $seg[1] === 'builds' && isset($seg[2]) && $seg[2] === 'trigger' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        Auth::requireAdmin();
+        $data = json_decode(file_get_contents('php://input'));
+        $workflow = $data->workflow ?? 'build';
+        $inputs = (array)($data->inputs ?? []);
+        $repo = $_ENV['GITHUB_REPO'] ?? 'Astra-Techno/playbook';
+        $branch = $_ENV['GITHUB_BRANCH'] ?? 'main';
+        $token = $_ENV['GITHUB_TOKEN'] ?? '';
+        if (!$token) { http_response_code(400); echo json_encode(['message' => 'GITHUB_TOKEN not configured in .env']); exit(); }
+        $workflowFile = $workflow === 'ios' ? 'ios.yml' : 'build.yml';
+        $url = "https://api.github.com/repos/{$repo}/actions/workflows/{$workflowFile}/dispatches";
+        $body = json_encode(['ref' => $branch, 'inputs' => (object)$inputs]);
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $body,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                'Accept: application/vnd.github.v3+json',
+                "Authorization: Bearer {$token}",
+                'Content-Type: application/json',
+                'User-Agent: KoCourt-Admin/1.0',
+            ],
+        ]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($httpCode === 204) {
+            echo json_encode(['message' => "Workflow {$workflowFile} triggered", 'workflow' => $workflowFile]); exit();
+        }
+        http_response_code($httpCode ?: 500);
+        echo json_encode(['message' => 'GitHub API error', 'status' => $httpCode, 'response' => json_decode($response)]); exit();
+    }
+    // GET /admin/builds/status — get recent workflow runs
+    if (isset($seg[1]) && $seg[1] === 'builds' && isset($seg[2]) && $seg[2] === 'status' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        Auth::requireAdmin();
+        $repo = $_ENV['GITHUB_REPO'] ?? 'Astra-Techno/playbook';
+        $token = $_ENV['GITHUB_TOKEN'] ?? '';
+        if (!$token) { http_response_code(400); echo json_encode(['message' => 'GITHUB_TOKEN not configured']); exit(); }
+        $workflow = $_GET['workflow'] ?? '';
+        $url = "https://api.github.com/repos/{$repo}/actions/runs?per_page=5";
+        if ($workflow) $url .= "&event=workflow_dispatch";
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                'Accept: application/vnd.github.v3+json',
+                "Authorization: Bearer {$token}",
+                'User-Agent: KoCourt-Admin/1.0',
+            ],
+        ]);
+        $response = curl_exec($ch);
+        curl_close($ch);
+        $data = json_decode($response, true);
+        $runs = array_map(function($r) {
+            return [
+                'id' => $r['id'],
+                'name' => $r['name'],
+                'status' => $r['status'],
+                'conclusion' => $r['conclusion'],
+                'created_at' => $r['created_at'],
+                'updated_at' => $r['updated_at'],
+                'html_url' => $r['html_url'],
+                'event' => $r['event'],
+            ];
+        }, $data['workflow_runs'] ?? []);
+        echo json_encode(['runs' => $runs]); exit();
+    }
     http_response_code(404); echo json_encode(['message' => 'Admin endpoint not found']); exit();
 }
 
