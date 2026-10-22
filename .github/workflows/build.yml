@@ -132,10 +132,11 @@ jobs:
         run: |
           php -S 127.0.0.1:8000 backend/index.php > /tmp/kocourt-api.log 2>&1 &
           npx --yes serve kocourt_flutter/build/web -l 8787 > /tmp/kocourt-ui.log 2>&1 &
-          for attempt in {1..30}; do
+          for attempt in {1..60}; do
             curl --fail --silent http://127.0.0.1:8000/courts > /dev/null && break
             sleep 1
           done
+          echo "=== API log ===" && cat /tmp/kocourt-api.log | tail -30
           curl --fail --silent http://127.0.0.1:8000/courts > /dev/null
           for attempt in {1..30}; do
             curl --fail --silent http://127.0.0.1:8787 > /dev/null && break
