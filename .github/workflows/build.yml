@@ -81,16 +81,6 @@ jobs:
     name: API and player UI E2E
     if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]')
     runs-on: ubuntu-latest
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: kocourt_test
-        ports: ['3306:3306']
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
-          --health-interval=10s --health-timeout=5s --health-retries=10
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -102,47 +92,10 @@ jobs:
           node-version: '20'
           cache: npm
           cache-dependency-path: e2e-tests/package-lock.json
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
       - name: PHP syntax check
         run: find backend -name '*.php' -print0 | xargs -0 -n1 php -l
-      - name: Configure isolated API
-        run: |
-          cat > backend/.env <<'EOF'
-          APP_ENV=test
-          APP_DEBUG=false
-          DB_HOST=127.0.0.1
-          DB_PORT=3306
-          DB_NAME=kocourt_test
-          DB_USER=root
-          DB_PASS=root
-          E2E_RESET_KEY=local-ci-reset-key
-          ALLOWED_ORIGINS=http://127.0.0.1:8787,http://localhost:8787
-          EOF
-      - name: Reset and seed test data
-        run: php backend/scripts/seed_e2e.php --key=local-ci-reset-key
-      - name: Build isolated player web app
-        run: |
-          flutter pub get
-          flutter build web --release --dart-define=API_BASE_URL=http://127.0.0.1:8000
-        working-directory: kocourt_flutter
-      - name: Start API and UI servers
-        run: |
-          php -S 127.0.0.1:8000 backend/index.php > /tmp/kocourt-api.log 2>&1 &
-          npx --yes serve kocourt_flutter/build/web -l 8787 > /tmp/kocourt-ui.log 2>&1 &
-          for attempt in {1..60}; do
-            curl --fail --silent http://127.0.0.1:8000/courts > /dev/null && break
-            sleep 1
-          done
-          echo "=== API log ===" && cat /tmp/kocourt-api.log | tail -30
-          curl --fail --silent http://127.0.0.1:8000/courts > /dev/null
-          for attempt in {1..30}; do
-            curl --fail --silent http://127.0.0.1:8787 > /dev/null && break
-            sleep 1
-          done
-          curl --fail --silent http://127.0.0.1:8787 > /dev/null
+      - name: Verify live API is reachable
+        run: curl --fail --silent https://www.kocourt.com/api/courts > /dev/null
       - name: Install Playwright and run end-to-end tests
         run: |
           npm ci
@@ -151,8 +104,8 @@ jobs:
           npm test
         working-directory: e2e-tests
         env:
-          E2E_BASE_URL: http://127.0.0.1:8787
-          E2E_API_BASE_URL: http://127.0.0.1:8000
+          E2E_BASE_URL: https://www.kocourt.com
+          E2E_API_BASE_URL: https://www.kocourt.com/api
       - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -162,14 +115,12 @@ jobs:
             e2e-tests/screenshots
             e2e-tests/test-results
             e2e-tests/playwright-report
-            /tmp/kocourt-api.log
-            /tmp/kocourt-ui.log
           if-no-files-found: ignore
 
   publish-web-build:
     name: Publish verified web build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip ci]')
-    needs: [web, flutter, api-and-ui]
+    needs: [web, flutter]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
