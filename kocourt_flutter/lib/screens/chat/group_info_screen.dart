@@ -126,6 +126,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
   }
 
   Future<void> _leaveGroup() async {
+    final userId = context.read<AuthProvider>().userId;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -142,9 +143,8 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
       ),
     );
     if (confirm == true) {
-      final auth = context.read<AuthProvider>();
       try {
-        await Api().delete('/chat/groups/${widget.groupId}/members/${auth.userId}');
+        await Api().delete('/chat/groups/${widget.groupId}/members/$userId');
         if (mounted) {
           Navigator.pop(context);
           Navigator.pop(context);

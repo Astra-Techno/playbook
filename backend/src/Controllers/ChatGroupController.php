@@ -515,6 +515,106 @@ class ChatGroupController {
     }
 
     /**
+     * GET /api/chat/can-message/:userId
+     * Returns whether the current user can message the target user, and which connection types exist.
+     * Response: { can_message: bool, connections: ['co-player'|'venue-member'|'match-partner'|'post-interaction'] }
+     */
+    public function canMessage(int $targetUserId) {
+        $authUser = Auth::require();
+        $userId   = (int)$authUser['id'];
+        $db       = Database::getConnection();
+
+        if ($userId === $targetUserId) {
+            echo json_encode(['can_message' => false, 'connections' => [], 'message' => 'Cannot message yourself']);
+            return;
+        }
+
+        $connections = $this->getConnectionTypes($db, $userId, $targetUserId);
+        echo json_encode([
+            'can_message' => !empty($connections),
+            'connections' => $connections,
+        ]);
+    }
+
+    /**
+     * Returns labeled connection types between two users.
+     * @return string[]  subset of ['co-player', 'venue-member', 'match-partner', 'post-interaction']
+     */
+    private function getConnectionTypes(PDO $db, int $userId, int $otherId): array {
+        $types = [];
+
+        // 1. Co-players: both have confirmed bookings at the same court + same slot
+        $stmt = $db->prepare("
+            SELECT 1
+            FROM bookings b1
+            JOIN bookings b2 ON b2.court_id = b1.court_id
+                AND b2.slot_date = b1.slot_date
+                AND b2.slot_time = b1.slot_time
+                AND b2.user_id = ?
+            WHERE b1.user_id = ? AND b1.status = 'confirmed' AND b2.status = 'confirmed'
+            LIMIT 1
+        ");
+        $stmt->execute([$otherId, $userId]);
+        if ($stmt->fetch()) $types[] = 'co-player';
+
+        // 2. Venue members: both have active subscriptions at the same court
+        $stmt = $db->prepare("
+            SELECT 1
+            FROM user_subscriptions us1
+            JOIN user_subscriptions us2 ON us2.court_id = us1.court_id
+                AND us2.user_id = ?
+                AND us2.status = 'active'
+            WHERE us1.user_id = ? AND us1.status = 'active'
+            LIMIT 1
+        ");
+        $stmt->execute([$otherId, $userId]);
+        if ($stmt->fetch()) $types[] = 'venue-member';
+
+        // 3. Match partners: both participated in the same match_request
+        $stmt = $db->prepare("
+            SELECT 1
+            FROM match_participants mp1
+            JOIN match_participants mp2 ON mp2.match_id = mp1.match_id
+                AND mp2.user_id = ?
+            WHERE mp1.user_id = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$otherId, $userId]);
+        if ($stmt->fetch()) $types[] = 'match-partner';
+
+        // 4. Post interaction: one liked/commented on the other's post
+        $stmt = $db->prepare("
+            SELECT 1 FROM (
+                -- I liked their post
+                SELECT pl.post_id FROM post_likes pl JOIN posts p ON p.id = pl.post_id WHERE pl.user_id = ? AND p.user_id = ?
+                UNION ALL
+                -- They liked my post
+                SELECT pl.post_id FROM post_likes pl JOIN posts p ON p.id = pl.post_id WHERE pl.user_id = ? AND p.user_id = ?
+                UNION ALL
+                -- I commented on their post
+                SELECT pc.post_id FROM post_comments pc JOIN posts p ON p.id = pc.post_id WHERE pc.user_id = ? AND p.user_id = ?
+                UNION ALL
+                -- They commented on my post
+                SELECT pc.post_id FROM post_comments pc JOIN posts p ON p.id = pc.post_id WHERE pc.user_id = ? AND p.user_id = ?
+            ) AS interactions
+            LIMIT 1
+        ");
+        $stmt->execute([$userId, $otherId, $otherId, $userId, $userId, $otherId, $otherId, $userId]);
+        if ($stmt->fetch()) $types[] = 'post-interaction';
+
+        return $types;
+    }
+
+    /**
+     * Public boolean check: can userId1 message userId2?
+     * Used internally and can be called by other controllers.
+     */
+    public function isConnected(int $userId1, int $userId2): bool {
+        $db = Database::getConnection();
+        return !empty($this->getConnectionTypes($db, $userId1, $userId2));
+    }
+
+    /**
      * Check if two users are connected (for DM/group creation validation).
      */
     private function areConnected(PDO $db, int $userId, int $otherUserId): bool {

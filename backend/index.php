@@ -1047,6 +1047,10 @@ if (isset($seg[0]) && $seg[0] === 'chat') {
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'users' && isset($seg[2]) && $seg[2] === 'search') {
         $chatGrp->searchUsers(); exit();
     }
+    // GET /chat/can-message/:userId — check if current user can message target user
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'can-message' && isset($seg[2])) {
+        $chatGrp->canMessage((int)$seg[2]); exit();
+    }
 }
 
 // Legacy Messages Routes

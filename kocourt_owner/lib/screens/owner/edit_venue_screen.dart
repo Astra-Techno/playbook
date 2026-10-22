@@ -50,7 +50,7 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
       _closeTimeCtrl.text = c['close_time'] ?? '22:00';
       if (c['amenities'] is List) _amenities = List<String>.from(c['amenities']);
     } catch (_) {}
-    setState(() => _loading = false);
+    if (mounted) setState(() => _loading = false);
   }
 
   Future<void> _pickImage() async {
@@ -60,7 +60,7 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
     try {
       final formData = FormData.fromMap({'image': await MultipartFile.fromFile(file.path)});
       final res = await Api().dio.post('${Api.baseUrl}/upload', data: formData);
-      setState(() => _imageUrl = res.data['url']);
+      if (mounted) setState(() => _imageUrl = res.data['url']);
     } catch (_) {}
   }
 

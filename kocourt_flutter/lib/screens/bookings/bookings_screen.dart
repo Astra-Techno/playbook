@@ -49,14 +49,16 @@ class _BookingsScreenState extends State<BookingsScreen> {
     }
     try {
       final res = await Api().get('/bookings', params: {'user_id': auth.userId});
-      setState(() {
-        _bookings = List<Map<String, dynamic>>.from(
-          (res.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
-        );
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _bookings = List<Map<String, dynamic>>.from(
+            (res.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
+          );
+          _loading = false;
+        });
+      }
     } catch (_) {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 

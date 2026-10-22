@@ -85,9 +85,9 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_receiverId != null) return;
     // Try to get the other party from the booking details
     try {
+      final auth = context.read<AuthProvider>();
       final res = await Api().get('/bookings/${widget.bookingId}');
       final booking = res.data['booking'] ?? res.data;
-      final auth = context.read<AuthProvider>();
       final bookingUserId = booking['user_id'];
       final ownerId = booking['owner_id'];
       if (bookingUserId == auth.userId) {
