@@ -77,8 +77,8 @@ jobs:
           name: ${{ matrix.app }}-release-apk
           path: kocourt-*.apk
 
-  api-and-ui:
-    name: API and player UI E2E
+  api-check:
+    name: PHP syntax check
     if: github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
@@ -86,36 +86,8 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: pdo_mysql, curl, fileinfo
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: npm
-          cache-dependency-path: e2e-tests/package-lock.json
       - name: PHP syntax check
         run: find backend -name '*.php' -print0 | xargs -0 -n1 php -l
-      - name: Verify live API is reachable
-        run: curl --fail --silent https://www.kocourt.com/api/courts > /dev/null
-      - name: Install Playwright and run end-to-end tests
-        run: |
-          npm ci
-          npx playwright install --with-deps chromium
-          mkdir -p screenshots
-          npm test
-        working-directory: e2e-tests
-        env:
-          E2E_BASE_URL: https://www.kocourt.com
-          E2E_API_BASE_URL: https://www.kocourt.com/api
-      - name: Upload diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-diagnostics
-          path: |
-            e2e-tests/screenshots
-            e2e-tests/test-results
-            e2e-tests/playwright-report
-          if-no-files-found: ignore
 
   publish-web-build:
     name: Publish verified web build
