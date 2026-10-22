@@ -48,9 +48,9 @@ const toggleMute = async () => {
 }
 
 const editGroup = async () => {
-    const name = prompt('Group name', group.value?.name || '')
+    const name = window.prompt('Group name', group.value?.name || '')
     if (name === null || !name.trim()) return
-    const desc = prompt('Description (optional)', group.value?.description || '')
+    const desc = window.prompt('Description (optional)', group.value?.description || '')
     try {
         await axios.put(`/chat/groups/${groupId}`, { name: name.trim(), description: desc?.trim() || '' })
         load()

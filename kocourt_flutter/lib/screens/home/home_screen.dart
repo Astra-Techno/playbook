@@ -4,7 +4,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:geolocator/geolocator.dart';
@@ -102,13 +101,6 @@ class _HomeScreenState extends State<HomeScreen> {
     if (auth.isLoggedIn) {
       context.read<VenueProvider>().fetchFavorites(auth.userId!);
     }
-  }
-
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good Morning';
-    if (hour < 17) return 'Good Afternoon';
-    return 'Good Evening';
   }
 
   Timer? _debounce;

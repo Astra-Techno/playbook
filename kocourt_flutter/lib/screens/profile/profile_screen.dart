@@ -280,11 +280,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-// Extension to wrap any widget with GestureDetector
-extension _TapWrap on Widget {
-  Widget wrapTap(VoidCallback onTap) => GestureDetector(onTap: onTap, child: this);
-}
-
 class _MenuSection extends StatelessWidget {
   final List<Widget> children;
   const _MenuSection({required this.children});
@@ -319,7 +314,6 @@ class _MenuItem extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final Color? color;
-  final String? badge;
   final bool showChevron;
 
   const _MenuItem({
@@ -327,7 +321,6 @@ class _MenuItem extends StatelessWidget {
     required this.label,
     required this.onTap,
     this.color,
-    this.badge,
     this.showChevron = true,
   });
 
@@ -360,23 +353,6 @@ class _MenuItem extends StatelessWidget {
                 ),
               ),
             ),
-            if (badge != null)
-              Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  badge!,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
             if (showChevron)
               Icon(AppIcons.chevronRight, size: 16, color: AppColors.textDisabled),
           ],

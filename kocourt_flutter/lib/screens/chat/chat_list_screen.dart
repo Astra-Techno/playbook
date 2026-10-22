@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'group_chat_screen.dart';
 import 'new_chat_screen.dart';

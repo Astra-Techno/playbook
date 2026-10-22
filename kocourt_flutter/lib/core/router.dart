@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import '../screens/app_shell.dart';
 import '../screens/login/login_screen.dart';
@@ -10,7 +9,6 @@ import '../screens/bookings/bookings_screen.dart';
 import '../screens/bookings/booking_confirmation_screen.dart';
 import '../screens/feed/create_post_screen.dart';
 import '../screens/feed/post_detail_screen.dart';
-import '../screens/profile/profile_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
 import '../screens/subscriptions/subscriptions_screen.dart';
 import '../screens/search/find_courts_screen.dart';

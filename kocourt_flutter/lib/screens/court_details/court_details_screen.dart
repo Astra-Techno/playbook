@@ -24,8 +24,6 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
   String _selectedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
   List<Map<String, dynamic>> _slots = [];
   Set<String> _selectedSlots = {};
-  Set<String> _bookedSlots = {};
-  Set<String> _blockedSlots = {};
   bool _bookingLoading = false;
   List<Map<String, dynamic>> _reviews = [];
   List<String> _photos = [];
@@ -152,8 +150,6 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
 
       setState(() {
         _slots = slots;
-        _bookedSlots = bookings.map((b) => b['start_time']?.toString() ?? '').toSet();
-        _blockedSlots = blocked;
         _selectedSlots = {};
       });
     } catch (_) {}

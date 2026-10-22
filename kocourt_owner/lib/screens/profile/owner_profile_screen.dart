@@ -82,6 +82,7 @@ class OwnerProfileScreen extends StatelessWidget {
             }),
             const Divider(height: 32),
             _menuItem(Icons.logout, 'Logout', () async {
+              final authProvider = context.read<AuthProvider>();
               final confirm = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
@@ -94,7 +95,7 @@ class OwnerProfileScreen extends StatelessWidget {
                 ),
               );
               if (confirm == true) {
-                context.read<AuthProvider>().logout();
+                authProvider.logout();
               }
             }, color: AppColors.error),
           ],

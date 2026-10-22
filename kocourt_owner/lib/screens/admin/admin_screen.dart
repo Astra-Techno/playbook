@@ -156,7 +156,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
       child: ListView.separated(
         padding: const EdgeInsets.all(20),
         itemCount: _users.length,
-        separatorBuilder: (_, __) => const Divider(),
+        separatorBuilder: (context, index) => const Divider(),
         itemBuilder: (_, i) {
           final user = _users[i];
           final name = (user['name'] ?? 'Unnamed user').toString();

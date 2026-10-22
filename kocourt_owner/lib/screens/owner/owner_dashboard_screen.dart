@@ -197,33 +197,31 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       )).then((_) => _load()),
       margin: const EdgeInsets.only(bottom: 12),
       radius: 16,
-      child: Container(
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
-              child: CachedNetworkImage(imageUrl: img, width: 100, height: 80, fit: BoxFit.cover),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(c['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                    const SizedBox(height: 4),
-                    Text(c['location'] ?? '', style: TextStyle(fontSize: 12, color: Colors.grey[500]), overflow: TextOverflow.ellipsis),
-                  ],
-                ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
+            child: CachedNetworkImage(imageUrl: img, width: 100, height: 80, fit: BoxFit.cover),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(c['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                  const SizedBox(height: 4),
+                  Text(c['location'] ?? '', style: TextStyle(fontSize: 12, color: Colors.grey[500]), overflow: TextOverflow.ellipsis),
+                ],
               ),
             ),
-            const Padding(
-              padding: EdgeInsets.only(right: 12),
-              child: Icon(AppIcons.chevronRight, size: 18, color: Colors.grey),
-            ),
-          ],
-        ),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(right: 12),
+            child: Icon(AppIcons.chevronRight, size: 18, color: Colors.grey),
+          ),
+        ],
       ),
     );
   }

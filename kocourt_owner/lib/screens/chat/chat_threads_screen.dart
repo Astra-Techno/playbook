@@ -82,7 +82,7 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
                   child: ListView.separated(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: _threads.length,
-                    separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[100], indent: 76),
+                    separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey[100], indent: 76),
                     itemBuilder: (_, i) => _buildThread(_threads[i]),
                   ),
                 ),

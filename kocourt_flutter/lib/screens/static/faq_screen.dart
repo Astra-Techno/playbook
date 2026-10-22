@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:kocourt_shared/kocourt_shared.dart';
 
 class FaqScreen extends StatelessWidget {
   const FaqScreen({super.key});

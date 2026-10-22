@@ -38,7 +38,7 @@ class _OwnerAppShellState extends State<OwnerAppShell> with TickerProviderStateM
 
   @override
   void dispose() {
-    for (final c in _iconControllers) c.dispose();
+    for (final c in _iconControllers) { c.dispose(); }
     super.dispose();
   }
 

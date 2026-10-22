@@ -83,9 +83,10 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _resolveReceiver() async {
     if (_receiverId != null) return;
     try {
-      final res = await Api().get('/bookings/${widget.bookingId}');
-      final booking = res.data['booking'] ?? res.data;
       final auth = context.read<AuthProvider>();
+      final res = await Api().get('/bookings/${widget.bookingId}');
+      if (!mounted) return;
+      final booking = res.data['booking'] ?? res.data;
       final bookingUserId = booking['user_id'];
       final ownerId = booking['owner_id'];
       if (bookingUserId == auth.userId) {

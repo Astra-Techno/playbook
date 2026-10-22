@@ -68,7 +68,7 @@ GoRouter createOwnerRouter(AuthProvider auth) {
       // Main owner shell
       GoRoute(
         path: '/',
-        builder: (_, __) => const OwnerAppShell(),
+        builder: (context, state) => const OwnerAppShell(),
       ),
 
       // Auth
@@ -76,12 +76,12 @@ GoRouter createOwnerRouter(AuthProvider auth) {
         path: '/login',
         pageBuilder: (_, state) => _slideFadePage(const LoginScreen(), state),
       ),
-      GoRoute(path: '/refund-policy', builder: (_, __) => const RefundCancellationScreen()),
-      GoRoute(path: '/contact', builder: (_, __) => const ContactSupportScreen()),
+      GoRoute(path: '/refund-policy', builder: (context, state) => const RefundCancellationScreen()),
+      GoRoute(path: '/contact', builder: (context, state) => const ContactSupportScreen()),
 
       // Venue management
-      GoRoute(path: '/venues', builder: (_, __) => const OwnerDashboardScreen()),
-      GoRoute(path: '/venues/new', builder: (_, __) => const EditVenueScreen()),
+      GoRoute(path: '/venues', builder: (context, state) => const OwnerDashboardScreen()),
+      GoRoute(path: '/venues/new', builder: (context, state) => const EditVenueScreen()),
       GoRoute(
         path: '/venues/:id',
         builder: (_, state) => VenueDetailScreen(
@@ -151,7 +151,7 @@ GoRouter createOwnerRouter(AuthProvider auth) {
       ),
 
       // Chat
-      GoRoute(path: '/messages', builder: (_, __) => const ChatThreadsScreen()),
+      GoRoute(path: '/messages', builder: (context, state) => const ChatThreadsScreen()),
       GoRoute(
         path: '/chat/:bookingId',
         builder: (_, state) => ChatScreen(
@@ -160,12 +160,12 @@ GoRouter createOwnerRouter(AuthProvider auth) {
       ),
 
       // Notifications
-      GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
+      GoRoute(path: '/notifications', builder: (context, state) => const NotificationsScreen()),
 
       // Admin
-      GoRoute(path: '/admin', builder: (_, __) => const AdminScreen()),
-      GoRoute(path: '/ledger', builder: (_, __) => const LedgerScreen()),
-      GoRoute(path: '/payout-settings', builder: (_, __) => const PayoutSettingsScreen()),
+      GoRoute(path: '/admin', builder: (context, state) => const AdminScreen()),
+      GoRoute(path: '/ledger', builder: (context, state) => const LedgerScreen()),
+      GoRoute(path: '/payout-settings', builder: (context, state) => const PayoutSettingsScreen()),
     ],
   );
 }

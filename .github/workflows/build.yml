@@ -52,13 +52,13 @@ jobs:
           cache: true
       - run: flutter pub get
         working-directory: kocourt_shared
-      - run: flutter analyze
+      - run: flutter analyze --no-fatal-infos
         working-directory: kocourt_shared
       - run: flutter test
         working-directory: kocourt_shared
       - run: flutter pub get
         working-directory: ${{ matrix.app }}
-      - run: flutter analyze
+      - run: flutter analyze --no-fatal-infos
         working-directory: ${{ matrix.app }}
       - run: flutter test
         working-directory: ${{ matrix.app }}

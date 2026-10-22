@@ -22,8 +22,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   void dispose() {
     _phoneController.dispose();
     _nameController.dispose();
-    for (final c in _otpControllers) c.dispose();
-    for (final f in _otpFocusNodes) f.dispose();
+    for (final c in _otpControllers) { c.dispose(); }
+    for (final f in _otpFocusNodes) { f.dispose(); }
     super.dispose();
   }
 
@@ -430,7 +430,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   GestureDetector(
                     onTap: () async {
                       setState(() => _error = null);
-                      for (final c in _otpControllers) c.clear();
+                      for (final c in _otpControllers) { c.clear(); }
                       await context.read<AuthProvider>().sendOtp(_phoneController.text.trim());
                     },
                     child: const Text(

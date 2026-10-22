@@ -310,6 +310,43 @@ class Database {
         // Google Places / CDN image URLs exceed VARCHAR(255) (e.g. court claim from place photo_reference)
         try { $this->pdo->exec("ALTER TABLE courts MODIFY image_url TEXT NULL"); } catch(\PDOException $e){}
 
+        // Sub-courts table (spaces within a venue)
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS sub_courts (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            court_id    INT NOT NULL,
+            name        VARCHAR(100) NOT NULL,
+            description VARCHAR(255) DEFAULT NULL,
+            hourly_rate DECIMAL(10,2) DEFAULT NULL,
+            sort_order  INT DEFAULT 0,
+            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_court (court_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // Blocked slots table
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS blocked_slots (
+            id          INT AUTO_INCREMENT PRIMARY KEY,
+            court_id    INT NOT NULL,
+            start_time  DATETIME NOT NULL,
+            end_time    DATETIME NOT NULL,
+            reason      VARCHAR(255) DEFAULT NULL,
+            blocked_by  INT NOT NULL,
+            created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_court_date (court_id, start_time)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // User notifications table
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS user_notifications (
+            id         INT AUTO_INCREMENT PRIMARY KEY,
+            user_id    INT NOT NULL,
+            type       VARCHAR(50) NOT NULL,
+            title      VARCHAR(255) NOT NULL,
+            body       TEXT DEFAULT NULL,
+            court_id   INT DEFAULT NULL,
+            is_read    TINYINT(1) NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_user_notif (user_id, is_read)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
         // Sub-court peak override + richer blocks (v15)
         foreach ([
             "ALTER TABLE sub_courts ADD COLUMN peak_members_override TINYINT(1) NULL DEFAULT NULL COMMENT 'NULL=inherit court,0=open at peak,1=members at peak'",
