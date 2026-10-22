@@ -136,7 +136,7 @@ async function triggerBuild(workflow, inputs = {}) {
   const key = workflow === 'ios' && inputs.upload_testflight ? 'ios-tf' : workflow
   triggering.value = key
   try {
-    await axios.post('/api/admin/builds/trigger', { workflow, inputs })
+    await axios.post('admin/builds/trigger', { workflow, inputs })
     // Start polling for status updates
     setTimeout(() => loadRuns(), 3000)
     if (!pollTimer) {
@@ -156,7 +156,7 @@ async function deploy() {
   try {
     const token = localStorage.getItem('token')
     // Fetch deploy key from config
-    const configRes = await axios.get('/api/admin/config')
+    const configRes = await axios.get('admin/config')
     const deployKey = configRes.data.config?.find(c => c.key === 'deploy_key')?.value
     if (!deployKey) {
       deployResult.value = { ok: false, message: 'deploy_key not found in config table. Add it via Admin > Config.' }
@@ -175,7 +175,7 @@ async function deploy() {
 
 async function loadRuns() {
   try {
-    const res = await axios.get('/api/admin/builds/status')
+    const res = await axios.get('admin/builds/status')
     runs.value = res.data.runs || []
   } catch {
     // silent
