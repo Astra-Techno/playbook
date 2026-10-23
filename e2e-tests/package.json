@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "playwright test",
+    "test:smoke": "playwright test live-smoke.spec.js",
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report"
   },
