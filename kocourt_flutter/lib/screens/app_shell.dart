@@ -19,14 +19,6 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   int _currentIndex = 0;
   late final List<AnimationController> _iconControllers;
 
-  final _screens = const [
-    HomeScreen(),
-    FeedScreen(),
-    MatchesScreen(),
-    BookingsScreen(),
-    ProfileScreen(),
-  ];
-
   static const _navItems = [
     _NavItem(icon: AppIcons.compass, label: 'Explore'),
     _NavItem(icon: AppIcons.rss, label: 'Feed'),
@@ -69,10 +61,13 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
+      body: [
+        const HomeScreen(),
+        const FeedScreen(),
+        const MatchesScreen(),
+        const BookingsScreen(),
+        const ProfileScreen(),
+      ][_currentIndex],
       extendBody: true,
       bottomNavigationBar: Container(
         margin: EdgeInsets.only(

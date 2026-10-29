@@ -29,6 +29,25 @@ class ReviewController {
             return;
         }
 
+        // My reviews — user_id from token
+        $user_id = (int)($_GET['user_id'] ?? 0);
+        if (!$court_id && $user_id) {
+            $authUser = Auth::require();
+            $stmt = $db->prepare(
+                "SELECT r.id, r.court_id, r.rating, r.comment, r.created_at,
+                        r.owner_reply AS reply, r.owner_reply_at,
+                        u.name as user_name, c.name as court_name
+                 FROM reviews r
+                 JOIN users u ON r.user_id = u.id
+                 JOIN courts c ON r.court_id = c.id
+                 WHERE r.user_id = ?
+                 ORDER BY r.created_at DESC LIMIT 50"
+            );
+            $stmt->execute([(int)$authUser['id']]);
+            echo json_encode(["records" => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+            return;
+        }
+
         if (!$court_id) {
             http_response_code(400);
             echo json_encode(["message" => "court_id required"]);
@@ -69,7 +88,7 @@ class ReviewController {
         $rating     = (int)($data->rating     ?? 0);
         $comment    = htmlspecialchars(strip_tags(trim($data->comment ?? '')));
 
-        if (!$court_id || !$booking_id || $rating < 1 || $rating > 5) {
+        if (!$court_id || $rating < 1 || $rating > 5) {
             http_response_code(400);
             echo json_encode(["message" => "Invalid review data"]);
             return;
@@ -77,15 +96,38 @@ class ReviewController {
 
         $db = Database::getConnection();
 
-        // Verify user owns this past booking for this court
-        $check = $db->prepare(
-            "SELECT id FROM bookings WHERE id=? AND user_id=? AND court_id=? AND start_time <= NOW()"
-        );
-        $check->execute([$booking_id, $user_id, $court_id]);
-        if (!$check->fetch()) {
-            http_response_code(403);
-            echo json_encode(["message" => "You must have completed this booking to review it"]);
-            return;
+        // If no booking_id provided, find any past booking by this user at this court
+        if (!$booking_id) {
+            $findBooking = $db->prepare(
+                "SELECT id FROM bookings WHERE user_id=? AND court_id=? AND start_time <= NOW() AND status='confirmed' ORDER BY start_time DESC LIMIT 1"
+            );
+            $findBooking->execute([$user_id, $court_id]);
+            $found = $findBooking->fetch(PDO::FETCH_ASSOC);
+            if ($found) $booking_id = (int)$found['id'];
+        }
+
+        // Verify user has at least one past booking at this court
+        if ($booking_id) {
+            $check = $db->prepare(
+                "SELECT id FROM bookings WHERE id=? AND user_id=? AND court_id=? AND start_time <= NOW()"
+            );
+            $check->execute([$booking_id, $user_id, $court_id]);
+            if (!$check->fetch()) {
+                http_response_code(403);
+                echo json_encode(["message" => "You must have completed this booking to review it"]);
+                return;
+            }
+        } else {
+            // No booking at all — check if user has any past booking at this court
+            $anyBooking = $db->prepare(
+                "SELECT id FROM bookings WHERE user_id=? AND court_id=? AND start_time <= NOW() AND status='confirmed' LIMIT 1"
+            );
+            $anyBooking->execute([$user_id, $court_id]);
+            if (!$anyBooking->fetch()) {
+                http_response_code(403);
+                echo json_encode(["message" => "You must have a completed booking to review this venue"]);
+                return;
+            }
         }
 
         try {

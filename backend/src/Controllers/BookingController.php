@@ -4,6 +4,8 @@ require_once __DIR__ . '/../Models/Booking.php';
 require_once __DIR__ . '/../Models/Subscription.php';
 require_once __DIR__ . '/../PeakAccess.php';
 require_once __DIR__ . '/../Push.php';
+require_once __DIR__ . '/../CommerceCheckout.php';
+require_once __DIR__ . '/../RefundService.php';
 
 class BookingController {
 
@@ -66,74 +68,106 @@ class BookingController {
             http_response_code(403); echo json_encode(["message" => "Not authorised to cancel this booking"]); return;
         }
         if ($b['status'] === 'cancelled') { http_response_code(400); echo json_encode(["message" => "Already cancelled"]); return; }
-        if (strtotime($b['start_time']) <= time()) { http_response_code(400); echo json_encode(["message" => "Cannot cancel past bookings"]); return; }
+        if ((new DateTimeImmutable($b['start_time'], new DateTimeZone('Asia/Kolkata')))->getTimestamp() <= time()) { http_response_code(400); echo json_encode(["message" => "Cannot cancel past bookings"]); return; }
 
-        $upd = $booking->conn->prepare("UPDATE bookings SET status='cancelled' WHERE id=?");
-        if ($upd->execute([$id])) {
-            http_response_code(200);
-            echo json_encode(["message" => "Booking cancelled"]);
+        $snapshot = json_decode($b['commerce_snapshot'] ?? 'null', true);
+        $policy = $snapshot['policy'] ?? CommerceSettings::load($booking->conn, (int)$b['court_id']);
+        $venueCancelled = !$isBookingOwner && ($isCourtOwner || $isStaff || $isAdmin);
+        if ($snapshot && !$venueCancelled && !$policy['cancellation.enabled']) {
+            http_response_code(422); echo json_encode(['message' => 'Customer cancellation is disabled for this booking']); return;
+        }
+        $start = new DateTimeImmutable($b['start_time'], new DateTimeZone('Asia/Kolkata'));
+        $refund = $snapshot ? CommerceSettings::refund($snapshot, ($start->getTimestamp() - time()) / 3600, $venueCancelled) : null;
+        $booking->conn->beginTransaction();
+        try {
+            $upd = $booking->conn->prepare("UPDATE bookings SET status='cancelled' WHERE id=? AND status <> 'cancelled'");
+            $upd->execute([$id]);
+            if ($upd->rowCount() !== 1) {
+                $booking->conn->rollBack(); http_response_code(409); echo json_encode(['message' => 'Booking already cancelled']); return;
+            }
+            $refundId = null;
+            $automatic = null;
+            if ($refund === null || $refund['total'] > 0) {
+                $booking->conn->prepare("INSERT INTO booking_refunds (booking_id, amount_paise, breakdown, requested_by) VALUES (?, ?, ?, ?)")
+                    ->execute([$id, $refund['total'] ?? 0, json_encode($refund ?? ['note' => 'Legacy booking: review original payment and terms manually']), $user_id]);
+                $refundId = (int)$booking->conn->lastInsertId();
+                if ($refund && !empty($b['payment_id'])) {
+                    $automatic = (new RefundService($booking->conn))->enqueue((int)$b['payment_id'], (int)$id, 'cancel:' . $id, 'cancellation', (int)$refund['venue'], (int)$refund['fee'], $user_id);
+                    $booking->conn->prepare('UPDATE booking_refunds SET refund_request_id=? WHERE id=?')->execute([$automatic['id'], $refundId]);
+                }
+            }
+            $booking->conn->commit();
+        } catch (Throwable $e) {
+            if ($booking->conn->inTransaction()) $booking->conn->rollBack();
+            throw $e;
+        }
+        // Network failures cannot undo a committed cancellation; cron retries the durable outbox.
+        if ($automatic && $automatic['status'] === 'queued') {
+            try { $automatic = (new RefundService($booking->conn))->process((int)$automatic['id']); }
+            catch (Throwable $e) { /* The queued request remains recoverable. */ }
+        }
+        http_response_code(200);
+        $result = $automatic ? RefundService::publicStatus($automatic) : ['id'=>$refundId, 'status'=>$refundId ? 'manual_review' : 'not_due', 'amount'=>$refund ? $refund['total']/100 : null];
+        $result['expected_business_days'] = $policy['refund.expected_days'];
+        echo json_encode(['message'=>'Booking cancelled.' . ($refundId ? ' Refund status: ' . str_replace('_',' ',$result['status']) . '.' : ''), 'refund'=>$result]);
 
-            // Notify venue owner when a player cancels
-            if ($isBookingOwner && !$isCourtOwner) {
-                $db = Database::getConnection();
-                $cStmt = $db->prepare("SELECT name FROM courts WHERE id = ?");
-                $cStmt->execute([$b['court_id']]);
-                $courtRow = $cStmt->fetch(PDO::FETCH_ASSOC);
-                $playerName = $authUser['name'] ?? 'A player';
-                $courtName  = $courtRow['name'] ?? 'your venue';
-                $dateStr    = date('D, d M', strtotime($b['start_time']));
+        // Notify venue owner when a player cancels
+        if ($isBookingOwner && !$isCourtOwner) {
+            $db = Database::getConnection();
+            $cStmt = $db->prepare("SELECT name FROM courts WHERE id = ?");
+            $cStmt->execute([$b['court_id']]);
+            $courtRow = $cStmt->fetch(PDO::FETCH_ASSOC);
+            $playerName = $authUser['name'] ?? 'A player';
+            $courtName  = $courtRow['name'] ?? 'your venue';
+            $dateStr    = date('D, d M', strtotime($b['start_time']));
 
-                Push::sendToUser(
+            Push::sendToUser(
+                (int)$b['owner_id'],
+                'Booking Cancelled',
+                "{$playerName} cancelled their booking at {$courtName} on {$dateStr}",
+                ['type' => 'cancellation', 'court_id' => (string)$b['court_id']]
+            );
+
+            try {
+                $db->prepare(
+                    "INSERT INTO user_notifications (user_id, type, title, body, court_id) VALUES (?,?,?,?,?)"
+                )->execute([
                     (int)$b['owner_id'],
+                    'cancellation',
                     'Booking Cancelled',
                     "{$playerName} cancelled their booking at {$courtName} on {$dateStr}",
-                    ['type' => 'cancellation', 'court_id' => (string)$b['court_id']]
-                );
+                    (int)$b['court_id']
+                ]);
+            } catch (\PDOException $e) {}
+        }
 
-                try {
-                    $db->prepare(
-                        "INSERT INTO user_notifications (user_id, type, title, body, court_id) VALUES (?,?,?,?,?)"
-                    )->execute([
-                        (int)$b['owner_id'],
-                        'cancellation',
-                        'Booking Cancelled',
-                        "{$playerName} cancelled their booking at {$courtName} on {$dateStr}",
-                        (int)$b['court_id']
-                    ]);
-                } catch (\PDOException $e) {}
-            }
+        // Notify player when owner/staff cancels their booking
+        if ($isCourtOwner && !$isBookingOwner && (int)$b['user_id'] > 0) {
+            $db = Database::getConnection();
+            $cStmt = $db->prepare("SELECT name FROM courts WHERE id = ?");
+            $cStmt->execute([$b['court_id']]);
+            $courtRow = $cStmt->fetch(PDO::FETCH_ASSOC);
+            $courtName = $courtRow['name'] ?? 'a venue';
+            $dateStr   = date('D, d M', strtotime($b['start_time']));
 
-            // Notify player when owner/staff cancels their booking
-            if ($isCourtOwner && !$isBookingOwner && (int)$b['user_id'] > 0) {
-                $db = Database::getConnection();
-                $cStmt = $db->prepare("SELECT name FROM courts WHERE id = ?");
-                $cStmt->execute([$b['court_id']]);
-                $courtRow = $cStmt->fetch(PDO::FETCH_ASSOC);
-                $courtName = $courtRow['name'] ?? 'a venue';
-                $dateStr   = date('D, d M', strtotime($b['start_time']));
+            Push::sendToUser(
+                (int)$b['user_id'],
+                'Booking Cancelled',
+                "Your booking at {$courtName} on {$dateStr} was cancelled by the venue",
+                ['type' => 'cancellation', 'court_id' => (string)$b['court_id']]
+            );
 
-                Push::sendToUser(
+            try {
+                $db->prepare(
+                    "INSERT INTO user_notifications (user_id, type, title, body, court_id) VALUES (?,?,?,?,?)"
+                )->execute([
                     (int)$b['user_id'],
+                    'cancellation',
                     'Booking Cancelled',
                     "Your booking at {$courtName} on {$dateStr} was cancelled by the venue",
-                    ['type' => 'cancellation', 'court_id' => (string)$b['court_id']]
-                );
-
-                try {
-                    $db->prepare(
-                        "INSERT INTO user_notifications (user_id, type, title, body, court_id) VALUES (?,?,?,?,?)"
-                    )->execute([
-                        (int)$b['user_id'],
-                        'cancellation',
-                        'Booking Cancelled',
-                        "Your booking at {$courtName} on {$dateStr} was cancelled by the venue",
-                        (int)$b['court_id']
-                    ]);
-                } catch (\PDOException $e) {}
-            }
-        } else {
-            http_response_code(503);
-            echo json_encode(["message" => "Failed to cancel"]);
+                    (int)$b['court_id']
+                ]);
+            } catch (\PDOException $e) {}
         }
     }
 
@@ -182,7 +216,8 @@ class BookingController {
             $stmt = $booking->readByUser($authId);
         } elseif (isset($_GET['court_id']) && isset($_GET['date'])) {
             // Slot availability — no user filter needed
-            $stmt = $booking->readByCourtAndDate((int)$_GET['court_id'], $_GET['date']);
+            $sub_court_id = isset($_GET['sub_court_id']) ? (int)$_GET['sub_court_id'] : null;
+            $stmt = $booking->readByCourtAndDate((int)$_GET['court_id'], $_GET['date'], $sub_court_id);
         } elseif (isset($_GET['owner_id'])) {
             // Owner views their own courts' bookings — use token's user
             $sub_court_id = isset($_GET['sub_court_id']) ? (int)$_GET['sub_court_id'] : null;
@@ -299,6 +334,14 @@ class BookingController {
             $stmt->execute([(int)$data->court_id]);
             $court = $stmt->fetch(PDO::FETCH_ASSOC);
 
+            if ($isWalkIn) {
+                $staff = $db->prepare("SELECT id FROM court_staff WHERE court_id = ? AND user_id = ? AND role = 'manager'");
+                $staff->execute([(int)$data->court_id, $authId]);
+                if (!$court || ((int)$court['owner_id'] !== $authId && ($authUser['role'] ?? '') !== 'admin' && !$staff->fetchColumn())) {
+                    http_response_code(403); echo json_encode(['message' => 'Only the venue owner or manager can record walk-ins']); return;
+                }
+            }
+
             $subCourt = null;
             if ($sub_court_id) {
                 $scStmt = $db->prepare("SELECT * FROM sub_courts WHERE id = ? AND court_id = ?");
@@ -327,6 +370,15 @@ class BookingController {
             $booking->end_time    = $data->end_time;
             $booking->type        = $data->type ?? 'hourly';
             $booking->total_price = $serverPrice > 0 ? $serverPrice : ($data->total_price ?? 0);
+            if (!$isWalkIn) {
+                $policy = CommerceSettings::load($db, (int)$data->court_id);
+                try { CommerceCheckout::validateTime($data->start_time, $data->end_time, $policy); }
+                catch (InvalidArgumentException $e) { http_response_code(422); echo json_encode(['message' => $e->getMessage()]); return; }
+                if (!$policy['checkout.enabled'] || $booking->total_price > 0 || $policy['fee.enabled'] || $policy['venue.gst_registered']) {
+                    http_response_code(409); echo json_encode(['message' => 'Use payment checkout to review the configured pricing and taxes']); return;
+                }
+                $booking->commerce_snapshot = ['version' => 1, 'policy' => $policy, 'price' => CommerceSettings::price((int)round($booking->total_price * 100), $policy)];
+            }
             $booking->sub_court_id = $sub_court_id;
             $booking->guest_name  = $isWalkIn ? trim($data->guest_name) : null;
             $booking->guest_phone = $isWalkIn && !empty($data->guest_phone) ? trim($data->guest_phone) : null;
@@ -379,7 +431,7 @@ class BookingController {
      * Calculate booking price using pricing rules (30-min slots × hourly rate / 2).
      * Falls back to court/space base hourly_rate if no rules match.
      */
-    private function calculateBookingPrice(int $court_id, ?int $sub_court_id, string $start, string $end): float
+    public function calculateBookingPrice(int $court_id, ?int $sub_court_id, string $start, string $end): float
     {
         $db = Database::getConnection();
 

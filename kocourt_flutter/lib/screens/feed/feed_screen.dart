@@ -29,7 +29,7 @@ class _FeedScreenState extends State<FeedScreen> {
       if (mounted) {
         setState(() {
           _posts = List<Map<String, dynamic>>.from(
-            (res.data['posts'] ?? []).map((e) => Map<String, dynamic>.from(e)),
+            (res.data['records'] ?? res.data['posts'] ?? []).map((e) => Map<String, dynamic>.from(e)),
           );
           _loading = false;
         });
@@ -111,7 +111,7 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 
   Widget _buildPostCard(Map<String, dynamic> post) {
-    final liked = post['user_liked'] == true;
+    final liked = post['is_liked'] == true || post['user_liked'] == true;
     final likeCount = post['likes_count'] ?? 0;
     final commentCount = post['comment_count'] ?? 0;
 

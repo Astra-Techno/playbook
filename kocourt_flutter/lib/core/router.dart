@@ -107,32 +107,34 @@ GoRouter createRouter(AuthProvider auth) {
       ),
       GoRoute(
         path: '/booking-confirmation/:bookingId',
-        builder: (_, state) => BookingConfirmationScreen(
-          bookingId: int.tryParse(state.pathParameters['bookingId'] ?? '') ?? 0,
+        pageBuilder: (_, state) => _slideFadePage(
+          BookingConfirmationScreen(bookingId: int.tryParse(state.pathParameters['bookingId'] ?? '') ?? 0),
+          state,
         ),
       ),
 
       // Feed
       GoRoute(
         path: '/feed/:id',
-        builder: (_, state) => PostDetailScreen(
-          postId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        pageBuilder: (_, state) => _slideFadePage(
+          PostDetailScreen(postId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0),
+          state,
         ),
       ),
-      GoRoute(path: '/post/create', builder: (_, __) => const CreatePostScreen()),
+      GoRoute(path: '/post/create', pageBuilder: (_, state) => _slideFadePage(const CreatePostScreen(), state)),
 
       // Player
-      GoRoute(path: '/subscriptions', builder: (_, __) => const SubscriptionsScreen()),
-      GoRoute(path: '/payment-history', builder: (_, __) => const PaymentHistoryScreen()),
-      GoRoute(path: '/notifications', builder: (_, __) => const NotificationsScreen()),
-      GoRoute(path: '/find-courts', builder: (_, __) => const FindCourtsScreen()),
-      GoRoute(path: '/reviews', builder: (_, __) => const ReviewsScreen()),
+      GoRoute(path: '/subscriptions', pageBuilder: (_, state) => _slideFadePage(const SubscriptionsScreen(), state)),
+      GoRoute(path: '/payment-history', pageBuilder: (_, state) => _slideFadePage(const PaymentHistoryScreen(), state)),
+      GoRoute(path: '/notifications', pageBuilder: (_, state) => _slideFadePage(const NotificationsScreen(), state)),
+      GoRoute(path: '/find-courts', pageBuilder: (_, state) => _slideFadePage(const FindCourtsScreen(), state)),
+      GoRoute(path: '/reviews', pageBuilder: (_, state) => _slideFadePage(const ReviewsScreen(), state)),
 
       // Map
-      GoRoute(path: '/map', builder: (_, __) => const MapScreen()),
+      GoRoute(path: '/map', pageBuilder: (_, state) => _slideFadePage(const MapScreen(), state)),
 
       // Chat (new system)
-      GoRoute(path: '/chats', builder: (_, __) => const ChatListScreen()),
+      GoRoute(path: '/chats', pageBuilder: (_, state) => _slideFadePage(const ChatListScreen(), state)),
       GoRoute(
         path: '/chats/:groupId',
         pageBuilder: (_, state) => _slideFadePage(
@@ -149,20 +151,21 @@ GoRouter createRouter(AuthProvider auth) {
       ),
 
       // Legacy chat (booking-based)
-      GoRoute(path: '/messages', builder: (_, __) => const ChatThreadsScreen()),
+      GoRoute(path: '/messages', pageBuilder: (_, state) => _slideFadePage(const ChatThreadsScreen(), state)),
       GoRoute(
         path: '/chat/:bookingId',
-        builder: (_, state) => ChatScreen(
-          bookingId: int.tryParse(state.pathParameters['bookingId'] ?? '') ?? 0,
+        pageBuilder: (_, state) => _slideFadePage(
+          ChatScreen(bookingId: int.tryParse(state.pathParameters['bookingId'] ?? '') ?? 0),
+          state,
         ),
       ),
 
       // Static
-      GoRoute(path: '/faq', builder: (_, __) => const FaqScreen()),
-      GoRoute(path: '/terms', builder: (_, __) => const TermsScreen()),
-      GoRoute(path: '/privacy', builder: (_, __) => const PrivacyScreen()),
-      GoRoute(path: '/refund-policy', builder: (_, __) => const RefundCancellationScreen()),
-      GoRoute(path: '/contact', builder: (_, __) => const ContactSupportScreen()),
+      GoRoute(path: '/faq', pageBuilder: (_, state) => _slideFadePage(const FaqScreen(), state)),
+      GoRoute(path: '/terms', pageBuilder: (_, state) => _slideFadePage(const TermsScreen(), state)),
+      GoRoute(path: '/privacy', pageBuilder: (_, state) => _slideFadePage(const PrivacyScreen(), state)),
+      GoRoute(path: '/refund-policy', pageBuilder: (_, state) => _slideFadePage(const RefundCancellationScreen(), state)),
+      GoRoute(path: '/contact', pageBuilder: (_, state) => _slideFadePage(const ContactSupportScreen(), state)),
     ],
   );
 }

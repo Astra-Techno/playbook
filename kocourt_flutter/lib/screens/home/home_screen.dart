@@ -863,26 +863,29 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(AppRadius.full),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'See all',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
+                    GestureDetector(
+                      onTap: () => context.push('/find-courts'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'See all',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
                             ),
-                          ),
-                          SizedBox(width: 2),
-                          Icon(AppIcons.chevronRight, size: 14, color: AppColors.primary),
-                        ],
+                            SizedBox(width: 2),
+                            Icon(AppIcons.chevronRight, size: 14, color: AppColors.primary),
+                          ],
+                        ),
                       ),
                     ),
                   ],

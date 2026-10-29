@@ -133,18 +133,22 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
       } catch (_) {}
 
       final slots = <Map<String, dynamic>>[];
+      final now = DateTime.now();
+      final isToday = _selectedDate == '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
       for (int h = 6; h < 23; h++) {
         final start = '${h.toString().padLeft(2, '0')}:00';
         final end = '${(h + 1).toString().padLeft(2, '0')}:00';
         final key = '$start-$end';
         final isBooked = bookings.any((b) => b['start_time'] == '$start:00' || b['start_time'] == start);
         final isBlocked = blocked.contains(key);
+        final isPast = isToday && h < now.hour;
         slots.add({
           'start': start,
           'end': end,
           'key': key,
           'booked': isBooked,
           'blocked': isBlocked,
+          'past': isPast,
         });
       }
 
@@ -199,6 +203,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
       };
 
       final result = await PaymentService.processPayment(
+        context: context,
         amount: totalPrice,
         type: 'booking',
         payload: payload,
@@ -208,33 +213,15 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
 
       if (result.success) {
         HapticFeedback.heavyImpact();
-        final bookedCount = (result.verifyData?['booking_ids'] as List?)?.length ?? 1;
-        final skipped = result.verifyData?['skipped'] as List? ?? [];
+        final bookingIds = (result.verifyData?['booking_ids'] as List?)?.cast<dynamic>() ?? [];
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    skipped.isEmpty
-                        ? '$bookedCount slot${bookedCount > 1 ? 's' : ''} booked!'
-                        : '$bookedCount booked, ${skipped.length} unavailable',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: AppColors.secondary,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
         setState(() => _selectedSlots = {});
         _loadSlots();
+
+        // Navigate to booking confirmation (BookMyShow style)
+        if (bookingIds.isNotEmpty && mounted) {
+          context.push('/booking-confirmation/${bookingIds.first}');
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -851,8 +838,9 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
             final key = slot['key'] as String;
             final booked = slot['booked'] as bool;
             final blocked = slot['blocked'] as bool;
+            final past = slot['past'] as bool? ?? false;
             final selected = _selectedSlots.contains(key);
-            final disabled = booked || blocked;
+            final disabled = booked || blocked || past;
 
             return GestureDetector(
               onTap: disabled
@@ -913,7 +901,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                     ),
                     if (disabled)
                       Text(
-                        booked ? 'Booked' : 'Blocked',
+                        past ? 'Past' : booked ? 'Booked' : 'Blocked',
                         style: TextStyle(
                           fontSize: 9,
                           fontWeight: FontWeight.w600,
@@ -954,6 +942,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
       };
 
       final result = await PaymentService.processPayment(
+        context: context,
         amount: price,
         type: 'subscription',
         payload: payload,

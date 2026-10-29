@@ -63,6 +63,7 @@ class MatchController
             ");
             $stmt->execute([$court_id]);
         } elseif ($user_id) {
+            // Show all open/full matches (for discovery) + user's own past matches
             $stmt = $this->db->prepare("
                 SELECT mr.*, mr.user_id AS created_by, mr.players_needed AS slots_needed,
                        CONCAT(mr.date, ' ', mr.start_time) AS play_time,
@@ -72,9 +73,12 @@ class MatchController
                 FROM match_requests mr
                 JOIN users u ON u.id = mr.user_id
                 JOIN courts c ON c.id = mr.court_id
-                WHERE (mr.user_id = ? OR mr.id IN (SELECT match_id FROM match_participants WHERE user_id = ?))
-                  AND mr.status != 'cancelled'
+                WHERE mr.status != 'cancelled'
+                  AND (mr.date >= CURDATE()
+                       OR mr.user_id = ?
+                       OR mr.id IN (SELECT match_id FROM match_participants WHERE user_id = ?))
                 ORDER BY mr.date DESC, mr.start_time DESC
+                LIMIT 100
             ");
             $stmt->execute([$user_id, $user_id]);
         } else {

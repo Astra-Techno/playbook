@@ -54,6 +54,7 @@ class PostController {
                    p.visibility, p.booking_id,
                    u.id AS user_id, u.name AS user_name, u.avatar_url,
                    (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) AS likes_count,
+                   (SELECT COUNT(*) FROM post_comments WHERE post_id = p.id) AS comment_count,
                    (SELECT COUNT(*) > 0 FROM post_likes WHERE post_id = p.id AND user_id = :viewer) AS is_liked
             FROM posts p
             JOIN users u ON u.id = p.user_id

@@ -19,6 +19,8 @@ class Booking {
     public $guest_name;
     public $guest_phone;
     public $notes;
+    public $commerce_snapshot;
+    public $payment_id;
 
     public function __construct() {
         $this->conn = Database::getConnection();
@@ -31,7 +33,7 @@ class Booking {
                       end_time=:end_time, type=:type, total_price=:total_price,
                       status='confirmed', payment_status='paid',
                       sub_court_id=:sub_court_id, guest_name=:guest_name,
-                      guest_phone=:guest_phone, notes=:notes";
+                      guest_phone=:guest_phone, notes=:notes, commerce_snapshot=:commerce_snapshot, payment_id=:payment_id";
 
         $stmt = $this->conn->prepare($query);
 
@@ -50,6 +52,9 @@ class Booking {
         $stmt->bindParam(":guest_name",   $this->guest_name);
         $stmt->bindParam(":guest_phone",  $this->guest_phone);
         $stmt->bindParam(":notes",        $this->notes);
+        $snapshotJson = $this->commerce_snapshot ? json_encode($this->commerce_snapshot, JSON_THROW_ON_ERROR) : null;
+        $stmt->bindValue(':commerce_snapshot', $snapshotJson);
+        $stmt->bindValue(':payment_id', $this->payment_id);
 
         if ($stmt->execute()) {
             return true;
@@ -59,11 +64,12 @@ class Booking {
 
     public function readByUser($user_id) {
         $query = "SELECT b.*, c.name as court_name, c.owner_id," .
-                 " u.name as owner_name" .
+                 " u.name as owner_name, COALESCE(r.status,br.status) AS refund_status, COALESCE(r.amount_paise,br.amount_paise) AS refund_amount_paise, r.refund_id AS refund_reference" .
                  " FROM " . $this->table_name . " b" .
                  " JOIN courts c ON b.court_id = c.id" .
                  " LEFT JOIN users u ON c.owner_id = u.id" .
-                 " WHERE b.user_id = ? AND b.status != 'cancelled'" .
+                 " LEFT JOIN booking_refunds br ON br.booking_id=b.id LEFT JOIN refund_requests r ON r.id=br.refund_request_id" .
+                 " WHERE b.user_id = ?" .
                  " ORDER BY b.start_time DESC";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(1, $user_id);
@@ -73,15 +79,21 @@ class Booking {
     /**
      * Return bookings for a specific court on a specific date.
      */
-    public function readByCourtAndDate($court_id, $date) {
+    public function readByCourtAndDate($court_id, $date, $sub_court_id = null) {
         $query = "SELECT * FROM " . $this->table_name .
                  " WHERE court_id = :court_id" .
                  " AND DATE(start_time) = :date" .
-                 " AND status = 'confirmed'" .
-                 " ORDER BY start_time";
+                 " AND status = 'confirmed'";
+        if ($sub_court_id !== null) {
+            $query .= " AND sub_court_id = :sub_court_id";
+        }
+        $query .= " ORDER BY start_time";
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(':court_id', $court_id);
         $stmt->bindParam(':date', $date);
+        if ($sub_court_id !== null) {
+            $stmt->bindParam(':sub_court_id', $sub_court_id);
+        }
         $stmt->execute();
         return $stmt;
     }
