@@ -323,6 +323,10 @@ onMounted(() => {
                         </div>
                         <ChevronRight :size="16" class="text-gray-300" />
                     </button>
+                    <RouterLink to="/admin/settings" class="w-full flex items-center gap-3 px-4 py-4 hover:bg-white">
+                        <div class="flex-1 text-left"><p class="text-sm font-semibold text-black">Commercial Settings</p><p class="text-[11px] text-gray-400">Platform fees, GST, cancellation and settlement</p></div>
+                        <ChevronRight :size="16" class="text-gray-300" />
+                    </RouterLink>
                     <button @click="goTo('users')"
                         class="w-full flex items-center gap-3 px-4 py-4 hover:bg-white active:bg-gray-100 transition-colors">
                         <div class="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center shrink-0">

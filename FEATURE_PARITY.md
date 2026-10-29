@@ -17,6 +17,16 @@ is exposed in the client, not merely supported by the backend.
 | Feed, matches and direct chat | Yes | Yes |
 | Slot-group chat | API-ready | Yes |
 | Admin claims and user list | Yes | Yes |
+| Commercial settings administration (fees, tax, cancellation) | Yes - admin/settings | Web admin only |
+| Server-priced checkout and accepted policy snapshot | Yes | Yes - Player/shared checkout |
+| Automatic refunds and refund status | Yes - admin controls and customer history | Customer booking/payment history |
+
+Commercial settings APIs: `GET/PUT /admin/settings`, `DELETE /admin/settings?court_id=ID`
+(reset venue overrides), `GET /admin/refund-requests`, and `POST /payments/quote`.
+Quote acceptance is required by `POST /payments/create-order`; deploy updated
+clients with this backend. Existing mobile releases must be updated before paying.
+Refund automation requires the v25 migration, CLI worker and Cashfree webhook configuration. Legacy records remain manual review. No deferred-settlement
+execution is provided by this configuration release.
 
 The three marked **API-ready** or **Partial** items are explicit mobile backlog,
 not hidden backend functionality. Do not advertise platform parity until they are

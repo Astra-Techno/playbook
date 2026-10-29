@@ -161,6 +161,13 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                                       ),
                                     ],
                                   ),
+                                  if (p['refund_status'] != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Refund: ${p['refund_status'].toString().replaceAll('_', ' ')} · INR ${(num.tryParse(p['refund_requested_amount'].toString()) ?? 0).toStringAsFixed(2)}',
+                                      style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                                    ),
+                                  ],
                                   const SizedBox(height: 4),
                                   Row(
                                     children: [

@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cashfree.php';
+require_once __DIR__ . '/../CommerceSettings.php';
 
 class VendorController {
 
@@ -33,9 +34,7 @@ class VendorController {
         }
 
         // Get commission
-        $commStmt = $db->prepare("SELECT `value` FROM config WHERE `key` = 'platform_commission_pct'");
-        $commStmt->execute();
-        $commission = (float)($commStmt->fetchColumn() ?: 10);
+        $commission = CommerceSettings::load($db)['settlement.commission_percent'];
 
         echo json_encode([
             'profile'    => $profile,

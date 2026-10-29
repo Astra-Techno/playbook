@@ -3,6 +3,8 @@
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/cashfree.php';
 require_once __DIR__ . '/../PeakAccess.php';
+require_once __DIR__ . '/../CommerceCheckout.php';
+require_once __DIR__ . '/../RefundService.php';
 
 class PaymentController {
 
@@ -18,7 +20,10 @@ class PaymentController {
         $db = Database::getConnection();
 
         $stmt = $db->prepare(
-            "SELECT id, cf_order_id, amount, type, status, reference_id, created_at
+            "SELECT id, cf_order_id, amount, type, status, reference_id, created_at,
+                    (SELECT COALESCE(SUM(r.amount_paise),0)/100 FROM refund_requests r WHERE r.payment_id=payments.id AND r.status='success') AS refunded_amount,
+                    (SELECT COALESCE(SUM(r.amount_paise),0)/100 FROM refund_requests r WHERE r.payment_id=payments.id) AS refund_requested_amount,
+                    (SELECT r.status FROM refund_requests r WHERE r.payment_id=payments.id ORDER BY r.id DESC LIMIT 1) AS refund_status
              FROM payments
              WHERE user_id = ?
              ORDER BY created_at DESC
@@ -35,7 +40,19 @@ class PaymentController {
         echo json_encode([
             'demo'        => $this->isDemoMode(),
             'environment' => CASHFREE_ENV,
+            'commerce' => CommerceSettings::load(Database::getConnection(), !empty($_GET['court_id']) ? (int)$_GET['court_id'] : null),
         ]);
+    }
+
+    public function quote(): void {
+        try {
+            $data = json_decode(file_get_contents('php://input'), true, 512, JSON_THROW_ON_ERROR);
+            $quote = CommerceCheckout::quote(Database::getConnection(), $data['type'] ?? '', $data['payload'] ?? []);
+            unset($quote['payload']);
+            echo json_encode($quote);
+        } catch (InvalidArgumentException | JsonException $e) {
+            http_response_code(422); echo json_encode(['message' => $e->getMessage()]);
+        }
     }
 
     // ── Private Helpers ────────────────────────────────────────────────────────
@@ -76,6 +93,8 @@ class PaymentController {
      * Build split info for Easy Split — returns null if owner has no active vendor.
      */
     private function buildSplit(PDO $db, int $courtId, float $amount): ?array {
+        $policy = CommerceSettings::load($db, $courtId);
+        if (!$policy['settlement.split_enabled']) return null;
         // Find court owner
         $stmt = $db->prepare("SELECT owner_id FROM courts WHERE id = ?");
         $stmt->execute([$courtId]);
@@ -91,9 +110,7 @@ class PaymentController {
         // Commission: per-vendor override or platform default
         $commPct = $vendor['commission_pct'];
         if ($commPct === null) {
-            $cStmt = $db->prepare("SELECT `value` FROM config WHERE `key` = 'platform_commission_pct'");
-            $cStmt->execute();
-            $commPct = (float)($cStmt->fetchColumn() ?: 10);
+            $commPct = $policy['settlement.commission_percent'];
         }
 
         $vendorAmount = round($amount * (1 - $commPct / 100), 2);
@@ -129,18 +146,28 @@ class PaymentController {
             return;
         }
 
-        // Unique order ID (max 50 chars, alphanumeric/underscore/hyphen)
-        $orderId = ($this->isDemoMode() ? 'demo_' : 'pb_') . $user_id . '_' . time();
-
         $db = Database::getConnection();
+        try {
+            $quote = CommerceCheckout::quote($db, $type, json_decode(json_encode($data->payload ?? new stdClass()), true));
+            if (!hash_equals($quote['quote_hash'], (string)($data->quote_hash ?? ''))) {
+                http_response_code(409); echo json_encode(['message' => 'Review the latest price and cancellation terms before paying. Update your app if needed.']); return;
+            }
+        } catch (InvalidArgumentException $e) {
+            http_response_code(422); echo json_encode(['message' => $e->getMessage()]); return;
+        }
+        $amount = $quote['amount'];
+        $data->payload = $quote['payload'];
+        $quote['snapshot']['gateway'] = ['mode'=>$this->isDemoMode() ? 'demo' : 'cashfree','environment'=>CASHFREE_ENV,'splits'=>[]];
+        $snapshot = json_encode($quote['snapshot'], JSON_THROW_ON_ERROR);
+        $orderId = ($this->isDemoMode() ? 'demo_' : 'pb_') . $user_id . '_' . bin2hex(random_bytes(10));
 
         // ── Demo mode: skip Cashfree entirely ────────────────────────────────
         if ($this->isDemoMode()) {
             $stmt = $db->prepare(
-                "INSERT INTO payments (user_id, cf_order_id, amount, type, payload, status)
-                 VALUES (?, ?, ?, ?, ?, 'demo')"
+                "INSERT INTO payments (user_id, cf_order_id, amount, type, payload, commerce_snapshot, status)
+                 VALUES (?, ?, ?, ?, ?, ?, 'demo')"
             );
-            $stmt->execute([$user_id, $orderId, $amount, $type, json_encode($data->payload ?? new stdClass())]);
+            $stmt->execute([$user_id, $orderId, $amount, $type, json_encode($data->payload), $snapshot]);
             http_response_code(200);
             echo json_encode(['order_id' => $orderId, 'demo' => true, 'amount' => $amount]);
             return;
@@ -168,18 +195,21 @@ class PaymentController {
         ];
 
         // Easy Split: if booking for a venue with an active vendor, split payment
-        $courtId = (int)($data->payload->court_id ?? 0);
+        $courtId = (int)($quote['payload']['court_id'] ?? 0);
         if ($courtId && $type === 'booking') {
-            $split = $this->buildSplit($db, $courtId, $amount);
+            $split = $this->buildSplit($db, $courtId, $quote['snapshot']['price']['venue']['total'] / 100);
             if ($split) {
                 $orderBody['order_splits'] = [$split];
             }
         } elseif ($courtId && $type === 'subscription') {
-            $split = $this->buildSplit($db, $courtId, $amount);
+            $split = $this->buildSplit($db, $courtId, $quote['snapshot']['price']['venue']['total'] / 100);
             if ($split) {
                 $orderBody['order_splits'] = [$split];
             }
         }
+
+        $quote['snapshot']['gateway']['splits'] = $orderBody['order_splits'] ?? [];
+        $snapshot = json_encode($quote['snapshot'], JSON_THROW_ON_ERROR);
 
         // Create order on Cashfree
         $result = $this->cfRequest('POST', '/orders', $orderBody);
@@ -197,10 +227,10 @@ class PaymentController {
         $paymentSessionId = $cfData['payment_session_id'];
 
         $stmt = $db->prepare(
-            "INSERT INTO payments (user_id, cf_order_id, amount, type, payload, status)
-             VALUES (?, ?, ?, ?, ?, 'created')"
+            "INSERT INTO payments (user_id, cf_order_id, amount, type, payload, commerce_snapshot, status)
+             VALUES (?, ?, ?, ?, ?, ?, 'created')"
         );
-        $stmt->execute([$user_id, $orderId, $amount, $type, json_encode($data->payload ?? new stdClass())]);
+        $stmt->execute([$user_id, $orderId, $amount, $type, json_encode($data->payload), $snapshot]);
 
         http_response_code(200);
         echo json_encode([
@@ -249,11 +279,22 @@ class PaymentController {
             }
         }
 
-        $cfPaymentId = $isDemo ? null : ($this->cfRequest('GET', '/orders/' . $orderId . '/payments')['data'][0]['cf_payment_id'] ?? null);
+        $cfPaymentId = null;
+        if (!$isDemo) {
+            $attempts = $this->cfRequest('GET', '/orders/' . rawurlencode($orderId) . '/payments');
+            foreach (($attempts['data'] ?? []) as $attempt) {
+                if (($attempt['payment_status'] ?? '') === 'SUCCESS') { $cfPaymentId = $attempt['cf_payment_id']; break; }
+            }
+            if (!$cfPaymentId) { http_response_code(502); echo json_encode(['message'=>'Successful payment could not be verified. Try verification again.']); return; }
+        }
+        $refundQueue = [];
+        $verifiedForRecovery = false;
 
         // ── 2. Load our payment record ────────────────────────────────────────
+        $db->beginTransaction();
+        try {
         $stmt = $db->prepare(
-            "SELECT * FROM payments WHERE cf_order_id = ? AND status IN ('created','demo')"
+            "SELECT * FROM payments WHERE cf_order_id = ? AND status IN ('created','demo') FOR UPDATE"
         );
         $stmt->execute([$orderId]);
         $payment = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -271,6 +312,10 @@ class PaymentController {
             return;
         }
 
+        if (!$isDemo && (($cfOrder['order_currency'] ?? '') !== 'INR' || (int)round(($cfOrder['order_amount'] ?? -1)*100) !== (int)round($payment['amount']*100))) {
+            http_response_code(409); echo json_encode(['message'=>'Payment amount mismatch. Contact support.']); return;
+        }
+        $verifiedForRecovery = true;
         // Mark as paid
         $db->prepare(
             "UPDATE payments SET cf_payment_id = ?, status = 'paid' WHERE id = ?"
@@ -306,8 +351,11 @@ class PaymentController {
             $slotPrice    = count($slots) > 0 ? round(floatval($payload['total_price']) / count($slots), 2) : floatval($payload['total_price']);
             $bookingIds   = [];
             $takenSlots   = [];
+            $missedVenue = 0; $missedFee = 0;
 
-            foreach ($slots as $slot) {
+            $commerce = json_decode($payment['commerce_snapshot'] ?? 'null', true);
+            $fulfilled = [];
+            foreach ($slots as $slotIndex => $slot) {
                 // Race-condition guard per slot
                 if (!$booking->isSlotAvailable($payload['court_id'], $slot['start_time'], $slot['end_time'], $subCourtId)) {
                     $takenSlots[] = $slot['start_time'];
@@ -328,23 +376,37 @@ class PaymentController {
                 }
 
                 $b = new Booking();
+                $b->payment_id = (int)$payment['id'];
                 $b->user_id      = (int)$payment['user_id']; // trusted — set from token in createOrder
                 $b->court_id     = (int)$payload['court_id'];
                 $b->sub_court_id = $subCourtId;
                 $b->start_time   = $slot['start_time'];
                 $b->end_time     = $slot['end_time'];
                 $b->type         = $payload['type'] ?? 'hourly';
-                $b->total_price  = $slotPrice;
+                $b->total_price  = $commerce ? $slot['total_price'] : $slotPrice;
+                $b->commerce_snapshot = $commerce['slots'][$slotIndex] ?? null;
 
                 if ($b->create()) {
                     $bookingIds[] = (int)$db->lastInsertId();
+                    $fulfilled[] = $slotIndex;
                 }
             }
 
+            $unfulfilledRefund = null;
+            foreach ($slots as $slotIndex => $slot) {
+                if (!in_array($slotIndex, $fulfilled, true) && isset($commerce['slots'][$slotIndex])) {
+                    $missedVenue += $commerce['slots'][$slotIndex]['price']['venue']['total'];
+                    $missedFee += $commerce['slots'][$slotIndex]['price']['fee']['total'];
+                }
+            }
+            if ($missedVenue + $missedFee > 0) {
+                $unfulfilledRefund = (new RefundService($db))->enqueue((int)$payment['id'], null, 'fulfilment:' . $payment['id'], 'unfulfilled_slots', $missedVenue, $missedFee, (int)$authUser['id']);
+                $refundQueue[] = (int)$unfulfilledRefund['id'];
+            }
             if (empty($bookingIds)) {
                 $db->prepare("UPDATE payments SET status = 'refund_pending' WHERE id = ?")->execute([$payment['id']]);
                 http_response_code(409);
-                echo json_encode(['message' => 'All selected slots were taken during payment. Contact support for a refund.']);
+                echo json_encode(['message' => 'Selected slots could not be booked. Refund has been recorded.' , 'refund'=>$unfulfilledRefund ? RefundService::publicStatus($unfulfilledRefund) : ['status'=>'manual_review']]);
                 return;
             }
 
@@ -355,6 +417,7 @@ class PaymentController {
                 'message'     => count($bookingIds) . ' slot(s) booked!',
                 'booking_ids' => $bookingIds,
                 'skipped'     => $takenSlots,
+                'refund' => $unfulfilledRefund ? RefundService::publicStatus($unfulfilledRefund) : null,
             ]);
 
         // ── 3b. Activate Subscription ─────────────────────────────────────────
@@ -377,7 +440,40 @@ class PaymentController {
                 echo json_encode(['message' => 'Subscription activated!']);
             } else {
                 http_response_code(503);
-                echo json_encode(['message' => 'Subscription activation failed after payment']);
+                $snapshot = json_decode($payment['commerce_snapshot'] ?? 'null', true);
+                $refund = (new RefundService($db))->enqueue((int)$payment['id'], null, 'fulfilment:' . $payment['id'], 'activation_failed', (int)$snapshot['price']['venue']['total'], (int)$snapshot['price']['fee']['total'], (int)$authUser['id']);
+                $refundQueue[] = (int)$refund['id'];
+                $db->prepare("UPDATE payments SET status='refund_pending' WHERE id=?")->execute([$payment['id']]);
+                echo json_encode(['message'=>'Subscription activation failed. Refund has been recorded.', 'refund'=>RefundService::publicStatus($refund)]);
+            }
+        }
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            $refundQueue = [];
+            // All fulfilment writes were rolled back. Reserve a full refund only if
+            // another verifier has not fulfilled this payment in the meantime.
+            if ($verifiedForRecovery) {
+                try {
+                    $db->beginTransaction();
+                    $recover = $db->prepare("SELECT * FROM payments WHERE id=? AND status IN ('created','demo') FOR UPDATE");
+                    $recover->execute([$payment['id']]);
+                    if ($original = $recover->fetch(PDO::FETCH_ASSOC)) {
+                        $terms = json_decode($original['commerce_snapshot'] ?? 'null', true);
+                        if (isset($terms['price'])) {
+                            $db->prepare("UPDATE payments SET status='refund_pending', cf_payment_id=? WHERE id=?")->execute([$cfPaymentId,$payment['id']]);
+                            $refund = (new RefundService($db))->enqueue((int)$payment['id'],null,'fulfilment:'.$payment['id'],'fulfilment_failed',(int)$terms['price']['venue']['total'],(int)$terms['price']['fee']['total'],(int)$authUser['id']);
+                            $refundQueue[] = (int)$refund['id'];
+                        }
+                    }
+                    $db->commit();
+                } catch (Throwable $recoveryError) { if ($db->inTransaction()) $db->rollBack(); }
+            }
+            http_response_code(503);
+            echo json_encode(['message'=>'Payment fulfilment failed. Check your payment/refund status or contact support.']);
+        } finally {
+            if ($db->inTransaction()) $db->commit();
+            foreach ($refundQueue as $refundId) {
+                try { (new RefundService($db))->process($refundId); } catch (Throwable $e) { /* Cron retries. */ }
             }
         }
     }

@@ -1,92 +1,35 @@
 <script setup>
-import { useRouter } from 'vue-router'
-import { ArrowLeft, BadgeIndianRupee, Clock3, CircleCheck } from 'lucide-vue-next'
-
-const router = useRouter()
+import { onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
+import axios from 'axios'
+const route = useRoute()
+const policy = ref(null)
+const error = ref(false)
+onMounted(async () => {
+  try { policy.value = (await axios.get('/payments/config', { params: { court_id: route.query.court_id || undefined } })).data.commerce }
+  catch { error.value = true }
+})
 </script>
 
 <template>
-    <div class="min-h-full bg-white">
-        <div class="sticky top-0 z-10 flex items-center gap-3 border-b border-gray-100 bg-white px-5 pb-4 pt-5">
-            <button @click="router.back()" aria-label="Go back"
-                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100">
-                <ArrowLeft :size="20" :stroke-width="2.5" class="text-gray-500" />
-            </button>
-            <div>
-                <h1 class="text-lg font-bold text-black">Refund & Cancellation Policy</h1>
-                <p class="text-xs text-gray-400">Last updated: 15 October 2026</p>
-            </div>
-        </div>
-
-        <div class="mx-auto max-w-2xl space-y-7 px-5 py-6 pb-10">
-            <p class="text-sm leading-relaxed text-gray-600">
-                This policy applies to court and venue bookings made through KoCourt. Please review it before making a payment.
-            </p>
-
-            <div class="rounded-2xl border border-orange-100 bg-orange-50 p-4">
-                <div class="flex items-start gap-3">
-                    <Clock3 :size="21" class="mt-0.5 shrink-0 text-primary" />
-                    <div>
-                        <p class="text-sm font-bold text-black">24-hour cancellation window</p>
-                        <p class="mt-1 text-sm leading-relaxed text-gray-600">
-                            Cancel at least 24 hours before your scheduled slot to receive a full refund.
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <section>
-                <h2 class="mb-2 text-base font-bold text-black">1. Eligible cancellations</h2>
-                <ul class="list-inside list-disc space-y-2 text-sm leading-relaxed text-gray-600">
-                    <li>A booking cancelled at least 24 hours before its scheduled start time is eligible for a full refund.</li>
-                    <li>Use the cancellation option in <strong class="text-gray-700">My Bookings</strong> to submit the request.</li>
-                    <li>Refunds are returned to the original payment method; KoCourt does not issue cash refunds.</li>
-                </ul>
-            </section>
-
-            <section>
-                <h2 class="mb-2 text-base font-bold text-black">2. Cancellations within 24 hours</h2>
-                <p class="text-sm leading-relaxed text-gray-600">
-                    A booking cancelled less than 24 hours before its scheduled start time is non-refundable. This allows venue owners reasonable time to manage their availability.
-                </p>
-            </section>
-
-            <section>
-                <h2 class="mb-2 text-base font-bold text-black">3. Venue or technical cancellations</h2>
-                <p class="text-sm leading-relaxed text-gray-600">
-                    If a venue cancels your confirmed booking, or KoCourt cannot confirm a paid booking because of a technical error, you are eligible for a full refund.
-                </p>
-            </section>
-
-            <section>
-                <h2 class="mb-2 text-base font-bold text-black">4. Refund timing</h2>
-                <div class="flex items-start gap-3 rounded-xl bg-gray-50 p-4">
-                    <BadgeIndianRupee :size="20" class="mt-0.5 shrink-0 text-gray-700" />
-                    <p class="text-sm leading-relaxed text-gray-600">
-                        After KoCourt approves an eligible refund, it is initiated to your original payment method. Banks, card networks, and UPI providers may take 5–7 business days to reflect the amount.
-                    </p>
-                </div>
-            </section>
-
-            <section>
-                <h2 class="mb-2 text-base font-bold text-black">5. Memberships and plans</h2>
-                <p class="text-sm leading-relaxed text-gray-600">
-                    Membership or subscription payments are non-refundable once the plan period has started, unless required by applicable law.
-                </p>
-            </section>
-
-            <section class="rounded-2xl border border-gray-100 p-4">
-                <div class="flex gap-3">
-                    <CircleCheck :size="20" class="mt-0.5 shrink-0 text-green-600" />
-                    <div>
-                        <h2 class="text-sm font-bold text-black">Need help with a refund?</h2>
-                        <p class="mt-1 text-sm leading-relaxed text-gray-600">
-                            Call <a href="tel:+919994439081" class="font-semibold text-black underline">+91 99944 39081</a> or email
-                            <a href="mailto:support@kocourt.com" class="font-semibold text-black underline">support@kocourt.com</a> with your booking ID.
-                        </p>
-                    </div>
-                </div>
-            </section>
-        </div>
-    </div>
+  <main class="max-w-2xl mx-auto p-5 pb-24 space-y-5">
+    <h1 class="text-2xl font-bold">Cancellation &amp; Refund Policy</h1>
+    <p>The terms accepted at checkout apply to your booking. Later policy changes do not change those terms. Venue-specific terms may differ from the platform defaults below.</p>
+    <p v-if="error" role="alert">Current defaults could not be loaded. Contact support and refer to your booking's accepted terms.</p>
+    <p v-else-if="!policy" role="status">Loading current policy...</p>
+    <section v-else class="border rounded-xl p-4 space-y-3">
+      <h2 class="font-bold">Current {{ route.query.court_id ? 'venue' : 'platform default' }} terms</h2>
+      <template v-if="policy['cancellation.enabled']">
+        <p>Cancel at least {{ policy['cancellation.full_hours'] }} hours before play: 100% of the venue charge is refundable.</p>
+        <p>Cancel at least {{ policy['cancellation.partial_hours'] }} hours before play, but inside the full-refund window: {{ policy['cancellation.partial_percent'] }}% of the venue charge is refundable.</p>
+        <p>Cancel with less notice: {{ policy['cancellation.late_percent'] }}% of the venue charge is refundable. Customer cancellation is unavailable after the session starts.</p>
+        <p>KoCourt fee refund rule: {{ policy['cancellation.fee_refund'].replaceAll('_', ' ') }}.</p>
+      </template>
+      <p v-else>Customer cancellation is disabled. Contact support for exceptional cases.</p>
+      <p>Venue cancellations and paid bookings that cannot be fulfilled are eligible for a full refund, including the KoCourt fee.</p>
+      <p>Eligible refunds return to the original payment method. Automatic processing is subject to payment verification; exceptions require support review. Expected credit time: {{ policy['refund.expected_days'] }} business days after initiation; provider and bank processing can vary.</p>
+    </section>
+    <section class="space-y-2"><h2 class="font-bold">Memberships and subscriptions</h2><p>Contact support to review subscription refund eligibility. Cancelling renewal does not automatically refund a payment.</p></section>
+    <RouterLink to="/contact" class="inline-block underline font-semibold">Contact support with your booking ID</RouterLink>
+  </main>
 </template>

@@ -114,7 +114,7 @@ class SubscriptionController {
         $db = Database::getConnection();
         // Fetch existing subscription + plan details
         $stmt = $db->prepare(
-            "SELECT us.*, p.duration_days, p.slot_type AS plan_slot_type, p.name AS plan_name
+            "SELECT us.*, p.price AS plan_price, p.duration_days, p.slot_type AS plan_slot_type, p.name AS plan_name
              FROM user_subscriptions us
              JOIN plans p ON p.id = us.plan_id
              WHERE us.id = ?"
@@ -128,6 +128,9 @@ class SubscriptionController {
             http_response_code(403); echo json_encode(['error' => 'Forbidden']); return;
         }
 
+        if ((float)$existing['plan_price'] > 0 && $authUser['role'] !== 'admin') {
+            http_response_code(409); echo json_encode(['message' => 'Renew paid plans through checkout']); return;
+        }
         $duration = (int)$existing['duration_days'];
         $today    = date('Y-m-d');
         // Start from end_date if still active and in the future, else from today
@@ -182,6 +185,9 @@ class SubscriptionController {
             return;
         }
 
+        if ((float)$planRow['price'] > 0 && $authUser['role'] !== 'admin') {
+            http_response_code(409); echo json_encode(['message' => 'Purchase paid plans through checkout']); return;
+        }
         $sub = new Subscription();
 
         // Check for duplicate active subscription

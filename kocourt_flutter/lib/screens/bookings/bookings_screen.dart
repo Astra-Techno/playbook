@@ -308,8 +308,8 @@ class _BookingsScreenState extends State<BookingsScreen> {
     if (confirmed != true) return;
 
     try {
-      await Api().delete('/bookings/$bookingId');
-      if (mounted) context.read<ToastProvider>().success('Booking cancelled');
+      final response = await Api().delete('/bookings/$bookingId');
+      if (mounted) context.read<ToastProvider>().success(response.data['message'] ?? 'Booking cancelled');
       _loadBookings();
     } catch (_) {
       if (mounted) context.read<ToastProvider>().error('Failed to cancel booking');
@@ -585,6 +585,13 @@ class _BookingsScreenState extends State<BookingsScreen> {
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
+                            if (booking['refund_status'] != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                'Refund: ${booking['refund_status'].toString().replaceAll('_', ' ')} · INR ${((num.tryParse(booking['refund_amount_paise'].toString()) ?? 0) / 100).toStringAsFixed(2)}',
+                                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                              ),
+                            ],
                             const SizedBox(height: 4),
                             Row(
                               children: [

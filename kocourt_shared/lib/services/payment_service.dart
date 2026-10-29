@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_cashfree_pg_sdk/api/cferrorresponse/cferrorresponse.dart';
 import 'package:flutter_cashfree_pg_sdk/api/cfpaymentgateway/cfpaymentgatewayservice.dart';
 import 'package:flutter_cashfree_pg_sdk/api/cfpayment/cfwebcheckoutpayment.dart';
@@ -37,15 +37,53 @@ class PaymentService {
 
   /// Create order and process payment.
   static Future<PaymentResult> processPayment({
+    required BuildContext context,
     required double amount,
     required String type,
     required Map<String, dynamic> payload,
   }) async {
     try {
+      final quote = (await Api().post('/payments/quote', data: {
+        'type': type, 'payload': payload,
+      })).data;
+      if (!context.mounted) return PaymentResult(success: false, error: 'Checkout closed');
+      final price = quote['snapshot']['price'];
+      final policy = quote['snapshot']['policy'];
+      String money(dynamic value) => ((value as num) / 100).toStringAsFixed(2);
+      final terms = type == 'subscription'
+          ? 'Subscription cancellations require support review.'
+          : policy['cancellation.enabled'] == true
+              ? 'Venue refund: 100% at least ${policy['cancellation.full_hours']} hours before play; '
+                '${policy['cancellation.partial_percent']}% at least ${policy['cancellation.partial_hours']} hours before; '
+                'otherwise ${policy['cancellation.late_percent']}%. '
+                'Platform fee refund: ${policy['cancellation.fee_refund'].toString().replaceAll('_', ' ')}. '
+                'Venue cancellations refund the full payment.'
+              : 'Customer cancellation is disabled. Venue cancellations refund the full payment.';
+      final accepted = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Review payment'),
+          content: SingleChildScrollView(child: Text(
+            'Venue: INR ${money(price['venue']['base'])}\n'
+            'Venue GST: INR ${money(price['venue']['tax'])}\n'
+            'KoCourt fee: INR ${money(price['fee']['base'])}\n'
+            'Fee GST: INR ${money(price['fee']['tax'])}\n'
+            'Total: INR ${money(price['total'])}\n\n$terms\n\n'
+            'Eligible refunds return to the original payment method; exceptions require review. Expected credit: '
+            '${policy['refund.expected_days']} business days after initiation.',
+          )),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Back')),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Continue')),
+          ],
+        ),
+      );
+      if (accepted != true) return PaymentResult(success: false, error: 'Payment cancelled');
       final orderRes = await Api().post('/payments/create-order', data: {
-        'amount': amount,
+        'amount': quote['amount'],
         'type': type,
         'payload': payload,
+        'quote_hash': quote['quote_hash'],
       });
 
       final orderData = orderRes.data;

@@ -26,7 +26,6 @@ const activeTab = ref('booking')
 const loading = ref(true)
 const bookingLoading = ref(false)
 const subscribeLoading = ref(null)  // holds plan_id being subscribed
-const paymentDemo = ref(false)   // true when Cashfree is not configured
 
 const selectedDate  = ref('')
 const selectedSlots = ref([]) // multi-select
@@ -446,12 +445,6 @@ const recommendedPlanIds = computed(() => {
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
 onMounted(async () => {
-    // Check if payment gateway is configured — silently ignore if endpoint missing
-    try {
-        const cfg = await axios.get('/payments/config')
-        paymentDemo.value = cfg.data.demo === true
-    } catch { paymentDemo.value = true }
-
     try {
         const res = await axios.get(`/courts/${route.params.id}`)
         court.value = res.data.court || null
@@ -588,15 +581,26 @@ const loadCashfreeScript = () =>
  * @param {Function} onSuccess - called with { order_id } after payment succeeds
  */
 const openCashfree = async (amount, type, payload, onSuccess) => {
-    // 1. Create order on our backend
+    // The API recalculates prices and snapshots the accepted commercial policy.
     let orderData
     try {
+        const quote = (await axios.post('/payments/quote', { type, payload })).data
+        const price = quote.snapshot.price
+        const policy = quote.snapshot.policy
+        const money = paise => (paise / 100).toFixed(2)
+        const terms = type === 'subscription'
+            ? 'Subscription cancellations require support review.'
+            : policy['cancellation.enabled']
+                ? `Venue refund: 100% at least ${policy['cancellation.full_hours']} hours before play; ${policy['cancellation.partial_percent']}% at least ${policy['cancellation.partial_hours']} hours before; otherwise ${policy['cancellation.late_percent']}%. Platform fee refund: ${policy['cancellation.fee_refund'].replaceAll('_', ' ')}. Venue cancellations refund the full payment.`
+                : 'Customer cancellation is disabled. Venue cancellations refund the full payment.'
+        if (!window.confirm(`Review payment\nVenue: INR ${money(price.venue.base)}\nVenue GST: INR ${money(price.venue.tax)}\nKoCourt fee: INR ${money(price.fee.base)}\nFee GST: INR ${money(price.fee.tax)}\nTotal: INR ${money(price.total)}\n\n${terms}\nEligible refunds require support review; expected credit ${policy['refund.expected_days']} business days after initiation.\n\nContinue?`)) return
+        amount = quote.amount
         const res = await axios.post('/payments/create-order', {
-            user_id: auth.user?.id, amount, type, payload,
+            amount, type, payload, quote_hash: quote.quote_hash,
         })
         orderData = res.data
-    } catch {
-        toast.error('Could not initiate payment. Try again.')
+    } catch (e) {
+        toast.error(e.response?.data?.message || 'Could not initiate payment. Try again.')
         return
     }
 
@@ -679,44 +683,6 @@ const confirmBooking = async () => {
     }))
 
     bookingLoading.value = true
-
-    // Demo mode — no payment gateway configured, book directly
-    if (paymentDemo.value) {
-        try {
-            const results = await Promise.all(slots.map(s =>
-                axios.post('/bookings', {
-                    user_id:      auth.user?.id,
-                    court_id:     court.value.id,
-                    sub_court_id: selectedSpace.value?.id || null,
-                    start_time:   s.start_time,
-                    end_time:     s.end_time,
-                    type:         'hourly',
-                    total_price:  s.total_price,
-                })
-            ))
-            const bookingIds = results.map(r => r.data.id).filter(Boolean)
-            toast.success(`${selectedSlots.value.length} slot${selectedSlots.value.length > 1 ? 's' : ''} booked!`)
-            if (bookingIds.length === 1) {
-                router.replace(`/booking-confirmation/${bookingIds[0]}`)
-                return
-            }
-            openAddPlayers(bookingIds, slots[0]?.start_time)
-        } catch (err) {
-            if (err.response?.status === 409) {
-                const r = await axios.get(`/bookings?court_id=${court.value.id}&date=${selectedDate.value}`)
-                bookedSlots.value = r.data.records || []
-                if (slots[0]) {
-                    slotConflictPrompt.value = { show: true, slotStart: slots[0].start_time, slotEnd: slots[0].end_time }
-                } else {
-                    toast.error('One or more slots were just taken — please reselect')
-                }
-                selectedSlots.value = []
-            } else {
-                toast.error(err.response?.data?.message || 'Booking failed')
-            }
-        } finally { bookingLoading.value = false }
-        return
-    }
 
     await openCashfree(
         totalPrice.value,
@@ -826,27 +792,6 @@ const goFindOtherVenues = () => {
 const subscribePlan = async (plan) => {
     if (!auth.isLoggedIn) { router.push('/login'); return }
     subscribeLoading.value = plan.id
-
-    // Demo mode — activate subscription directly
-    if (paymentDemo.value) {
-        try {
-            await axios.post('/subscriptions', {
-                user_id:       auth.user?.id,
-                plan_id:       plan.id,
-                court_id:      court.value.id,
-                slot_type:     plan.slot_type || 'unlimited',
-                duration_days: plan.duration_days,
-            })
-            toast.success(`Subscribed to ${plan.name}!`)
-            const subRes = await axios.get(`/subscriptions?user_id=${auth.user?.id}&court_id=${court.value.id}`)
-            activeSub.value = subRes.data.active || null
-            lockedSlotPeak.value = null
-            activeTab.value = 'booking'
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Subscription failed')
-        } finally { subscribeLoading.value = null }
-        return
-    }
 
     await openCashfree(
         parseFloat(plan.price),

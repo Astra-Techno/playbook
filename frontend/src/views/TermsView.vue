@@ -63,9 +63,9 @@ const router = useRouter()
                     All payments are processed securely via Cashfree. KoCourt does not store your card or bank details.
                 </p>
                 <ul class="text-sm text-gray-500 leading-relaxed space-y-2 list-disc list-inside">
-                    <li>Cancellations made at least <strong class="text-gray-700">24 hours before</strong> the slot are eligible for a full refund.</li>
-                    <li>Cancellations within 24 hours of the slot are non-refundable.</li>
-                    <li>If a venue cancels or the slot is unavailable due to a technical error, you will receive a full refund within 5–7 business days.</li>
+                    <li>Cancellation windows and platform-fee refund treatment are shown before payment. The accepted terms remain attached to your booking.</li>
+                    <li>Late cancellation may be non-refundable under the accepted policy.</li>
+                    <li>Venue cancellations and paid bookings that cannot be fulfilled are eligible for a full refund. Support review is required; the credit-time estimate is shown at checkout.</li>
                     <li>Membership/subscription payments are non-refundable once the plan period has begun.</li>
                 </ul>
             </section>

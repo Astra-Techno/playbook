@@ -246,6 +246,12 @@ const router = createRouter({
             meta: { requiresAdmin: true, title: 'Admin Panel' },
         },
         {
+            path: '/admin/settings',
+            name: 'commerce-settings',
+            component: () => import('../views/CommerceSettingsView.vue'),
+            meta: { requiresAdmin: true, title: 'Commercial Settings' },
+        },
+        {
             path: '/booking-confirmation/:bookingId',
             name: 'booking-confirmation',
             component: () => import('../views/BookingConfirmationView.vue'),

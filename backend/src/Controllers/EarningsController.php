@@ -166,13 +166,28 @@ class EarningsController {
         }
 
         // ── Merge, sort by date desc, add running balance ──────────────────────
+        // Confirmed refunds are separate debits; pending requests are not money movement.
+        if (in_array($type, ['all','booking','subscription'], true)) {
+            $filter = $type === 'all' ? '' : ' AND p.type=?';
+            $params=[$owner_id]; if ($type !== 'all') $params[]=$type;
+            if ($from) { $filter.=' AND r.updated_at>=?'; $params[]=$from; }
+            if ($to) { $filter.=' AND r.updated_at<=?'; $params[]=$to.' 23:59:59'; }
+            $stmt=$db->prepare("SELECT r.id,'refund' AS kind,r.amount_paise/100 AS amount,r.updated_at AS dated,c.name AS label,'Customer refund' AS party
+                FROM refund_requests r JOIN payments p ON p.id=r.payment_id
+                LEFT JOIN bookings b ON p.type='booking' AND p.reference_id=b.id
+                LEFT JOIN user_subscriptions us ON p.type='subscription' AND p.reference_id=us.id
+                JOIN courts c ON c.id=COALESCE(b.court_id,us.court_id)
+                WHERE c.owner_id=? AND r.status='success' $filter");
+            $stmt->execute($params); $debits=array_merge($debits,$stmt->fetchAll(PDO::FETCH_ASSOC));
+        }
+
         $all = [];
         foreach ($credits as $r) {
             $all[] = ['id' => $r['id'], 'kind' => $r['kind'], 'amount' => (float)$r['amount'],
                       'dated' => $r['dated'], 'label' => $r['label'], 'party' => $r['party'], 'direction' => 'credit'];
         }
         foreach ($debits as $r) {
-            $all[] = ['id' => $r['id'], 'kind' => 'payout', 'amount' => (float)$r['amount'],
+            $all[] = ['id' => $r['id'], 'kind' => $r['kind'], 'amount' => (float)$r['amount'],
                       'dated' => $r['dated'], 'label' => $r['label'], 'party' => $r['party'], 'direction' => 'debit'];
         }
 
@@ -356,13 +371,13 @@ class EarningsController {
 
         $sql = "
             SELECT COALESCE(SUM(amt),0) FROM (
-                SELECT p.amount AS amt
+                SELECT p.amount - COALESCE((SELECT SUM(r.amount_paise)/100 FROM refund_requests r WHERE r.payment_id=p.id AND r.status='success'),0) AS amt
                 FROM payments p
                 JOIN bookings b ON p.reference_id = b.id
                 JOIN courts c ON b.court_id = c.id
                 WHERE c.owner_id = ? AND p.status IN ('paid','demo') AND p.type = 'booking' $extra
                 UNION ALL
-                SELECT p.amount AS amt
+                SELECT p.amount - COALESCE((SELECT SUM(r.amount_paise)/100 FROM refund_requests r WHERE r.payment_id=p.id AND r.status='success'),0) AS amt
                 FROM payments p
                 JOIN user_subscriptions s ON p.reference_id = s.id
                 JOIN courts c ON s.court_id = c.id
@@ -376,7 +391,7 @@ class EarningsController {
 
     private function getTransactions($db, int $owner_id, int $limit): array {
         $sql = "
-            SELECT p.id, p.amount,
+            SELECT p.id, p.amount - COALESCE((SELECT SUM(r.amount_paise)/100 FROM refund_requests r WHERE r.payment_id=p.id AND r.status='success'),0) AS amount,
                    'booking' AS type,
                    p.created_at,
                    c.name AS court_name, u.name AS customer_name,
@@ -389,7 +404,7 @@ class EarningsController {
 
             UNION ALL
 
-            SELECT p.id, p.amount,
+            SELECT p.id, p.amount - COALESCE((SELECT SUM(r.amount_paise)/100 FROM refund_requests r WHERE r.payment_id=p.id AND r.status='success'),0) AS amount,
                    'subscription' AS type,
                    p.created_at,
                    c.name AS court_name, u.name AS customer_name,

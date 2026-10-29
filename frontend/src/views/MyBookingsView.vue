@@ -16,6 +16,12 @@ const auth = useAuthStore()
 const toast = useToastStore()
 
 const bookings = ref([])
+const refunds = ref([])
+const refundError = ref('')
+async function refreshRefunds() {
+    try { refunds.value = (await axios.get('/payments/refunds')).data.records || []; refundError.value = '' }
+    catch { refundError.value = 'Could not load refund status. Please retry.' }
+}
 const loading = ref(true)
 const activeFilter = ref('upcoming')
 const cancellingId = ref(null)
@@ -65,6 +71,7 @@ onMounted(async () => {
         bookings.value = []
     } finally {
         loading.value = false
+        await refreshRefunds()
     }
 })
 
@@ -93,9 +100,10 @@ const cancelBooking = async (booking) => {
     if (!confirm(`Cancel booking at ${booking.court_name}? This cannot be undone.`)) return
     cancellingId.value = booking.id
     try {
-        await axios.delete(`/bookings/${booking.id}`, { data: { user_id: auth.user?.id } })
-        toast.success('Booking cancelled')
+        const res = await axios.delete(`/bookings/${booking.id}`, { data: { user_id: auth.user?.id } })
+        toast.success(res.data.message || 'Booking cancelled')
         booking.status = 'cancelled'
+        if (res?.data?.refund) { booking.refund_status = res.data.refund.status; booking.refund_amount_paise = res.data.refund.amount * 100; booking.refund_reference = res.data.refund.reference }
     } catch (err) {
         const msg = err.response?.data?.message || ''
         if (msg.toLowerCase().includes('already cancelled') || err.response?.status === 404) {
@@ -176,6 +184,12 @@ const openChat = (booking) => {
             </div>
         </Teleport>
 
+        <section v-if="refunds.length || refundError" class="mx-5 mt-4 border rounded-xl p-4 text-sm space-y-2">
+            <h2 class="font-bold">Your refunds</h2>
+            <button class="underline" @click="refreshRefunds">Refresh status</button>
+            <p v-if="refundError" role="alert">{{ refundError }}</p>
+            <p v-for="refund in refunds" :key="refund.id" class="break-all">INR {{ Number(refund.amount).toFixed(2) }} · {{ refund.status.replaceAll('_',' ') }}<span class="block text-xs text-gray-500">{{ refund.reference }}</span></p>
+        </section>
         <!-- Content -->
         <div class="px-5 py-5 pb-4">
             <!-- Loading -->
@@ -245,6 +259,7 @@ const openChat = (booking) => {
                                 <span class="font-bold text-black text-sm">₹{{ booking.total_price }}</span>
                             </div>
 
+                            <p v-if="booking.refund_status" class="mt-3 text-xs text-gray-600" role="status">Refund: {{ booking.refund_status.replaceAll('_', ' ') }}<template v-if="Number(booking.refund_amount_paise) > 0"> · INR {{ (booking.refund_amount_paise / 100).toFixed(2) }}</template><span v-if="booking.refund_reference" class="block break-all">{{ booking.refund_reference }}</span></p>
                             <!-- Action row -->
                             <div v-if="booking.status !== 'cancelled'" class="flex gap-2 mt-3 flex-wrap">
                                 <!-- Cancel upcoming -->

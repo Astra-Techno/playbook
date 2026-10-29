@@ -86,8 +86,15 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
+          extensions: pdo_sqlite
       - name: PHP syntax check
         run: find backend -name '*.php' -print0 | xargs -0 -n1 php -l
+      - name: Commercial settings and checkout checks
+        run: |
+          php backend/tests/commerce_settings_test.php
+          php backend/tests/commerce_checkout_test.php
+          php backend/tests/commerce_cancellation_test.php
+          php backend/tests/refund_service_test.php
 
   publish-web-build:
     name: Publish verified web build

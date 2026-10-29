@@ -45,6 +45,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     }
 
     final result = await PaymentService.processPayment(
+        context: context,
       amount: price,
       type: 'subscription',
       payload: {

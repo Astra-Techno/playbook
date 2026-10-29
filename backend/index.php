@@ -111,6 +111,24 @@ if (strpos($uri, '/api/') === 0) {
 // Split into segments; $seg[0] = first path part (e.g. 'auth', 'courts')
 $seg = array_values(array_filter(explode('/', $uri), 'strlen'));
 
+if (($seg[0] ?? '') === 'admin' && ($seg[1] ?? '') === 'settings') {
+    require_once __DIR__ . '/src/Controllers/SettingsController.php';
+    (new SettingsController())->handle(); exit();
+}
+
+if (($seg[0] ?? '') === 'admin' && ($seg[1] ?? '') === 'refund-requests') {
+    require_once __DIR__ . '/src/Controllers/RefundController.php';
+    (new RefundController())->admin($seg); exit();
+}
+if (($seg[0] ?? '') === 'payments' && in_array($seg[1] ?? '', ['refund-webhook','refunds'], true)) {
+    require_once __DIR__ . '/src/Controllers/RefundController.php';
+    $controller = new RefundController();
+    if ($seg[1] === 'refund-webhook' && $_SERVER['REQUEST_METHOD'] === 'POST') $controller->webhook();
+    elseif ($seg[1] === 'refunds' && $_SERVER['REQUEST_METHOD'] === 'GET') $controller->mine();
+    else http_response_code(405);
+    exit();
+}
+
 // Test / DB status endpoint
 if (isset($seg[0]) && $seg[0] === 'test') {
     $start = microtime(true);
@@ -206,6 +224,10 @@ if (isset($seg[0]) && $seg[0] === 'upload') {
 if (isset($seg[0]) && $seg[0] === 'payments') {
     require_once __DIR__ . '/src/Controllers/PaymentController.php';
     $paymentController = new PaymentController();
+
+    if (($seg[1] ?? '') === 'quote' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        Auth::require(); $paymentController->quote(); exit();
+    }
 
     if (isset($seg[1]) && $seg[1] === 'config' && $_SERVER['REQUEST_METHOD'] === 'GET') {
         $paymentController->config();
@@ -704,6 +726,9 @@ if (isset($seg[0]) && $seg[0] === 'admin') {
         $data = json_decode(file_get_contents('php://input'));
         $key  = trim($data->key ?? '');
         $val  = $data->value ?? '';
+        if (str_starts_with($key, 'commerce_policy') || $key === 'platform_commission_pct') {
+            http_response_code(422); echo json_encode(['message' => 'Use Commercial Settings to change this policy']); exit();
+        }
         if (!$key) { http_response_code(400); echo json_encode(['message' => 'key is required']); exit(); }
         $db->prepare("INSERT INTO config (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)")
            ->execute([$key, $val]);
@@ -713,6 +738,9 @@ if (isset($seg[0]) && $seg[0] === 'admin') {
     if (isset($seg[1]) && $seg[1] === 'config' && isset($seg[2]) && $_SERVER['REQUEST_METHOD'] === 'DELETE') {
         Auth::requireAdmin();
         $db = Database::getConnection();
+        if (str_starts_with($seg[2], 'commerce_policy') || $seg[2] === 'platform_commission_pct') {
+            http_response_code(422); echo json_encode(['message' => 'Commercial policy cannot be deleted here']); exit();
+        }
         $db->prepare("DELETE FROM config WHERE `key` = ?")->execute([$seg[2]]);
         echo json_encode(['message' => 'Config deleted']); exit();
     }

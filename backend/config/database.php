@@ -7,7 +7,7 @@ class Database {
     private $pdo;
 
     // Bump this number whenever migrate() adds new tables/columns/indexes
-    private const SCHEMA_VERSION = 23;
+    private const SCHEMA_VERSION = 25;
 
     private function __construct() {
         $host    = getenv('DB_HOST') ?: 'localhost';
@@ -472,6 +472,64 @@ class Database {
         // v20: Simplify roles — only 'admin' and 'user'. Merge player/owner into user.
         try { $this->pdo->exec("ALTER TABLE users MODIFY COLUMN role VARCHAR(20) DEFAULT 'user'"); } catch (Exception $e) {}
         try { $this->pdo->exec("UPDATE users SET role = 'user' WHERE role IN ('player', 'owner')"); } catch (Exception $e) {}
+
+        // v24: Central commercial policy, audit history and immutable booking terms.
+        require_once __DIR__ . '/../src/CommerceSettings.php';
+        $seed = $this->pdo->prepare('INSERT IGNORE INTO config (`key`, `value`) VALUES (?, ?)');
+        $defaults = CommerceSettings::defaults();
+        $legacyCommission = $this->pdo->query("SELECT `value` FROM config WHERE `key` = 'platform_commission_pct'")->fetchColumn();
+        if ($legacyCommission !== false && is_numeric($legacyCommission)) $defaults['settlement.commission_percent'] = max(0, min(100, (float)$legacyCommission));
+        $seed->execute([CommerceSettings::KEY, json_encode($defaults)]);
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS config_audit (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY, config_key VARCHAR(100) NOT NULL,
+            old_value LONGTEXT, new_value LONGTEXT, actor_id INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        foreach (['bookings', 'payments'] as $table) {
+            $exists = $this->pdo->query("SHOW COLUMNS FROM `$table` LIKE 'commerce_snapshot'")->fetch();
+            if (!$exists) $this->pdo->exec("ALTER TABLE `$table` ADD COLUMN commerce_snapshot LONGTEXT DEFAULT NULL");
+        }
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS booking_refunds (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY, booking_id INT NOT NULL UNIQUE,
+            amount_paise BIGINT NOT NULL, breakdown LONGTEXT NOT NULL,
+            status VARCHAR(30) NOT NULL DEFAULT 'manual_review',
+            requested_by INT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (booking_id) REFERENCES bookings(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        // v25: Durable refund outbox and direct booking/payment association.
+        if (!$this->pdo->query("SHOW COLUMNS FROM bookings LIKE 'payment_id'")->fetch()) {
+            $this->pdo->exec('ALTER TABLE bookings ADD COLUMN payment_id INT DEFAULT NULL, ADD INDEX idx_booking_payment (payment_id)');
+        }
+        if (!$this->pdo->query("SHOW COLUMNS FROM booking_refunds LIKE 'refund_request_id'")->fetch()) {
+            $this->pdo->exec('ALTER TABLE booking_refunds ADD COLUMN refund_request_id BIGINT DEFAULT NULL');
+        }
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS refund_requests (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+            request_key VARCHAR(100) NOT NULL UNIQUE, payment_id INT NOT NULL,
+            booking_id INT DEFAULT NULL, reason VARCHAR(50) NOT NULL,
+            amount_paise BIGINT NOT NULL, venue_paise BIGINT NOT NULL, fee_paise BIGINT NOT NULL,
+            vendor_paise BIGINT NOT NULL DEFAULT 0,
+            refund_id VARCHAR(40) NOT NULL UNIQUE, idempotency_key VARCHAR(36) NOT NULL UNIQUE,
+            request_body LONGTEXT DEFAULT NULL, environment VARCHAR(20) NOT NULL,
+            status VARCHAR(30) NOT NULL, provider_status VARCHAR(30) DEFAULT NULL,
+            cf_refund_id VARCHAR(100) DEFAULT NULL, bank_reference VARCHAR(150) DEFAULT NULL,
+            error_code VARCHAR(100) DEFAULT NULL, attempts INT NOT NULL DEFAULT 0,
+            polls INT NOT NULL DEFAULT 0, next_attempt_at DATETIME DEFAULT NULL,
+            lease_token VARCHAR(64) DEFAULT NULL, lease_until DATETIME DEFAULT NULL,
+            requested_by INT DEFAULT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL,
+            INDEX idx_refund_work (status, next_attempt_at), INDEX idx_refund_payment (payment_id),
+            INDEX idx_refund_booking (booking_id), FOREIGN KEY (payment_id) REFERENCES payments(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS refund_events (
+            id BIGINT AUTO_INCREMENT PRIMARY KEY, refund_request_id BIGINT NOT NULL,
+            status VARCHAR(30) NOT NULL, source VARCHAR(30) NOT NULL, detail VARCHAR(150) DEFAULT NULL,
+            created_at DATETIME NOT NULL, INDEX idx_refund_event (refund_request_id),
+            FOREIGN KEY (refund_request_id) REFERENCES refund_requests(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS refund_webhook_events (
+            fingerprint VARCHAR(64) PRIMARY KEY, processed_at DATETIME NOT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
         // Stamp schema version
         $this->pdo->exec("DELETE FROM schema_version");
