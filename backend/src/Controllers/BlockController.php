@@ -57,19 +57,41 @@ class BlockController
         if ($date) {
             $stmt = $this->db->prepare("
                 SELECT * FROM blocked_slots
-                WHERE court_id = ?{$spaceFilter} AND DATE(start_time) = ?
+                WHERE court_id = ?{$spaceFilter}
+                  AND (
+                    DATE(start_time) = ?
+                    OR (
+                      COALESCE(repeat_annually, 0) = 1
+                      AND DATE_FORMAT(start_time, '%m-%d') = DATE_FORMAT(?, '%m-%d')
+                    )
+                  )
                 ORDER BY start_time, sub_court_id
             ");
-            $stmt->execute(array_merge($params, [$date]));
+            $stmt->execute(array_merge($params, [$date, $date]));
         } else {
             $stmt = $this->db->prepare("
                 SELECT * FROM blocked_slots
-                WHERE court_id = ?{$spaceFilter} AND end_time >= NOW()
+                WHERE court_id = ?{$spaceFilter}
+                  AND (end_time >= NOW() OR COALESCE(repeat_annually, 0) = 1)
                 ORDER BY start_time, sub_court_id LIMIT 200
             ");
             $stmt->execute($params);
         }
-        echo json_encode(['blocks' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        require_once __DIR__ . '/../ScheduleRules.php';
+        $blocks = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $repeat = (int)($row['repeat_annually'] ?? 0) === 1;
+            [$appliesStart, $appliesEnd] = ScheduleRules::appliesWindow(
+                (string)$row['start_time'],
+                (string)$row['end_time'],
+                $repeat,
+                $date !== '' ? $date : null
+            );
+            $row['applies_start'] = $appliesStart;
+            $row['applies_end'] = $appliesEnd;
+            $blocks[] = $row;
+        }
+        echo json_encode(['blocks' => $blocks]);
     }
 
     // POST /blocked-slots  { court_id, sub_court_id?, date, hours: [6,7,8], reason? }
@@ -107,9 +129,14 @@ class BlockController
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ");
             foreach ($data->hours as $hour) {
-                $h   = (int)$hour;
-                $st  = $data->date . ' ' . str_pad($h,     2, '0', STR_PAD_LEFT) . ':00:00';
-                $et  = $data->date . ' ' . str_pad($h + 1, 2, '0', STR_PAD_LEFT) . ':00:00';
+                $h = (int)$hour;
+                if ($h < 0 || $h > 23) {
+                    http_response_code(400);
+                    echo json_encode(['message' => 'Each blocked hour must be from 0 to 23.']);
+                    return;
+                }
+                $st = $data->date . ' ' . str_pad((string)$h, 2, '0', STR_PAD_LEFT) . ':00:00';
+                $et = date('Y-m-d H:i:s', strtotime($st) + 3600);
                 $ins->execute([$court_id, $sub_court_id, $st, $et, $reason, $blocked_by, $block_kind, $repeat_yearly]);
                 $created[] = ['start_time' => $st, 'end_time' => $et];
             }

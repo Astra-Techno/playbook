@@ -429,6 +429,9 @@ if (isset($seg[0]) && $seg[0] === 'bookings') {
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1])) {
         Auth::require(); $bookingController->show((int)$seg[1]); exit();
     }
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && is_numeric($seg[1])) {
+        Auth::require(); $bookingController->reschedule((int)$seg[1]); exit();
+    }
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::require(); $bookingController->index(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $bookingController->create(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) {

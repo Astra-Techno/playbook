@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../Models/Booking.php';
+require_once __DIR__ . '/../SlotLock.php';
 require_once __DIR__ . '/../Models/Subscription.php';
 require_once __DIR__ . '/../PeakAccess.php';
 require_once __DIR__ . '/../Push.php';
@@ -171,6 +172,95 @@ class BookingController {
         }
     }
 
+    // PUT /api/bookings/:id  { start_time, end_time }
+    // Moves a confirmed booking. The price stored on the row stays as it is.
+    public function reschedule($id) {
+        $authUser = Auth::user();
+        $userId = (int)$authUser['id'];
+        $data = json_decode(file_get_contents('php://input'));
+        $start = trim((string)($data->start_time ?? ''));
+        $end = trim((string)($data->end_time ?? ''));
+        $stamp = '/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/';
+        if (!preg_match($stamp, $start) || !preg_match($stamp, $end) || strtotime($end) <= strtotime($start)) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Provide a start and a later end as YYYY-MM-DD HH:MM:SS.']);
+            return;
+        }
+
+        $db = Database::getConnection();
+        $row = $db->prepare("SELECT b.*, c.owner_id FROM bookings b JOIN courts c ON c.id = b.court_id WHERE b.id = ?");
+        $row->execute([$id]);
+        $booking = $row->fetch(PDO::FETCH_ASSOC);
+        if (!$booking) { http_response_code(404); echo json_encode(['message' => 'Booking not found']); return; }
+
+        $isBookingOwner = (int)$booking['user_id'] === $userId;
+        $isCourtOwner = (int)$booking['owner_id'] === $userId;
+        $isAdmin = ($authUser['role'] ?? '') === 'admin';
+        $staff = $db->prepare("SELECT id FROM court_staff WHERE court_id = ? AND user_id = ? AND role = 'manager'");
+        $staff->execute([$booking['court_id'], $userId]);
+        $isStaff = (bool)$staff->fetch();
+        if (!$isBookingOwner && !$isCourtOwner && !$isStaff && !$isAdmin) {
+            http_response_code(403);
+            echo json_encode(['message' => 'Not authorised to move this booking']);
+            return;
+        }
+        if ($booking['status'] !== 'confirmed') {
+            http_response_code(400);
+            echo json_encode(['message' => 'Only a confirmed booking can be moved.']);
+            return;
+        }
+        $now = new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata'));
+        $currentStart = new DateTimeImmutable($booking['start_time'], new DateTimeZone('Asia/Kolkata'));
+        $nextStart = new DateTimeImmutable($start, new DateTimeZone('Asia/Kolkata'));
+        if ($currentStart <= $now || $nextStart <= $now) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Choose a future time. A booking that has started stays where it is.']);
+            return;
+        }
+
+        $courtId = (int)$booking['court_id'];
+        $subCourtId = $booking['sub_court_id'] !== null && $booking['sub_court_id'] !== '' ? (int)$booking['sub_court_id'] : null;
+        if (!SlotLock::hold($db, $courtId)) {
+            http_response_code(409);
+            echo json_encode(['message' => 'This time is being booked. Try again.']);
+            return;
+        }
+        try {
+            if ($booking['start_time'] === $start && $booking['end_time'] === $end) {
+                http_response_code(200);
+                echo json_encode([
+                    'message' => 'Booking moved. The price already stored on it is unchanged.',
+                    'start_time' => $start,
+                    'end_time' => $end,
+                    'total_price' => $booking['total_price'],
+                ]);
+                return;
+            }
+            $model = new Booking();
+            if (!$model->isSlotAvailable($courtId, $start, $end, $subCourtId, (int)$id)) {
+                http_response_code(409);
+                echo json_encode(['message' => 'That time is not available.']);
+                return;
+            }
+            $upd = $db->prepare("UPDATE bookings SET start_time = ?, end_time = ? WHERE id = ? AND status = 'confirmed'");
+            $upd->execute([$start, $end, $id]);
+            if ($upd->rowCount() !== 1) {
+                http_response_code(409);
+                echo json_encode(['message' => 'This booking could not be moved.']);
+                return;
+            }
+            http_response_code(200);
+            echo json_encode([
+                'message' => 'Booking moved. The price already stored on it is unchanged.',
+                'start_time' => $start,
+                'end_time' => $end,
+                'total_price' => $booking['total_price'],
+            ]);
+        } finally {
+            SlotLock::release($db, $courtId);
+        }
+    }
+
     // GET /api/bookings/:id  — single booking detail
     public function show($id) {
         $authUser = Auth::user();
@@ -193,7 +283,12 @@ class BookingController {
         $canView = (int)$booking['user_id'] === $authId
                 || (int)$booking['owner_id'] === $authId
                 || $authUser['role'] === 'admin';
-        if (!$canView) { http_response_code(403); echo json_encode(['error' => 'Forbidden']); return; }
+        if (!$canView) {
+            $staff = $db->prepare("SELECT id FROM court_staff WHERE court_id = ? AND user_id = ? AND role = 'manager'");
+            $staff->execute([(int)$booking['court_id'], $authId]);
+            $canView = (bool)$staff->fetch();
+        }
+        if (!$canView) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
 
         unset($booking['owner_id']);
         http_response_code(200);
@@ -321,31 +416,36 @@ class BookingController {
             !empty($data->end_time)
         ) {
             $booking = new Booking();
+            $db = Database::getConnection();
+            $courtId = (int)$data->court_id;
+            $stmt = $db->prepare("SELECT * FROM courts WHERE id=?");
+            $stmt->execute([$courtId]);
+            $court = $stmt->fetch(PDO::FETCH_ASSOC);
 
+            if ($isWalkIn) {
+                $staff = $db->prepare("SELECT id FROM court_staff WHERE court_id = ? AND user_id = ? AND role = 'manager'");
+                $staff->execute([$courtId, $authId]);
+                if (!$court || ((int)$court['owner_id'] !== $authId && ($authUser['role'] ?? '') !== 'admin' && !$staff->fetchColumn())) {
+                    http_response_code(403); echo json_encode(['message' => 'Only the venue owner or manager can record walk-ins']); return;
+                }
+            }
+
+            if (!SlotLock::hold($db, $courtId)) {
+                http_response_code(409);
+                echo json_encode(['message' => 'This time is being booked. Try again.']);
+                return;
+            }
+            try {
             if (!$booking->isSlotAvailable($data->court_id, $data->start_time, $data->end_time, $sub_court_id)) {
                 http_response_code(409);
                 echo json_encode(["message" => "Time slot not available."]);
                 return;
             }
 
-            // Peak hour access check
-            $db   = Database::getConnection();
-            $stmt = $db->prepare("SELECT * FROM courts WHERE id=?");
-            $stmt->execute([(int)$data->court_id]);
-            $court = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($isWalkIn) {
-                $staff = $db->prepare("SELECT id FROM court_staff WHERE court_id = ? AND user_id = ? AND role = 'manager'");
-                $staff->execute([(int)$data->court_id, $authId]);
-                if (!$court || ((int)$court['owner_id'] !== $authId && ($authUser['role'] ?? '') !== 'admin' && !$staff->fetchColumn())) {
-                    http_response_code(403); echo json_encode(['message' => 'Only the venue owner or manager can record walk-ins']); return;
-                }
-            }
-
             $subCourt = null;
             if ($sub_court_id) {
                 $scStmt = $db->prepare("SELECT * FROM sub_courts WHERE id = ? AND court_id = ?");
-                $scStmt->execute([$sub_court_id, (int)$data->court_id]);
+                $scStmt->execute([$sub_court_id, $courtId]);
                 $subCourt = $scStmt->fetch(PDO::FETCH_ASSOC) ?: null;
             }
 
@@ -358,20 +458,20 @@ class BookingController {
 
             // Recalculate total_price server-side using pricing rules (don't trust frontend)
             $serverPrice = $this->calculateBookingPrice(
-                (int)$data->court_id,
+                $courtId,
                 $sub_court_id,
                 $data->start_time,
                 $data->end_time
             );
 
             $booking->user_id     = $isWalkIn ? 0 : $authId;
-            $booking->court_id    = (int)$data->court_id;
+            $booking->court_id    = $courtId;
             $booking->start_time  = $data->start_time;
             $booking->end_time    = $data->end_time;
             $booking->type        = $data->type ?? 'hourly';
             $booking->total_price = $serverPrice > 0 ? $serverPrice : ($data->total_price ?? 0);
             if (!$isWalkIn) {
-                $policy = CommerceSettings::load($db, (int)$data->court_id);
+                $policy = CommerceSettings::load($db, $courtId);
                 try { CommerceCheckout::validateTime($data->start_time, $data->end_time, $policy); }
                 catch (InvalidArgumentException $e) { http_response_code(422); echo json_encode(['message' => $e->getMessage()]); return; }
                 if (!$policy['checkout.enabled'] || $booking->total_price > 0 || $policy['fee.enabled'] || $policy['venue.gst_registered']) {
@@ -421,6 +521,9 @@ class BookingController {
                 http_response_code(503);
                 echo json_encode(["message" => "Unable to create booking."]);
             }
+            } finally {
+                SlotLock::release($db, $courtId);
+            }
         } else {
             http_response_code(400);
             echo json_encode(["message" => "Incomplete booking data."]);
@@ -435,70 +538,21 @@ class BookingController {
     {
         $db = Database::getConnection();
 
-        // Get base rates
         $cStmt = $db->prepare("SELECT hourly_rate FROM courts WHERE id=?");
         $cStmt->execute([$court_id]);
-        $court     = $cStmt->fetch(PDO::FETCH_ASSOC);
-        $basePrice = (float)($court['hourly_rate'] ?? 0);
-
+        $court = $cStmt->fetch(PDO::FETCH_ASSOC);
+        $facilityRate = null;
         if ($sub_court_id) {
             $scStmt = $db->prepare("SELECT hourly_rate FROM sub_courts WHERE id=?");
             $scStmt->execute([$sub_court_id]);
             $sc = $scStmt->fetch(PDO::FETCH_ASSOC);
-            if ($sc && (float)$sc['hourly_rate'] > 0) $basePrice = (float)$sc['hourly_rate'];
+            $facilityRate = $sc['hourly_rate'] ?? null;
         }
-
-        $startTs = strtotime($start);
-        $endTs   = strtotime($end);
-        if ($endTs <= $startTs) return $basePrice;
-
-        $date      = date('Y-m-d', $startTs);
-        $dow       = (int)date('N', $startTs);
-        $isWeekend = $dow >= 6;
-        $dayType   = $isWeekend ? 'weekend' : 'weekday';
-
-        // Walk 30-min slots and sum prices
-        $total = 0.0;
-        $cursor = $startTs;
-        while ($cursor < $endTs) {
-            $hour = (int)date('H', $cursor);
-            $slotDate = date('Y-m-d', $cursor);
-
-            $rule = null;
-            // Space-specific rule first
-            if ($sub_court_id) {
-                $stmt = $db->prepare("
-                    SELECT price FROM pricing_rules
-                    WHERE court_id=? AND sub_court_id=?
-                      AND start_hour<=? AND end_hour>?
-                      AND (day_type='all' OR day_type=?)
-                      AND (valid_from IS NULL OR valid_from<=?)
-                      AND (valid_to IS NULL OR valid_to>=?)
-                    ORDER BY priority DESC, id DESC LIMIT 1
-                ");
-                $stmt->execute([$court_id, $sub_court_id, $hour, $hour, $dayType, $slotDate, $slotDate]);
-                $rule = $stmt->fetch(PDO::FETCH_ASSOC);
-            }
-            // Venue-level fallback
-            if (!$rule) {
-                $stmt = $db->prepare("
-                    SELECT price FROM pricing_rules
-                    WHERE court_id=? AND sub_court_id IS NULL
-                      AND start_hour<=? AND end_hour>?
-                      AND (day_type='all' OR day_type=?)
-                      AND (valid_from IS NULL OR valid_from<=?)
-                      AND (valid_to IS NULL OR valid_to>=?)
-                    ORDER BY priority DESC, id DESC LIMIT 1
-                ");
-                $stmt->execute([$court_id, $hour, $hour, $dayType, $slotDate, $slotDate]);
-                $rule = $stmt->fetch(PDO::FETCH_ASSOC);
-            }
-
-            $hourlyRate = $rule ? (float)$rule['price'] : $basePrice;
-            $total += $hourlyRate / 2;  // 30-min slot = half an hour
-            $cursor += 1800;            // advance 30 minutes
-        }
-        return round($total, 2);
+        $basePrice = ScheduleRules::baseRate((float)($court['hourly_rate'] ?? 0), $facilityRate);
+        $loaded = $db->prepare("SELECT * FROM pricing_rules WHERE court_id=?");
+        $loaded->execute([$court_id]);
+        $split = ScheduleRules::splitRules($loaded->fetchAll(PDO::FETCH_ASSOC), $sub_court_id);
+        return ScheduleRules::quote($start, $end, $basePrice, $split['facility'], $split['venue']);
     }
 
     // POST /api/bookings/recurring
@@ -547,6 +601,12 @@ class BookingController {
             $subCourt = $scStmt->fetch(PDO::FETCH_ASSOC) ?: null;
         }
 
+        if (!SlotLock::hold($dbPeak, $court_id)) {
+            http_response_code(409);
+            echo json_encode(['message' => 'This time is being booked. Try again.']);
+            return;
+        }
+        try {
         $cursor = $startDateTs;
         while ($cursor <= $limitTs) {
             $dow = (int)date('w', $cursor); // 0=Sun .. 6=Sat
@@ -577,6 +637,9 @@ class BookingController {
                 }
             }
             $cursor += 86400;
+        }
+        } finally {
+            SlotLock::release($dbPeak, $court_id);
         }
 
         http_response_code(201);

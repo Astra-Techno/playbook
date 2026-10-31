@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'slot_block.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -106,6 +107,14 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     }
   }
 
+  int _clockHour(dynamic value, int fallback) {
+    final text = '${value ?? ''}'.trim();
+    if (text.isEmpty) return fallback;
+    final hour = int.tryParse(text.split(':').first);
+    if (hour == null || hour < 0 || hour > 23) return fallback;
+    return hour;
+  }
+
   Future<void> _loadSlots() async {
     try {
       final params = <String, dynamic>{
@@ -128,19 +137,41 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
         });
         final bSlots = bRes.data['blocks'] ?? [];
         for (final b in bSlots) {
-          blocked.add('${b['start_time']}-${b['end_time']}');
+          final appliesStart = '${b['applies_start'] ?? b['start_time'] ?? ''}';
+          final appliesEnd = '${b['applies_end'] ?? b['end_time'] ?? ''}';
+          blocked.add('$appliesStart|$appliesEnd');
         }
       } catch (_) {}
 
       final slots = <Map<String, dynamic>>[];
       final now = DateTime.now();
       final isToday = _selectedDate == '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-      for (int h = 6; h < 23; h++) {
+      final openHour = _clockHour(_court?['open_time'], 6);
+      final closeHour = _clockHour(_court?['close_time'], 22);
+      final firstHour = closeHour > openHour ? openHour : 6;
+      final lastHour = closeHour > openHour ? closeHour : 22;
+      for (int h = firstHour; h < lastHour; h++) {
         final start = '${h.toString().padLeft(2, '0')}:00';
         final end = '${(h + 1).toString().padLeft(2, '0')}:00';
         final key = '$start-$end';
-        final isBooked = bookings.any((b) => b['start_time'] == '$start:00' || b['start_time'] == start);
-        final isBlocked = blocked.contains(key);
+        final slotStart = '$_selectedDate $start:00';
+        final slotEnd = '$_selectedDate $end:00';
+        final isBooked = bookings.any((b) => intervalsOverlap(
+          appliesStart: '${b['start_time'] ?? ''}',
+          appliesEnd: '${b['end_time'] ?? ''}',
+          slotStart: slotStart,
+          slotEnd: slotEnd,
+        ));
+        final isBlocked = blocked.any((row) {
+          final parts = row.split('|');
+          if (parts.length != 2) return false;
+          return blockCoversSlot(
+            appliesStart: parts[0],
+            appliesEnd: parts[1],
+            slotStart: slotStart,
+            slotEnd: slotEnd,
+          );
+        });
         final isPast = isToday && h < now.hour;
         slots.add({
           'start': start,

@@ -1,29 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import '../../screens/owner/walk_in_fields.dart';
 
 class WalkInSheet extends StatefulWidget {
   final int courtId;
-  final int ownerId;
   final String date;
   final String? startTime;
   final int? spaceId;
+  final List<Map<String, dynamic>> spaces;
 
   const WalkInSheet({
     super.key,
     required this.courtId,
-    required this.ownerId,
     required this.date,
     this.startTime,
     this.spaceId,
+    this.spaces = const [],
   });
 
   static Future<bool?> show(
     BuildContext context, {
     required int courtId,
-    required int ownerId,
     required String date,
     String? startTime,
     int? spaceId,
+    List<Map<String, dynamic>> spaces = const [],
   }) {
     return showModalBottomSheet<bool>(
       context: context,
@@ -31,10 +32,10 @@ class WalkInSheet extends StatefulWidget {
       backgroundColor: Colors.transparent,
       builder: (_) => WalkInSheet(
         courtId: courtId,
-        ownerId: ownerId,
         date: date,
         startTime: startTime,
         spaceId: spaceId,
+        spaces: spaces,
       ),
     );
   }
@@ -46,18 +47,21 @@ class WalkInSheet extends StatefulWidget {
 class _WalkInSheetState extends State<WalkInSheet> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  late String _startTime;
-  late String _endTime;
+  late int _hour;
+  int? _spaceId;
   bool _submitting = false;
+  String? _error;
 
   @override
   void initState() {
     super.initState();
-    final hour = widget.startTime != null
-        ? int.tryParse(widget.startTime!.split(':').first) ?? DateTime.now().hour
-        : DateTime.now().hour;
-    _startTime = '${hour.toString().padLeft(2, '0')}:00';
-    _endTime = '${(hour + 1).toString().padLeft(2, '0')}:00';
+    final parsed = widget.startTime != null ? int.tryParse(widget.startTime!.split(':').first) : null;
+    final hour = parsed ?? DateTime.now().hour;
+    _hour = hour < 0 || hour > 23 ? 0 : hour;
+    _spaceId = widget.spaceId;
+    if ((_spaceId == null || _spaceId! <= 0) && widget.spaces.isNotEmpty) {
+      _spaceId = int.tryParse('${widget.spaces.first['id']}');
+    }
   }
 
   @override
@@ -68,22 +72,30 @@ class _WalkInSheetState extends State<WalkInSheet> {
   }
 
   Future<void> _submit() async {
-    setState(() => _submitting = true);
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
     try {
-      await Api().post('/bookings', data: {
-        'court_id': widget.courtId,
-        'user_id': widget.ownerId,
-        'date': widget.date,
-        'start_time': _startTime,
-        'end_time': _endTime,
-        'guest_name': _nameController.text.trim(),
-        'guest_phone': _phoneController.text.trim(),
-        if (widget.spaceId != null) 'sub_court_id': widget.spaceId,
-        'walk_in': true,
-      });
+      final body = walkInBody(
+        courtId: widget.courtId,
+        date: widget.date,
+        startHour: _hour,
+        guestName: _nameController.text,
+        guestPhone: _phoneController.text,
+        spaceId: _spaceId,
+        spaceRequired: widget.spaces.isNotEmpty,
+      );
+      await Api().post('/bookings', data: body);
       if (mounted) Navigator.pop(context, true);
-    } catch (_) {
-      if (mounted) setState(() => _submitting = false);
+    } catch (caught) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = caught is WalkInFieldError
+            ? caught.message
+            : Api.failureMessage(caught, fallback: 'Could not save this walk-in.');
+      });
     }
   }
 
@@ -100,7 +112,8 @@ class _WalkInSheetState extends State<WalkInSheet> {
         top: 16,
         bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 20,
       ),
-      child: Column(
+      child: SingleChildScrollView(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -113,20 +126,48 @@ class _WalkInSheetState extends State<WalkInSheet> {
           const SizedBox(height: 16),
           const Text('Walk-in Booking', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
           const SizedBox(height: 4),
-          Text('${widget.date} \u00B7 $_startTime - $_endTime', style: const TextStyle(color: AppColors.textMuted)),
-          const SizedBox(height: 20),
-
+          Text('${widget.date} · $_hour:00', style: const TextStyle(color: AppColors.textMuted)),
+          const SizedBox(height: 12),
+          const Text(
+            'This confirms the hour for the guest. The price is calculated on the server.',
+            style: TextStyle(fontSize: 12, height: 1.4, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 16),
+          if (widget.spaces.isNotEmpty)
+            DropdownButtonFormField<int>(
+              initialValue: _spaceId,
+              decoration: const InputDecoration(labelText: 'Space'),
+              items: [
+                for (final space in widget.spaces)
+                  if (int.tryParse('${space['id']}') != null)
+                    DropdownMenuItem(value: int.parse('${space['id']}'), child: Text('${space['name'] ?? 'Space'}')),
+              ],
+              onChanged: (value) => setState(() => _spaceId = value),
+            ),
+          DropdownButtonFormField<int>(
+            initialValue: _hour,
+            decoration: const InputDecoration(labelText: 'Hour'),
+            items: [for (var hour = 0; hour <= 23; hour++) DropdownMenuItem(value: hour, child: Text('${hour.toString().padLeft(2, '0')}:00'))],
+            onChanged: (value) {
+              if (value != null) setState(() => _hour = value);
+            },
+          ),
+          const SizedBox(height: 12),
           TextField(
             controller: _nameController,
-            decoration: const InputDecoration(labelText: 'Guest Name (optional)'),
+            decoration: const InputDecoration(labelText: 'Guest name'),
             textCapitalization: TextCapitalization.words,
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _phoneController,
             keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(labelText: 'Guest Phone (optional)'),
+            decoration: const InputDecoration(labelText: 'Guest phone'),
           ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(_error!, style: const TextStyle(color: AppColors.error)),
+          ],
           const SizedBox(height: 20),
 
           SizedBox(
@@ -139,6 +180,7 @@ class _WalkInSheetState extends State<WalkInSheet> {
             ),
           ),
         ],
+        ),
       ),
     );
   }

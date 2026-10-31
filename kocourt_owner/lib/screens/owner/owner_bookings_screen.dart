@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import '../../widgets/tab_phase.dart';
 import '../../widgets/tab_status.dart';
+import 'booking_detail_screen.dart';
+import 'walk_in_fields.dart';
 
 class OwnerBookingsScreen extends StatefulWidget {
   const OwnerBookingsScreen({super.key});
@@ -97,7 +99,18 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
                       final status = (b['status'] ?? 'confirmed').toString();
                       final isCancelled = status == 'cancelled';
                       final statusColor = isCancelled ? AppColors.error : AppColors.secondary;
-                      return Container(
+                      return InkWell(
+                        onTap: () {
+                          final id = int.tryParse('${b['id']}');
+                          if (id == null) return;
+                          Navigator.push<bool>(
+                            context,
+                            MaterialPageRoute(builder: (_) => BookingDetailScreen(bookingId: id)),
+                          ).then((changed) {
+                            if (changed == true) _load();
+                          });
+                        },
+                        child: Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
@@ -123,8 +136,8 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
                                   Text(b['court_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                                   const SizedBox(height: 3),
                                   Text('${b['date'] ?? ''} \u2022 ${b['start_time'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                                  if (b['user_name'] != null)
-                                    Text(b['user_name'], style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                                  if ('${b['guest_name'] ?? b['user_name'] ?? ''}'.isNotEmpty)
+                                    Text(bookingPerson(b), style: TextStyle(fontSize: 12, color: Colors.grey[400])),
                                 ],
                               ),
                             ),
@@ -141,6 +154,7 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
                             ),
                           ],
                         ),
+                      ),
                       );
   }
 }

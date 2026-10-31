@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../ScheduleRules.php';
+
 class PricingController
 {
     private PDO $db;
@@ -62,6 +64,22 @@ class PricingController
         $chk->execute([$court_id, $owner_id]);
         if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
 
+        $name = trim($data->name ?? '');
+        $dayType = in_array($data->day_type ?? '', ['all', 'weekday', 'weekend'], true) ? $data->day_type : '';
+        $startHour = (int)($data->start_hour ?? -1);
+        $endHour = (int)($data->end_hour ?? -1);
+        $price = isset($data->price) ? (float)$data->price : -1;
+        $validFrom = !empty($data->valid_from) ? (string)$data->valid_from : null;
+        $validTo = !empty($data->valid_to) ? (string)$data->valid_to : null;
+        $dateOk = static function (?string $value): bool {
+            return $value === null || (bool)preg_match('/^\d{4}-\d{2}-\d{2}$/', $value);
+        };
+        if ($name === '' || $dayType === '' || $startHour < 0 || $startHour > 23 || $endHour <= $startHour || $endHour > 24 || $price < 0 || !$dateOk($validFrom) || !$dateOk($validTo)) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Name, day type, hours, and a price of zero or more are required.']);
+            return;
+        }
+
         $ins = $this->db->prepare("
             INSERT INTO pricing_rules (court_id, sub_court_id, name, day_type, start_hour, end_hour, price, valid_from, valid_to, priority)
             VALUES (?,?,?,?,?,?,?,?,?,?)
@@ -69,14 +87,14 @@ class PricingController
         $ins->execute([
             $court_id,
             $sub_court_id,
-            trim($data->name ?? 'Custom Rate'),
-            in_array($data->day_type ?? '', ['all','weekday','weekend']) ? $data->day_type : 'all',
-            (int)($data->start_hour ?? 0),
-            (int)($data->end_hour   ?? 23),
-            (float)($data->price    ?? 0),
-            !empty($data->valid_from) ? $data->valid_from : null,
-            !empty($data->valid_to)   ? $data->valid_to   : null,
-            (int)($data->priority   ?? 0),
+            $name,
+            $dayType,
+            $startHour,
+            $endHour,
+            $price,
+            $validFrom,
+            $validTo,
+            (int)($data->priority ?? 0),
         ]);
         $newId = (int)$this->db->lastInsertId();
         $row   = $this->db->prepare("SELECT * FROM pricing_rules WHERE id=?");
@@ -131,63 +149,32 @@ class PricingController
     // Internal: resolve effective price for one hour
     private function getSlotPrice(int $court_id, ?int $sub_court_id, string $date, int $hour): array
     {
-        $dow       = (int)date('N', strtotime($date));
-        $isWeekend = $dow >= 6;
-        $dayType   = $isWeekend ? 'weekend' : 'weekday';
-
-        // Base rate from court
         $cStmt = $this->db->prepare("SELECT hourly_rate FROM courts WHERE id=?");
         $cStmt->execute([$court_id]);
-        $court     = $cStmt->fetch(PDO::FETCH_ASSOC);
-        $basePrice = (float)($court['hourly_rate'] ?? 0);
-
-        // Override base with space hourly_rate if space exists
+        $court = $cStmt->fetch(PDO::FETCH_ASSOC);
+        $facilityRate = null;
         if ($sub_court_id) {
             $scStmt = $this->db->prepare("SELECT hourly_rate FROM sub_courts WHERE id=?");
             $scStmt->execute([$sub_court_id]);
             $sc = $scStmt->fetch(PDO::FETCH_ASSOC);
-            if ($sc && $sc['hourly_rate'] !== null && $sc['hourly_rate'] > 0) {
-                $basePrice = (float)$sc['hourly_rate'];
-            }
+            $facilityRate = $sc['hourly_rate'] ?? null;
         }
-
-        $rule = null;
-
-        // 1. Try space-specific rule first
-        if ($sub_court_id) {
-            $stmt = $this->db->prepare("
-                SELECT * FROM pricing_rules
-                WHERE court_id = ? AND sub_court_id = ?
-                  AND start_hour <= ? AND end_hour > ?
-                  AND (day_type = 'all' OR day_type = ?)
-                  AND (valid_from IS NULL OR valid_from <= ?)
-                  AND (valid_to   IS NULL OR valid_to   >= ?)
-                ORDER BY priority DESC, id DESC LIMIT 1
-            ");
-            $stmt->execute([$court_id, $sub_court_id, $hour, $hour, $dayType, $date, $date]);
-            $rule = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-        }
-
-        // 2. Fall back to venue-level rule
-        if (!$rule) {
-            $stmt = $this->db->prepare("
-                SELECT * FROM pricing_rules
-                WHERE court_id = ? AND sub_court_id IS NULL
-                  AND start_hour <= ? AND end_hour > ?
-                  AND (day_type = 'all' OR day_type = ?)
-                  AND (valid_from IS NULL OR valid_from <= ?)
-                  AND (valid_to   IS NULL OR valid_to   >= ?)
-                ORDER BY priority DESC, id DESC LIMIT 1
-            ");
-            $stmt->execute([$court_id, $hour, $hour, $dayType, $date, $date]);
-            $rule = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
-        }
-
-        $effectivePrice = $rule ? (float)$rule['price'] : $basePrice;
+        $basePrice = ScheduleRules::baseRate((float)($court['hourly_rate'] ?? 0), $facilityRate);
+        $loaded = $this->db->prepare("SELECT * FROM pricing_rules WHERE court_id=?");
+        $loaded->execute([$court_id]);
+        $split = ScheduleRules::splitRules($loaded->fetchAll(PDO::FETCH_ASSOC), $sub_court_id);
+        $resolved = ScheduleRules::hourlyRate(
+            $split['facility'],
+            $split['venue'],
+            $basePrice,
+            $hour,
+            ScheduleRules::dayType($date),
+            $date
+        );
         return [
             'base_price'      => $basePrice,
-            'effective_price' => $effectivePrice,
-            'rule'            => $rule,
+            'effective_price' => $resolved['effective_price'],
+            'rule'            => $resolved['rule'],
         ];
     }
 }

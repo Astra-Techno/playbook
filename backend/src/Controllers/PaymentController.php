@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../config/cashfree.php';
 require_once __DIR__ . '/../PeakAccess.php';
 require_once __DIR__ . '/../CommerceCheckout.php';
 require_once __DIR__ . '/../RefundService.php';
+require_once __DIR__ . '/../SlotLock.php';
 
 class PaymentController {
 
@@ -355,6 +356,10 @@ class PaymentController {
 
             $commerce = json_decode($payment['commerce_snapshot'] ?? 'null', true);
             $fulfilled = [];
+            $courtId = (int)$payload['court_id'];
+            $locked = SlotLock::hold($db, $courtId);
+            try {
+            if ($locked) {
             foreach ($slots as $slotIndex => $slot) {
                 // Race-condition guard per slot
                 if (!$booking->isSlotAvailable($payload['court_id'], $slot['start_time'], $slot['end_time'], $subCourtId)) {
@@ -390,6 +395,10 @@ class PaymentController {
                     $bookingIds[] = (int)$db->lastInsertId();
                     $fulfilled[] = $slotIndex;
                 }
+            }
+            }
+            } finally {
+                if ($locked) SlotLock::release($db, $courtId);
             }
 
             $unfulfilledRefund = null;

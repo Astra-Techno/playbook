@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../ScheduleRules.php';
 
 class Booking {
     public $conn;
@@ -103,7 +104,8 @@ class Booking {
      * Checks both confirmed bookings and blocked_slots.
      * If sub_court_id is provided, only checks that sub-court's bookings.
      */
-    public function isSlotAvailable($court_id, $start_time, $end_time, $sub_court_id = null) {
+    public function isSlotAvailable($court_id, $start_time, $end_time, $sub_court_id = null, $ignore_booking_id = null) {
+        $ignoreSql = $ignore_booking_id ? ' AND id <> :ignore_id' : '';
         // Check bookings
         if ($sub_court_id !== null) {
             // Look up booking_mode and capacity for this space
@@ -116,32 +118,38 @@ class Booking {
             $query = "SELECT COUNT(*) as cnt FROM " . $this->table_name .
                      " WHERE court_id = :court_id AND sub_court_id = :sub_court_id" .
                      " AND (start_time < :end_time AND end_time > :start_time)" .
-                     " AND status = 'confirmed'";
+                     " AND status = 'confirmed'" . $ignoreSql;
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':court_id',    $court_id);
             $stmt->bindParam(':sub_court_id',$sub_court_id);
             $stmt->bindParam(':start_time',  $start_time);
             $stmt->bindParam(':end_time',    $end_time);
+            if ($ignore_booking_id) {
+                $stmt->bindValue(':ignore_id', (int)$ignore_booking_id, PDO::PARAM_INT);
+            }
             $stmt->execute();
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($booking_mode === 'shared') {
-                if ((int)$row['cnt'] >= $capacity) return false;
-            } else {
-                if ((int)$row['cnt'] > 0) return false;
+            if (!ScheduleRules::capacityAllows($booking_mode, (int)$row['cnt'], $capacity)) {
+                return false;
             }
         } else {
             $query = "SELECT COUNT(*) as cnt FROM " . $this->table_name .
                      " WHERE court_id = :court_id" .
                      " AND (start_time < :end_time AND end_time > :start_time)" .
-                     " AND status = 'confirmed'";
+                     " AND status = 'confirmed'" . $ignoreSql;
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(':court_id',   $court_id);
             $stmt->bindParam(':start_time', $start_time);
             $stmt->bindParam(':end_time',   $end_time);
+            if ($ignore_booking_id) {
+                $stmt->bindValue(':ignore_id', (int)$ignore_booking_id, PDO::PARAM_INT);
+            }
             $stmt->execute();
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ((int)$row['cnt'] > 0) return false;
+            if (!ScheduleRules::capacityAllows('exclusive', (int)$row['cnt'], 1)) {
+                return false;
+            }
         }
 
         // One-off blocked_slots (repeat_annually = 0): venue-wide or space-specific.
@@ -191,32 +199,8 @@ class Booking {
             $stmt->execute([$court_id]);
         }
 
-        $bookingStartTs = strtotime($start_time);
-        $bookingEndTs   = strtotime($end_time);
-        if ($bookingStartTs === false || $bookingEndTs === false) {
-            return false;
-        }
-        $bDate = date('Y-m-d', $bookingStartTs);
-        $bm    = (int)date('n', $bookingStartTs);
-        $bd    = (int)date('j', $bookingStartTs);
-
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $tStart = strtotime($row['tpl_s']);
-            $tEnd   = strtotime($row['tpl_e']);
-            if ($tStart === false || $tEnd === false) {
-                continue;
-            }
-            $tm = (int)date('n', $tStart);
-            $td = (int)date('j', $tStart);
-            if ($tm !== $bm || $td !== $bd) {
-                continue;
-            }
-            $vs = strtotime($bDate . ' ' . date('H:i:s', $tStart));
-            $ve = strtotime($bDate . ' ' . date('H:i:s', $tEnd));
-            if ($ve <= $vs) {
-                $ve += 86400;
-            }
-            if ($bookingStartTs < $ve && $bookingEndTs > $vs) {
+            if (ScheduleRules::annualTemplateHits($start_time, $end_time, $row['tpl_s'], $row['tpl_e'])) {
                 return true;
             }
         }

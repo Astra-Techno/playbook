@@ -162,17 +162,12 @@ class CourtController {
     }
 
     private function courtOpenForWindow(array $court, string $start_dt, string $end_dt): bool {
-        $open  = substr($court['open_time'] ?? '06:00:00', 0, 8);
-        $close = substr($court['close_time'] ?? '22:00:00', 0, 8);
-        $t1    = date('H:i:s', strtotime($start_dt));
-        $t2    = date('H:i:s', strtotime($end_dt));
-        if (date('Y-m-d', strtotime($start_dt)) !== date('Y-m-d', strtotime($end_dt))) {
-            return false;
-        }
-        if ($t2 <= $t1) {
-            return false;
-        }
-        return $t1 >= $open && $t2 <= $close;
+        return ScheduleRules::windowInsideHours(
+            substr($court['open_time'] ?? '06:00:00', 0, 8),
+            substr($court['close_time'] ?? '22:00:00', 0, 8),
+            $start_dt,
+            $end_dt
+        );
     }
 
     private function courtHasFreeSlot(Booking $booking, int $court_id, string $start_dt, string $end_dt): bool {
