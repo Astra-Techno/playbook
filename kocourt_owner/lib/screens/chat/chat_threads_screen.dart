@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import '../../widgets/tab_phase.dart';
+import '../../widgets/tab_status.dart';
 import 'chat_screen.dart';
 
 class ChatThreadsScreen extends StatefulWidget {
@@ -13,6 +15,7 @@ class ChatThreadsScreen extends StatefulWidget {
 class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
   List<Map<String, dynamic>> _threads = [];
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -21,13 +24,25 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
   }
 
   Future<void> _loadThreads() async {
+    if (_threads.isEmpty && mounted) {
+      setState(() => _loading = true);
+    }
+    String? error;
+    List<Map<String, dynamic>>? threads;
     try {
       final res = await Api().get('/messages/threads');
-      _threads = List<Map<String, dynamic>>.from(
+      threads = List<Map<String, dynamic>>.from(
         (res.data['threads'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
-    } catch (_) {}
-    if (mounted) setState(() => _loading = false);
+    } catch (caught) {
+      error = Api.failureMessage(caught, fallback: 'Could not load messages.');
+    }
+    if (!mounted) return;
+    setState(() {
+      if (threads != null) _threads = threads;
+      _error = error;
+      _loading = false;
+    });
   }
 
   String _timeAgo(String? dateStr) {
@@ -52,40 +67,57 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : _threads.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(AppIcons.messageCircle, size: 48, color: Colors.grey[300]),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No conversations yet',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.grey[700]),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Messages from bookings will appear here',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 13),
-                      ),
-                    ],
+      body: _threadsBody(),
+    );
+  }
+
+  Widget _threadsBody() {
+    final phase = tabPhase(
+      loading: _loading,
+      failed: _error != null,
+      hasData: _threads.isNotEmpty,
+    );
+    if (phase == TabPhase.loading) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadThreads,
+      color: AppColors.primary,
+      child: phase == TabPhase.ready
+          ? ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              itemCount: _threads.length + (_error != null ? 1 : 0),
+              separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey[100], indent: 76),
+              itemBuilder: (_, i) {
+                if (_error != null && i == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+                    child: TabErrorBanner(message: _error!, onRetry: _loadThreads),
+                  );
+                }
+                final thread = _threads[_error != null ? i - 1 : i];
+                return _buildThread(thread);
+              },
+            )
+          : ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(20),
+              children: [
+                if (phase == TabPhase.failed)
+                  TabErrorBanner(message: _error ?? 'Could not load messages.', onRetry: _loadThreads)
+                else
+                  const Padding(
+                    padding: EdgeInsets.only(top: 100),
+                    child: TabEmptyMessage(
+                      icon: AppIcons.messageCircle,
+                      title: 'No conversations yet',
+                      subtitle: 'Messages from bookings will appear here',
+                    ),
                   ),
-                )
-              : RefreshIndicator(
-                  onRefresh: () async {
-                    setState(() => _loading = true);
-                    await _loadThreads();
-                  },
-                  color: AppColors.primary,
-                  child: ListView.separated(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: _threads.length,
-                    separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey[100], indent: 76),
-                    itemBuilder: (_, i) => _buildThread(_threads[i]),
-                  ),
-                ),
+              ],
+            ),
     );
   }
 

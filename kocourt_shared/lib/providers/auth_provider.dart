@@ -65,6 +65,14 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  /// Merge a profile payload into the cached session without rotating the token.
+  Future<void> replaceCachedUser(Map<String, dynamic> user) async {
+    _user = {...?_user, ...user};
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user', jsonEncode(_user));
+    notifyListeners();
+  }
+
   Future<void> refreshUser() async {
     if (_user?['id'] == null) return;
     try {

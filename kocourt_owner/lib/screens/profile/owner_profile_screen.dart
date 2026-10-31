@@ -2,43 +2,109 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import '../../widgets/tab_phase.dart';
+import '../../widgets/tab_status.dart';
 
-class OwnerProfileScreen extends StatelessWidget {
+class OwnerProfileScreen extends StatefulWidget {
   const OwnerProfileScreen({super.key});
+
+  @override
+  State<OwnerProfileScreen> createState() => _OwnerProfileScreenState();
+}
+
+class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final auth = context.read<AuthProvider>();
+    if (auth.user == null && mounted) {
+      setState(() => _loading = true);
+    }
+    String? error;
+    try {
+      final res = await Api().get('/auth/profile');
+      final fresh = res.data['user'];
+      if (fresh is! Map) {
+        throw const FormatException('Profile response was incomplete.');
+      }
+      await auth.replaceCachedUser(Map<String, dynamic>.from(fresh));
+    } catch (caught) {
+      error = caught is FormatException
+          ? caught.message
+          : Api.failureMessage(caught, fallback: 'Could not load your profile.');
+    }
+    if (!mounted) return;
+    setState(() {
+      _error = error;
+      _loading = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final user = auth.user;
-    final name = user?['name'] ?? 'Owner';
-    final phone = user?['phone'] ?? '';
+    final name = (user?['name'] ?? 'Owner').toString();
+    final phone = (user?['phone'] ?? '').toString();
     final avatar = user?['avatar_url'];
+    final initial = name.trim().isEmpty ? 'O' : name.trim()[0].toUpperCase();
+    final phase = tabPhase(
+      loading: _loading,
+      failed: _error != null,
+      hasData: user != null,
+    );
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Profile', style: TextStyle(fontWeight: FontWeight.w800)),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            CircleAvatar(
-              radius: 48,
-              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-              backgroundImage: avatar != null ? NetworkImage(avatar) : null,
-              child: avatar == null
-                  ? Text(
-                      name[0].toUpperCase(),
-                      style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: AppColors.primary),
+      body: phase == TabPhase.loading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : RefreshIndicator(
+              onRefresh: _load,
+              color: AppColors.primary,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(20),
+                children: [
+                  if (_error != null) ...[
+                    TabErrorBanner(message: _error!, onRetry: _load),
+                    const SizedBox(height: 16),
+                  ],
+                  if (user == null)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 100),
+                      child: TabEmptyMessage(
+                        icon: AppIcons.user,
+                        title: 'No profile saved',
+                        subtitle: 'Sign in again to restore this account',
+                      ),
                     )
-                  : null,
-            ),
-            const SizedBox(height: 16),
-            Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 4),
-            Text(phone, style: TextStyle(fontSize: 14, color: Colors.grey[500])),
+                  else ...[
+                    const SizedBox(height: 20),
+                    CircleAvatar(
+                      radius: 48,
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                      backgroundImage: avatar is String && avatar.isNotEmpty ? NetworkImage(avatar) : null,
+                      child: avatar is String && avatar.isNotEmpty
+                          ? null
+                          : Text(
+                              initial,
+                              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: AppColors.primary),
+                            ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                    const SizedBox(height: 4),
+                    Text(phone, style: TextStyle(fontSize: 14, color: Colors.grey[500])),
             if (auth.isAdmin) ...[
               const SizedBox(height: 8),
               Container(
@@ -98,9 +164,10 @@ class OwnerProfileScreen extends StatelessWidget {
                 authProvider.logout();
               }
             }, color: AppColors.error),
-          ],
-        ),
-      ),
+                  ],
+                ],
+              ),
+            ),
     );
   }
 

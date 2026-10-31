@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import '../../widgets/tab_phase.dart';
+import '../../widgets/tab_status.dart';
 
 class OwnerBookingsScreen extends StatefulWidget {
   const OwnerBookingsScreen({super.key});
@@ -12,6 +14,7 @@ class OwnerBookingsScreen extends StatefulWidget {
 class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
   List<Map<String, dynamic>> _bookings = [];
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -21,13 +24,25 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
 
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
+    if (_bookings.isEmpty && mounted) {
+      setState(() => _loading = true);
+    }
+    String? error;
+    List<Map<String, dynamic>>? bookings;
     try {
       final res = await Api().get('/bookings', params: {'owner_id': auth.userId});
-      _bookings = List<Map<String, dynamic>>.from(
+      bookings = List<Map<String, dynamic>>.from(
         (res.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
-    } catch (_) {}
-    if (mounted) setState(() => _loading = false);
+    } catch (caught) {
+      error = Api.failureMessage(caught, fallback: 'Could not load bookings.');
+    }
+    if (!mounted) return;
+    setState(() {
+      if (bookings != null) _bookings = bookings;
+      _error = error;
+      _loading = false;
+    });
   }
 
   @override
@@ -37,29 +52,48 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
       appBar: AppBar(
         title: const Text('Bookings', style: TextStyle(fontWeight: FontWeight.w800)),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : _bookings.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(AppIcons.calendarDays, size: 48, color: Colors.grey[300]),
-                      const SizedBox(height: 16),
-                      Text('No bookings yet', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
-                      const SizedBox(height: 4),
-                      Text('Bookings will appear here', style: TextStyle(fontSize: 13, color: Colors.grey[400])),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  color: AppColors.primary,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(20),
-                    itemCount: _bookings.length,
-                    itemBuilder: (_, i) {
-                      final b = _bookings[i];
+      body: _bookingsBody(),
+    );
+  }
+
+  Widget _bookingsBody() {
+    final phase = tabPhase(
+      loading: _loading,
+      failed: _error != null,
+      hasData: _bookings.isNotEmpty,
+    );
+    if (phase == TabPhase.loading) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: AppColors.primary,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(20),
+        children: [
+          if (_error != null) ...[
+            TabErrorBanner(message: _error!, onRetry: _load),
+            const SizedBox(height: 16),
+          ],
+          if (phase == TabPhase.empty)
+            const Padding(
+              padding: EdgeInsets.only(top: 100),
+              child: TabEmptyMessage(
+                icon: AppIcons.calendarDays,
+                title: 'No bookings yet',
+                subtitle: 'Bookings will appear here',
+              ),
+            )
+          else
+            ..._bookings.map(_bookingTile),
+        ],
+      ),
+    );
+  }
+
+  Widget _bookingTile(Map<String, dynamic> b) {
                       final status = (b['status'] ?? 'confirmed').toString();
                       final isCancelled = status == 'cancelled';
                       final statusColor = isCancelled ? AppColors.error : AppColors.secondary;
@@ -108,9 +142,5 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
                           ],
                         ),
                       );
-                    },
-                  ),
-                ),
-    );
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import 'venue_access.dart';
 import 'venue_detail_screen.dart';
 import 'edit_venue_screen.dart';
 import '../../widgets/sheets/claim_venue_sheet.dart';
@@ -14,9 +15,14 @@ class OwnerDashboardScreen extends StatefulWidget {
 }
 
 class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
-  List<Map<String, dynamic>> _courts = [];
+  List<Map<String, dynamic>> _owned = [];
+  List<Map<String, dynamic>> _assigned = [];
   List<Map<String, dynamic>> _ghostPlaces = [];
   bool _loading = true;
+  String? _ownedError;
+  String? _staffError;
+
+  List<VenueListing> get _listings => mergeVenueListings(owned: _owned, assigned: _assigned);
 
   @override
   void initState() {
@@ -24,21 +30,51 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     _load();
   }
 
+  Map<String, dynamic> _courtMap(dynamic raw) {
+    final map = Map<String, dynamic>.from(raw as Map);
+    map.remove('owner_phone');
+    return map;
+  }
+
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     final venues = context.read<VenueProvider>();
+    String? ownedError;
+    String? staffError;
+    List<Map<String, dynamic>>? owned;
+    List<Map<String, dynamic>>? assigned;
+
     try {
       final res = await Api().get('/courts', params: {'owner_id': auth.userId});
-      _courts = List<Map<String, dynamic>>.from(
-        (res.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
+      owned = List<Map<String, dynamic>>.from(
+        (res.data['records'] ?? []).map(_courtMap),
       );
-    } catch (_) {}
-    // Load unclaimed nearby places
+    } catch (error) {
+      ownedError = Api.failureMessage(error, fallback: 'Couldn’t load your venues.');
+    }
+
+    try {
+      final res = await Api().get('/court-staff/my-courts');
+      assigned = List<Map<String, dynamic>>.from(
+        (res.data['courts'] ?? []).map(_courtMap),
+      );
+    } catch (error) {
+      staffError = Api.failureMessage(error, fallback: 'Couldn’t load venues assigned to you.');
+    }
+
     try {
       await venues.fetchGhostPlaces(userId: auth.userId);
-      _ghostPlaces = venues.ghostPlaces;
+      if (mounted) _ghostPlaces = venues.ghostPlaces;
     } catch (_) {}
-    if (mounted) setState(() => _loading = false);
+
+    if (!mounted) return;
+    setState(() {
+      if (owned != null) _owned = owned;
+      if (assigned != null) _assigned = assigned;
+      _ownedError = ownedError;
+      _staffError = staffError;
+      _loading = false;
+    });
   }
 
   @override
@@ -76,77 +112,149 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           : RefreshIndicator(
               onRefresh: _load,
               color: AppColors.primary,
-              child: _courts.isEmpty && _ghostPlaces.isEmpty
-                  ? ListView(
-                      children: [
-                        const SizedBox(height: 120),
-                        Center(
-                          child: Column(
-                            children: [
-                              Icon(AppIcons.layoutGrid, size: 48, color: Colors.grey[300]),
-                              const SizedBox(height: 16),
-                              Text('No venues yet', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
-                              const SizedBox(height: 8),
-                              ElevatedButton.icon(
-                                onPressed: () => Navigator.push(context, MaterialPageRoute(
-                                  builder: (_) => const EditVenueScreen(),
-                                )).then((_) => _load()),
-                                icon: const Icon(AppIcons.plus, size: 16),
-                                label: const Text('Add Your First Venue'),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    )
-                  : ListView(
-                      padding: const EdgeInsets.all(20),
-                      children: [
-                        // My venues
-                        if (_courts.isNotEmpty) ...[
-                          _portfolioHero(),
-                          const SizedBox(height: 18),
-                          const Text(
-                            'YOUR VENUES',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textMuted,
-                              letterSpacing: 1.4,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          ..._courts.map((c) => _venueCard(c)),
-                        ],
-
-                        // Discover & Claim section
-                        if (_ghostPlaces.isNotEmpty) ...[
-                          const SizedBox(height: 24),
-                          Text(
-                            'DISCOVER & CLAIM',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.grey[400],
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Nearby venues not yet on KoCourt',
-                            style: TextStyle(fontSize: 13, color: Colors.grey[500]),
-                          ),
-                          const SizedBox(height: 12),
-                          ..._ghostPlaces.map((place) => _ghostPlaceCard(place)),
-                        ],
-                      ],
-                    ),
+              child: _venueList(),
             ),
     );
   }
 
-  Widget _portfolioHero() {
-    final venueLabel = _courts.length == 1 ? 'active venue' : 'active venues';
+  Widget _venueList() {
+    final listings = _listings;
+    final owned = listings.where((venue) => venue.isOwner).toList();
+    final assigned = listings.where((venue) => !venue.isOwner).toList();
+    final loadFailed = _ownedError != null || _staffError != null;
+    final showEmpty = listings.isEmpty && _ghostPlaces.isEmpty && !loadFailed;
+
+    if (showEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          const SizedBox(height: 120),
+          Center(
+            child: Column(
+              children: [
+                Icon(AppIcons.layoutGrid, size: 48, color: Colors.grey[300]),
+                const SizedBox(height: 16),
+                Text('No venues yet', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
+                const SizedBox(height: 8),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => const EditVenueScreen(),
+                  )).then((_) => _load()),
+                  icon: const Icon(AppIcons.plus, size: 16),
+                  label: const Text('Add Your First Venue'),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(20),
+      children: [
+        if (loadFailed) ...[
+          _loadErrorCard(),
+          const SizedBox(height: 16),
+        ],
+        if (listings.isNotEmpty) ...[
+          _portfolioHero(owned.length, assigned.length),
+          const SizedBox(height: 18),
+        ],
+        if (owned.isNotEmpty) ...[
+          const Text(
+            'YOUR VENUES',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textMuted,
+              letterSpacing: 1.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...owned.map(_venueCard),
+        ],
+        if (assigned.isNotEmpty) ...[
+          if (owned.isNotEmpty) const SizedBox(height: 12),
+          const Text(
+            'ASSIGNED TO YOU',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textMuted,
+              letterSpacing: 1.4,
+            ),
+          ),
+          const SizedBox(height: 10),
+          ...assigned.map(_venueCard),
+        ],
+        if (_ghostPlaces.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Text(
+            'DISCOVER & CLAIM',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: Colors.grey[400],
+              letterSpacing: 1.5,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Nearby venues not yet on KoCourt',
+            style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+          ),
+          const SizedBox(height: 12),
+          ..._ghostPlaces.map((place) => _ghostPlaceCard(place)),
+        ],
+      ],
+    );
+  }
+
+  Widget _loadErrorCard() {
+    final messages = <String>[
+      ?_ownedError,
+      ?_staffError,
+    ];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4F2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Couldn’t refresh venues',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+          ),
+          const SizedBox(height: 6),
+          Text(messages.join('\n'), style: TextStyle(fontSize: 13, color: Colors.grey[700], height: 1.4)),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: _loading ? null : () {
+              setState(() => _loading = true);
+              _load();
+            },
+            child: const Text('Try again'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _portfolioHero(int ownedCount, int assignedCount) {
+    final total = ownedCount + assignedCount;
+    final venueLabel = total == 1 ? 'active venue' : 'active venues';
+    final subtitle = ownedCount > 0 && assignedCount > 0
+        ? '$ownedCount owned · $assignedCount assigned'
+        : assignedCount > 0
+            ? 'Venues the owner has shared with you.'
+            : 'Your venue portfolio is ready to manage.';
     return TactileSurface(
       radius: 22,
       accentColor: AppColors.primary,
@@ -172,12 +280,12 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${_courts.length} $venueLabel',
+                    '$total $venueLabel',
                     style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Your venue portfolio is ready to manage.',
+                    subtitle,
                     style: TextStyle(color: Colors.white.withValues(alpha: 0.84), fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ],
@@ -189,12 +297,16 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     );
   }
 
-  Widget _venueCard(Map<String, dynamic> c) {
+  Widget _venueCard(VenueListing venue) {
+    final c = venue.court;
     final img = getVenueImage(c);
+    final courtId = venue.id;
     return TactileSurface(
-      onTap: () => Navigator.push(context, MaterialPageRoute(
-        builder: (_) => VenueDetailScreen(courtId: c['id']),
-      )).then((_) => _load()),
+      onTap: courtId == null
+          ? null
+          : () => Navigator.push(context, MaterialPageRoute(
+                builder: (_) => VenueDetailScreen(courtId: courtId),
+              )).then((_) => _load()),
       margin: const EdgeInsets.only(bottom: 12),
       radius: 16,
       child: Row(
@@ -212,6 +324,8 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 children: [
                   Text(c['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                   const SizedBox(height: 4),
+                  Text(venue.accessLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                  const SizedBox(height: 2),
                   Text(c['location'] ?? '', style: TextStyle(fontSize: 12, color: Colors.grey[500]), overflow: TextOverflow.ellipsis),
                 ],
               ),

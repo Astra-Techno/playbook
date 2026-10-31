@@ -524,6 +524,16 @@ class CourtController {
         $chk = $db->prepare("SELECT id FROM courts WHERE id=? AND owner_id=?");
         $chk->execute([$id, $owner_id]);
         if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Not authorised']); return; }
+        $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
+        $upcoming = $db->prepare(
+            "SELECT COUNT(*) FROM bookings WHERE court_id = ? AND status <> 'cancelled' AND end_time > ?"
+        );
+        $upcoming->execute([$id, $now]);
+        if ((int)$upcoming->fetchColumn() > 0) {
+            http_response_code(409);
+            echo json_encode(['message' => 'This venue still has an upcoming booking. Cancel those bookings or wait until they end before deleting it.']);
+            return;
+        }
         $db->prepare("DELETE FROM courts WHERE id=? AND owner_id=?")->execute([$id, $owner_id]);
         http_response_code(200);
         echo json_encode(['message' => 'Court deleted.']);

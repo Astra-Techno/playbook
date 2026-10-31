@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:intl/intl.dart';
+import '../../widgets/tab_phase.dart';
+import '../../widgets/tab_status.dart';
 
 class OwnerEarningsScreen extends StatefulWidget {
   const OwnerEarningsScreen({super.key});
@@ -14,6 +16,7 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
   Map<String, dynamic>? _summary;
   List<Map<String, dynamic>> _transactions = [];
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -23,17 +26,37 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
 
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
+    if (_summary == null && mounted) {
+      setState(() => _loading = true);
+    }
+    String? error;
+    Map<String, dynamic>? summary;
+    List<Map<String, dynamic>>? transactions;
     try {
       final res = await Api().get('/earnings', params: {'owner_id': auth.userId});
-      final data = Map<String, dynamic>.from(res.data);
-      _summary = data['summary'] != null
-          ? Map<String, dynamic>.from(data['summary'])
-          : data;
-      _transactions = List<Map<String, dynamic>>.from(
+      final data = Map<String, dynamic>.from(res.data as Map);
+      final rawSummary = data['summary'];
+      if (rawSummary is! Map) {
+        throw const FormatException('Earnings response was incomplete.');
+      }
+      summary = Map<String, dynamic>.from(rawSummary);
+      transactions = List<Map<String, dynamic>>.from(
         (data['transactions'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
-    } catch (_) {}
-    if (mounted) setState(() => _loading = false);
+    } catch (caught) {
+      error = caught is FormatException
+          ? caught.message
+          : Api.failureMessage(caught, fallback: 'Could not load earnings.');
+    }
+    if (!mounted) return;
+    setState(() {
+      if (summary != null) {
+        _summary = summary;
+        _transactions = transactions ?? [];
+      }
+      _error = error;
+      _loading = false;
+    });
   }
 
   String _formatCurrency(dynamic val) {
@@ -46,68 +69,84 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(title: const Text('Earnings', style: TextStyle(fontWeight: FontWeight.w800))),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : _summary == null
-              ? Center(
+      body: _earningsBody(),
+    );
+  }
+
+  Widget _earningsBody() {
+    final summary = _summary;
+    final phase = tabPhase(
+      loading: _loading,
+      failed: _error != null,
+      hasData: summary != null,
+    );
+    if (phase == TabPhase.loading) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      color: AppColors.primary,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_error != null) ...[
+              TabErrorBanner(message: _error!, onRetry: _load),
+              const SizedBox(height: 16),
+            ],
+            if (summary == null && _error == null)
+              const Padding(
+                padding: EdgeInsets.only(top: 80),
+                child: TabEmptyMessage(
+                  icon: AppIcons.wallet,
+                  title: 'No earnings data yet',
+                  subtitle: 'Collected payments will show up here',
+                ),
+              )
+            else if (summary != null) ...[
+              Row(
+                children: [
+                  Expanded(child: _statCard('Total Earned', _formatCurrency(summary['total_earned']), AppColors.primary, Icons.account_balance_wallet_outlined)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _statCard('This Month', _formatCurrency(summary['this_month']), AppColors.secondary, Icons.calendar_today_outlined)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: _statCard('This Week', _formatCurrency(summary['this_week']), Colors.blue, Icons.trending_up)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _statCard('Pending', _formatCurrency(summary['pending_payout']), Colors.orange, Icons.hourglass_empty)),
+                ],
+              ),
+              const SizedBox(height: 24),
+              const Text('Recent Transactions', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 12),
+              if (_transactions.isEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 40),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(AppIcons.wallet, size: 48, color: AppColors.textDisabled),
-                      const SizedBox(height: 12),
-                      Text('No earnings data yet', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600)),
+                      Icon(Icons.receipt_long, size: 40, color: AppColors.textDisabled),
+                      const SizedBox(height: 8),
+                      Text('No transactions yet', style: TextStyle(color: AppColors.textMuted)),
                     ],
                   ),
                 )
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  color: AppColors.primary,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(child: _statCard('Total Earned', _formatCurrency(_summary!['total_earned']), AppColors.primary, Icons.account_balance_wallet_outlined)),
-                            const SizedBox(width: 12),
-                            Expanded(child: _statCard('This Month', _formatCurrency(_summary!['this_month']), AppColors.secondary, Icons.calendar_today_outlined)),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(child: _statCard('This Week', _formatCurrency(_summary!['this_week']), Colors.blue, Icons.trending_up)),
-                            const SizedBox(width: 12),
-                            Expanded(child: _statCard('Pending', _formatCurrency(_summary!['pending_payout']), Colors.orange, Icons.hourglass_empty)),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-                        const Text('Recent Transactions', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-                        const SizedBox(height: 12),
-                        if (_transactions.isEmpty)
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 40),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: Column(
-                              children: [
-                                Icon(Icons.receipt_long, size: 40, color: AppColors.textDisabled),
-                                const SizedBox(height: 8),
-                                Text('No transactions yet', style: TextStyle(color: AppColors.textMuted)),
-                              ],
-                            ),
-                          )
-                        else
-                          ..._transactions.map((t) => _transactionTile(t)),
-                      ],
-                    ),
-                  ),
-                ),
+              else
+                ..._transactions.map((t) => _transactionTile(t)),
+            ],
+          ],
+        ),
+      ),
     );
   }
 

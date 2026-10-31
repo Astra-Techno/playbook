@@ -22,7 +22,22 @@ import '../screens/admin/admin_screen.dart';
 import '../screens/admin/ledger_screen.dart';
 import '../screens/owner/payout_settings_screen.dart';
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
+/// Auth redirects for the owner shell. Public legal pages stay reachable
+/// while signed out. A signed-in non-admin is sent home from `/admin`.
+String? ownerRouteRedirect({
+  required bool loggedIn,
+  required bool isAdmin,
+  required String location,
+}) {
+  final isLoginRoute = location == '/login';
+  final isAdminRoute = location == '/admin';
+  final isPublicRoute = location == '/refund-policy' || location == '/contact';
+
+  if (loggedIn && isLoginRoute) return '/';
+  if (!loggedIn && !isLoginRoute && !isPublicRoute) return '/login';
+  if (isAdminRoute && !isAdmin) return '/';
+  return null;
+}
 
 CustomTransitionPage<void> _slideFadePage(Widget child, GoRouterState state) {
   return CustomTransitionPage(
@@ -48,22 +63,14 @@ CustomTransitionPage<void> _slideFadePage(Widget child, GoRouterState state) {
 
 GoRouter createOwnerRouter(AuthProvider auth) {
   return GoRouter(
-    navigatorKey: _rootNavigatorKey,
+    navigatorKey: GlobalKey<NavigatorState>(),
     initialLocation: '/',
     refreshListenable: auth,
-    redirect: (context, state) {
-      final loggedIn = auth.isLoggedIn;
-      final isLoginRoute = state.matchedLocation == '/login';
-      final isAdminRoute = state.matchedLocation == '/admin';
-      final isPublicRoute = state.matchedLocation == '/refund-policy' ||
-          state.matchedLocation == '/contact';
-
-      if (loggedIn && isLoginRoute) return '/';
-      if (!loggedIn && !isLoginRoute && !isPublicRoute) return '/login';
-      if (isAdminRoute && !auth.isAdmin) return '/';
-
-      return null;
-    },
+    redirect: (context, state) => ownerRouteRedirect(
+      loggedIn: auth.isLoggedIn,
+      isAdmin: auth.isAdmin,
+      location: state.matchedLocation,
+    ),
     routes: [
       // Main owner shell
       GoRoute(

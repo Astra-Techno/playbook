@@ -139,6 +139,16 @@ class SubCourtController
         $chk = $this->db->prepare("SELECT sc.id FROM sub_courts sc JOIN courts c ON c.id=sc.court_id WHERE sc.id=? AND c.owner_id=?");
         $chk->execute([$id, $owner_id]);
         if (!$chk->fetch()) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
+        $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
+        $upcoming = $this->db->prepare(
+            "SELECT COUNT(*) FROM bookings WHERE sub_court_id = ? AND status <> 'cancelled' AND end_time > ?"
+        );
+        $upcoming->execute([$id, $now]);
+        if ((int)$upcoming->fetchColumn() > 0) {
+            http_response_code(409);
+            echo json_encode(['message' => 'This space still has an upcoming booking. Cancel those bookings or wait until they end before deleting it.']);
+            return;
+        }
         $this->db->prepare("DELETE FROM sub_courts WHERE id=?")->execute([$id]);
         echo json_encode(['message' => 'Deleted']);
     }

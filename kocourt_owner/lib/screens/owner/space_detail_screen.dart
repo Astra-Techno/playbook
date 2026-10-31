@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import 'space_fields.dart';
+import 'space_form_screen.dart';
+import 'venue_listing.dart';
 import 'pricing_screen.dart';
 import 'manage_plans_screen.dart';
 import 'block_slots_screen.dart';
@@ -17,6 +21,8 @@ class SpaceDetailScreen extends StatefulWidget {
 class _SpaceDetailScreenState extends State<SpaceDetailScreen> {
   Map<String, dynamic>? _space;
   bool _loading = true;
+  bool _canManage = false;
+  String? _error;
 
   @override
   void initState() {
@@ -25,17 +31,52 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen> {
   }
 
   Future<void> _load() async {
+    String? error;
+    Map<String, dynamic>? space;
+    var canManage = false;
     try {
-      final res = await Api().get('/sub-courts/${widget.spaceId}');
-      if (mounted) {
-        setState(() {
-          _space = Map<String, dynamic>.from(res.data['sub_court'] ?? res.data);
-          _loading = false;
-        });
+      final courtRes = await Api().get('/courts/${widget.courtId}');
+      final rawCourt = courtRes.data['court'];
+      if (rawCourt is Map) {
+        if (!mounted) return;
+        canManage = venueOwnedBy(
+          Map<String, dynamic>.from(rawCourt),
+          context.read<AuthProvider>().userId,
+        );
       }
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      canManage = false;
     }
+    try {
+      final res = await Api().get('/sub-courts/${widget.spaceId}');
+      space = spaceRecord(res.data);
+      if (space == null) error = 'Space not found.';
+    } catch (caught) {
+      error = Api.failureMessage(caught, fallback: 'Could not load this space.');
+    }
+    if (!mounted) return;
+    setState(() {
+      _space = space;
+      _canManage = canManage;
+      _error = error;
+      _loading = false;
+    });
+  }
+
+  Future<void> _edit() async {
+    final space = _space;
+    if (space == null) return;
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SpaceFormScreen(
+          courtId: widget.courtId,
+          spaceId: widget.spaceId,
+          initial: space,
+        ),
+      ),
+    );
+    if (saved == true) _load();
   }
 
   @override
@@ -49,7 +90,22 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen> {
     if (_space == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Space')),
-        body: const Center(child: Text('Space not found')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_error ?? 'Space not found.', textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                TextButton(onPressed: () {
+                  setState(() => _loading = true);
+                  _load();
+                }, child: const Text('Try again')),
+              ],
+            ),
+          ),
+        ),
       );
     }
 
@@ -65,6 +121,10 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen> {
             expandedHeight: 200,
             pinned: true,
             backgroundColor: AppColors.textPrimary,
+            actions: [
+              if (_canManage)
+                IconButton(onPressed: _edit, icon: const Icon(Icons.edit_outlined)),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(
                 fit: StackFit.expand,
@@ -146,6 +206,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen> {
                     ),
                   ),
 
+                  if (_canManage) ...[
                   const SizedBox(height: 20),
 
                   const Text(
@@ -196,6 +257,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen> {
                       ],
                     ),
                   ),
+                  ],
                 ],
               ),
             ),
