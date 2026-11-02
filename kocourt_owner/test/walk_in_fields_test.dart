@@ -21,6 +21,7 @@ void main() {
         'guest_name': 'Asha',
         'guest_phone': '9000000000',
         'type': 'hourly',
+        'collection_method': 'pay_at_venue',
       },
     );
   });
@@ -81,5 +82,29 @@ void main() {
   test('a walk-in shows the guest name', () {
     expect(bookingPerson({'guest_name': 'Asha', 'user_name': ''}), 'Asha');
     expect(bookingPerson({'user_name': 'Ravi'}), 'Ravi');
+  });
+
+  test('a walk-in records how the price is taken', () {
+    final body = walkInBody(
+      courtId: 4,
+      date: '2026-11-02',
+      startHour: 10,
+      guestName: 'Asha',
+      collectionMethod: 'cash',
+    );
+    expect(body['collection_method'], 'cash');
+    expect(collectionLabel('pay_at_venue'), 'Pay at venue');
+    expect(collectionLabel('external_upi'), 'External UPI');
+    expect(collectionLabel(null), isNull);
+    expect(
+      () => walkInBody(
+        courtId: 4,
+        date: '2026-11-02',
+        startHour: 10,
+        guestName: 'Asha',
+        collectionMethod: 'card',
+      ),
+      throwsA(isA<WalkInFieldError>()),
+    );
   });
 }

@@ -285,19 +285,63 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
     require_once __DIR__ . '/src/Controllers/CourtController.php';
     $courtController = new CourtController();
 
+    // GET /courts/occupancy
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'occupancy') {
+        require_once __DIR__ . '/src/Controllers/CalendarController.php';
+        Auth::require();
+        (new CalendarController())->occupancy();
+        exit();
+    }
+
     // GET /courts/:id/calendar
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1]) && isset($seg[2]) && $seg[2] === 'calendar') {
         require_once __DIR__ . '/src/Controllers/CalendarController.php';
         (new CalendarController())->day((int)$seg[1]);
         exit();
     }
+    // GET /courts/:id/customers
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1]) && isset($seg[2]) && $seg[2] === 'customers') {
+        require_once __DIR__ . '/src/Controllers/CustomerDirectoryController.php';
+        (new CustomerDirectoryController())->index((int)$seg[1]);
+        exit();
+    }
+    // GET /courts/:id/coaching
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1]) && isset($seg[2]) && $seg[2] === 'coaching') {
+        require_once __DIR__ . '/src/Controllers/CoachingController.php';
+        (new CoachingController())->index((int)$seg[1]);
+        exit();
+    }
+    // POST /courts/:id/coaching
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && is_numeric($seg[1]) && isset($seg[2]) && $seg[2] === 'coaching' && !isset($seg[3])) {
+        require_once __DIR__ . '/src/Controllers/CoachingController.php';
+        (new CoachingController())->create((int)$seg[1]);
+        exit();
+    }
+    // GET /courts/:id/equipment
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1]) && isset($seg[2]) && $seg[2] === 'equipment') {
+        require_once __DIR__ . '/src/Controllers/EquipmentController.php';
+        (new EquipmentController())->index((int)$seg[1]);
+        exit();
+    }
+    // POST /courts/:id/equipment
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && is_numeric($seg[1]) && isset($seg[2]) && $seg[2] === 'equipment' && !isset($seg[3])) {
+        require_once __DIR__ . '/src/Controllers/EquipmentController.php';
+        (new EquipmentController())->create((int)$seg[1]);
+        exit();
+    }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1]) && isset($seg[2]) && $seg[2] === 'report') {
+        require_once __DIR__ . '/src/Controllers/VenueReportController.php';
+        (new VenueReportController())->show((int)$seg[1]);
+        exit();
+    }
     // GET /courts/:id/regulars
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1]) && isset($seg[2]) && $seg[2] === 'regulars') {
+        require_once __DIR__ . '/src/CustomerDirectory.php';
         $court_id    = (int)$seg[1];
         $exclude_uid = (int)($_GET['exclude_user'] ?? 0);
         $db   = Database::getConnection();
         $stmt = $db->prepare(
-            "SELECT u.id, u.name, u.phone, u.avatar_url, COUNT(b.id) AS booking_count
+            "SELECT u.id, u.name, u.avatar_url, COUNT(b.id) AS booking_count
              FROM bookings b
              JOIN users u ON u.id = b.user_id
              WHERE b.court_id = ? AND b.status = 'confirmed'
@@ -308,7 +352,8 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
              LIMIT 12"
         );
         $stmt->execute([$court_id, $exclude_uid]);
-        echo json_encode(['players' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        $players = array_map([CustomerDirectory::class, 'regular'], $stmt->fetchAll(PDO::FETCH_ASSOC));
+        echo json_encode(['players' => $players]);
         exit();
     }
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1]) && !isset($seg[2])) { $courtController->show((int)$seg[1]); exit(); }
@@ -412,6 +457,83 @@ if (isset($seg[0]) && $seg[0] === 'notifications' && $_SERVER['REQUEST_METHOD'] 
     exit();
 }
 
+// Tournament drafts. Court time is still a blocked slot, added separately.
+if (isset($seg[0]) && $seg[0] === 'tournaments' && !isset($seg[1])) {
+    require_once __DIR__ . '/src/Controllers/TournamentController.php';
+    $tournamentController = new TournamentController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::require(); $tournamentController->index(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $tournamentController->create(); exit(); }
+}
+if (isset($seg[0]) && $seg[0] === 'tournaments' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'categories' && !isset($seg[3])) {
+    require_once __DIR__ . '/src/Controllers/TournamentController.php';
+    $tournamentController = new TournamentController();
+    $tournamentId = (int)$seg[1];
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::require(); $tournamentController->categories($tournamentId); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $tournamentController->addCategory($tournamentId); exit(); }
+}
+if (isset($seg[0]) && $seg[0] === 'tournaments' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'publish' && !isset($seg[3])) {
+    require_once __DIR__ . '/src/Controllers/TournamentController.php';
+    $tournamentController = new TournamentController();
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $tournamentController->publish((int)$seg[1]); exit(); }
+}
+if (isset($seg[0]) && $seg[0] === 'tournaments' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'unpublish' && !isset($seg[3])) {
+    require_once __DIR__ . '/src/Controllers/TournamentController.php';
+    $tournamentController = new TournamentController();
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $tournamentController->unpublish((int)$seg[1]); exit(); }
+}
+if (isset($seg[0]) && $seg[0] === 'tournaments' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'check-in' && !isset($seg[3])) {
+    require_once __DIR__ . '/src/Controllers/TournamentController.php';
+    $tournamentController = new TournamentController();
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $tournamentController->checkInByCode((int)$seg[1]); exit(); }
+}
+if (isset($seg[0]) && $seg[0] === 'tournaments' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'export' && !isset($seg[3])) {
+    require_once __DIR__ . '/src/Controllers/TournamentController.php';
+    $tournamentController = new TournamentController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::require(); $tournamentController->export((int)$seg[1]); exit(); }
+}
+if (isset($seg[0]) && $seg[0] === 'tournaments' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'announcements' && !isset($seg[3])) {
+    require_once __DIR__ . '/src/Controllers/TournamentController.php';
+    $tournamentController = new TournamentController();
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::require(); $tournamentController->announcements((int)$seg[1]); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $tournamentController->announce((int)$seg[1]); exit(); }
+}
+if (isset($seg[0]) && $seg[0] === 'tournaments' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'categories' && isset($seg[3]) && is_numeric($seg[3]) && ($seg[4] ?? '') === 'bracket' && !isset($seg[5])) {
+    require_once __DIR__ . '/src/Controllers/TournamentController.php';
+    $tournamentController = new TournamentController();
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $tournamentController->buildBracket((int)$seg[1], (int)$seg[3]); exit(); }
+}
+if (isset($seg[0]) && $seg[0] === 'tournaments' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'categories' && isset($seg[3]) && is_numeric($seg[3]) && ($seg[4] ?? '') === 'matches' && !isset($seg[5])) {
+    require_once __DIR__ . '/src/Controllers/TournamentController.php';
+    $tournamentController = new TournamentController();
+    $tournamentId = (int)$seg[1];
+    $categoryId = (int)$seg[3];
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::require(); $tournamentController->matches($tournamentId, $categoryId); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $tournamentController->addMatch($tournamentId, $categoryId); exit(); }
+}
+if (isset($seg[0]) && $seg[0] === 'tournaments' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'categories' && isset($seg[3]) && is_numeric($seg[3]) && ($seg[4] ?? '') === 'matches' && isset($seg[5]) && is_numeric($seg[5]) && ($seg[6] ?? '') === 'result' && !isset($seg[7])) {
+    require_once __DIR__ . '/src/Controllers/TournamentController.php';
+    $tournamentController = new TournamentController();
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $tournamentController->recordResult((int)$seg[1], (int)$seg[3], (int)$seg[5]); exit(); }
+}
+if (isset($seg[0]) && $seg[0] === 'tournaments' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'categories' && isset($seg[3]) && is_numeric($seg[3]) && ($seg[4] ?? '') === 'registrations' && !isset($seg[5])) {
+    require_once __DIR__ . '/src/Controllers/TournamentController.php';
+    $tournamentController = new TournamentController();
+    $tournamentId = (int)$seg[1];
+    $categoryId = (int)$seg[3];
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::require(); $tournamentController->registrations($tournamentId, $categoryId); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $tournamentController->register($tournamentId, $categoryId); exit(); }
+}
+if (isset($seg[0]) && $seg[0] === 'tournaments' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'categories' && isset($seg[3]) && is_numeric($seg[3]) && ($seg[4] ?? '') === 'registrations' && isset($seg[5]) && is_numeric($seg[5]) && ($seg[6] ?? '') === 'check-in' && !isset($seg[7])) {
+    require_once __DIR__ . '/src/Controllers/TournamentController.php';
+    $tournamentController = new TournamentController();
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $tournamentController->checkIn((int)$seg[1], (int)$seg[3], (int)$seg[5]); exit(); }
+}
+if (isset($seg[0]) && $seg[0] === 'tournaments' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'categories' && isset($seg[3]) && is_numeric($seg[3]) && ($seg[4] ?? '') === 'registrations' && isset($seg[5]) && is_numeric($seg[5]) && in_array(($seg[6] ?? ''), ['approve', 'reject'], true) && !isset($seg[7])) {
+    require_once __DIR__ . '/src/Controllers/TournamentController.php';
+    $tournamentController = new TournamentController();
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $tournamentController->review((int)$seg[1], (int)$seg[3], (int)$seg[5], (string)$seg[6]); exit(); }
+}
+
 // Booking Routes
 if (isset($seg[0]) && $seg[0] === 'bookings') {
     require_once __DIR__ . '/src/Controllers/BookingController.php';
@@ -431,6 +553,9 @@ if (isset($seg[0]) && $seg[0] === 'bookings') {
     }
     if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && is_numeric($seg[1])) {
         Auth::require(); $bookingController->reschedule((int)$seg[1]); exit();
+    }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'attendance') {
+        Auth::require(); $bookingController->attendance((int)$seg[1]); exit();
     }
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::require(); $bookingController->index(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $bookingController->create(); exit(); }
@@ -635,12 +760,41 @@ if (isset($seg[0]) && $seg[0] === 'analytics') {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::requireOwner(); $anc->index(); exit(); }
 }
 
+// Coaching class routes
+if (isset($seg[0]) && $seg[0] === 'coaching-sessions' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'cancel' && !isset($seg[3])) {
+    require_once __DIR__ . '/src/Controllers/CoachingController.php';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); (new CoachingController())->cancel((int)$seg[1]); exit(); }
+}
+if (isset($seg[0]) && $seg[0] === 'coaching-sessions' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'enrollments' && !isset($seg[3])) {
+    require_once __DIR__ . '/src/Controllers/CoachingController.php';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); (new CoachingController())->enroll((int)$seg[1]); exit(); }
+}
+if (isset($seg[0]) && $seg[0] === 'coaching-sessions' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'enrollments' && isset($seg[3]) && is_numeric($seg[3]) && ($seg[4] ?? '') === 'attendance' && !isset($seg[5])) {
+    require_once __DIR__ . '/src/Controllers/CoachingController.php';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); (new CoachingController())->mark((int)$seg[1], (int)$seg[3]); exit(); }
+}
+
+// Equipment rental routes. These do not create a booking or a payment.
+if (isset($seg[0]) && $seg[0] === 'equipment' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'rentals' && !isset($seg[3])) {
+    require_once __DIR__ . '/src/Controllers/EquipmentController.php';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); (new EquipmentController())->lend((int)$seg[1]); exit(); }
+}
+if (isset($seg[0]) && $seg[0] === 'equipment-rentals' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'return' && !isset($seg[3])) {
+    require_once __DIR__ . '/src/Controllers/EquipmentController.php';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); (new EquipmentController())->giveBack((int)$seg[1]); exit(); }
+}
+
 // Court Staff Routes
 if (isset($seg[0]) && $seg[0] === 'court-staff') {
     require_once __DIR__ . '/src/Controllers/StaffController.php';
     $sc = new StaffController();
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'my-courts') { Auth::require(); $sc->myCourts(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'GET')                                               { Auth::requireOwner(); $sc->list();              exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && is_numeric($seg[1]) && isset($seg[2]) && $seg[2] === 'role') {
+        Auth::requireOwner();
+        $sc->setRole((int)$seg[1]);
+        exit();
+    }
     if ($_SERVER['REQUEST_METHOD'] === 'POST')                                              { Auth::requireOwner(); $sc->add();               exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1]))                          { Auth::requireOwner(); $sc->remove((int)$seg[1]); exit(); }
 }
@@ -878,11 +1032,12 @@ if (isset($seg[0]) && $seg[0] === 'tag-search' && $_SERVER['REQUEST_METHOD'] ===
 
 // ── Court Regulars  GET /courts/:id/regulars?exclude_user=X ──────────────────
 if (isset($seg[0]) && $seg[0] === 'courts' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'regulars' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_once __DIR__ . '/src/CustomerDirectory.php';
     $court_id    = (int)$seg[1];
     $exclude_uid = (int)($_GET['exclude_user'] ?? 0);
     $db   = Database::getConnection();
     $stmt = $db->prepare(
-        "SELECT u.id, u.name, u.phone, u.avatar_url, COUNT(b.id) AS booking_count
+        "SELECT u.id, u.name, u.avatar_url, COUNT(b.id) AS booking_count
          FROM bookings b
          JOIN users u ON u.id = b.user_id
          WHERE b.court_id = ? AND b.status = 'confirmed'
@@ -893,7 +1048,8 @@ if (isset($seg[0]) && $seg[0] === 'courts' && isset($seg[1]) && isset($seg[2]) &
          LIMIT 12"
     );
     $stmt->execute([$court_id, $exclude_uid]);
-    echo json_encode(['players' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    $players = array_map([CustomerDirectory::class, 'regular'], $stmt->fetchAll(PDO::FETCH_ASSOC));
+    echo json_encode(['players' => $players]);
     exit();
 }
 

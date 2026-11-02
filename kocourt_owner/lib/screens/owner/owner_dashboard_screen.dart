@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import 'package:intl/intl.dart';
 import 'venue_access.dart';
 import 'venue_detail_screen.dart';
 import 'edit_venue_screen.dart';
+import 'earnings_figures.dart';
+import 'occupancy_figures.dart';
 import '../../widgets/sheets/claim_venue_sheet.dart';
 
 class OwnerDashboardScreen extends StatefulWidget {
@@ -21,6 +24,10 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   bool _loading = true;
   String? _ownedError;
   String? _staffError;
+  DayCollected? _collected;
+  String? _collectedError;
+  Map<int, TodayOccupancy> _occupancy = {};
+  String? _occupancyError;
 
   List<VenueListing> get _listings => mergeVenueListings(owned: _owned, assigned: _assigned);
 
@@ -67,14 +74,70 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       if (mounted) _ghostPlaces = venues.ghostPlaces;
     } catch (_) {}
 
+    DayCollected? collected;
+    String? collectedError;
+    final showCollections = owned != null && owned.isNotEmpty;
+    if (showCollections && auth.userId != null) {
+      try {
+        final res = await Api().get('/earnings', params: {'owner_id': auth.userId});
+        final raw = res.data is Map ? res.data['summary'] : null;
+        if (raw is! Map) {
+          throw const FormatException('Collections response was incomplete.');
+        }
+        collected = dayCollected(Map<String, dynamic>.from(raw));
+        if (collected == null) {
+          throw const FormatException('Collections response was incomplete.');
+        }
+      } catch (error) {
+        collectedError = error is FormatException
+            ? error.message
+            : Api.failureMessage(error, fallback: 'Couldn’t load today’s collections.');
+      }
+    }
+
+    Map<int, TodayOccupancy>? occupancy;
+    String? occupancyError;
+    final hasVenue = (owned != null ? owned.isNotEmpty : _owned.isNotEmpty) ||
+        (assigned != null ? assigned.isNotEmpty : _assigned.isNotEmpty);
+    if (hasVenue && auth.userId != null) {
+      try {
+        final res = await Api().get('/courts/occupancy');
+        occupancy = occupancyByVenue(res.data);
+      } catch (error) {
+        occupancyError = Api.failureMessage(error, fallback: 'Couldn’t load today’s bookings.');
+      }
+    }
+
     if (!mounted) return;
     setState(() {
       if (owned != null) _owned = owned;
       if (assigned != null) _assigned = assigned;
       _ownedError = ownedError;
       _staffError = staffError;
+      if (showCollections && collected != null) {
+        _collected = collected;
+        _collectedError = null;
+      } else if (showCollections) {
+        _collectedError = collectedError;
+      } else if (owned != null) {
+        _collected = null;
+        _collectedError = null;
+      }
+      if (hasVenue && occupancy != null) {
+        _occupancy = occupancy;
+        _occupancyError = null;
+      } else if (hasVenue) {
+        _occupancyError = occupancyError;
+      } else if (owned != null && assigned != null) {
+        _occupancy = {};
+        _occupancyError = null;
+      }
       _loading = false;
     });
+  }
+
+  String _formatCurrency(double value) {
+    return NumberFormat.currency(locale: 'en_IN', symbol: '\u20B9', decimalDigits: 0).format(value);
   }
 
   @override
@@ -160,6 +223,21 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
         ],
         if (listings.isNotEmpty) ...[
           _portfolioHero(owned.length, assigned.length),
+          if (_collected != null || _collectedError != null) ...[
+            const SizedBox(height: 12),
+            _collectionsCard(),
+          ],
+          if (_occupancyError != null) ...[
+            const SizedBox(height: 12),
+            Text(_occupancyError!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
+          ],
+          if (_occupancy.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'Booked time counts confirmed bookings inside today’s open hours. Each space adds its own open hours. Closures stay on the calendar.',
+              style: TextStyle(fontSize: 12, height: 1.35, color: AppColors.textMuted),
+            ),
+          ],
           const SizedBox(height: 18),
         ],
         if (owned.isNotEmpty) ...[
@@ -297,6 +375,53 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     );
   }
 
+  Widget _collectionsCard() {
+    final collected = _collected;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF8F7),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_collectedError != null) ...[
+            Text(_collectedError!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
+            const SizedBox(height: 8),
+          ],
+          if (collected != null) ...[
+            Row(
+              children: [
+                Expanded(child: _collectionFigure('Collected today', collected.today)),
+                const SizedBox(width: 12),
+                Expanded(child: _collectionFigure('This week', collected.thisWeek)),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
+          const Text(
+            'Collected is paid and demo payments for venues you own, after successful refunds. Booking prices stay on each venue.',
+            style: TextStyle(fontSize: 12, height: 1.35, color: AppColors.textMuted),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _collectionFigure(String label, double amount) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textMuted)),
+        const SizedBox(height: 4),
+        Text(_formatCurrency(amount), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+      ],
+    );
+  }
+
   Widget _venueCard(VenueListing venue) {
     final c = venue.court;
     final img = getVenueImage(c);
@@ -327,6 +452,13 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                   Text(venue.accessLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primary)),
                   const SizedBox(height: 2),
                   Text(c['location'] ?? '', style: TextStyle(fontSize: 12, color: Colors.grey[500]), overflow: TextOverflow.ellipsis),
+                  if (courtId != null && _occupancy[courtId] != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      occupancyLine(_occupancy[courtId]!),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                    ),
+                  ],
                 ],
               ),
             ),

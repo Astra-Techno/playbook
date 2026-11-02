@@ -4,6 +4,7 @@ import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:intl/intl.dart';
 import '../../widgets/tab_phase.dart';
 import '../../widgets/tab_status.dart';
+import 'earnings_figures.dart';
 
 class OwnerEarningsScreen extends StatefulWidget {
   const OwnerEarningsScreen({super.key});
@@ -15,6 +16,7 @@ class OwnerEarningsScreen extends StatefulWidget {
 class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
   Map<String, dynamic>? _summary;
   List<Map<String, dynamic>> _transactions = [];
+  List<Map<String, dynamic>> _payouts = [];
   bool _loading = true;
   String? _error;
 
@@ -32,6 +34,7 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
     String? error;
     Map<String, dynamic>? summary;
     List<Map<String, dynamic>>? transactions;
+    List<Map<String, dynamic>>? payouts;
     try {
       final res = await Api().get('/earnings', params: {'owner_id': auth.userId});
       final data = Map<String, dynamic>.from(res.data as Map);
@@ -43,6 +46,7 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
       transactions = List<Map<String, dynamic>>.from(
         (data['transactions'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
+      payouts = payoutRows(data['payouts']);
     } catch (caught) {
       error = caught is FormatException
           ? caught.message
@@ -53,6 +57,7 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
       if (summary != null) {
         _summary = summary;
         _transactions = transactions ?? [];
+        _payouts = payouts ?? [];
       }
       _error = error;
       _loading = false;
@@ -107,23 +112,43 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
                 ),
               )
             else if (summary != null) ...[
+              const Text(
+                'Collected is paid and demo payments for venues you own, after successful refunds. Paid out is a separate transfer record. Walk-in prices are not in this list.',
+                style: TextStyle(fontSize: 13, height: 1.4, color: AppColors.textMuted),
+              ),
+              const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: _statCard('Total Earned', _formatCurrency(summary['total_earned']), AppColors.primary, Icons.account_balance_wallet_outlined)),
+                  Expanded(child: _statCard('Collected', _formatCurrency(moneySplit(summary)?.collected), AppColors.primary, Icons.account_balance_wallet_outlined)),
                   const SizedBox(width: 12),
-                  Expanded(child: _statCard('This Month', _formatCurrency(summary['this_month']), AppColors.secondary, Icons.calendar_today_outlined)),
+                  Expanded(child: _statCard('Today', _formatCurrency(summary['today']), AppColors.secondary, Icons.calendar_today_outlined)),
                 ],
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: _statCard('This Week', _formatCurrency(summary['this_week']), Colors.blue, Icons.trending_up)),
+                  Expanded(child: _statCard('This week', _formatCurrency(summary['this_week']), Colors.blue, Icons.trending_up)),
                   const SizedBox(width: 12),
-                  Expanded(child: _statCard('Pending', _formatCurrency(summary['pending_payout']), Colors.orange, Icons.hourglass_empty)),
+                  Expanded(child: _statCard('This month', _formatCurrency(summary['this_month']), Colors.teal, Icons.calendar_month_outlined)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: _statCard('Paid out', _formatCurrency(moneySplit(summary)?.paidOut), Colors.orange, Icons.payments_outlined)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _statCard('Not yet paid out', _formatCurrency(moneySplit(summary)?.notYetPaidOut), AppColors.textPrimary, Icons.hourglass_empty)),
                 ],
               ),
               const SizedBox(height: 24),
-              const Text('Recent Transactions', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              const Text('Payouts', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 12),
+              if (_payouts.isEmpty)
+                Text('No payout has been recorded.', style: TextStyle(color: AppColors.textMuted))
+              else
+                ..._payouts.map(_payoutTile),
+              const SizedBox(height: 24),
+              const Text('Payments', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
               if (_transactions.isEmpty)
                 Container(
@@ -173,6 +198,30 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
           Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
           const SizedBox(height: 4),
           Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textMuted)),
+        ],
+      ),
+    );
+  }
+
+  Widget _payoutTile(Map<String, dynamic> payout) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+      child: Row(
+        children: [
+          const Icon(Icons.payments_outlined, size: 18, color: Colors.orange),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${payout['note'] ?? 'Payout'}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text('${payout['paid_at'] ?? ''}', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+              ],
+            ),
+          ),
+          Text(_formatCurrency(payout['amount']), style: const TextStyle(fontWeight: FontWeight.w800)),
         ],
       ),
     );

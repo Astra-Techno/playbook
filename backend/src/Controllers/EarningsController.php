@@ -1,6 +1,8 @@
 <?php
 
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../SettlementMath.php';
+require_once __DIR__ . '/../BookingExportQuery.php';
 
 class EarningsController {
 
@@ -24,17 +26,19 @@ class EarningsController {
         // ── Aggregate helpers ──────────────────────────────────────────────────
         $weekStart  = date('Y-m-d', strtotime('monday this week'));
         $monthStart = date('Y-m-01');
+        $today      = date('Y-m-d');
 
         $totalEarned  = $this->sumEarnings($db, $owner_id, null, null);
         $thisWeek     = $this->sumEarnings($db, $owner_id, $weekStart, null);
         $thisMonth    = $this->sumEarnings($db, $owner_id, $monthStart, null);
+        $todayEarned  = $this->sumEarnings($db, $owner_id, $today, null);
 
         // Total paid out
         $stmt = $db->prepare("SELECT COALESCE(SUM(amount),0) FROM payouts WHERE owner_id = ?");
         $stmt->execute([$owner_id]);
         $totalPaidOut = (float)$stmt->fetchColumn();
 
-        $pending = max(0, $totalEarned - $totalPaidOut);
+        $notYetPaidOut = SettlementMath::notYetPaidOut($totalEarned, $totalPaidOut);
 
         // ── Recent transactions (last 30) ──────────────────────────────────────
         $transactions = $this->getTransactions($db, $owner_id, 30);
@@ -49,11 +53,13 @@ class EarningsController {
         http_response_code(200);
         echo json_encode([
             'summary' => [
-                'total_earned'  => $totalEarned,
-                'this_week'     => $thisWeek,
-                'this_month'    => $thisMonth,
-                'total_paid_out'=> $totalPaidOut,
-                'pending_payout'=> $pending,
+                'total_earned'     => $totalEarned,
+                'today'            => $todayEarned,
+                'this_week'        => $thisWeek,
+                'this_month'       => $thisMonth,
+                'total_paid_out'   => $totalPaidOut,
+                'not_yet_paid_out' => $notYetPaidOut,
+                'pending_payout'   => $notYetPaidOut,
             ],
             'transactions' => $transactions,
             'payouts'      => $payouts,
@@ -303,12 +309,17 @@ class EarningsController {
     public function export(): void {
         $authUser = Auth::require();
         $court_id = (int)($_GET['court_id'] ?? 0);
-        $from     = $_GET['from'] ?? null;
-        $to       = $_GET['to']   ?? null;
+        $from     = BookingExportQuery::day($_GET['from'] ?? null);
+        $to       = BookingExportQuery::day($_GET['to'] ?? null);
 
         if (!$court_id) {
             http_response_code(400);
             echo json_encode(['message' => 'court_id required']);
+            return;
+        }
+        if ($from === false || $to === false || ($from && $to && $from > $to)) {
+            http_response_code(400);
+            echo json_encode(['message' => 'from and to must be YYYY-MM-DD, with from on or before to']);
             return;
         }
 

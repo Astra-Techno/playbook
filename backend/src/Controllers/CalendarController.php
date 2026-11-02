@@ -140,4 +140,69 @@ class CalendarController
             'blocked_slots' => $blStmt->fetchAll(PDO::FETCH_ASSOC),
         ]);
     }
+
+    // GET /courts/occupancy?date=YYYY-MM-DD
+    public function occupancy(): void
+    {
+        require_once __DIR__ . '/../OccupancyMath.php';
+        $authUser = Auth::require();
+        $userId = (int)$authUser['id'];
+        $date = $_GET['date'] ?? (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            http_response_code(400);
+            echo json_encode(['message' => 'date must be YYYY-MM-DD']);
+            return;
+        }
+
+        $courts = $this->db->prepare("
+            SELECT c.id, c.open_time, c.close_time,
+                   (SELECT COUNT(*) FROM sub_courts sc WHERE sc.court_id = c.id) AS space_count
+            FROM courts c
+            WHERE c.owner_id = ?
+               OR c.id IN (SELECT court_id FROM court_staff WHERE user_id = ?)
+            ORDER BY c.id
+        ");
+        $courts->execute([$userId, $userId]);
+        $rows = $courts->fetchAll(PDO::FETCH_ASSOC);
+        if (!$rows) {
+            echo json_encode(['date' => $date, 'venues' => []]);
+            return;
+        }
+
+        $ids = array_map(static fn($row) => (int)$row['id'], $rows);
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $from = $date . ' 00:00:00';
+        $until = date('Y-m-d', strtotime($date . ' +2 days')) . ' 00:00:00';
+        $bookings = $this->db->prepare("
+            SELECT court_id, sub_court_id, start_time, end_time, status
+            FROM bookings
+            WHERE court_id IN ($placeholders)
+              AND status = 'confirmed'
+              AND end_time > ?
+              AND start_time < ?
+        ");
+        $bookings->execute([...$ids, $from, $until]);
+        $byCourt = [];
+        foreach ($bookings->fetchAll(PDO::FETCH_ASSOC) as $booking) {
+            $byCourt[(int)$booking['court_id']][] = [
+                'start' => $booking['start_time'],
+                'end' => $booking['end_time'],
+                'status' => $booking['status'],
+                'sub_court_id' => $booking['sub_court_id'],
+            ];
+        }
+
+        $venues = [];
+        foreach ($rows as $court) {
+            $summary = OccupancyMath::summarize(
+                $date,
+                (string)($court['open_time'] ?: '06:00:00'),
+                (string)($court['close_time'] ?: '22:00:00'),
+                (int)$court['space_count'],
+                $byCourt[(int)$court['id']] ?? []
+            );
+            $venues[] = ['court_id' => (int)$court['id']] + $summary;
+        }
+        echo json_encode(['date' => $date, 'venues' => $venues]);
+    }
 }

@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/CommerceSettings.php';
 require_once __DIR__ . '/CashfreeRefundGateway.php';
+require_once __DIR__ . '/RefundWebhookPlan.php';
 
 /** Durable refund outbox. No network calls are made while reserving money. */
 final class RefundService {
@@ -79,7 +80,7 @@ final class RefundService {
             if ($check['code'] === 200) return $this->provider($r,$token,$check['data']);
             if ($check['code'] !== 404) return $this->defer($r,$token,$policy,'lookup_unavailable');
             // A previously observed refund is never created again, even after a stale 404.
-            if ($reconcileOnly || $r['provider_status'] || $r['cf_refund_id']) return $this->defer($r,$token,$policy,'provider_not_found');
+            if (!RefundWebhookPlan::mayCreateProviderRefund($reconcileOnly, $r['provider_status'] ?: null, $r['cf_refund_id'] ?: null)) return $this->defer($r,$token,$policy,'provider_not_found');
             if ($r['status'] === 'failed') return $this->finish($r,$token,'failed','provider_terminal');
             if (!$approved && (int)$r['amount_paise'] > (int)round($policy['refund.auto_limit_inr']*100)) return $this->finish($r,$token,'manual_review','approval_required');
             if ((int)$r['attempts'] >= (int)$policy['refund.max_attempts']) return $this->finish($r,$token,'manual_review','retry_limit');

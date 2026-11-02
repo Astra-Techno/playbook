@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../StaffAccess.php';
+
 class StaffController
 {
     private PDO $db;
@@ -65,11 +67,17 @@ class StaffController
         $data     = json_decode(file_get_contents('php://input'));
         $court_id = (int)($data->court_id ?? 0);
         $phone    = trim($data->phone    ?? '');
-        $role     = in_array($data->role ?? '', ['manager','viewer']) ? $data->role : 'manager';
+        $rawRole  = trim((string)($data->role ?? ''));
+        $role     = $rawRole === '' ? StaffAccess::MANAGER : StaffAccess::role($rawRole);
 
         if (!$court_id || !$phone) {
             http_response_code(400);
             echo json_encode(['message' => 'court_id and phone required']);
+            return;
+        }
+        if ($role === null) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Role must be manager or viewer']);
             return;
         }
 
@@ -123,6 +131,33 @@ class StaffController
                 echo json_encode(['message' => 'Failed to add staff']);
             }
         }
+    }
+
+    // POST /court-staff/:id/role  { role }
+    public function setRole(int $id): void
+    {
+        $authUser = Auth::require();
+        $owner_id = (int)$authUser['id'];
+        $data = json_decode(file_get_contents('php://input'));
+        $role = StaffAccess::role($data->role ?? null);
+        if ($role === null) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Role must be manager or viewer']);
+            return;
+        }
+        $chk = $this->db->prepare("
+            SELECT cs.id FROM court_staff cs
+            JOIN courts c ON c.id = cs.court_id
+            WHERE cs.id = ? AND c.owner_id = ?
+        ");
+        $chk->execute([$id, $owner_id]);
+        if (!$chk->fetch()) {
+            http_response_code(403);
+            echo json_encode(['message' => 'Forbidden']);
+            return;
+        }
+        $this->db->prepare('UPDATE court_staff SET role = ? WHERE id = ?')->execute([$role, $id]);
+        echo json_encode(['message' => 'Role updated', 'role' => $role]);
     }
 
     // DELETE /court-staff/:id

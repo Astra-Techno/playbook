@@ -17,6 +17,7 @@ Map<String, dynamic> walkInBody({
   String guestPhone = '',
   int? spaceId,
   bool spaceRequired = false,
+  String collectionMethod = 'pay_at_venue',
 }) {
   final name = guestName.trim();
   final parts = date.split('-');
@@ -29,6 +30,9 @@ Map<String, dynamic> walkInBody({
   if (spaceRequired && (spaceId == null || spaceId <= 0)) {
     throw const WalkInFieldError('Choose a space.');
   }
+  if (!walkInCollectionMethods.contains(collectionMethod)) {
+    throw const WalkInFieldError('Choose how this price will be taken.');
+  }
   final window = hourWindow(date, startHour);
   return {
     'court_id': courtId,
@@ -38,7 +42,23 @@ Map<String, dynamic> walkInBody({
     'guest_name': name,
     'guest_phone': guestPhone.trim(),
     'type': 'hourly',
+    'collection_method': collectionMethod,
   };
+}
+
+const walkInCollectionMethods = ['pay_at_venue', 'cash', 'external_upi'];
+
+String? collectionLabel(dynamic raw) {
+  switch ('$raw') {
+    case 'pay_at_venue':
+      return 'Pay at venue';
+    case 'cash':
+      return 'Cash';
+    case 'external_upi':
+      return 'External UPI';
+    default:
+      return null;
+  }
 }
 
 Map<String, String> rescheduleBody({required String date, required int startHour}) {

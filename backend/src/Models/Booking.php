@@ -22,6 +22,7 @@ class Booking {
     public $notes;
     public $commerce_snapshot;
     public $payment_id;
+    public $collection_method;
 
     public function __construct() {
         $this->conn = Database::getConnection();
@@ -34,7 +35,8 @@ class Booking {
                       end_time=:end_time, type=:type, total_price=:total_price,
                       status='confirmed', payment_status='paid',
                       sub_court_id=:sub_court_id, guest_name=:guest_name,
-                      guest_phone=:guest_phone, notes=:notes, commerce_snapshot=:commerce_snapshot, payment_id=:payment_id";
+                      guest_phone=:guest_phone, notes=:notes, commerce_snapshot=:commerce_snapshot, payment_id=:payment_id,
+                      collection_method=:collection_method";
 
         $stmt = $this->conn->prepare($query);
 
@@ -56,6 +58,11 @@ class Booking {
         $snapshotJson = $this->commerce_snapshot ? json_encode($this->commerce_snapshot, JSON_THROW_ON_ERROR) : null;
         $stmt->bindValue(':commerce_snapshot', $snapshotJson);
         $stmt->bindValue(':payment_id', $this->payment_id);
+        if ($this->collection_method === null || $this->collection_method === '') {
+            $stmt->bindValue(':collection_method', null, PDO::PARAM_NULL);
+        } else {
+            $stmt->bindValue(':collection_method', $this->collection_method);
+        }
 
         if ($stmt->execute()) {
             return true;
@@ -104,7 +111,7 @@ class Booking {
      * Checks both confirmed bookings and blocked_slots.
      * If sub_court_id is provided, only checks that sub-court's bookings.
      */
-    public function isSlotAvailable($court_id, $start_time, $end_time, $sub_court_id = null, $ignore_booking_id = null) {
+    public function isSlotAvailable($court_id, $start_time, $end_time, $sub_court_id = null, $ignore_booking_id = null, $ignore_hold_payment_id = 0) {
         $ignoreSql = $ignore_booking_id ? ' AND id <> :ignore_id' : '';
         // Check bookings
         if ($sub_court_id !== null) {
@@ -130,7 +137,7 @@ class Booking {
             $stmt->execute();
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!ScheduleRules::capacityAllows($booking_mode, (int)$row['cnt'], $capacity)) {
+            if (!ScheduleRules::capacityAllows($booking_mode, (int)$row['cnt'] + $this->activeHoldCount($court_id, $start_time, $end_time, $sub_court_id, $ignore_hold_payment_id), $capacity)) {
                 return false;
             }
         } else {
@@ -147,7 +154,7 @@ class Booking {
             }
             $stmt->execute();
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            if (!ScheduleRules::capacityAllows('exclusive', (int)$row['cnt'], 1)) {
+            if (!ScheduleRules::capacityAllows('exclusive', (int)$row['cnt'] + $this->activeHoldCount($court_id, $start_time, $end_time, null, $ignore_hold_payment_id), 1)) {
                 return false;
             }
         }
@@ -177,6 +184,29 @@ class Booking {
             return false;
         }
         return !$this->recurringBlockOverlaps((int)$court_id, $start_time, $end_time, $sub_court_id);
+    }
+
+    private function activeHoldCount($court_id, $start_time, $end_time, $sub_court_id, int $ignorePaymentId): int
+    {
+        $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
+        if ($sub_court_id !== null) {
+            $sql = "SELECT COUNT(*) FROM booking_holds
+                    WHERE court_id = ? AND sub_court_id = ?
+                      AND start_time < ? AND end_time > ?
+                      AND released_at IS NULL AND expires_at > ?
+                      AND (payment_id IS NULL OR payment_id <> ?)";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([$court_id, $sub_court_id, $end_time, $start_time, $now, $ignorePaymentId]);
+        } else {
+            $sql = "SELECT COUNT(*) FROM booking_holds
+                    WHERE court_id = ?
+                      AND start_time < ? AND end_time > ?
+                      AND released_at IS NULL AND expires_at > ?
+                      AND (payment_id IS NULL OR payment_id <> ?)";
+            $stmt = $this->conn->prepare($sql);
+            $stmt->execute([$court_id, $end_time, $start_time, $now, $ignorePaymentId]);
+        }
+        return (int)$stmt->fetchColumn();
     }
 
     /**

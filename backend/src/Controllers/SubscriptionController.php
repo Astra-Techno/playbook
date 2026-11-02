@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../Models/Subscription.php';
 require_once __DIR__ . '/../Models/Plan.php';
+require_once __DIR__ . '/../MembershipDirectory.php';
 
 class SubscriptionController {
 
@@ -45,7 +46,7 @@ class SubscriptionController {
         if ($sub_court_id !== null) {
             $stmt = $db->prepare("
                 SELECT us.id, us.user_id, us.plan_id, us.status, us.start_date, us.end_date,
-                       us.slot_type, u.name AS user_name, u.phone AS user_phone,
+                       us.slot_type, u.name AS user_name,
                        p.name AS plan_name, p.price AS plan_price
                 FROM user_subscriptions us
                 JOIN users u  ON u.id  = us.user_id
@@ -57,7 +58,7 @@ class SubscriptionController {
         } else {
             $stmt = $db->prepare("
                 SELECT us.id, us.user_id, us.plan_id, us.status, us.start_date, us.end_date,
-                       us.slot_type, u.name AS user_name, u.phone AS user_phone,
+                       us.slot_type, u.name AS user_name,
                        p.name AS plan_name, p.price AS plan_price, p.sub_court_id
                 FROM user_subscriptions us
                 JOIN users u  ON u.id  = us.user_id
@@ -68,7 +69,7 @@ class SubscriptionController {
             $stmt->execute([$court_id]);
         }
 
-        $members = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $members = array_map([MembershipDirectory::class, 'row'], $stmt->fetchAll(PDO::FETCH_ASSOC));
         http_response_code(200);
         echo json_encode(['members' => $members, 'count' => count($members)]);
     }

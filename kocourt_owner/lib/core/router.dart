@@ -21,6 +21,8 @@ import '../screens/notifications/notifications_screen.dart';
 import '../screens/admin/admin_screen.dart';
 import '../screens/admin/ledger_screen.dart';
 import '../screens/owner/payout_settings_screen.dart';
+import '../screens/owner/events_screen.dart';
+import '../screens/owner/event_detail_screen.dart';
 
 /// Auth redirects for the owner shell. Public legal pages stay reachable
 /// while signed out. A signed-in non-admin is sent home from `/admin`.
@@ -173,6 +175,13 @@ GoRouter createOwnerRouter(AuthProvider auth) {
       GoRoute(path: '/admin', builder: (context, state) => const AdminScreen()),
       GoRoute(path: '/ledger', builder: (context, state) => const LedgerScreen()),
       GoRoute(path: '/payout-settings', builder: (context, state) => const PayoutSettingsScreen()),
+      GoRoute(path: '/events', builder: (context, state) => const EventsScreen()),
+      GoRoute(
+        path: '/events/:id',
+        builder: (_, state) => EventDetailScreen(
+          tournamentId: int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+        ),
+      ),
     ],
   );
 }

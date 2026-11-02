@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'schedule_fields.dart';
 import 'walk_in_fields.dart';
+import 'attendance_fields.dart';
 
 class BookingDetailScreen extends StatefulWidget {
   final int bookingId;
@@ -41,6 +42,25 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       _error = error;
       _loading = false;
     });
+  }
+
+  Future<void> _mark(String action) async {
+    setState(() => _busy = true);
+    try {
+      final res = await Api().post('/bookings/${widget.bookingId}/attendance', data: {'action': action});
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${res.data['message'] ?? 'Saved.'}')),
+      );
+      await _load();
+    } catch (caught) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(Api.failureMessage(caught, fallback: 'Could not mark this booking.')),
+        backgroundColor: AppColors.error,
+      ));
+    }
+    if (mounted) setState(() => _busy = false);
   }
 
   Future<void> _cancel() async {
@@ -171,6 +191,14 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           const SizedBox(height: 8),
           Text('Status $status'),
           Text('Payment ${booking['payment_status'] ?? ''}'),
+          if (collectionLabel(booking['collection_method']) != null) ...[
+            const SizedBox(height: 8),
+            Text(collectionLabel(booking['collection_method'])!, style: const TextStyle(fontWeight: FontWeight.w700)),
+          ],
+          if (attendanceLabel(booking['attendance']) != null) ...[
+            const SizedBox(height: 8),
+            Text(attendanceLabel(booking['attendance'])!, style: const TextStyle(fontWeight: FontWeight.w700)),
+          ],
           const SizedBox(height: 8),
           Text('₹${booking['total_price'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary, fontSize: 18)),
           if ('${booking['notes'] ?? ''}'.isNotEmpty) ...[
@@ -189,6 +217,12 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               onPressed: _cancel,
               child: const Text('Cancel booking', style: TextStyle(color: AppColors.error)),
             ),
+          ],
+          if (attendanceUnmarked(booking) && !_busy) ...[
+            const SizedBox(height: 8),
+            OutlinedButton(onPressed: () => _mark('check_in'), child: const Text('Check in')),
+            const SizedBox(height: 8),
+            OutlinedButton(onPressed: () => _mark('no_show'), child: const Text('No-show')),
           ],
         ],
       ),

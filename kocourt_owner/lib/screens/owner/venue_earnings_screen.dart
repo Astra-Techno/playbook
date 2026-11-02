@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
+import 'package:dio/dio.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:intl/intl.dart';
+import 'booking_price_export.dart';
 
 class VenueEarningsScreen extends StatefulWidget {
   final int courtId;
@@ -15,6 +17,8 @@ class _VenueEarningsScreenState extends State<VenueEarningsScreen> {
   Map<String, dynamic>? _summary;
   List<Map<String, dynamic>> _transactions = [];
   bool _loading = true;
+  bool _exporting = false;
+  String? _error;
 
   @override
   void initState() {
@@ -23,21 +27,61 @@ class _VenueEarningsScreenState extends State<VenueEarningsScreen> {
   }
 
   Future<void> _load() async {
-    final auth = context.read<AuthProvider>();
+    String? error;
+    Map<String, dynamic>? summary;
+    List<Map<String, dynamic>>? transactions;
     try {
-      final params = <String, dynamic>{'owner_id': auth.userId};
-      if (widget.courtId > 0) params['court_id'] = widget.courtId;
-
-      final res = await Api().get('/earnings', params: params);
-      final data = Map<String, dynamic>.from(res.data);
-      _summary = data['summary'] != null
-          ? Map<String, dynamic>.from(data['summary'])
-          : data;
-      _transactions = List<Map<String, dynamic>>.from(
+      final res = await Api().get('/earnings/venue', params: {'court_id': widget.courtId});
+      final data = Map<String, dynamic>.from(res.data as Map);
+      final raw = data['summary'];
+      if (raw is! Map || !raw.containsKey('total')) {
+        throw const FormatException('Venue booking prices were incomplete.');
+      }
+      summary = Map<String, dynamic>.from(raw);
+      transactions = List<Map<String, dynamic>>.from(
         (data['transactions'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
-    } catch (_) {}
-    if (mounted) setState(() => _loading = false);
+    } catch (caught) {
+      error = caught is FormatException
+          ? caught.message
+          : Api.failureMessage(caught, fallback: 'Could not load booking prices.');
+    }
+    if (!mounted) return;
+    setState(() {
+      if (summary != null) {
+        _summary = summary;
+        _transactions = transactions ?? [];
+      }
+      _error = error;
+      _loading = false;
+    });
+  }
+
+  Future<void> _export() async {
+    final spec = bookingPriceExport(courtId: widget.courtId);
+    if (spec == null || _exporting) return;
+    setState(() => _exporting = true);
+    String message;
+    try {
+      final res = await Api().dio.get(
+        '/earnings/export',
+        queryParameters: spec.query,
+        options: Options(headers: {'Accept': 'text/csv'}),
+      );
+      final body = res.data is String ? res.data as String : '';
+      if (!bookingPriceCsv(body)) {
+        throw const FormatException('The export was not a booking-price file.');
+      }
+      await Clipboard.setData(ClipboardData(text: body));
+      message = 'Booking prices copied. Paste them into a spreadsheet.';
+    } catch (caught) {
+      message = caught is FormatException
+          ? caught.message
+          : Api.failureMessage(caught, fallback: 'Could not export booking prices.');
+    }
+    if (!mounted) return;
+    setState(() => _exporting = false);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _formatCurrency(dynamic val) {
@@ -49,18 +93,29 @@ class _VenueEarningsScreenState extends State<VenueEarningsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(title: const Text('Earnings', style: TextStyle(fontWeight: FontWeight.w800))),
+      appBar: AppBar(
+        title: const Text('Booking prices', style: TextStyle(fontWeight: FontWeight.w800)),
+        actions: [
+          if (_summary != null)
+            TextButton(
+              onPressed: _exporting ? null : _export,
+              child: Text(_exporting ? 'Exporting' : 'Export'),
+            ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _summary == null
               ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(AppIcons.wallet, size: 48, color: AppColors.textDisabled),
-                      const SizedBox(height: 12),
-                      Text('No earnings data yet', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600)),
-                    ],
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_error ?? 'No booking prices yet', textAlign: TextAlign.center),
+                        TextButton(onPressed: _load, child: const Text('Try again')),
+                      ],
+                    ),
                   ),
                 )
               : RefreshIndicator(
@@ -72,23 +127,32 @@ class _VenueEarningsScreenState extends State<VenueEarningsScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        if (_error != null) ...[
+                          Text(_error!, style: const TextStyle(color: AppColors.error)),
+                          const SizedBox(height: 12),
+                        ],
+                        const Text(
+                          'These are confirmed booking prices, including walk-ins. They are not payments collected and not payouts.',
+                          style: TextStyle(fontSize: 13, height: 1.4, color: AppColors.textMuted),
+                        ),
+                        const SizedBox(height: 12),
                         Row(
                           children: [
-                            Expanded(child: _statCard('Total Earned', _formatCurrency(_summary!['total_earned']), AppColors.primary, Icons.account_balance_wallet_outlined)),
+                            Expanded(child: _statCard('Booking prices', _formatCurrency(_summary!['total']), AppColors.primary, Icons.receipt_long)),
                             const SizedBox(width: 12),
-                            Expanded(child: _statCard('This Month', _formatCurrency(_summary!['this_month']), AppColors.secondary, Icons.calendar_today_outlined)),
+                            Expanded(child: _statCard('Today', _formatCurrency(_summary!['today']), AppColors.secondary, Icons.calendar_today_outlined)),
                           ],
                         ),
                         const SizedBox(height: 12),
                         Row(
                           children: [
-                            Expanded(child: _statCard('This Week', _formatCurrency(_summary!['this_week']), Colors.blue, Icons.trending_up)),
+                            Expanded(child: _statCard('This week', _formatCurrency(_summary!['this_week']), Colors.blue, Icons.trending_up)),
                             const SizedBox(width: 12),
-                            Expanded(child: _statCard('Pending', _formatCurrency(_summary!['pending_payout']), Colors.orange, Icons.hourglass_empty)),
+                            Expanded(child: _statCard('This month', _formatCurrency(_summary!['this_month']), Colors.teal, Icons.calendar_month_outlined)),
                           ],
                         ),
                         const SizedBox(height: 24),
-                        const Text('Recent Transactions', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                        const Text('Bookings', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
                         const SizedBox(height: 12),
                         if (_transactions.isEmpty)
                           Container(
@@ -177,10 +241,10 @@ class _VenueEarningsScreenState extends State<VenueEarningsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(t['customer_name'] ?? t['user_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                Text(t['guest_name'] ?? t['user_name'] ?? 'Booking', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 const SizedBox(height: 2),
                 Text(
-                  '${t['court_name'] ?? ''} ${t['slot_time'] != null ? '\u2022 ${t['slot_time']}' : ''}',
+                  '${t['space_name'] ?? ''} ${t['start_time'] != null ? '· ${t['start_time']}' : ''}',
                   style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -188,7 +252,7 @@ class _VenueEarningsScreenState extends State<VenueEarningsScreen> {
             ),
           ),
           Text(
-            _formatCurrency(t['amount']),
+            _formatCurrency(t['total_price']),
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.secondary),
           ),
         ],

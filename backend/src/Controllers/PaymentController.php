@@ -6,6 +6,8 @@ require_once __DIR__ . '/../PeakAccess.php';
 require_once __DIR__ . '/../CommerceCheckout.php';
 require_once __DIR__ . '/../RefundService.php';
 require_once __DIR__ . '/../SlotLock.php';
+require_once __DIR__ . '/../PaymentHold.php';
+require_once __DIR__ . '/../TournamentPayment.php';
 
 class PaymentController {
 
@@ -137,6 +139,10 @@ class PaymentController {
         $authUser = Auth::require();
         $user_id  = (int)$authUser['id'];
         $data     = json_decode(file_get_contents('php://input'));
+        if (($data->type ?? '') === 'tournament') {
+            $this->createTournamentOrder($authUser, $data);
+            return;
+        }
         $amount   = round(floatval($data->amount ?? 0), 2);
         $type     = in_array($data->type ?? '', ['booking', 'subscription'])
                     ? $data->type : 'booking';
@@ -161,6 +167,35 @@ class PaymentController {
         $quote['snapshot']['gateway'] = ['mode'=>$this->isDemoMode() ? 'demo' : 'cashfree','environment'=>CASHFREE_ENV,'splits'=>[]];
         $snapshot = json_encode($quote['snapshot'], JSON_THROW_ON_ERROR);
         $orderId = ($this->isDemoMode() ? 'demo_' : 'pb_') . $user_id . '_' . bin2hex(random_bytes(10));
+        $holdKey = null;
+        $holdNow = (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
+        $quotedPayload = is_array($data->payload) ? $data->payload : json_decode(json_encode($data->payload), true);
+        if ($type === 'booking') {
+            $holdSlots = PaymentHold::slots(is_array($quotedPayload) ? $quotedPayload : []);
+            $holdCourtId = (int)($quotedPayload['court_id'] ?? 0);
+            if ($holdSlots && $holdCourtId) {
+                if (!SlotLock::hold($db, $holdCourtId)) {
+                    http_response_code(409);
+                    echo json_encode(['message' => 'This time is being booked. Try again.']);
+                    return;
+                }
+                try {
+                    require_once __DIR__ . '/../Models/Booking.php';
+                    $slotCheck = new Booking();
+                    foreach ($holdSlots as $slot) {
+                        if (!$slotCheck->isSlotAvailable($holdCourtId, $slot['start'], $slot['end'], $slot['sub_court_id'])) {
+                            http_response_code(409);
+                            echo json_encode(['message' => 'Time slot not available.']);
+                            return;
+                        }
+                    }
+                    $holdKey = bin2hex(random_bytes(16));
+                    PaymentHold::place($db, $holdKey, $user_id, $holdCourtId, $holdSlots, $holdNow);
+                } finally {
+                    SlotLock::release($db, $holdCourtId);
+                }
+            }
+        }
 
         // ── Demo mode: skip Cashfree entirely ────────────────────────────────
         if ($this->isDemoMode()) {
@@ -169,6 +204,7 @@ class PaymentController {
                  VALUES (?, ?, ?, ?, ?, ?, 'demo')"
             );
             $stmt->execute([$user_id, $orderId, $amount, $type, json_encode($data->payload), $snapshot]);
+            if ($holdKey) PaymentHold::attach($db, $holdKey, (int)$db->lastInsertId());
             http_response_code(200);
             echo json_encode(['order_id' => $orderId, 'demo' => true, 'amount' => $amount]);
             return;
@@ -216,6 +252,7 @@ class PaymentController {
         $result = $this->cfRequest('POST', '/orders', $orderBody);
 
         if ($result['code'] !== 200 || empty($result['data']['payment_session_id'])) {
+            if ($holdKey) PaymentHold::releaseKey($db, $holdKey, $holdNow);
             http_response_code(502);
             echo json_encode([
                 'message' => 'Failed to create Cashfree order',
@@ -232,6 +269,7 @@ class PaymentController {
              VALUES (?, ?, ?, ?, ?, ?, 'created')"
         );
         $stmt->execute([$user_id, $orderId, $amount, $type, json_encode($data->payload), $snapshot]);
+        if ($holdKey) PaymentHold::attach($db, $holdKey, (int)$db->lastInsertId());
 
         http_response_code(200);
         echo json_encode([
@@ -362,7 +400,7 @@ class PaymentController {
             if ($locked) {
             foreach ($slots as $slotIndex => $slot) {
                 // Race-condition guard per slot
-                if (!$booking->isSlotAvailable($payload['court_id'], $slot['start_time'], $slot['end_time'], $subCourtId)) {
+                if (!$booking->isSlotAvailable($payload['court_id'], $slot['start_time'], $slot['end_time'], $subCourtId, null, (int)$payment['id'])) {
                     $takenSlots[] = $slot['start_time'];
                     continue;
                 }
@@ -400,6 +438,7 @@ class PaymentController {
             } finally {
                 if ($locked) SlotLock::release($db, $courtId);
             }
+            PaymentHold::releasePayment($db, (int)$payment['id'], (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s'));
 
             $unfulfilledRefund = null;
             foreach ($slots as $slotIndex => $slot) {
@@ -455,6 +494,8 @@ class PaymentController {
                 $db->prepare("UPDATE payments SET status='refund_pending' WHERE id=?")->execute([$payment['id']]);
                 echo json_encode(['message'=>'Subscription activation failed. Refund has been recorded.', 'refund'=>RefundService::publicStatus($refund)]);
             }
+        } elseif ($payment['type'] === 'tournament') {
+            $this->confirmTournamentEntry($db, $payment, $authUser, $refundQueue);
         }
         } catch (Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
@@ -485,5 +526,178 @@ class PaymentController {
                 try { (new RefundService($db))->process($refundId); } catch (Throwable $e) { /* Cron retries. */ }
             }
         }
+    }
+
+    private function createTournamentOrder(array $authUser, $data): void
+    {
+        if (!$this->isDemoMode()) {
+            http_response_code(422);
+            echo json_encode(['message' => 'Online entry payment is not open yet.']);
+            return;
+        }
+        $userId = (int)$authUser['id'];
+        $registrationId = (int)($data->registration_id ?? 0);
+        if ($registrationId <= 0) {
+            http_response_code(422);
+            echo json_encode(['message' => 'registration_id is required']);
+            return;
+        }
+        $db = Database::getConnection();
+        $stmt = $db->prepare('
+            SELECT r.id, r.captain_user_id, r.state, r.fee_amount, r.category_id, c.tournament_id
+            FROM tournament_registrations r
+            JOIN tournament_categories c ON c.id = r.category_id
+            WHERE r.id = ?
+        ');
+        $stmt->execute([$registrationId]);
+        $entry = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$entry) {
+            http_response_code(404);
+            echo json_encode(['message' => 'Entry not found']);
+            return;
+        }
+        if ((int)$entry['captain_user_id'] !== $userId) {
+            http_response_code(403);
+            echo json_encode(['message' => 'Only the player who entered can pay']);
+            return;
+        }
+        if ($entry['state'] !== 'pending') {
+            http_response_code(422);
+            echo json_encode(['message' => 'This entry is not waiting for payment.']);
+            return;
+        }
+        $fee = (float)$entry['fee_amount'];
+        if (TournamentPayment::paise($fee) <= 0) {
+            http_response_code(422);
+            echo json_encode(['message' => 'This entry has no fee.']);
+            return;
+        }
+        $prior = $db->prepare("
+            SELECT cf_order_id, amount FROM payments
+            WHERE user_id = ? AND type = 'tournament' AND status = 'demo' AND reference_id = ?
+            ORDER BY id DESC LIMIT 1
+        ");
+        $prior->execute([$userId, $registrationId]);
+        $existing = $prior->fetch(PDO::FETCH_ASSOC);
+        if ($existing) {
+            echo json_encode(['order_id' => $existing['cf_order_id'], 'demo' => true, 'amount' => (float)$existing['amount']]);
+            return;
+        }
+        $orderId = 'demo_' . $userId . '_' . bin2hex(random_bytes(10));
+        $payload = json_encode([
+            'registration_id' => $registrationId,
+            'category_id' => (int)$entry['category_id'],
+            'tournament_id' => (int)$entry['tournament_id'],
+        ]);
+        $paise = TournamentPayment::paise($fee);
+        $snapshot = json_encode([
+            'version' => 1,
+            'price' => [
+                'venue' => ['base' => $paise, 'tax' => 0, 'total' => $paise],
+                'fee' => ['base' => 0, 'tax' => 0, 'total' => 0],
+                'total' => $paise,
+            ],
+        ]);
+        $ins = $db->prepare("
+            INSERT INTO payments (user_id, cf_order_id, amount, type, payload, commerce_snapshot, status, reference_id)
+            VALUES (?, ?, ?, 'tournament', ?, ?, 'demo', ?)
+        ");
+        $ins->execute([$userId, $orderId, $fee, $payload, $snapshot, $registrationId]);
+        echo json_encode(['order_id' => $orderId, 'demo' => true, 'amount' => $fee]);
+    }
+
+    private function confirmTournamentEntry(PDO $db, array $payment, array $authUser, array &$refundQueue): void
+    {
+        require_once __DIR__ . '/../TournamentRegistration.php';
+        $payload = json_decode($payment['payload'] ?? 'null', true);
+        $registrationId = (int)($payload['registration_id'] ?? $payment['reference_id'] ?? 0);
+        $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
+        $entryStmt = $db->prepare("
+            SELECT r.id, r.category_id, r.captain_user_id, r.state, r.fee_amount, r.idempotency_key,
+                   c.capacity, c.approval, h.state AS hold_state, h.expires_at
+            FROM tournament_registrations r
+            JOIN tournament_categories c ON c.id = r.category_id
+            LEFT JOIN tournament_capacity_holds h
+              ON h.category_id = r.category_id AND h.request_key = r.idempotency_key
+            WHERE r.id = ?
+            FOR UPDATE
+        ");
+        $entryStmt->execute([$registrationId]);
+        $entry = $entryStmt->fetch(PDO::FETCH_ASSOC);
+        $feePaise = $entry
+            ? TournamentPayment::paise((float)$entry['fee_amount'])
+            : TournamentPayment::paise((float)$payment['amount']);
+        if (!$entry) {
+            $this->refundTournamentPayment($db, $payment, $authUser, $refundQueue, $feePaise, 'Entry not found');
+            return;
+        }
+        $lock = $db->prepare('SELECT id FROM tournament_categories WHERE id = ? FOR UPDATE');
+        $lock->execute([(int)$entry['category_id']]);
+        $others = $this->otherEntrySeats($db, (int)$entry['category_id'], (int)$entry['id'], $now);
+        $decision = TournamentPayment::decide(
+            (string)$entry['state'],
+            (int)$entry['captain_user_id'],
+            (int)$payment['user_id'],
+            (float)$entry['fee_amount'],
+            (float)$payment['amount'],
+            $entry['hold_state'] !== null ? (string)$entry['hold_state'] : null,
+            $entry['expires_at'] !== null ? (string)$entry['expires_at'] : null,
+            $now,
+            (int)$entry['capacity'],
+            $others,
+            (int)($entry['approval'] ?? 0) === 1
+        );
+        if (!$decision['ok']) {
+            $this->refundTournamentPayment($db, $payment, $authUser, $refundQueue, $feePaise, (string)$decision['message']);
+            return;
+        }
+        if ($entry['state'] !== 'confirmed') {
+            $upd = $db->prepare("UPDATE tournament_registrations SET state = ?, payment_id = ? WHERE id = ? AND state = 'pending'");
+            $upd->execute([$decision['state'], (int)$payment['id'], (int)$entry['id']]);
+            if (!$upd->rowCount()) {
+                $this->refundTournamentPayment($db, $payment, $authUser, $refundQueue, $feePaise, 'This entry cannot be confirmed.');
+                return;
+            }
+            if (($decision['hold'] ?? '') === 'consumed') {
+                $db->prepare("UPDATE tournament_capacity_holds SET state = 'consumed' WHERE category_id = ? AND request_key = ? AND state = 'active'")
+                    ->execute([(int)$entry['category_id'], $entry['idempotency_key']]);
+            }
+        }
+        $message = ($decision['state'] ?? '') === 'pending_approval'
+            ? 'Payment received. The organizer still needs to approve the entry.'
+            : 'Entry confirmed.';
+        http_response_code(200);
+        echo json_encode(['message' => $message, 'registration_id' => (int)$entry['id'], 'state' => $decision['state']]);
+    }
+
+    private function otherEntrySeats(PDO $db, int $categoryId, int $registrationId, string $now): int
+    {
+        $stmt = $db->prepare("
+            SELECT r.id, r.state, h.state AS hold_state, h.expires_at
+            FROM tournament_registrations r
+            LEFT JOIN tournament_capacity_holds h
+              ON h.category_id = r.category_id AND h.request_key = r.idempotency_key
+            WHERE r.category_id = ?
+        ");
+        $stmt->execute([$categoryId]);
+        $taken = 0;
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            if ((int)$row['id'] === $registrationId) {
+                continue;
+            }
+            if (TournamentRegistration::countsAsSeat($row['state'], $row['hold_state'], $row['expires_at'], $now)) {
+                $taken++;
+            }
+        }
+        return $taken;
+    }
+
+    private function refundTournamentPayment(PDO $db, array $payment, array $authUser, array &$refundQueue, int $feePaise, string $message): void
+    {
+        $refund = (new RefundService($db))->enqueue((int)$payment['id'], null, 'fulfilment:' . $payment['id'], 'entry_unfulfilled', $feePaise, 0, (int)$authUser['id']);
+        $refundQueue[] = (int)$refund['id'];
+        $db->prepare("UPDATE payments SET status = 'refund_pending' WHERE id = ?")->execute([$payment['id']]);
+        http_response_code(409);
+        echo json_encode(['message' => $message, 'refund' => RefundService::publicStatus($refund)]);
     }
 }

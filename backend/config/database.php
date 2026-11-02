@@ -7,7 +7,7 @@ class Database {
     private $pdo;
 
     // Bump this number whenever migrate() adds new tables/columns/indexes
-    private const SCHEMA_VERSION = 25;
+    private const SCHEMA_VERSION = 35;
 
     private function __construct() {
         $host    = getenv('DB_HOST') ?: 'localhost';
@@ -501,6 +501,27 @@ class Database {
         if (!$this->pdo->query("SHOW COLUMNS FROM bookings LIKE 'payment_id'")->fetch()) {
             $this->pdo->exec('ALTER TABLE bookings ADD COLUMN payment_id INT DEFAULT NULL, ADD INDEX idx_booking_payment (payment_id)');
         }
+        if (!$this->pdo->query("SHOW COLUMNS FROM bookings LIKE 'collection_method'")->fetch()) {
+            $this->pdo->exec('ALTER TABLE bookings ADD COLUMN collection_method VARCHAR(32) NULL DEFAULT NULL');
+        }
+        if (!$this->pdo->query("SHOW COLUMNS FROM bookings LIKE 'attendance'")->fetch()) {
+            $this->pdo->exec('ALTER TABLE bookings ADD COLUMN attendance VARCHAR(20) NULL DEFAULT NULL');
+        }
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS booking_holds (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            hold_key VARCHAR(64) NOT NULL,
+            user_id INT NOT NULL,
+            payment_id INT NULL,
+            court_id INT NOT NULL,
+            sub_court_id INT NULL,
+            start_time DATETIME NOT NULL,
+            end_time DATETIME NOT NULL,
+            expires_at DATETIME NOT NULL,
+            released_at DATETIME NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_hold_key (hold_key),
+            INDEX idx_hold_court (court_id, start_time, end_time)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         if (!$this->pdo->query("SHOW COLUMNS FROM booking_refunds LIKE 'refund_request_id'")->fetch()) {
             $this->pdo->exec('ALTER TABLE booking_refunds ADD COLUMN refund_request_id BIGINT DEFAULT NULL');
         }
@@ -531,9 +552,122 @@ class Database {
             fingerprint VARCHAR(64) PRIMARY KEY, processed_at DATETIME NOT NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+        $this->applySqlFile(__DIR__ . '/../migrations/022_tournaments.sql');
+        if (!$this->pdo->query("SHOW COLUMNS FROM blocked_slots LIKE 'tournament_id'")->fetch()) {
+            $this->pdo->exec('ALTER TABLE blocked_slots ADD COLUMN tournament_id INT NULL DEFAULT NULL, ADD INDEX idx_block_tournament (tournament_id)');
+        }
+        $paymentType = $this->pdo->query("SHOW COLUMNS FROM payments LIKE 'type'")->fetch(PDO::FETCH_ASSOC);
+        if ($paymentType && !str_contains((string)$paymentType['Type'], 'tournament')) {
+            $this->pdo->exec("ALTER TABLE payments MODIFY type ENUM('booking','subscription','tournament') NOT NULL DEFAULT 'booking'");
+        }
+        if (!$this->pdo->query("SHOW COLUMNS FROM tournament_registrations LIKE 'checked_in_at'")->fetch()) {
+            $this->pdo->exec('ALTER TABLE tournament_registrations ADD COLUMN checked_in_at DATETIME NULL DEFAULT NULL');
+        }
+        if (!$this->pdo->query("SHOW COLUMNS FROM tournament_registrations LIKE 'check_in_code'")->fetch()) {
+            $this->pdo->exec('ALTER TABLE tournament_registrations ADD COLUMN check_in_code VARCHAR(8) NULL DEFAULT NULL, ADD UNIQUE KEY uq_registration_code (check_in_code)');
+        }
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS tournament_announcements (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            tournament_id INT NOT NULL,
+            title VARCHAR(120) NOT NULL,
+            body VARCHAR(500) NOT NULL,
+            created_by INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_announcement_event (tournament_id, id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        if (!$this->pdo->query("SHOW COLUMNS FROM tournament_categories LIKE 'approval'")->fetch()) {
+            $this->pdo->exec('ALTER TABLE tournament_categories ADD COLUMN approval TINYINT(1) NOT NULL DEFAULT 0');
+        }
+        if (!$this->pdo->query("SHOW COLUMNS FROM tournaments LIKE 'sponsor_name'")->fetch()) {
+            $this->pdo->exec('ALTER TABLE tournaments ADD COLUMN sponsor_name VARCHAR(120) NULL DEFAULT NULL');
+        }
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS tournament_matches (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            category_id INT NOT NULL,
+            round_label VARCHAR(40) NOT NULL DEFAULT 'Match',
+            status VARCHAR(20) NOT NULL DEFAULT 'scheduled',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_match_category (category_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS tournament_match_participants (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            match_id INT NOT NULL,
+            registration_id INT NOT NULL,
+            side VARCHAR(10) NOT NULL,
+            UNIQUE KEY uq_match_side (match_id, side),
+            UNIQUE KEY uq_match_entry (match_id, registration_id),
+            INDEX idx_participant_registration (registration_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS tournament_results (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            match_id INT NOT NULL,
+            winner_registration_id INT NOT NULL,
+            home_score INT NOT NULL,
+            away_score INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY uq_match_result (match_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        if (!$this->pdo->query("SHOW COLUMNS FROM blocked_slots LIKE 'coaching_session_id'")->fetch()) {
+            $this->pdo->exec('ALTER TABLE blocked_slots ADD COLUMN coaching_session_id INT NULL DEFAULT NULL, ADD INDEX idx_block_coaching (coaching_session_id)');
+        }
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS coaching_sessions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            court_id INT NOT NULL,
+            sub_court_id INT NULL,
+            title VARCHAR(120) NOT NULL,
+            instructor_name VARCHAR(80) NOT NULL,
+            capacity INT NOT NULL,
+            start_time DATETIME NOT NULL,
+            end_time DATETIME NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'scheduled',
+            created_by INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_coaching_court (court_id, start_time)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS coaching_enrollments (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            session_id INT NOT NULL,
+            user_id INT NULL,
+            display_name VARCHAR(80) NOT NULL,
+            state VARCHAR(20) NOT NULL DEFAULT 'enrolled',
+            attendance VARCHAR(20) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_enrollment_session (session_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS equipment_items (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            court_id INT NOT NULL,
+            name VARCHAR(80) NOT NULL,
+            quantity_on_hand INT NOT NULL,
+            deposit_rupees INT NOT NULL DEFAULT 0,
+            status VARCHAR(20) NOT NULL DEFAULT 'active',
+            created_by INT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_equipment_court (court_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS equipment_rentals (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            item_id INT NOT NULL,
+            display_name VARCHAR(80) NOT NULL,
+            quantity INT NOT NULL,
+            deposit_rupees INT NOT NULL DEFAULT 0,
+            deposit_status VARCHAR(20) NOT NULL DEFAULT 'held',
+            state VARCHAR(20) NOT NULL DEFAULT 'out',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_rental_item (item_id, state)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
         // Stamp schema version
         $this->pdo->exec("DELETE FROM schema_version");
         $this->pdo->exec("INSERT INTO schema_version (version) VALUES (" . self::SCHEMA_VERSION . ")");
+    }
+
+    private function applySqlFile(string $path): void
+    {
+        $sql = preg_replace('/^--.*$/m', '', (string)file_get_contents($path));
+        foreach (array_filter(array_map('trim', explode(';', $sql))) as $statement) {
+            $this->pdo->exec($statement);
+        }
     }
 
     public static function getConnection() {

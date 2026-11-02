@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../RefundService.php';
+require_once __DIR__ . '/../RefundWebhookPlan.php';
 
 final class RefundController {
     public function admin(array $segments): void {
@@ -31,14 +32,13 @@ final class RefundController {
         $id=$data['refund_id'] ?? ''; $db=Database::getConnection();
         $fingerprint=hash('sha256',$raw);
         $seen=$db->prepare('SELECT fingerprint FROM refund_webhook_events WHERE fingerprint=?'); $seen->execute([$fingerprint]);
-        if ($seen->fetchColumn()) { echo json_encode(['received'=>true]); return; }
         $s=$db->prepare('SELECT id,status FROM refund_requests WHERE refund_id=?'); $s->execute([$id]); $row=$s->fetch(PDO::FETCH_ASSOC);
+        $plan = RefundWebhookPlan::decide((bool)$seen->fetchColumn(), (bool)$row);
+        if ($plan === RefundWebhookPlan::DUPLICATE) { echo json_encode(['received'=>true]); return; }
         // Never initiate refunds from a webhook; fetch authoritative provider state.
-        if ($row) {
+        if ($plan === RefundWebhookPlan::RECONCILE) {
             $result=(new RefundService($db))->process((int)$row['id'],false,true);
             if (in_array($result['error_code'],['lookup_unavailable','worker_error'],true)) { http_response_code(503); echo json_encode(['message'=>'Retry later']); return; }
-        }
-        if ($row) {
             try { $db->prepare('INSERT INTO refund_webhook_events (fingerprint,processed_at) VALUES (?,?)')->execute([$fingerprint,gmdate('Y-m-d H:i:s')]); }
             catch(PDOException $e) { if ($e->getCode() !== '23000') throw $e; }
         }

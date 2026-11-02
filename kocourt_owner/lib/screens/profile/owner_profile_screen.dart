@@ -132,6 +132,9 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
             _menuItem(Icons.notifications_outlined, 'Notifications', () {
               context.push('/notifications');
             }),
+            _menuItem(Icons.emoji_events_outlined, 'Events', () {
+              context.push('/events');
+            }),
             _menuItem(Icons.account_balance_outlined, 'Payout Settings', () {
               context.push('/payout-settings');
             }),

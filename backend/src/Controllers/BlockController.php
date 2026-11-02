@@ -27,6 +27,8 @@ class BlockController
         try { $this->db->exec("ALTER TABLE blocked_slots ADD COLUMN sub_court_id INT DEFAULT NULL"); } catch (Exception $e) {}
         try { $this->db->exec("ALTER TABLE blocked_slots ADD COLUMN block_kind VARCHAR(32) NOT NULL DEFAULT 'other'"); } catch (Exception $e) {}
         try { $this->db->exec("ALTER TABLE blocked_slots ADD COLUMN repeat_annually TINYINT(1) NOT NULL DEFAULT 0"); } catch (Exception $e) {}
+        try { $this->db->exec("ALTER TABLE blocked_slots ADD COLUMN tournament_id INT NULL DEFAULT NULL"); } catch (Exception $e) {}
+        try { $this->db->exec("ALTER TABLE blocked_slots ADD INDEX idx_block_tournament (tournament_id)"); } catch (Exception $e) {}
     }
 
     private static function normalizeBlockKind($raw): string

@@ -49,6 +49,7 @@ class _WalkInSheetState extends State<WalkInSheet> {
   final _phoneController = TextEditingController();
   late int _hour;
   int? _spaceId;
+  String _collectionMethod = 'pay_at_venue';
   bool _submitting = false;
   String? _error;
 
@@ -85,6 +86,7 @@ class _WalkInSheetState extends State<WalkInSheet> {
         guestPhone: _phoneController.text,
         spaceId: _spaceId,
         spaceRequired: widget.spaces.isNotEmpty,
+        collectionMethod: _collectionMethod,
       );
       await Api().post('/bookings', data: body);
       if (mounted) Navigator.pop(context, true);
@@ -129,7 +131,7 @@ class _WalkInSheetState extends State<WalkInSheet> {
           Text('${widget.date} · $_hour:00', style: const TextStyle(color: AppColors.textMuted)),
           const SizedBox(height: 12),
           const Text(
-            'This confirms the hour for the guest. The price is calculated on the server.',
+            'This confirms the hour for the guest. The price is calculated on the server and stored with the method below.',
             style: TextStyle(fontSize: 12, height: 1.4, color: AppColors.textMuted),
           ),
           const SizedBox(height: 16),
@@ -144,6 +146,17 @@ class _WalkInSheetState extends State<WalkInSheet> {
               ],
               onChanged: (value) => setState(() => _spaceId = value),
             ),
+          DropdownButtonFormField<String>(
+            initialValue: _collectionMethod,
+            decoration: const InputDecoration(labelText: 'How the price is taken'),
+            items: [
+              for (final method in walkInCollectionMethods)
+                DropdownMenuItem(value: method, child: Text(collectionLabel(method) ?? method)),
+            ],
+            onChanged: (value) {
+              if (value != null) setState(() => _collectionMethod = value);
+            },
+          ),
           DropdownButtonFormField<int>(
             initialValue: _hour,
             decoration: const InputDecoration(labelText: 'Hour'),

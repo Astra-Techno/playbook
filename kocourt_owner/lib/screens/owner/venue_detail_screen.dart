@@ -7,9 +7,13 @@ import 'edit_venue_screen.dart';
 import 'spaces_screen.dart';
 import 'staff_screen.dart';
 import 'venue_earnings_screen.dart';
+import 'venue_report_screen.dart';
+import 'venue_coaching_screen.dart';
+import 'venue_equipment_screen.dart';
 import 'venue_listing.dart';
 import 'calendar_screen.dart';
 import 'venue_members_screen.dart';
+import 'venue_customers_screen.dart';
 import 'block_slots_screen.dart';
 import 'pricing_screen.dart';
 import 'manage_plans_screen.dart';
@@ -149,11 +153,23 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                     _menuItem(AppIcons.award, 'Members', 'Active subscribers', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => VenueMembersScreen(courtId: widget.courtId)));
                     }),
+                    _menuItem(AppIcons.users, 'Customers', 'Players who booked this venue', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => VenueCustomersScreen(courtId: widget.courtId)));
+                    }),
                     _menuItem(Icons.block, 'Block Slots', 'Block venue for a period', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => BlockSlotsScreen(courtId: widget.courtId)));
                     }),
-                    _menuItem(Icons.trending_up, 'Earnings', 'Revenue and transaction history', () {
+                    _menuItem(Icons.trending_up, 'Booking prices', 'Confirmed booking prices for this venue', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => VenueEarningsScreen(courtId: widget.courtId)));
+                    }),
+                    _menuItem(Icons.insights_outlined, 'Report', 'Prices, collections, and cancellations', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => VenueReportScreen(courtId: widget.courtId)));
+                    }),
+                    _menuItem(Icons.sports, 'Coaching', 'Classes, players, and attendance', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => VenueCoachingScreen(courtId: widget.courtId)));
+                    }),
+                    _menuItem(Icons.inventory_2_outlined, 'Equipment', 'Rentals, quantity, and deposit', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => VenueEquipmentScreen(courtId: widget.courtId)));
                     }),
                     _menuItem(Icons.price_change_outlined, 'Pricing Rules', 'Peak, off-peak, weekend rates', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => PricingScreen(courtId: widget.courtId)));

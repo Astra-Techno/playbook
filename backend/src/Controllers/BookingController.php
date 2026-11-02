@@ -7,6 +7,8 @@ require_once __DIR__ . '/../PeakAccess.php';
 require_once __DIR__ . '/../Push.php';
 require_once __DIR__ . '/../CommerceCheckout.php';
 require_once __DIR__ . '/../RefundService.php';
+require_once __DIR__ . '/../CollectionMethod.php';
+require_once __DIR__ . '/../Attendance.php';
 
 class BookingController {
 
@@ -295,6 +297,66 @@ class BookingController {
         echo json_encode(['booking' => $booking]);
     }
 
+    // POST /bookings/:id/attendance  { action: check_in|no_show }
+    public function attendance(int $id): void
+    {
+        $authUser = Auth::require();
+        $authId = (int)$authUser['id'];
+        $data = json_decode(file_get_contents('php://input'));
+        $action = trim((string)($data->action ?? ''));
+
+        $db = Database::getConnection();
+        $stmt = $db->prepare("
+            SELECT b.id, b.status, b.start_time, b.end_time, b.attendance, b.court_id, c.owner_id
+            FROM bookings b
+            JOIN courts c ON c.id = b.court_id
+            WHERE b.id = ?
+        ");
+        $stmt->execute([$id]);
+        $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$booking) {
+            http_response_code(404);
+            echo json_encode(['message' => 'Booking not found']);
+            return;
+        }
+
+        $isOwner = (int)$booking['owner_id'] === $authId;
+        $isAdmin = ($authUser['role'] ?? '') === 'admin';
+        $staff = $db->prepare("SELECT id FROM court_staff WHERE court_id = ? AND user_id = ? AND role = 'manager'");
+        $staff->execute([(int)$booking['court_id'], $authId]);
+        if (!$isOwner && !$isAdmin && !$staff->fetch()) {
+            http_response_code(403);
+            echo json_encode(['message' => 'Only the venue owner or manager can mark arrival']);
+            return;
+        }
+
+        $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
+        $decision = Attendance::decide(
+            $action,
+            $booking['attendance'] !== null && $booking['attendance'] !== '' ? (string)$booking['attendance'] : null,
+            (string)$booking['status'],
+            (string)$booking['start_time'],
+            (string)$booking['end_time'],
+            $now
+        );
+        if (!$decision['ok']) {
+            http_response_code(422);
+            echo json_encode(['message' => $decision['message']]);
+            return;
+        }
+
+        $update = $db->prepare("UPDATE bookings SET attendance = ? WHERE id = ? AND status = 'confirmed' AND attendance IS NULL");
+        $update->execute([$decision['attendance'], $id]);
+        if (!$update->rowCount()) {
+            http_response_code(409);
+            echo json_encode(['message' => 'This booking was already marked.']);
+            return;
+        }
+
+        http_response_code(200);
+        echo json_encode(['message' => $decision['message'], 'attendance' => $decision['attendance']]);
+    }
+
     // GET /api/bookings
     // Query params (user_id/owner_id/staff_id are ignored — always uses token):
     //   user_id   -> player's own bookings
@@ -430,6 +492,16 @@ class BookingController {
                 }
             }
 
+            $collectionMethod = null;
+            if ($isWalkIn) {
+                $collectionMethod = CollectionMethod::forWalkIn($data->collection_method ?? null);
+                if ($collectionMethod === false) {
+                    http_response_code(400);
+                    echo json_encode(['message' => 'collection_method must be pay_at_venue, cash, or external_upi']);
+                    return;
+                }
+            }
+
             if (!SlotLock::hold($db, $courtId)) {
                 http_response_code(409);
                 echo json_encode(['message' => 'This time is being booked. Try again.']);
@@ -483,6 +555,7 @@ class BookingController {
             $booking->guest_name  = $isWalkIn ? trim($data->guest_name) : null;
             $booking->guest_phone = $isWalkIn && !empty($data->guest_phone) ? trim($data->guest_phone) : null;
             $booking->notes       = !empty($data->notes) ? trim($data->notes) : null;
+            $booking->collection_method = $collectionMethod;
 
             if ($booking->create()) {
                 http_response_code(201);
