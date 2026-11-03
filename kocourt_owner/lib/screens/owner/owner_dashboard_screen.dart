@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:intl/intl.dart';
+import 'dashboard_load.dart';
 import 'venue_access.dart';
 import 'venue_detail_screen.dart';
 import 'edit_venue_screen.dart';
@@ -46,33 +47,43 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     final venues = context.read<VenueProvider>();
-    String? ownedError;
-    String? staffError;
-    List<Map<String, dynamic>>? owned;
-    List<Map<String, dynamic>>? assigned;
-
-    try {
-      final res = await Api().get('/courts', params: {'owner_id': auth.userId});
-      owned = List<Map<String, dynamic>>.from(
-        (res.data['records'] ?? []).map(_courtMap),
-      );
-    } catch (error) {
-      ownedError = Api.failureMessage(error, fallback: 'Couldn’t load your venues.');
-    }
-
-    try {
-      final res = await Api().get('/court-staff/my-courts');
-      assigned = List<Map<String, dynamic>>.from(
-        (res.data['courts'] ?? []).map(_courtMap),
-      );
-    } catch (error) {
-      staffError = Api.failureMessage(error, fallback: 'Couldn’t load venues assigned to you.');
-    }
-
-    try {
-      await venues.fetchGhostPlaces(userId: auth.userId);
-      if (mounted) _ghostPlaces = venues.ghostPlaces;
-    } catch (_) {}
+    final together = await loadTogether(
+      owned: () async {
+        try {
+          final res = await Api().get('/courts', params: {'owner_id': auth.userId});
+          return (
+            rows: List<Map<String, dynamic>>.from((res.data['records'] ?? []).map(_courtMap)),
+            error: null as String?,
+          );
+        } catch (error) {
+          return (rows: null as List<Map<String, dynamic>>?, error: Api.failureMessage(error, fallback: 'Couldn’t load your venues.'));
+        }
+      }(),
+      staff: () async {
+        try {
+          final res = await Api().get('/court-staff/my-courts');
+          return (
+            rows: List<Map<String, dynamic>>.from((res.data['courts'] ?? []).map(_courtMap)),
+            error: null as String?,
+          );
+        } catch (error) {
+          return (rows: null as List<Map<String, dynamic>>?, error: Api.failureMessage(error, fallback: 'Couldn’t load venues assigned to you.'));
+        }
+      }(),
+      ghosts: () async {
+        try {
+          await venues.fetchGhostPlaces(userId: auth.userId);
+          return venues.ghostPlaces;
+        } catch (_) {
+          return null;
+        }
+      }(),
+    );
+    final owned = together.owned.rows;
+    final ownedError = together.owned.error;
+    final assigned = together.staff.rows;
+    final staffError = together.staff.error;
+    if (together.ghosts != null) _ghostPlaces = together.ghosts!;
 
     DayCollected? collected;
     String? collectedError;

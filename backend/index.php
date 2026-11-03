@@ -425,6 +425,12 @@ if (isset($seg[0]) && $seg[0] === 'subscriptions') {
     }
 }
 
+// POST /alerts/refresh — one in-app arrival row per due booking. A repeat finds the same event key.
+if (isset($seg[0]) && $seg[0] === 'alerts' && ($seg[1] ?? '') === 'refresh' && !isset($seg[2])) {
+    require_once __DIR__ . '/src/Controllers/VenueAlertController.php';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); (new VenueAlertController())->refresh(); exit(); }
+}
+
 // In-app Notifications Routes — /notifications/list, /notifications/:id/read, /notifications/read-all
 if (isset($seg[0]) && $seg[0] === 'notifications') {
     require_once __DIR__ . '/src/Controllers/NotificationController.php';

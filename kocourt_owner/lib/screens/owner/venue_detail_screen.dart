@@ -10,6 +10,7 @@ import 'venue_earnings_screen.dart';
 import 'venue_report_screen.dart';
 import 'venue_coaching_screen.dart';
 import 'venue_equipment_screen.dart';
+import 'release_flags.dart';
 import 'venue_listing.dart';
 import 'calendar_screen.dart';
 import 'venue_members_screen.dart';
@@ -165,12 +166,14 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                     _menuItem(Icons.insights_outlined, 'Report', 'Prices, collections, and cancellations', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => VenueReportScreen(courtId: widget.courtId)));
                     }),
-                    _menuItem(Icons.sports, 'Coaching', 'Classes, players, and attendance', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => VenueCoachingScreen(courtId: widget.courtId)));
-                    }),
-                    _menuItem(Icons.inventory_2_outlined, 'Equipment', 'Rentals, quantity, and deposit', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => VenueEquipmentScreen(courtId: widget.courtId)));
-                    }),
+                    if (releaseFlags.shows('coaching'))
+                      _menuItem(Icons.sports, 'Coaching', 'Classes, players, and attendance', () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => VenueCoachingScreen(courtId: widget.courtId)));
+                      }),
+                    if (releaseFlags.shows('equipment'))
+                      _menuItem(Icons.inventory_2_outlined, 'Equipment', 'Rentals, quantity, and deposit', () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => VenueEquipmentScreen(courtId: widget.courtId)));
+                      }),
                     _menuItem(Icons.price_change_outlined, 'Pricing Rules', 'Peak, off-peak, weekend rates', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => PricingScreen(courtId: widget.courtId)));
                     }),

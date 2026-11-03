@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import '../../widgets/tab_phase.dart';
 import '../../widgets/tab_status.dart';
+import '../owner/owner_copy.dart';
 
 class OwnerProfileScreen extends StatefulWidget {
   const OwnerProfileScreen({super.key});
@@ -19,7 +20,19 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
   @override
   void initState() {
     super.initState();
+    ownerLanguage.addListener(_onLanguage);
+    loadOwnerLanguage();
     _load();
+  }
+
+  void _onLanguage() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    ownerLanguage.removeListener(_onLanguage);
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -64,7 +77,10 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Profile', style: TextStyle(fontWeight: FontWeight.w800)),
+        title: ValueListenableBuilder<String>(
+          valueListenable: ownerLanguage,
+          builder: (context, language, _) => Text(ownerPhrase(language, 'profile'), style: const TextStyle(fontWeight: FontWeight.w800)),
+        ),
       ),
       body: phase == TabPhase.loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -129,9 +145,46 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                 builder: (_) => const ProfileEditSheet(),
               );
             }),
-            _menuItem(Icons.notifications_outlined, 'Notifications', () {
+            _menuItem(Icons.notifications_outlined, ownerPhrase(ownerLanguage.value, 'notifications'), () {
               context.push('/notifications');
             }),
+            ValueListenableBuilder<String>(
+              valueListenable: ownerLanguage,
+              builder: (context, language, _) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Icon(Icons.language, size: 22, color: Colors.grey[700]),
+                    const SizedBox(width: 14),
+                    Expanded(child: Text(ownerPhrase(language, 'language'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
+                    Semantics(
+                      button: true,
+                      selected: language == 'en',
+                      label: ownerTabLabel(language, 'english', selected: language == 'en'),
+                      child: TextButton(
+                        onPressed: () => chooseOwnerLanguage('en'),
+                        child: Text(
+                          ownerPhrase(language, 'english'),
+                          style: TextStyle(fontWeight: language == 'en' ? FontWeight.w800 : FontWeight.w500, color: language == 'en' ? AppColors.primary : Colors.grey[700]),
+                        ),
+                      ),
+                    ),
+                    Semantics(
+                      button: true,
+                      selected: language == 'ta',
+                      label: ownerTabLabel(language, 'tamil', selected: language == 'ta'),
+                      child: TextButton(
+                        onPressed: () => chooseOwnerLanguage('ta'),
+                        child: Text(
+                          ownerPhrase(language, 'tamil'),
+                          style: TextStyle(fontWeight: language == 'ta' ? FontWeight.w800 : FontWeight.w500, color: language == 'ta' ? AppColors.primary : Colors.grey[700]),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
             _menuItem(Icons.emoji_events_outlined, 'Events', () {
               context.push('/events');
             }),

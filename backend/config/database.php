@@ -7,7 +7,7 @@ class Database {
     private $pdo;
 
     // Bump this number whenever migrate() adds new tables/columns/indexes
-    private const SCHEMA_VERSION = 35;
+    private const SCHEMA_VERSION = 36;
 
     private function __construct() {
         $host    = getenv('DB_HOST') ?: 'localhost';
@@ -656,6 +656,9 @@ class Database {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_rental_item (item_id, state)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        if (!$this->pdo->query("SHOW COLUMNS FROM user_notifications LIKE 'event_key'")->fetch()) {
+            $this->pdo->exec('ALTER TABLE user_notifications ADD COLUMN event_key VARCHAR(80) NULL DEFAULT NULL, ADD UNIQUE KEY uq_user_event_key (user_id, event_key)');
+        }
 
         // Stamp schema version
         $this->pdo->exec("DELETE FROM schema_version");

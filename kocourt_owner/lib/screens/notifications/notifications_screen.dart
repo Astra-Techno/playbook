@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import '../owner/alert_fields.dart';
+import '../owner/owner_copy.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -16,15 +18,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   @override
   void initState() {
     super.initState();
+    loadOwnerLanguage();
     _load();
   }
 
   Future<void> _load() async {
     try {
+      await Api().post('/alerts/refresh');
+    } catch (_) {}
+    try {
       final res = await Api().get('/notifications/list');
-      _notifications = List<Map<String, dynamic>>.from(
-        (res.data['notifications'] ?? []).map((e) => Map<String, dynamic>.from(e)),
-      );
+      _notifications = notificationRows(res.data);
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
@@ -47,6 +51,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   IconData _getIcon(String? type) {
     switch (type) {
       case 'booking': return AppIcons.calendarDays;
+      case 'venue_alert': return AppIcons.calendarDays;
       case 'subscription': return AppIcons.award;
       case 'venue': return AppIcons.mapPin;
       case 'invite': return AppIcons.users;
@@ -70,20 +75,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text('Notifications', style: TextStyle(fontWeight: FontWeight.w800))),
+      appBar: AppBar(
+        title: ValueListenableBuilder<String>(
+          valueListenable: ownerLanguage,
+          builder: (context, language, _) => Text(ownerPhrase(language, 'notifications'), style: const TextStyle(fontWeight: FontWeight.w800)),
+        ),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _notifications.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(AppIcons.bell, size: 48, color: Colors.grey[300]),
-                      const SizedBox(height: 16),
-                      Text('No notifications', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
-                      const SizedBox(height: 6),
-                      Text('You\'re all caught up', style: TextStyle(fontSize: 13, color: Colors.grey[400])),
-                    ],
+              ? ValueListenableBuilder<String>(
+                  valueListenable: ownerLanguage,
+                  builder: (context, language, _) => Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(AppIcons.bell, size: 48, color: Colors.grey[300]),
+                        const SizedBox(height: 16),
+                        Text(ownerPhrase(language, 'no_notifications'), style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
+                        const SizedBox(height: 6),
+                        Text(ownerPhrase(language, 'caught_up'), style: TextStyle(fontSize: 13, color: Colors.grey[400])),
+                      ],
+                    ),
                   ),
                 )
               : RefreshIndicator(
@@ -98,13 +111,22 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     itemBuilder: (_, i) {
                       final n = _notifications[i];
                       final isRead = _isRead(n);
-                      return GestureDetector(
+                      return Semantics(
+                        button: !isRead,
+                        label: ownerNoticeLabel(
+                          ownerLanguage.value,
+                          (n['title'] ?? '').toString(),
+                          (n['body'] ?? '').toString(),
+                          unread: !isRead,
+                        ),
+                        child: GestureDetector(
                         onTap: () {
                           if (!isRead) {
                             HapticFeedback.lightImpact();
                             _markRead(n['id']);
                           }
                         },
+                        child: ExcludeSemantics(
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(14),
@@ -160,6 +182,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                 ),
                             ],
                           ),
+                        ),
+                        ),
                         ),
                       );
                     },
