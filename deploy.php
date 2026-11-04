@@ -80,7 +80,7 @@ log_step('⬇', "Downloading <strong>{$repo}@{$branch}</strong> from GitHub…")
 $zipUrl = "https://github.com/{$repo}/archive/refs/heads/{$branch}.zip";
 $opts   = ['http' => [
     'method'          => 'GET',
-    'timeout'         => 60,
+    'timeout'         => 180,
     'follow_location' => 1,
     'header'          => implode("\r\n", array_filter([
         'User-Agent: KoCourt-Deployer/1.0',
@@ -88,46 +88,56 @@ $opts   = ['http' => [
     ])),
 ]];
 
-// Try cURL first (works even when allow_url_fopen is off)
-$zipData = false;
+// Stream to disk. The zip includes the app downloads and does not fit in the
+// host memory limit when cURL keeps the whole file in a string.
+$tmpZip = sys_get_temp_dir() . '/kocourt_deploy_' . time() . '.zip';
+$tmpDir = sys_get_temp_dir() . '/kocourt_extract_' . time();
+$httpCode = 0;
+$curlErr  = '';
+
 if (function_exists('curl_init')) {
+    $fp = fopen($tmpZip, 'wb');
+    if ($fp === false) abort('Could not create a temp file for the download.');
     $ch = curl_init($zipUrl);
     curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FILE           => $fp,
         CURLOPT_FOLLOWLOCATION => true,
-        CURLOPT_TIMEOUT        => 60,
+        CURLOPT_TIMEOUT        => 180,
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_USERAGENT      => 'KoCourt-Deployer/1.0',
         CURLOPT_HTTPHEADER     => array_filter([
             $token ? "Authorization: Bearer {$token}" : null,
         ]),
     ]);
-    $zipData  = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_exec($ch);
+    $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curlErr  = curl_error($ch);
     if (PHP_VERSION_ID < 80100) curl_close($ch);
-    if ($httpCode === 404) abort("Repo not found (404). Is the repo private? Add GITHUB_TOKEN to backend/.env");
-    if ($httpCode === 401 || $httpCode === 403) abort("GitHub auth failed ({$httpCode}). Add GITHUB_TOKEN to backend/.env");
-    if ($httpCode !== 200) abort("GitHub returned HTTP {$httpCode}. cURL error: {$curlErr}");
+    fclose($fp);
 } else {
-    $zipData = @file_get_contents($zipUrl, false, stream_context_create($opts));
+    $in = @fopen($zipUrl, 'rb', false, stream_context_create($opts));
+    $out = fopen($tmpZip, 'wb');
+    if ($in && $out) {
+        stream_copy_to_stream($in, $out);
+        $httpCode = 200;
+    }
+    if (is_resource($in)) fclose($in);
+    if (is_resource($out)) fclose($out);
 }
 
-if (!$zipData) {
-    abort("Failed to download ZIP. Enable cURL or allow_url_fopen on this server.");
+$zipBytes = is_file($tmpZip) ? (int)filesize($tmpZip) : 0;
+if ($httpCode === 404) { @unlink($tmpZip); abort("Repo not found (404). Is the repo private? Add GITHUB_TOKEN to backend/.env"); }
+if ($httpCode === 401 || $httpCode === 403) { @unlink($tmpZip); abort("GitHub auth failed ({$httpCode}). Add GITHUB_TOKEN to backend/.env"); }
+if ($httpCode !== 200 || $zipBytes < 1) {
+    @unlink($tmpZip);
+    abort("Failed to download ZIP (HTTP {$httpCode}, {$zipBytes} bytes). cURL error: {$curlErr}");
 }
-log_step('✓', 'Download complete (' . round(strlen($zipData) / 1024) . ' KB)', 'ok');
+log_step('✓', 'Download complete (' . round($zipBytes / 1024) . ' KB)', 'ok');
 
 // ────────────────────────────────────────────────────────────────────────────
 // STEP 2 — Extract to temp dir
 // ────────────────────────────────────────────────────────────────────────────
 log_step('📦', 'Extracting ZIP…');
-
-$tmpZip = sys_get_temp_dir() . '/kocourt_deploy_' . time() . '.zip';
-$tmpDir = sys_get_temp_dir() . '/kocourt_extract_' . time();
-
-file_put_contents($tmpZip, $zipData);
-unset($zipData); // free memory
 
 $zip = new ZipArchive();
 if ($zip->open($tmpZip) !== true) {
