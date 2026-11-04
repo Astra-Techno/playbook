@@ -55,41 +55,30 @@ foreach ($files as $file) {
         fn($s) => $s !== ''
     );
 
-    // 1060 duplicate column, 1061 duplicate key, 1091 drop of a missing
-    // column or key. The API adds the same columns when it connects.
+    // MySQL commits on its own when a statement changes a table, so this
+    // runner does not open a transaction. 1060, 1061, and 1091 mean the
+    // API already added that column or key when it connected.
     $harmless = [1060, 1061, 1091];
-    $failed   = false;
-    $error    = '';
-    if (!$db->inTransaction()) {
-        $db->beginTransaction();
-    }
-    foreach ($statements as $stmt) {
-        try {
-            $db->exec($stmt);
-        } catch (PDOException $e) {
-            $code = (int)($e->errorInfo[1] ?? 0);
-            if (in_array($code, $harmless, true)) {
-                continue;
+    try {
+        foreach ($statements as $stmt) {
+            try {
+                $db->exec($stmt);
+            } catch (PDOException $e) {
+                $code = (int)($e->errorInfo[1] ?? 0);
+                if (in_array($code, $harmless, true)) {
+                    continue;
+                }
+                throw $e;
             }
-            $failed = true;
-            $error  = $e->getMessage();
-            break;
         }
-    }
-    if ($failed) {
-        if ($db->inTransaction()) {
-            $db->rollBack();
-        }
-        $log[]    = ['status' => 'fail', 'name' => $name, 'error' => $error];
+        $db->prepare("INSERT IGNORE INTO migrations (filename) VALUES (?)")->execute([$name]);
+        $log[] = ['status' => 'done', 'name' => $name];
+        $ran++;
+    } catch (PDOException $e) {
+        $log[]    = ['status' => 'fail', 'name' => $name, 'error' => $e->getMessage()];
         $errors[] = $name;
         break;
     }
-    $db->prepare("INSERT INTO migrations (filename) VALUES (?)")->execute([$name]);
-    if ($db->inTransaction()) {
-        $db->commit();
-    }
-    $log[] = ['status' => 'done', 'name' => $name];
-    $ran++;
 }
 
 $allOk = empty($errors);
