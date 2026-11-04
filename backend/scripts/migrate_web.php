@@ -55,21 +55,41 @@ foreach ($files as $file) {
         fn($s) => $s !== ''
     );
 
-    try {
+    // 1060 duplicate column, 1061 duplicate key, 1091 drop of a missing
+    // column or key. The API adds the same columns when it connects.
+    $harmless = [1060, 1061, 1091];
+    $failed   = false;
+    $error    = '';
+    if (!$db->inTransaction()) {
         $db->beginTransaction();
-        foreach ($statements as $stmt) {
-            $db->exec($stmt);
-        }
-        $db->prepare("INSERT INTO migrations (filename) VALUES (?)")->execute([$name]);
-        $db->commit();
-        $log[] = ['status' => 'done', 'name' => $name];
-        $ran++;
-    } catch (PDOException $e) {
-        $db->rollBack();
-        $log[]    = ['status' => 'fail', 'name' => $name, 'error' => $e->getMessage()];
-        $errors[] = $name;
-        break; // stop on first failure
     }
+    foreach ($statements as $stmt) {
+        try {
+            $db->exec($stmt);
+        } catch (PDOException $e) {
+            $code = (int)($e->errorInfo[1] ?? 0);
+            if (in_array($code, $harmless, true)) {
+                continue;
+            }
+            $failed = true;
+            $error  = $e->getMessage();
+            break;
+        }
+    }
+    if ($failed) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        $log[]    = ['status' => 'fail', 'name' => $name, 'error' => $error];
+        $errors[] = $name;
+        break;
+    }
+    $db->prepare("INSERT INTO migrations (filename) VALUES (?)")->execute([$name]);
+    if ($db->inTransaction()) {
+        $db->commit();
+    }
+    $log[] = ['status' => 'done', 'name' => $name];
+    $ran++;
 }
 
 $allOk = empty($errors);
