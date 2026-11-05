@@ -13,6 +13,8 @@ import 'venue_equipment_screen.dart';
 import 'release_flags.dart';
 import 'venue_listing.dart';
 import 'calendar_screen.dart';
+import '../../widgets/sheets/walkin_sheet.dart';
+import 'walk_in_fields.dart';
 import 'venue_members_screen.dart';
 import 'venue_customers_screen.dart';
 import 'block_slots_screen.dart';
@@ -139,7 +141,11 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                     _menuItem(AppIcons.pencil, 'Edit Venue', 'Update name, location, rate, photos', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => EditVenueScreen(courtId: widget.courtId))).then((_) => _load());
                     }),
-                  _menuItem(AppIcons.calendarDays, 'Booking Calendar', 'Day view of bookings', () {
+                  if (canManage)
+                    _menuItem(AppIcons.plus, 'Add booking', 'Record a guest on this venue', () async {
+                      await WalkInSheet.open(context, courtId: widget.courtId, date: bookingDay(DateTime.now()));
+                    }),
+                  _menuItem(AppIcons.calendarDays, 'Booking Calendar', 'Day view, with Add booking', () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => CalendarScreen(courtId: widget.courtId)));
                   }),
                   _menuItem(AppIcons.layoutGrid, 'Spaces', canManage ? 'Manage courts, lanes, rooms' : 'View courts, lanes, rooms', () {

@@ -116,7 +116,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             },
             child: Text(_week ? 'Day' : 'Week'),
           ),
-          if (!_week) IconButton(onPressed: _walkIn, icon: const Icon(AppIcons.plus)),
+          TextButton(onPressed: _walkIn, child: const Text('Add booking')),
         ],
       ),
       body: Column(
@@ -235,13 +235,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<void> _walkIn() async {
-    final saved = await WalkInSheet.show(
+    final saved = await WalkInSheet.open(
       context,
       courtId: widget.courtId,
       date: DateFormat('yyyy-MM-dd').format(_selectedDate),
       spaces: _spaces,
     );
-    if (saved == true) {
+    if (saved) {
       _loadDay();
       _loadMonth();
     }

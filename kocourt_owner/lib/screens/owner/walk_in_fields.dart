@@ -48,6 +48,20 @@ Map<String, dynamic> walkInBody({
 
 const walkInCollectionMethods = ['pay_at_venue', 'cash', 'external_upi'];
 
+String bookingDay(DateTime value) {
+  String two(int n) => n.toString().padLeft(2, '0');
+  return '${value.year}-${two(value.month)}-${two(value.day)}';
+}
+
+List<Map<String, dynamic>> spaceRows(dynamic payload) {
+  final raw = payload is Map ? payload['sub_courts'] : null;
+  if (raw is! List) return [];
+  return [
+    for (final row in raw)
+      if (row is Map) Map<String, dynamic>.from(row),
+  ];
+}
+
 String? collectionLabel(dynamic raw) {
   switch ('$raw') {
     case 'pay_at_venue':

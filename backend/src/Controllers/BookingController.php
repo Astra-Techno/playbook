@@ -536,7 +536,9 @@ class BookingController {
                 $data->end_time
             );
 
-            $booking->user_id     = $isWalkIn ? 0 : $authId;
+            // The booking row references users. A walk-in keeps the guest name
+            // and is stored under the owner or manager who recorded it.
+            $booking->user_id     = $authId;
             $booking->court_id    = $courtId;
             $booking->start_time  = $data->start_time;
             $booking->end_time    = $data->end_time;
@@ -594,6 +596,10 @@ class BookingController {
                 http_response_code(503);
                 echo json_encode(["message" => "Unable to create booking."]);
             }
+            } catch (PDOException $e) {
+                error_log('booking create: ' . $e->getMessage());
+                http_response_code(503);
+                echo json_encode(['message' => 'Unable to create booking.']);
             } finally {
                 SlotLock::release($db, $courtId);
             }

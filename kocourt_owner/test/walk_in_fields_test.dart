@@ -96,6 +96,9 @@ void main() {
     expect(collectionLabel('pay_at_venue'), 'Pay at venue');
     expect(collectionLabel('external_upi'), 'External UPI');
     expect(collectionLabel(null), isNull);
+    expect(bookingDay(DateTime(2026, 11, 5)), '2026-11-05');
+    expect(spaceRows({'sub_courts': [{'id': 3, 'name': 'Court 1'}]}).single['name'], 'Court 1');
+    expect(spaceRows({}), isEmpty);
     expect(
       () => walkInBody(
         courtId: 4,

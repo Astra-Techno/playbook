@@ -5,6 +5,7 @@ import '../../widgets/tab_phase.dart';
 import '../../widgets/tab_status.dart';
 import 'booking_detail_screen.dart';
 import 'walk_in_fields.dart';
+import '../../widgets/sheets/walkin_sheet.dart';
 
 class OwnerBookingsScreen extends StatefulWidget {
   const OwnerBookingsScreen({super.key});
@@ -47,12 +48,65 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
     });
   }
 
+  Future<void> _addBooking() async {
+    final auth = context.read<AuthProvider>();
+    try {
+      final res = await Api().get('/courts', params: {'owner_id': auth.userId});
+      final courts = List<Map<String, dynamic>>.from(
+        (res.data['records'] ?? []).map((row) => Map<String, dynamic>.from(row as Map)),
+      );
+      if (!mounted) return;
+      if (courts.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Add a venue before recording a booking.')),
+        );
+        return;
+      }
+      final court = courts.length == 1 ? courts.first : await _pickVenue(courts);
+      final courtId = int.tryParse('${court?['id']}');
+      if (court == null || courtId == null || courtId <= 0 || !mounted) return;
+      final saved = await WalkInSheet.open(context, courtId: courtId, date: bookingDay(DateTime.now()));
+      if (saved && mounted) _load();
+    } catch (caught) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(Api.failureMessage(caught, fallback: 'Could not load your venues.'))),
+      );
+    }
+  }
+
+  Future<Map<String, dynamic>?> _pickVenue(List<Map<String, dynamic>> courts) {
+    return showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            const ListTile(title: Text('Choose a venue', style: TextStyle(fontWeight: FontWeight.w800))),
+            for (final court in courts)
+              ListTile(
+                title: Text('${court['name'] ?? 'Venue'}'),
+                onTap: () => Navigator.pop(context, court),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Bookings', style: TextStyle(fontWeight: FontWeight.w800)),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _addBooking,
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: const Text('Add booking'),
       ),
       body: _bookingsBody(),
     );
@@ -73,7 +127,7 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
       color: AppColors.primary,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 96),
         children: [
           if (_error != null) ...[
             TabErrorBanner(message: _error!, onRetry: _load),
@@ -85,7 +139,7 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
               child: TabEmptyMessage(
                 icon: AppIcons.calendarDays,
                 title: 'No bookings yet',
-                subtitle: 'Bookings will appear here',
+                subtitle: 'Use Add booking to record a guest',
               ),
             )
           else

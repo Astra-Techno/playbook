@@ -18,6 +18,37 @@ class WalkInSheet extends StatefulWidget {
     this.spaces = const [],
   });
 
+  /// Opens the add-booking sheet. Loads spaces when [spaces] is omitted.
+  static Future<bool> open(
+    BuildContext context, {
+    required int courtId,
+    String? date,
+    List<Map<String, dynamic>>? spaces,
+  }) async {
+    var rows = spaces;
+    if (rows == null) {
+      try {
+        final res = await Api().get('/sub-courts', params: {'court_id': courtId});
+        rows = spaceRows(res.data);
+      } catch (caught) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(Api.failureMessage(caught, fallback: 'Could not load spaces.'))),
+          );
+        }
+        return false;
+      }
+    }
+    if (!context.mounted) return false;
+    final saved = await show(
+      context,
+      courtId: courtId,
+      date: date ?? bookingDay(DateTime.now()),
+      spaces: rows,
+    );
+    return saved == true;
+  }
+
   static Future<bool?> show(
     BuildContext context, {
     required int courtId,
@@ -126,7 +157,7 @@ class _WalkInSheetState extends State<WalkInSheet> {
             ),
           ),
           const SizedBox(height: 16),
-          const Text('Walk-in Booking', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+          const Text('Add booking', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
           const SizedBox(height: 4),
           Text('${widget.date} · $_hour:00', style: const TextStyle(color: AppColors.textMuted)),
           const SizedBox(height: 12),
@@ -189,7 +220,7 @@ class _WalkInSheetState extends State<WalkInSheet> {
               onPressed: _submitting ? null : _submit,
               child: _submitting
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Add Walk-in', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                  : const Text('Add booking', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
             ),
           ),
         ],

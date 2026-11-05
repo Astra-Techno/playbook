@@ -30,6 +30,7 @@ class Booking {
 
     // Create booking
     public function create() {
+        $this->ensureGuestColumns();
         $query = "INSERT INTO " . $this->table_name . "
                   SET user_id=:user_id, court_id=:court_id, start_time=:start_time,
                       end_time=:end_time, type=:type, total_price=:total_price,
@@ -51,13 +52,13 @@ class Booking {
         $stmt->bindParam(":end_time",     $this->end_time);
         $stmt->bindParam(":type",         $this->type);
         $stmt->bindParam(":total_price",  $this->total_price);
-        $stmt->bindParam(":sub_court_id", $this->sub_court_id);
-        $stmt->bindParam(":guest_name",   $this->guest_name);
-        $stmt->bindParam(":guest_phone",  $this->guest_phone);
-        $stmt->bindParam(":notes",        $this->notes);
+        $this->bindNullable($stmt, ':sub_court_id', $this->sub_court_id, PDO::PARAM_INT);
+        $this->bindNullable($stmt, ':guest_name', $this->guest_name, PDO::PARAM_STR);
+        $this->bindNullable($stmt, ':guest_phone', $this->guest_phone, PDO::PARAM_STR);
+        $this->bindNullable($stmt, ':notes', $this->notes, PDO::PARAM_STR);
         $snapshotJson = $this->commerce_snapshot ? json_encode($this->commerce_snapshot, JSON_THROW_ON_ERROR) : null;
         $stmt->bindValue(':commerce_snapshot', $snapshotJson);
-        $stmt->bindValue(':payment_id', $this->payment_id);
+        $this->bindNullable($stmt, ':payment_id', $this->payment_id, PDO::PARAM_INT);
         if ($this->collection_method === null || $this->collection_method === '') {
             $stmt->bindValue(':collection_method', null, PDO::PARAM_NULL);
         } else {
@@ -68,6 +69,30 @@ class Booking {
             return true;
         }
         return false;
+    }
+
+    private function ensureGuestColumns(): void
+    {
+        foreach ([
+            'sub_court_id' => 'INT DEFAULT NULL',
+            'guest_name' => 'VARCHAR(100) DEFAULT NULL',
+            'guest_phone' => 'VARCHAR(20) DEFAULT NULL',
+            'notes' => 'TEXT DEFAULT NULL',
+        ] as $column => $definition) {
+            $exists = $this->conn->query('SHOW COLUMNS FROM bookings LIKE ' . $this->conn->quote($column))->fetch();
+            if (!$exists) {
+                $this->conn->exec("ALTER TABLE bookings ADD COLUMN $column $definition");
+            }
+        }
+    }
+
+    private function bindNullable(PDOStatement $stmt, string $name, mixed $value, int $type): void
+    {
+        if ($value === null || $value === '') {
+            $stmt->bindValue($name, null, PDO::PARAM_NULL);
+            return;
+        }
+        $stmt->bindValue($name, $value, $type);
     }
 
     public function readByUser($user_id) {
