@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 
 class ReviewsScreen extends StatefulWidget {
@@ -13,6 +12,7 @@ class ReviewsScreen extends StatefulWidget {
 class _ReviewsScreenState extends State<ReviewsScreen> {
   List<Map<String, dynamic>> _reviews = [];
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -21,19 +21,15 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
   }
 
   Future<void> _load() async {
-    final auth = context.read<AuthProvider>();
     try {
-      final params = <String, dynamic>{};
-      if (widget.courtId != null) {
-        params['court_id'] = widget.courtId;
-      } else {
-        params['user_id'] = auth.userId;
-      }
-      final res = await Api().get('/reviews', params: params);
+      final res = await Api().get('/reviews', params: reviewListParams(courtId: widget.courtId));
       _reviews = List<Map<String, dynamic>>.from(
         (res.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
-    } catch (_) {}
+      _error = null;
+    } catch (e) {
+      _error = Api.failureMessage(e);
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -41,10 +37,20 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: Text(widget.courtId != null ? 'Reviews' : 'My Reviews', style: const TextStyle(fontWeight: FontWeight.w800))),
+      appBar: AppBar(title: Text(widget.courtId != null && widget.courtId! > 0 ? 'Reviews' : 'My Reviews', style: const TextStyle(fontWeight: FontWeight.w800))),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : _reviews.isEmpty
+          : _error != null && _reviews.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_error!, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700)),
+                      TextButton(onPressed: _load, child: const Text('Try again')),
+                    ],
+                  ),
+                )
+              : _reviews.isEmpty
               ? Center(child: Text('No reviews yet', style: TextStyle(color: Colors.grey[400])))
               : RefreshIndicator(
                   onRefresh: _load,

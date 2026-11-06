@@ -1,6 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'slot_block.dart';
+import '../bookings/booking_ticket.dart';
+import '../reviews/past_booking.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -244,14 +246,12 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
 
       if (result.success) {
         HapticFeedback.heavyImpact();
-        final bookingIds = (result.verifyData?['booking_ids'] as List?)?.cast<dynamic>() ?? [];
-
-        setState(() => _selectedSlots = {});
-        _loadSlots();
-
-        // Navigate to booking confirmation (BookMyShow style)
-        if (bookingIds.isNotEmpty && mounted) {
-          context.push('/booking-confirmation/${bookingIds.first}');
+        final bookingIds = bookingIdsFromVerify(result.verifyData);
+        if (!mounted) return;
+        if (bookingIds.isNotEmpty) {
+          context.go('/booking-confirmation/${bookingIds.first}');
+        } else {
+          context.go('/bookings');
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1123,11 +1123,21 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
       context.go('/login');
       return;
     }
+    int? bookingId;
+    try {
+      final res = await Api().get('/bookings', params: {'user_id': auth.userId ?? 0});
+      final records = res.data is Map ? res.data['records'] : null;
+      if (records is List) {
+        bookingId = pastBookingId(records, widget.courtId, DateTime.now());
+      }
+    } catch (_) {}
+    if (!mounted) return;
     final result = await ReviewSheet.show(
       context,
       courtId: widget.courtId,
       userId: auth.userId ?? 0,
       courtName: _court?['name'],
+      bookingId: bookingId,
     );
     if (result == true) _loadCourt();
   }

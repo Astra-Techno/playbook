@@ -196,7 +196,7 @@ const today = new Date()
 const dateOptions = Array.from({ length: 14 }, (_, i) => {
     const d = new Date(today)
     d.setDate(today.getDate() + i)
-    const value = d.toISOString().slice(0, 10)
+    const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     return {
         value,
         day: d.getDate(),
@@ -279,18 +279,23 @@ const isPeakLocked = (slot) => {
 
 // ── Slot state ────────────────────────────────────────────────────────────────
 
+const bookingCoversSpace = (booking) => {
+    if (!selectedSpace.value) return true
+    const spaceId = booking.sub_court_id
+    if (spaceId === null || spaceId === undefined || spaceId === '') return true
+    return String(spaceId) === String(selectedSpace.value.id)
+}
+
 const isBooked = (slot) => {
     const s = `${selectedDate.value} ${slot.pad}:00`
     const e = `${selectedDate.value} ${String(slot.hour + 1).padStart(2, '0')}:00:00`
-    if (selectedSpace.value) {
-        const sp = selectedSpace.value
-        const overlapping = bookedSlots.value.filter(b =>
-            String(b.sub_court_id) === String(sp.id) && s < b.end_time && e > b.start_time
-        )
-        if (sp.booking_mode === 'shared') return overlapping.length >= parseInt(sp.capacity || 1)
-        return overlapping.length > 0
+    const overlapping = bookedSlots.value.filter(b =>
+        bookingCoversSpace(b) && s < b.end_time && e > b.start_time
+    )
+    if (selectedSpace.value?.booking_mode === 'shared') {
+        return overlapping.length >= parseInt(selectedSpace.value.capacity || 1)
     }
-    return bookedSlots.value.some(b => s < b.end_time && e > b.start_time)
+    return overlapping.length > 0
 }
 
 const slotRemainingCapacity = (slot) => {
@@ -298,7 +303,7 @@ const slotRemainingCapacity = (slot) => {
     const s = `${selectedDate.value} ${slot.pad}:00`
     const e = `${selectedDate.value} ${String(slot.hour + 1).padStart(2, '0')}:00:00`
     const count = bookedSlots.value.filter(b =>
-        String(b.sub_court_id) === String(selectedSpace.value.id) &&
+        bookingCoversSpace(b) &&
         s < b.end_time && e > b.start_time
     ).length
     return Math.max(0, parseInt(selectedSpace.value.capacity || 1) - count)
@@ -462,7 +467,8 @@ onMounted(async () => {
             reviewCount.value = reviewsRes.data.count || 0
             courtPhotos.value = photosRes.data.photos || []
             // Fetch busy days for current month
-            const month = new Date().toISOString().slice(0, 7)
+            const now = new Date()
+            const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
             axios.get(`/bookings/busy-days?court_id=${court.value.id}&month=${month}`)
                 .then(r => { busyDays.value = r.data.busy_days || [] })
                 .catch(() => {})
@@ -522,12 +528,15 @@ const submitReview = async () => {
     if (!userPastBooking.value) return
     reviewSubmitting.value = true
     try {
+        const courtId = Number(court.value.id)
+        const rating = Number(reviewRating.value)
+        const bookingId = Number(userPastBooking.value?.id)
         await axios.post('/reviews', {
-            court_id:   court.value.id,
-            user_id:    auth.user?.id,
-            booking_id: userPastBooking.value.id,
-            rating:     reviewRating.value,
-            comment:    reviewComment.value.trim(),
+            court_id: courtId,
+            rating,
+            comment: reviewComment.value.trim(),
+            ...(auth.user?.id ? { user_id: Number(auth.user.id) } : {}),
+            ...(bookingId > 0 ? { booking_id: bookingId } : {}),
         })
         toast.success('Review submitted!')
         // Refresh reviews

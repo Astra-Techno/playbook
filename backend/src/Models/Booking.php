@@ -3,6 +3,12 @@
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../ScheduleRules.php';
 
+/** Price and times arrive as numbers from checkout. strip_tags only accepts a string. */
+function bookingPlainText(mixed $value): string
+{
+    return htmlspecialchars(strip_tags(trim((string)$value)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
 class Booking {
     public $conn;
     private $table_name = "bookings";
@@ -41,10 +47,10 @@ class Booking {
 
         $stmt = $this->conn->prepare($query);
 
-        $this->start_time  = htmlspecialchars(strip_tags($this->start_time));
-        $this->end_time    = htmlspecialchars(strip_tags($this->end_time));
-        $this->type        = htmlspecialchars(strip_tags($this->type));
-        $this->total_price = htmlspecialchars(strip_tags($this->total_price));
+        $this->start_time  = bookingPlainText($this->start_time);
+        $this->end_time    = bookingPlainText($this->end_time);
+        $this->type        = bookingPlainText($this->type);
+        $this->total_price = bookingPlainText($this->total_price);
 
         $stmt->bindParam(":user_id",      $this->user_id);
         $stmt->bindParam(":court_id",     $this->court_id);
@@ -104,10 +110,21 @@ class Booking {
                  " LEFT JOIN booking_refunds br ON br.booking_id=b.id LEFT JOIN refund_requests r ON r.id=br.refund_request_id" .
                  " WHERE b.user_id = ?" .
                  " ORDER BY b.start_time DESC";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(1, $user_id);
-        $stmt->execute();
-        return $stmt;
+        try {
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([$user_id]);
+            return $stmt;
+        } catch (\PDOException $e) {
+            $fallback = "SELECT b.*, c.name as court_name, c.owner_id, u.name as owner_name" .
+                        " FROM " . $this->table_name . " b" .
+                        " JOIN courts c ON b.court_id = c.id" .
+                        " LEFT JOIN users u ON c.owner_id = u.id" .
+                        " WHERE b.user_id = ?" .
+                        " ORDER BY b.start_time DESC";
+            $stmt = $this->conn->prepare($fallback);
+            $stmt->execute([$user_id]);
+            return $stmt;
+        }
     }
     /**
      * Return bookings for a specific court on a specific date.
@@ -118,7 +135,7 @@ class Booking {
                  " AND DATE(start_time) = :date" .
                  " AND status = 'confirmed'";
         if ($sub_court_id !== null) {
-            $query .= " AND sub_court_id = :sub_court_id";
+            $query .= " AND (sub_court_id = :sub_court_id OR sub_court_id IS NULL)";
         }
         $query .= " ORDER BY start_time";
         $stmt = $this->conn->prepare($query);
@@ -148,7 +165,7 @@ class Booking {
             $capacity     = $sc ? max(1, (int)($sc['capacity'] ?? 1)) : 1;
 
             $query = "SELECT COUNT(*) as cnt FROM " . $this->table_name .
-                     " WHERE court_id = :court_id AND sub_court_id = :sub_court_id" .
+                     " WHERE court_id = :court_id AND (sub_court_id = :sub_court_id OR sub_court_id IS NULL)" .
                      " AND (start_time < :end_time AND end_time > :start_time)" .
                      " AND status = 'confirmed'" . $ignoreSql;
             $stmt = $this->conn->prepare($query);
@@ -216,7 +233,7 @@ class Booking {
         $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
         if ($sub_court_id !== null) {
             $sql = "SELECT COUNT(*) FROM booking_holds
-                    WHERE court_id = ? AND sub_court_id = ?
+                    WHERE court_id = ? AND (sub_court_id = ? OR sub_court_id IS NULL)
                       AND start_time < ? AND end_time > ?
                       AND released_at IS NULL AND expires_at > ?
                       AND (payment_id IS NULL OR payment_id <> ?)";

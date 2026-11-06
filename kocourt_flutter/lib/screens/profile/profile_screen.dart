@@ -182,7 +182,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         _MenuItem(
                           icon: AppIcons.star,
-                          label: 'Reviews',
+                          label: 'My Reviews',
                           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReviewsScreen())),
                         ),
                         _MenuItem(

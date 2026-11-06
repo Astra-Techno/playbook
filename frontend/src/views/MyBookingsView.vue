@@ -67,8 +67,9 @@ onMounted(async () => {
         const res = await axios.get(`/bookings?user_id=${auth.user?.id}`)
         bookings.value = res.data.records || []
         autoPromptReview()
-    } catch {
+    } catch (err) {
         bookings.value = []
+        toast.error(err.response?.data?.message || 'Could not load bookings')
     } finally {
         loading.value = false
         await refreshRefunds()

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/api.dart';
 import '../../core/theme.dart';
+import '../../reviews/review_body.dart';
 
 class ReviewSheet extends StatefulWidget {
   final int courtId;
@@ -28,6 +29,7 @@ class _ReviewSheetState extends State<ReviewSheet> {
   int _rating = 0;
   final _commentController = TextEditingController();
   bool _submitting = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -38,18 +40,31 @@ class _ReviewSheetState extends State<ReviewSheet> {
   Future<void> _submit() async {
     if (_rating == 0) return;
 
-    setState(() => _submitting = true);
+    final courtId = positiveId(widget.courtId);
+    if (courtId == null) {
+      setState(() => _error = 'This venue could not be identified.');
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
     try {
-      await Api().post('/reviews', data: {
-        'court_id': widget.courtId,
-        'user_id': widget.userId,
-        'rating': _rating,
-        'comment': _commentController.text.trim(),
-        if (widget.bookingId != null) 'booking_id': widget.bookingId,
-      });
+      await Api().post('/reviews', data: reviewRequestBody(
+        courtId: courtId,
+        rating: _rating,
+        comment: _commentController.text,
+        bookingId: positiveId(widget.bookingId),
+        userId: positiveId(widget.userId),
+      ));
       if (mounted) Navigator.pop(context, true);
-    } catch (_) {
-      setState(() => _submitting = false);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = Api.failureMessage(e);
+      });
     }
   }
 
@@ -132,6 +147,10 @@ class _ReviewSheetState extends State<ReviewSheet> {
             ),
           ),
           const SizedBox(height: 20),
+          if (_error != null) ...[
+            Text(_error!, style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 12),
+          ],
 
           SizedBox(
             height: 52,

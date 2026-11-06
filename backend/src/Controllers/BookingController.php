@@ -365,8 +365,16 @@ class BookingController {
     //   staff_id  -> managed courts bookings
     public function index() {
         $authUser = Auth::user();
-        $authId   = (int)$authUser['id'];
+        $authId   = $authUser ? (int)$authUser['id'] : 0;
         $booking  = new Booking();
+
+        if (isset($_GET['user_id']) || isset($_GET['owner_id']) || isset($_GET['staff_id'])) {
+            if (!$authUser) {
+                http_response_code(401);
+                echo json_encode(['message' => 'Authentication required']);
+                return;
+            }
+        }
 
         if (isset($_GET['user_id'])) {
             // Always use token's user — ignoring query param prevents user spoofing

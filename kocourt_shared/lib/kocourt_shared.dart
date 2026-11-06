@@ -16,6 +16,7 @@ export 'providers/notifications_provider.dart';
 
 // Services
 export 'services/payment_service.dart';
+export 'reviews/review_body.dart';
 
 // Widgets
 export 'widgets/toast_overlay.dart';

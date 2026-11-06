@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../court_details/court_details_screen.dart';
+import 'court_list_params.dart';
 
 class FindCourtsScreen extends StatefulWidget {
   const FindCourtsScreen({super.key});
@@ -13,30 +14,54 @@ class FindCourtsScreen extends StatefulWidget {
 class _FindCourtsScreenState extends State<FindCourtsScreen> {
   final _searchCtrl = TextEditingController();
   List<Map<String, dynamic>> _results = [];
-  bool _loading = false;
+  bool _loading = true;
+  bool _searched = false;
+  String? _error;
   String _selectedType = 'All';
 
+  @override
+  void initState() {
+    super.initState();
+    _search();
+  }
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _search() async {
-    final q = _searchCtrl.text.trim();
-    if (q.isEmpty && _selectedType == 'All') return;
-    setState(() => _loading = true);
+    if (mounted && !_loading) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    } else {
+      _error = null;
+    }
     try {
-      final params = <String, dynamic>{};
-      if (q.isNotEmpty) params['location'] = q;
-      if (_selectedType != 'All') params['type'] = _selectedType;
-      final res = await Api().get('/courts', params: params);
+      final res = await Api().get('/courts', params: courtListParams(query: _searchCtrl.text, type: _selectedType));
       _results = List<Map<String, dynamic>>.from(
         (res.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
-    } catch (_) {}
-    setState(() => _loading = false);
+    } catch (caught) {
+      _results = [];
+      _error = Api.failureMessage(caught, fallback: 'Could not load venues.');
+    }
+    if (mounted) {
+      setState(() {
+        _loading = false;
+        _searched = true;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text('Find Courts', style: TextStyle(fontWeight: FontWeight.w800))),
+      appBar: AppBar(title: const Text('All venues', style: TextStyle(fontWeight: FontWeight.w800))),
       body: Column(
         children: [
           // Search bar
@@ -89,8 +114,21 @@ class _FindCourtsScreenState extends State<FindCourtsScreen> {
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-                : _results.isEmpty
-                    ? Center(child: Text('Search for courts near you', style: TextStyle(color: Colors.grey[400])))
+                : _error != null
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(_error!, textAlign: TextAlign.center),
+                              TextButton(onPressed: _search, child: const Text('Try again')),
+                            ],
+                          ),
+                        ),
+                      )
+                    : _results.isEmpty
+                    ? Center(child: Text(_searched ? 'No venues found' : 'Loading venues', style: TextStyle(color: Colors.grey[400])))
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),
                         itemCount: _results.length,

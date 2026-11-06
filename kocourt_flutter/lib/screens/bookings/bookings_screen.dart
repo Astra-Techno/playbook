@@ -5,6 +5,7 @@ import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../court_details/court_details_screen.dart';
+import '../court_details/slot_block.dart';
 import '../chat/chat_screen.dart';
 import '../chat/slot_chat_screen.dart';
 import '../chat/slot_groups_screen.dart';
@@ -20,6 +21,7 @@ class BookingsScreen extends StatefulWidget {
 class _BookingsScreenState extends State<BookingsScreen> {
   List<Map<String, dynamic>> _bookings = [];
   bool _loading = true;
+  String? _error;
   Set<String> _dismissedReviews = {};
 
   @override
@@ -54,11 +56,17 @@ class _BookingsScreenState extends State<BookingsScreen> {
           _bookings = List<Map<String, dynamic>>.from(
             (res.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
           );
+          _error = null;
           _loading = false;
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _loading = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = Api.failureMessage(e);
+        });
+      }
     }
   }
 
@@ -150,7 +158,9 @@ class _BookingsScreenState extends State<BookingsScreen> {
                     ],
                     const SizedBox(height: 12),
                     Expanded(
-                      child: _bookings.isEmpty
+                      child: _error != null && _bookings.isEmpty
+                          ? _buildLoadError()
+                          : _bookings.isEmpty
                           ? _buildEmpty()
                           : RefreshIndicator(
                               onRefresh: _loadBookings,
@@ -202,6 +212,22 @@ class _BookingsScreenState extends State<BookingsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLoadError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_error ?? 'Could not load bookings', textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 12),
+            TextButton(onPressed: _loadBookings, child: const Text('Try again')),
+          ],
+        ),
       ),
     );
   }
@@ -381,10 +407,10 @@ class _BookingsScreenState extends State<BookingsScreen> {
                 final auth = context.read<AuthProvider>();
                 final result = await ReviewSheet.show(
                   context,
-                  courtId: booking['court_id'],
+                  courtId: positiveId(booking['court_id']) ?? 0,
                   userId: auth.userId ?? 0,
                   courtName: courtName,
-                  bookingId: booking['id'],
+                  bookingId: positiveId(booking['id']),
                 );
                 if (result == true) {
                   _dismissReview('${booking['id']}');
@@ -451,10 +477,8 @@ class _BookingsScreenState extends State<BookingsScreen> {
     final courtId = booking['court_id'];
 
     // Parse full datetime strings (e.g. "2026-08-30 09:00:00")
-    DateTime? startDt;
-    DateTime? endDt;
-    try { startDt = DateTime.parse(rawStart); } catch (_) {}
-    try { endDt = DateTime.parse(rawEnd); } catch (_) {}
+    final startDt = parseSqlDateTime('$rawStart');
+    final endDt = parseSqlDateTime('$rawEnd');
 
     final date = startDt != null ? DateFormat('yyyy-MM-dd').format(startDt) : (booking['date'] ?? '');
     String formattedDate = date;

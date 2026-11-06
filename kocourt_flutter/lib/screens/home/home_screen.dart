@@ -875,7 +875,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Text(
-                              'See all',
+                              'View all',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,

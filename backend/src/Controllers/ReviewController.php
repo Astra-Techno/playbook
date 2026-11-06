@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../Push.php';
+require_once __DIR__ . '/../ReviewSubmission.php';
 
 class ReviewController {
 
@@ -9,11 +10,13 @@ class ReviewController {
     public function index() {
         $court_id = (int)($_GET['court_id'] ?? 0);
         $owner_id = (int)($_GET['owner_id'] ?? 0);
+        $authUser = Auth::user();
+        $scope = ReviewSubmission::listScope($court_id, $owner_id, $authUser !== null);
 
         $db = Database::getConnection();
 
         // All reviews across owner's courts
-        if ($owner_id && !$court_id) {
+        if ($scope === 'owner') {
             $stmt = $db->prepare(
                 "SELECT r.id, r.court_id, r.rating, r.comment, r.created_at,
                         r.owner_reply, r.owner_reply_at,
@@ -29,10 +32,8 @@ class ReviewController {
             return;
         }
 
-        // My reviews — user_id from token
-        $user_id = (int)($_GET['user_id'] ?? 0);
-        if (!$court_id && $user_id) {
-            $authUser = Auth::require();
+        // My reviews — the signed-in player, not a court id
+        if ($scope === 'mine') {
             $stmt = $db->prepare(
                 "SELECT r.id, r.court_id, r.rating, r.comment, r.created_at,
                         r.owner_reply AS reply, r.owner_reply_at,
@@ -48,7 +49,7 @@ class ReviewController {
             return;
         }
 
-        if (!$court_id) {
+        if ($scope === 'court_required') {
             http_response_code(400);
             echo json_encode(["message" => "court_id required"]);
             return;
@@ -78,63 +79,65 @@ class ReviewController {
         ]);
     }
 
-    // POST /api/reviews  { court_id, booking_id, rating, comment }
+    // POST /api/reviews  { court_id, rating, comment, booking_id? }
     public function create() {
-        $authUser   = Auth::require();
-        $user_id    = (int)$authUser['id'];
-        $data       = json_decode(file_get_contents("php://input"));
-        $court_id   = (int)($data->court_id   ?? 0);
-        $booking_id = (int)($data->booking_id ?? 0);
-        $rating     = (int)($data->rating     ?? 0);
-        $comment    = htmlspecialchars(strip_tags(trim($data->comment ?? '')));
+        $authUser = Auth::require();
+        $user_id  = (int)$authUser['id'];
+        $review   = ReviewSubmission::fromBody(json_decode(file_get_contents("php://input")));
+        $court_id = $review['court_id'];
+        $rating   = $review['rating'];
+        $comment  = $review['comment'];
+        $booking_id = $review['booking_id'];
 
-        if (!$court_id || $rating < 1 || $rating > 5) {
+        if (!$review['ok']) {
             http_response_code(400);
             echo json_encode(["message" => "Invalid review data"]);
             return;
         }
 
         $db = Database::getConnection();
+        $this->allowVenueReview($db);
 
-        // If no booking_id provided, find any past booking by this user at this court
+        if ($booking_id) {
+            $check = $db->prepare(
+                "SELECT id FROM bookings WHERE id=? AND user_id=? AND court_id=? AND status='confirmed'"
+            );
+            $check->execute([$booking_id, $user_id, $court_id]);
+            if (!$check->fetch()) {
+                $booking_id = null;
+            }
+        }
         if (!$booking_id) {
             $findBooking = $db->prepare(
-                "SELECT id FROM bookings WHERE user_id=? AND court_id=? AND start_time <= NOW() AND status='confirmed' ORDER BY start_time DESC LIMIT 1"
+                "SELECT id FROM bookings WHERE user_id=? AND court_id=? AND status='confirmed' ORDER BY start_time DESC LIMIT 1"
             );
             $findBooking->execute([$user_id, $court_id]);
             $found = $findBooking->fetch(PDO::FETCH_ASSOC);
             if ($found) $booking_id = (int)$found['id'];
         }
 
-        // Verify user has at least one past booking at this court
-        if ($booking_id) {
-            $check = $db->prepare(
-                "SELECT id FROM bookings WHERE id=? AND user_id=? AND court_id=? AND start_time <= NOW()"
-            );
-            $check->execute([$booking_id, $user_id, $court_id]);
-            if (!$check->fetch()) {
-                http_response_code(403);
-                echo json_encode(["message" => "You must have completed this booking to review it"]);
-                return;
-            }
-        } else {
-            // No booking at all — check if user has any past booking at this court
-            $anyBooking = $db->prepare(
-                "SELECT id FROM bookings WHERE user_id=? AND court_id=? AND start_time <= NOW() AND status='confirmed' LIMIT 1"
-            );
-            $anyBooking->execute([$user_id, $court_id]);
-            if (!$anyBooking->fetch()) {
-                http_response_code(403);
-                echo json_encode(["message" => "You must have a completed booking to review this venue"]);
-                return;
-            }
+        $existing = $db->prepare("SELECT id FROM reviews WHERE user_id=? AND court_id=? LIMIT 1");
+        $existing->execute([$user_id, $court_id]);
+        if ($existing->fetch()) {
+            http_response_code(409);
+            echo json_encode(["message" => "You have already reviewed this venue"]);
+            return;
         }
 
         try {
             $stmt = $db->prepare(
                 "INSERT INTO reviews (court_id, user_id, booking_id, rating, comment) VALUES (?,?,?,?,?)"
             );
-            $stmt->execute([$court_id, $user_id, $booking_id, $rating, $comment]);
+            $stmt->bindValue(1, $court_id, PDO::PARAM_INT);
+            $stmt->bindValue(2, $user_id, PDO::PARAM_INT);
+            if ($booking_id) {
+                $stmt->bindValue(3, $booking_id, PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue(3, null, PDO::PARAM_NULL);
+            }
+            $stmt->bindValue(4, $rating, PDO::PARAM_INT);
+            $stmt->bindValue(5, $comment, PDO::PARAM_STR);
+            $stmt->execute();
 
             // In-app notification for venue owner
             $courtStmt = $db->prepare("SELECT name, owner_id FROM courts WHERE id = ?");
@@ -168,8 +171,14 @@ class ReviewController {
             echo json_encode(["message" => "Review submitted!"]);
         } catch (\PDOException $e) {
             http_response_code(409);
-            echo json_encode(["message" => "Already reviewed this booking"]);
+            echo json_encode(["message" => "You have already reviewed this venue"]);
         }
+    }
+
+    private function allowVenueReview(PDO $db): void {
+        try {
+            $db->exec("ALTER TABLE reviews MODIFY booking_id INT NULL");
+        } catch (\PDOException $e) {}
     }
 
     // PUT /api/reviews/:id/reply  { reply }

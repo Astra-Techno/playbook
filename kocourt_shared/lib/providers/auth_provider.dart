@@ -17,7 +17,13 @@ class AuthProvider extends ChangeNotifier {
   String get userName => _user?['name'] ?? '';
   String get userPhone => _user?['phone'] ?? '';
   String? get avatarUrl => _user?['avatar_url'];
-  int? get userId => _user?['id'];
+  int? get userId {
+    final id = _user?['id'];
+    if (id is int) return id > 0 ? id : null;
+    final parsed = int.tryParse('${id ?? ''}');
+    if (parsed == null || parsed < 1) return null;
+    return parsed;
+  }
   String? get userBio => _user?['bio'];
   String? get skillLevel => _user?['skill_level'];
 
