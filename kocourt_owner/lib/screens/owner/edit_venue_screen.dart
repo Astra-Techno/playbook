@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'venue_listing.dart';
+import 'location_pick.dart';
+import '../../widgets/sheets/location_sheet.dart';
 
 class EditVenueScreen extends StatefulWidget {
   final int? courtId;
@@ -20,6 +22,8 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
 
   final _nameCtrl = TextEditingController();
   final _locationCtrl = TextEditingController();
+  double? _lat;
+  double? _lng;
   final _rateCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   String _type = 'shuttle';
@@ -57,6 +61,8 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
         if (_canManage) {
           _nameCtrl.text = c['name'] ?? '';
           _locationCtrl.text = c['location'] ?? '';
+          _lat = double.tryParse('${c['lat']}');
+          _lng = double.tryParse('${c['lng']}');
           _rateCtrl.text = '${c['hourly_rate'] ?? ''}';
           _descCtrl.text = c['description'] ?? '';
           _type = c['type'] ?? 'shuttle';
@@ -147,13 +153,21 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
   }
 
   Future<void> _save() async {
-    if (_nameCtrl.text.trim().isEmpty || _locationCtrl.text.trim().isEmpty) return;
+    if (_nameCtrl.text.trim().isEmpty) return;
+    if (!locationReady(_locationCtrl.text, _lat, _lng)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Choose a location from search, or use current location.')),
+      );
+      return;
+    }
     setState(() => _saving = true);
     final auth = context.read<AuthProvider>();
     try {
       final data = {
         'name': _nameCtrl.text.trim(),
         'location': _locationCtrl.text.trim(),
+        'lat': _lat,
+        'lng': _lng,
         'type': _type,
         'hourly_rate': _rateCtrl.text.trim(),
         'description': _descCtrl.text.trim(),
@@ -179,6 +193,10 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
     if (mounted) setState(() => _saving = false);
   }
 
+  bool get _formReady => !_loading && _loadError == null && _canManage;
+
+  bool get _canSave => _formReady && !_saving;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -187,13 +205,30 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
         title: Text(isCreate ? 'Add Venue' : 'Edit Venue', style: const TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           TextButton(
-            onPressed: (_saving || !_canManage || _loadError != null) ? null : _save,
+            onPressed: _canSave ? _save : null,
             child: _saving
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Text('Save', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary)),
           ),
         ],
       ),
+      bottomNavigationBar: _formReady
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                child: SizedBox(
+                  height: 52,
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _canSave ? _save : null,
+                    child: _saving
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Save', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                  ),
+                ),
+              ),
+            )
+          : null,
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _loadError != null
@@ -290,7 +325,54 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
                   TextField(controller: _nameCtrl, decoration: const InputDecoration(hintText: 'e.g. KO Sports Arena')),
                   const SizedBox(height: 16),
                   _label('LOCATION'),
-                  TextField(controller: _locationCtrl, decoration: const InputDecoration(hintText: 'e.g. Anna Nagar, Chennai')),
+                  const SizedBox(height: 8),
+                  Material(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(14),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(14),
+                      onTap: () async {
+                        final place = await LocationSheet.show(context);
+                        if (place == null || !mounted) return;
+                        setState(() {
+                          _locationCtrl.text = place.label;
+                          _lat = place.lat;
+                          _lng = place.lng;
+                        });
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.place_outlined, size: 20),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _locationCtrl.text.trim().isEmpty
+                                        ? 'Search an area or use current location'
+                                        : _locationCtrl.text.trim(),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: locationReady(_locationCtrl.text, _lat, _lng) ? Colors.black : Colors.grey[700],
+                                    ),
+                                  ),
+                                  if (!locationReady(_locationCtrl.text, _lat, _lng))
+                                    Text(
+                                      'Select a search result or current location',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   _label('SPORT TYPE'),
                   const SizedBox(height: 8),

@@ -13,12 +13,13 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
   late TabController _tabCtrl;
   List<Map<String, dynamic>> _claims = [];
   List<Map<String, dynamic>> _users = [];
+  List<Map<String, dynamic>> _payoutRequests = [];
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 2, vsync: this);
+    _tabCtrl = TabController(length: 3, vsync: this);
     _load();
   }
 
@@ -37,6 +38,10 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
       final usersRes = await Api().get('/admin/users');
       _users = List<Map<String, dynamic>>.from(
         (usersRes.data['users'] ?? []).map((e) => Map<String, dynamic>.from(e)),
+      );
+      final payoutRes = await Api().get('/payout-requests');
+      _payoutRequests = List<Map<String, dynamic>>.from(
+        (payoutRes.data['requests'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
@@ -68,15 +73,45 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
           labelColor: Colors.black,
           unselectedLabelColor: Colors.grey,
           labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-          tabs: const [Tab(text: 'Claims'), Tab(text: 'Users')],
+          tabs: const [Tab(text: 'Claims'), Tab(text: 'Users'), Tab(text: 'Payouts')],
         ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : TabBarView(
               controller: _tabCtrl,
-              children: [_buildClaims(), _buildUsers()],
+              children: [_buildClaims(), _buildUsers(), _buildPayoutRequests()],
             ),
+    );
+  }
+
+  Widget _buildPayoutRequests() {
+    if (_payoutRequests.isEmpty) {
+      return Center(child: Text('No payout requests', style: TextStyle(color: Colors.grey[400])));
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: _payoutRequests.length,
+      itemBuilder: (_, i) {
+        final row = _payoutRequests[i];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('${row['owner_name'] ?? 'Owner'} · ₹${row['amount']}', style: const TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text('${row['owner_phone'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              if ('${row['note'] ?? ''}'.isNotEmpty)
+                Text('${row['note']}', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+              const SizedBox(height: 4),
+              Text('Requested. This is not a recorded payout.', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+            ],
+          ),
+        );
+      },
     );
   }
 

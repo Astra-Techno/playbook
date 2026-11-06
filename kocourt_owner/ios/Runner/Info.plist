@@ -66,6 +66,8 @@
       <string>UIInterfaceOrientationLandscapeLeft</string>
       <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>KoCourt Owner uses your location when you choose the current location for a venue.</string>
     <key>NSCameraUsageDescription</key>
     <string>Take photos for your profile and venues.</string>
     <key>NSPhotoLibraryUsageDescription</key>

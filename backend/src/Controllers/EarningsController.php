@@ -3,6 +3,7 @@
 require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../SettlementMath.php';
 require_once __DIR__ . '/../BookingExportQuery.php';
+require_once __DIR__ . '/../PayoutRequest.php';
 
 class EarningsController {
 
@@ -63,7 +64,58 @@ class EarningsController {
             ],
             'transactions' => $transactions,
             'payouts'      => $payouts,
+            'payout_requests' => $this->ownerPayoutRequests($db, $owner_id),
         ]);
+    }
+
+    // POST /payout-requests { amount, note? }
+    // The signed-in owner asks for a transfer. This does not insert a payout.
+    public function requestPayout(): void {
+        $authUser = Auth::require();
+        $data = json_decode(file_get_contents('php://input'));
+        $ownerId = (int)$authUser['id'];
+        $amount = is_object($data) ? (float)($data->amount ?? 0) : 0;
+        $note = is_object($data) ? trim((string)($data->note ?? '')) : '';
+        $db = Database::getConnection();
+        $this->ensurePayoutRequests($db);
+        $open = $db->prepare("SELECT id FROM payout_requests WHERE owner_id = ? AND status = 'requested' LIMIT 1");
+        $open->execute([$ownerId]);
+        $paid = $db->prepare('SELECT COALESCE(SUM(amount),0) FROM payouts WHERE owner_id = ?');
+        $paid->execute([$ownerId]);
+        $available = SettlementMath::notYetPaidOut($this->sumEarnings($db, $ownerId, null, null), (float)$paid->fetchColumn());
+        $plan = PayoutRequest::plan($available, $amount, (bool)$open->fetchColumn(), $note);
+        if (!$plan['ok']) {
+            http_response_code(422);
+            echo json_encode(['message' => $plan['message']]);
+            return;
+        }
+        $db->prepare('INSERT INTO payout_requests (owner_id, amount, note, status) VALUES (?, ?, ?, ?)')
+           ->execute([$ownerId, $plan['amount'], $plan['note'] !== '' ? $plan['note'] : null, 'requested']);
+        http_response_code(201);
+        echo json_encode([
+            'message' => 'Payout requested',
+            'id' => (int)$db->lastInsertId(),
+            'amount' => $plan['amount'],
+        ]);
+    }
+
+    // GET /payout-requests — an owner sees their own. An admin sees open requests.
+    public function listPayoutRequests(): void {
+        $authUser = Auth::require();
+        $db = Database::getConnection();
+        $this->ensurePayoutRequests($db);
+        if (($authUser['role'] ?? '') === 'admin') {
+            $stmt = $db->query(
+                "SELECT r.id, r.owner_id, r.amount, r.note, r.status, r.created_at, u.name AS owner_name, u.phone AS owner_phone
+                 FROM payout_requests r
+                 LEFT JOIN users u ON u.id = r.owner_id
+                 WHERE r.status = 'requested'
+                 ORDER BY r.id DESC"
+            );
+            echo json_encode(['requests' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+            return;
+        }
+        echo json_encode(['requests' => $this->ownerPayoutRequests($db, (int)$authUser['id'])]);
     }
 
     // POST /payouts  { owner_id, amount, note }  — admin records a manual payout
@@ -431,6 +483,28 @@ class EarningsController {
         ";
         $stmt = $db->prepare($sql);
         $stmt->execute([$owner_id, $owner_id, $limit]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    private function ensurePayoutRequests(PDO $db): void {
+        $db->exec("CREATE TABLE IF NOT EXISTS payout_requests (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            owner_id INT NOT NULL,
+            amount DECIMAL(10,2) NOT NULL,
+            note VARCHAR(200) DEFAULT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'requested',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_payout_request_owner (owner_id, status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    }
+
+    private function ownerPayoutRequests(PDO $db, int $ownerId): array {
+        $this->ensurePayoutRequests($db);
+        $stmt = $db->prepare(
+            "SELECT id, owner_id, amount, note, status, created_at
+             FROM payout_requests WHERE owner_id = ? ORDER BY id DESC LIMIT 10"
+        );
+        $stmt->execute([$ownerId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }

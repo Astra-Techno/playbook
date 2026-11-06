@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../widgets/tab_phase.dart';
 import '../../widgets/tab_status.dart';
 import 'earnings_figures.dart';
+import 'payout_request_fields.dart';
 
 class OwnerEarningsScreen extends StatefulWidget {
   const OwnerEarningsScreen({super.key});
@@ -17,6 +18,7 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
   Map<String, dynamic>? _summary;
   List<Map<String, dynamic>> _transactions = [];
   List<Map<String, dynamic>> _payouts = [];
+  List<Map<String, dynamic>> _requests = [];
   bool _loading = true;
   String? _error;
 
@@ -35,6 +37,7 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
     Map<String, dynamic>? summary;
     List<Map<String, dynamic>>? transactions;
     List<Map<String, dynamic>>? payouts;
+    List<Map<String, dynamic>>? requests;
     try {
       final res = await Api().get('/earnings', params: {'owner_id': auth.userId});
       final data = Map<String, dynamic>.from(res.data as Map);
@@ -47,6 +50,7 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
         (data['transactions'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
       payouts = payoutRows(data['payouts']);
+      requests = payoutRows(data['payout_requests']);
     } catch (caught) {
       error = caught is FormatException
           ? caught.message
@@ -58,6 +62,7 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
         _summary = summary;
         _transactions = transactions ?? [];
         _payouts = payouts ?? [];
+        _requests = requests ?? [];
       }
       _error = error;
       _loading = false;
@@ -140,6 +145,8 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
                   Expanded(child: _statCard('Not yet paid out', _formatCurrency(moneySplit(summary)?.notYetPaidOut), AppColors.textPrimary, Icons.hourglass_empty)),
                 ],
               ),
+              const SizedBox(height: 16),
+              _requestPayout(summary),
               const SizedBox(height: 24),
               const Text('Payouts', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
@@ -201,6 +208,111 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
         ],
       ),
     );
+  }
+
+  Widget _requestPayout(Map<String, dynamic> summary) {
+    final open = openPayoutRequest(_requests);
+    final waiting = moneySplit(summary)?.notYetPaidOut ?? 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text(
+          'A request asks for a manual transfer. It does not mark the money as paid out.',
+          style: TextStyle(fontSize: 13, height: 1.4, color: AppColors.textMuted),
+        ),
+        const SizedBox(height: 8),
+        if (open != null)
+          Text(
+            'Payout requested: ${_formatCurrency(open['amount'])}',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          )
+        else
+          SizedBox(
+            height: 48,
+            child: ElevatedButton(
+              onPressed: waiting > 0 ? () => _askPayout(waiting) : null,
+              child: const Text('Request payout', style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _askPayout(double waiting) async {
+    final amount = TextEditingController(text: waiting.toStringAsFixed(2));
+    final note = TextEditingController();
+    final sent = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        var sending = false;
+        String? error;
+        return StatefulBuilder(
+          builder: (sheetContext, setSheet) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 16,
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('Request payout', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: amount,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    decoration: const InputDecoration(labelText: 'Amount'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: note,
+                    decoration: const InputDecoration(labelText: 'Note, optional'),
+                  ),
+                  if (error != null) ...[
+                    const SizedBox(height: 8),
+                    Text(error!, style: const TextStyle(color: AppColors.error)),
+                  ],
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: sending
+                          ? null
+                          : () async {
+                              setSheet(() {
+                                sending = true;
+                                error = null;
+                              });
+                              try {
+                                final body = payoutRequestBody(amountText: amount.text, note: note.text);
+                                await Api().post('/payout-requests', data: body);
+                                if (sheetContext.mounted) Navigator.pop(sheetContext, true);
+                              } catch (caught) {
+                                setSheet(() {
+                                  sending = false;
+                                  error = caught is PayoutRequestError
+                                      ? caught.message
+                                      : Api.failureMessage(caught, fallback: 'Could not send this request.');
+                                });
+                              }
+                            },
+                      child: const Text('Send request', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+    amount.dispose();
+    note.dispose();
+    if (sent == true) _load();
   }
 
   Widget _payoutTile(Map<String, dynamic> payout) {

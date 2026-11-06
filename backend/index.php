@@ -586,6 +586,14 @@ if (isset($seg[0]) && $seg[0] === 'earnings') {
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::requireOwner(); $earningsController->index(); exit(); }
 }
 
+// Owner asks for a manual transfer. This does not record a payout.
+if (isset($seg[0]) && $seg[0] === 'payout-requests') {
+    require_once __DIR__ . '/src/Controllers/EarningsController.php';
+    $payoutRequests = new EarningsController();
+    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::requireOwner(); $payoutRequests->requestPayout(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET')  { Auth::requireOwner(); $payoutRequests->listPayoutRequests(); exit(); }
+}
+
 // Payouts Routes (admin records manual transfers)
 if (isset($seg[0]) && $seg[0] === 'payouts') {
     require_once __DIR__ . '/src/Controllers/EarningsController.php';
