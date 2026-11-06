@@ -22,13 +22,37 @@ class _BookingsScreenState extends State<BookingsScreen> {
   List<Map<String, dynamic>> _bookings = [];
   bool _loading = true;
   String? _error;
+  int? _loadedForUser;
   Set<String> _dismissedReviews = {};
 
   @override
   void initState() {
     super.initState();
     _loadDismissedReviews();
-    _loadBookings();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = context.read<AuthProvider>();
+    final userId = auth.isLoggedIn ? auth.userId : null;
+    if (userId == null) {
+      _loadedForUser = null;
+      if (_loading) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _loadedForUser == null) {
+            setState(() => _loading = false);
+          }
+        });
+      }
+      return;
+    }
+    if (userId == _loadedForUser) return;
+    _loadedForUser = userId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || context.read<AuthProvider>().userId != userId) return;
+      _loadBookings();
+    });
   }
 
   Future<void> _loadDismissedReviews() async {

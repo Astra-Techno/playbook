@@ -28,16 +28,21 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   }
 
   Future<void> _post() async {
-    if (_contentCtrl.text.trim().isEmpty) return;
+    final text = _contentCtrl.text.trim();
+    final photo = _imageUrl?.trim() ?? '';
+    if (text.isEmpty && photo.isEmpty) return;
     setState(() => _posting = true);
     final auth = context.read<AuthProvider>();
     try {
-      await Api().post('/posts', data: {
+      final res = await Api().post('/posts', data: {
         'user_id': auth.userId,
-        'content': _contentCtrl.text.trim(),
-        'image_url': _imageUrl ?? '',
+        'content': text,
+        if (photo.isNotEmpty) 'images': [photo],
+        if (photo.isNotEmpty) 'image_url': photo,
       });
-      if (mounted) Navigator.pop(context, true);
+      if (!mounted) return;
+      final data = res.data;
+      Navigator.pop(context, data is Map ? Map<String, dynamic>.from(data) : true);
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to post'), backgroundColor: AppColors.error));
     }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'post_images.dart';
 
 class PostDetailScreen extends StatefulWidget {
   final int postId;
@@ -92,12 +93,13 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Text(_post!['content'] ?? '', style: const TextStyle(fontSize: 15, height: 1.5)),
-                  if (_post!['image_url'] != null && _post!['image_url'].toString().isNotEmpty) ...[
+                  if ('${_post!['content'] ?? ''}'.trim().isNotEmpty)
+                    Text('${_post!['content']}'.trim(), style: const TextStyle(fontSize: 15, height: 1.5)),
+                  for (final url in postImageUrls(_post!)) ...[
                     const SizedBox(height: 16),
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
-                      child: CachedNetworkImage(imageUrl: _post!['image_url'], fit: BoxFit.cover),
+                      child: CachedNetworkImage(imageUrl: url, fit: BoxFit.cover),
                     ),
                   ],
                   const SizedBox(height: 16),

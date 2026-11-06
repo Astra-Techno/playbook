@@ -20,14 +20,6 @@ class _OwnerAppShellState extends State<OwnerAppShell> with TickerProviderStateM
   int _currentIndex = 0;
   late final List<AnimationController> _iconControllers;
 
-  final _screens = const [
-    OwnerDashboardScreen(),
-    OwnerBookingsScreen(),
-    OwnerEarningsScreen(),
-    ChatThreadsScreen(),
-    OwnerProfileScreen(),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -59,7 +51,13 @@ class _OwnerAppShellState extends State<OwnerAppShell> with TickerProviderStateM
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: _screens,
+        children: [
+          const OwnerDashboardScreen(),
+          OwnerBookingsScreen(active: _currentIndex == 1),
+          const OwnerEarningsScreen(),
+          const ChatThreadsScreen(),
+          const OwnerProfileScreen(),
+        ],
       ),
       bottomNavigationBar: Container(
         margin: EdgeInsets.only(left: 16, right: 16, bottom: bottomPadding + 10),

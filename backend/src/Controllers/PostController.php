@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../PostBody.php';
 
 class PostController {
     private $db;
@@ -82,7 +83,7 @@ class PostController {
             } else {
                 $p['images'] = [];
             }
-            unset($p['image_url']);
+            $p['image_url'] = $p['images'][0] ?? null;
         }
         echo json_encode(['records' => $posts]);
     }
@@ -107,7 +108,7 @@ class PostController {
         if (!empty($p['images']))    $p['images'] = json_decode($p['images'], true) ?: [];
         elseif (!empty($p['image_url'])) $p['images'] = [$p['image_url']];
         else $p['images'] = [];
-        unset($p['image_url']);
+        $p['image_url'] = $p['images'][0] ?? null;
 
         // Fetch comments
         $cStmt = $this->db->prepare("
@@ -127,19 +128,18 @@ class PostController {
     public function create() {
         $authUser   = Auth::require();
         $data       = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($data)) $data = [];
         $user_id    = (int)$authUser['id'];
-        $content    = trim($data['content'] ?? '');
-        $court_id   = isset($data['court_id'])   ? (int)$data['court_id']   : null;
-        $booking_id = isset($data['booking_id']) ? (int)$data['booking_id'] : null;
+        $court_id   = !empty($data['court_id'])   ? (int)$data['court_id']   : null;
+        $booking_id = !empty($data['booking_id']) ? (int)$data['booking_id'] : null;
         $visibility = in_array($data['visibility'] ?? '', ['public','only_me','tagged'])
                       ? $data['visibility'] : 'public';
         $tagsJson   = !empty($data['tags']) ? json_encode($data['tags']) : null;
 
-        // Accept array of image URLs
-        $imgs = $data['images'] ?? [];
-        if (!is_array($imgs)) $imgs = $imgs ? [$imgs] : [];
-        $imgs = array_values(array_filter(array_map('trim', $imgs)));
+        $imgs = PostBody::images($data);
+        $content = PostBody::content($data, $imgs);
         $imagesJson = !empty($imgs) ? json_encode($imgs) : null;
+        $legacyUrl = PostBody::legacyImageUrl($imgs);
 
         if (!$content) {
             http_response_code(400);
@@ -147,10 +147,18 @@ class PostController {
             return;
         }
         $stmt = $this->db->prepare(
-            "INSERT INTO posts (user_id, content, images, court_id, booking_id, visibility, tags)
-             VALUES (?, ?, ?, ?, ?, ?, ?)"
+            "INSERT INTO posts (user_id, content, images, image_url, court_id, booking_id, visibility, tags)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
         );
-        $stmt->execute([$user_id, $content, $imagesJson, $court_id, $booking_id, $visibility, $tagsJson]);
+        $stmt->bindValue(1, $user_id, PDO::PARAM_INT);
+        $stmt->bindValue(2, $content, PDO::PARAM_STR);
+        $stmt->bindValue(3, $imagesJson, $imagesJson === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $stmt->bindValue(4, $legacyUrl, $legacyUrl === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $stmt->bindValue(5, $court_id, $court_id ? PDO::PARAM_INT : PDO::PARAM_NULL);
+        $stmt->bindValue(6, $booking_id, $booking_id ? PDO::PARAM_INT : PDO::PARAM_NULL);
+        $stmt->bindValue(7, $visibility, PDO::PARAM_STR);
+        $stmt->bindValue(8, $tagsJson, $tagsJson === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $stmt->execute();
         $id = $this->db->lastInsertId();
 
         $stmt2 = $this->db->prepare(
@@ -159,9 +167,10 @@ class PostController {
         $stmt2->execute([$id]);
         $post = $stmt2->fetch(PDO::FETCH_ASSOC);
         $post['likes_count'] = 0;
+        $post['comment_count'] = 0;
         $post['is_liked']    = false;
         $post['images']      = $imgs;
-        unset($post['image_url']);
+        $post['image_url']   = $imgs[0] ?? null;
         http_response_code(201);
         echo json_encode($post);
     }

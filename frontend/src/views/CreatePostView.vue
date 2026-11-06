@@ -169,9 +169,9 @@ const submitPost = async () => {
             uploadingImages.value = false
         }
 
-        await axios.post('/posts', {
+        const created = await axios.post('/posts', {
             user_id:    auth.user.id,
-            content:    postText.value.trim() || ' ',
+            content:    postText.value.trim(),
             images:     imageUrls,
             court_id:   courtId  || undefined,
             booking_id: bookingId || undefined,
@@ -180,7 +180,7 @@ const submitPost = async () => {
         })
 
         toast.success('Posted to community!')
-        router.push('/feed')
+        router.push({ name: 'feed', query: { fresh: String(Date.now()) }, state: { posted: created.data } })
     } catch {
         toast.error('Could not post')
         uploadingImages.value = false

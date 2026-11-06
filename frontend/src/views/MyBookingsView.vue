@@ -37,14 +37,31 @@ const saveDismissed = (id) => { const s = storedDismissed(); s.add(id); localSto
 const reviewedIds = ref(storedReviewed())
 const ratingModal = ref({ show: false, booking: null, rating: 0, comment: '', loading: false, auto: false })
 
-const now = new Date()
+const bookingMoment = (booking) => {
+    const text = String(booking?.start_time ?? '').trim()
+    if (!text) return null
+    const parsed = text.includes('T')
+        ? new Date(text)
+        : parseLocal(text)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+}
 
-const upcoming = computed(() =>
-    bookings.value.filter(b => parseLocal(b.start_time) >= now && b.status !== 'cancelled')
-)
-const past = computed(() =>
-    bookings.value.filter(b => parseLocal(b.start_time) < now || b.status === 'cancelled')
-)
+const upcoming = computed(() => {
+    const now = new Date()
+    return bookings.value.filter(b => {
+        if (b.status === 'cancelled') return false
+        const when = bookingMoment(b)
+        return when == null || when >= now
+    })
+})
+const past = computed(() => {
+    const now = new Date()
+    return bookings.value.filter(b => {
+        if (b.status === 'cancelled') return true
+        const when = bookingMoment(b)
+        return when != null && when < now
+    })
+})
 const displayedBookings = computed(() =>
     activeFilter.value === 'upcoming' ? upcoming.value : past.value
 )
@@ -80,6 +97,7 @@ onMounted(async () => {
 const autoPromptReview = () => {
     const reviewed  = storedReviewed()
     const dismissed = storedDismissed()
+    const now       = new Date()
     const cutoff    = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
     const target    = bookings.value.find(b =>
         b.status !== 'cancelled' &&

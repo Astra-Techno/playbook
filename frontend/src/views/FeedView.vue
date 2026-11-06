@@ -1,13 +1,14 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { Heart, Send, Trash2, X, Loader2, ChevronLeft, ChevronRight, AtSign, MessageCircle, Share2, MoreHorizontal } from 'lucide-vue-next'
 
 const auth   = useAuthStore()
 const toast  = useToastStore()
+const route  = useRoute()
 const router = useRouter()
 
 const posts          = ref([])
@@ -56,13 +57,25 @@ const fetchStories = async () => {
     finally { storiesLoading.value = false }
 }
 
+const postedFromHistory = () => {
+    const posted = history.state?.posted
+    return posted && typeof posted === 'object' && posted.id != null ? posted : null
+}
+
 const fetchPosts = async () => {
     loading.value = true
+    const posted = postedFromHistory()
     try {
-        const uid = auth.user?.id ? `?user_id=${auth.user.id}` : ''
-        const res = await axios.get(`/posts${uid}`)
-        posts.value = res.data.records || []
-    } catch { posts.value = [] }
+        const res = await axios.get('/posts', { params: { _: Date.now() } })
+        const list = res.data.records || res.data.posts || []
+        if (posted && !list.some(post => String(post.id) === String(posted.id))) {
+            list.unshift(posted)
+        }
+        posts.value = list
+    } catch {
+        if (posted) posts.value = [posted, ...posts.value.filter(post => String(post.id) !== String(posted.id))]
+        else if (!posts.value.length) posts.value = []
+    }
     finally   { loading.value = false }
 }
 
@@ -137,6 +150,10 @@ const onTouchEnd   = (e) => {
 onMounted(() => {
     fetchPosts()
     fetchStories()
+})
+
+watch(() => route.fullPath, () => {
+    if (route.name === 'feed') fetchPosts()
 })
 </script>
 

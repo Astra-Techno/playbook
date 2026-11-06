@@ -8,7 +8,8 @@ import 'walk_in_fields.dart';
 import '../../widgets/sheets/walkin_sheet.dart';
 
 class OwnerBookingsScreen extends StatefulWidget {
-  const OwnerBookingsScreen({super.key});
+  final bool active;
+  const OwnerBookingsScreen({super.key, this.active = true});
 
   @override
   State<OwnerBookingsScreen> createState() => _OwnerBookingsScreenState();
@@ -22,7 +23,13 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    if (widget.active) _load();
+  }
+
+  @override
+  void didUpdateWidget(OwnerBookingsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active && !oldWidget.active) _load();
   }
 
   Future<void> _load() async {

@@ -5,6 +5,7 @@ import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'create_post_screen.dart';
 import 'post_detail_screen.dart';
+import 'post_images.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -23,19 +24,24 @@ class _FeedScreenState extends State<FeedScreen> {
     _loadPosts();
   }
 
-  Future<void> _loadPosts() async {
+  Future<void> _loadPosts({Map? created}) async {
     try {
       final res = await Api().get('/posts');
       if (mounted) {
         setState(() {
-          _posts = List<Map<String, dynamic>>.from(
+          final rows = List<Map<String, dynamic>>.from(
             (res.data['records'] ?? res.data['posts'] ?? []).map((e) => Map<String, dynamic>.from(e)),
           );
+          _posts = feedWithCreated(rows, created);
           _loading = false;
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (!mounted) return;
+      setState(() {
+        _posts = feedWithCreated(_posts, created);
+        _loading = false;
+      });
     }
   }
 
@@ -62,7 +68,13 @@ class _FeedScreenState extends State<FeedScreen> {
         surfaceTintColor: Colors.transparent,
         actions: [
           GestureDetector(
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreatePostScreen())).then((created) { if (created == true) _loadPosts(); }),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreatePostScreen())).then((created) {
+              if (created is Map) {
+                _loadPosts(created: created);
+              } else if (created == true) {
+                _loadPosts();
+              }
+            }),
             child: Container(
               margin: const EdgeInsets.only(right: 16),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -102,7 +114,11 @@ class _FeedScreenState extends State<FeedScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: _posts.length,
                     itemBuilder: (_, i) => GestureDetector(
-                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => PostDetailScreen(postId: _posts[i]['id']))),
+                      onTap: () {
+                        final id = int.tryParse('${_posts[i]['id']}');
+                        if (id == null || id < 1) return;
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => PostDetailScreen(postId: id)));
+                      },
                       child: _buildPostCard(_posts[i]),
                     ),
                   ),
@@ -197,20 +213,20 @@ class _FeedScreenState extends State<FeedScreen> {
           ),
           const SizedBox(height: 14),
           // Content
-          if (post['content'] != null)
+          if ('${post['content'] ?? ''}'.trim().isNotEmpty)
             Text(
-              post['content'],
+              '${post['content']}'.trim(),
               style: const TextStyle(fontSize: 14, height: 1.6, color: AppColors.textPrimary),
             ),
-          if (post['image_url'] != null) ...[
+          for (final url in postImageUrls(post)) ...[
             const SizedBox(height: 14),
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: CachedNetworkImage(
-                imageUrl: post['image_url'],
+                imageUrl: url,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => Container(
+                placeholder: (_, _) => Container(
                   height: 200,
                   color: AppColors.surfaceDim,
                 ),
