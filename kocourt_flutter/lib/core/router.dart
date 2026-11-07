@@ -30,21 +30,9 @@ CustomTransitionPage<void> _slideFadePage(Widget child, GoRouterState state) {
   return CustomTransitionPage(
     key: state.pageKey,
     child: child,
-    transitionDuration: const Duration(milliseconds: 300),
-    reverseTransitionDuration: const Duration(milliseconds: 250),
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final curve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
-      return FadeTransition(
-        opacity: curve,
-        child: SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0.06, 0),
-            end: Offset.zero,
-          ).animate(curve),
-          child: child,
-        ),
-      );
-    },
+    transitionDuration: const Duration(milliseconds: 320),
+    reverseTransitionDuration: const Duration(milliseconds: 280),
+    transitionsBuilder: pushPageTransition,
   );
 }
 
@@ -79,7 +67,7 @@ GoRouter createRouter(AuthProvider auth) {
       // Main app with bottom nav
       GoRoute(
         path: '/',
-        builder: (_, __) => const AppShell(),
+        builder: (_, _) => const AppShell(),
       ),
 
       // Auth
@@ -87,7 +75,7 @@ GoRouter createRouter(AuthProvider auth) {
         path: '/login',
         pageBuilder: (_, state) => _slideFadePage(const LoginScreen(), state),
       ),
-      GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingScreen()),
+      GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
 
       // Court details
       GoRoute(

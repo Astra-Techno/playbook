@@ -60,14 +60,29 @@ class _AppShellState extends State<AppShell> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
+    final tabMotion = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 180);
     return Scaffold(
-      body: [
-        const HomeScreen(),
-        const FeedScreen(),
-        const MatchesScreen(),
-        const BookingsScreen(),
-        const ProfileScreen(),
-      ][_currentIndex],
+      body: AnimatedSwitcher(
+        duration: tabMotion,
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        layoutBuilder: (current, previous) => Stack(
+          fit: StackFit.expand,
+          children: [...previous, ?current],
+        ),
+        child: KeyedSubtree(
+          key: ValueKey(_currentIndex),
+          child: [
+            const HomeScreen(),
+            const FeedScreen(),
+            const MatchesScreen(),
+            const BookingsScreen(),
+            const ProfileScreen(),
+          ][_currentIndex],
+        ),
+      ),
       extendBody: true,
       bottomNavigationBar: Container(
         margin: EdgeInsets.only(

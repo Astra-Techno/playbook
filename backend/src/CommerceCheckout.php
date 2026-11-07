@@ -7,6 +7,7 @@ class CommerceCheckout {
         $a = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $start, $zone);
         $b = DateTimeImmutable::createFromFormat('!Y-m-d H:i:s', $end, $zone);
         if (!$a || !$b || $a->format('Y-m-d H:i:s') !== $start || $b->format('Y-m-d H:i:s') !== $end || $b <= $a || $b->getTimestamp() - $a->getTimestamp() > 86400) throw new InvalidArgumentException('Invalid booking time range (maximum 24 hours)');
+        if ($a->getTimestamp() <= time()) throw new InvalidArgumentException('This time has already passed');
         if ($a->format('i:s') !== '00:00' && $a->format('i:s') !== '30:00') throw new InvalidArgumentException('Booking must start on a half-hour boundary');
         if ($b->format('i:s') !== '00:00' && $b->format('i:s') !== '30:00') throw new InvalidArgumentException('Booking must end on a half-hour boundary');
         $notice = ($a->getTimestamp() - time()) / 60;

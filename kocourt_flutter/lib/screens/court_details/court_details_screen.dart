@@ -147,7 +147,6 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
 
       final slots = <Map<String, dynamic>>[];
       final now = DateTime.now();
-      final isToday = _selectedDate == '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
       final openHour = _clockHour(_court?['open_time'], 6);
       final closeHour = _clockHour(_court?['close_time'], 22);
       final firstHour = closeHour > openHour ? openHour : 6;
@@ -174,7 +173,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
             slotEnd: slotEnd,
           );
         });
-        final isPast = isToday && h < now.hour;
+        final isPast = slotStartHasPassed(_selectedDate, h, now);
         slots.add({
           'start': start,
           'end': end,
@@ -204,7 +203,16 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
   }
 
   Future<void> _book() async {
-    if (_selectedSlots.isEmpty) return;
+    final now = DateTime.now();
+    setState(() {
+      _selectedSlots.removeWhere((key) => slotStartHasPassed(_selectedDate, int.tryParse(key.split(':').first) ?? 0, now));
+    });
+    if (_selectedSlots.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('That time has already passed'), behavior: SnackBarBehavior.floating),
+      );
+      return;
+    }
     final auth = context.read<AuthProvider>();
     if (!auth.isLoggedIn) {
       context.go('/login');
@@ -869,7 +877,8 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
             final key = slot['key'] as String;
             final booked = slot['booked'] as bool;
             final blocked = slot['blocked'] as bool;
-            final past = slot['past'] as bool? ?? false;
+            final hour = int.tryParse('${slot['start']}'.split(':').first) ?? 0;
+            final past = slotStartHasPassed(_selectedDate, hour, DateTime.now());
             final selected = _selectedSlots.contains(key);
             final disabled = booked || blocked || past;
 

@@ -19,6 +19,7 @@ export 'services/payment_service.dart';
 export 'reviews/review_body.dart';
 
 // Widgets
+export 'widgets/page_transition.dart';
 export 'widgets/toast_overlay.dart';
 export 'widgets/tactile_surface.dart';
 export 'widgets/legal_screens.dart';

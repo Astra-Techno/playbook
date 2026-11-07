@@ -333,8 +333,16 @@ const isBlocked = (slot) => {
     })
 }
 
+const isPastSlot = (slot) => {
+    if (!selectedDate.value || slot?.hour == null) return false
+    const [y, m, d] = selectedDate.value.split('-').map(Number)
+    if (!y || !m || !d) return false
+    return new Date(y, m - 1, d, slot.hour, 0, 0, 0).getTime() < Date.now()
+}
+
 const slotState = (slot) => {
     if (!selectedDate.value) return 'idle'
+    if (isPastSlot(slot)) return 'past'
     if (isBlocked(slot)) return 'blocked'
     if (isBooked(slot)) return 'booked'
     if (selectedSlots.value.some(s => s.hour === slot.hour)) return 'selected'
@@ -646,7 +654,7 @@ const openCashfree = async (amount, type, payload, onSuccess) => {
 
 const handleSlotClick = (slot) => {
     const state = slotState(slot)
-    if (state === 'booked' || state === 'blocked') return
+    if (state === 'booked' || state === 'blocked' || state === 'past') return
 
     if (state === 'peak_morning' || state === 'peak_evening') {
         const pt = slotPeakType(slot)
@@ -670,6 +678,11 @@ const handleSlotClick = (slot) => {
 const confirmBooking = async () => {
     if (spaces.value.length && !selectedSpace.value) { toast.error('Choose a space first'); return }
     if (!selectedDate.value || !selectedSlots.value.length) { toast.error('Choose a date and time slot'); return }
+    if (selectedSlots.value.some(isPastSlot)) {
+        selectedSlots.value = selectedSlots.value.filter(slot => !isPastSlot(slot))
+        toast.error('That time has already passed')
+        return
+    }
     if (!auth.isLoggedIn) { router.push('/login'); return }
 
     // Group consecutive selected hours into continuous time ranges.
@@ -1091,17 +1104,17 @@ const subscribePlan = async (plan) => {
                                     class="py-2.5 rounded-xl text-xs font-bold border-2 transition-all text-center flex flex-col items-center justify-center gap-0.5"
                                     :class="{
                                         'bg-black border-black text-white shadow-sm': slotState(slot) === 'selected',
-                                        'bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed': slotState(slot) === 'booked',
+                                        'bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed': slotState(slot) === 'booked' || slotState(slot) === 'past',
                                         'bg-red-50 border-red-200 text-red-300 cursor-not-allowed': slotState(slot) === 'blocked',
                                         'bg-white border-gray-200 text-gray-700 hover:border-black/40 hover:bg-gray-100 active:scale-95 cursor-pointer': slotState(slot) === 'free',
                                     }">
                                     {{ slot.short }}
-                                    <span v-if="slotPrices[slot.hour] !== undefined && slotState(slot) !== 'booked' && slotState(slot) !== 'blocked'"
+                                    <span v-if="slotPrices[slot.hour] !== undefined && slotState(slot) !== 'booked' && slotState(slot) !== 'blocked' && slotState(slot) !== 'past'"
                                         class="text-[9px] font-normal leading-none"
                                         :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-gray-400'">
                                         ₹{{ slotPrices[slot.hour] }}
                                     </span>
-                                    <span v-else-if="slotRemainingCapacity(slot) !== null && slotState(slot) !== 'booked'"
+                                    <span v-else-if="slotRemainingCapacity(slot) !== null && slotState(slot) !== 'booked' && slotState(slot) !== 'past'"
                                         class="text-[9px] font-normal leading-none"
                                         :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-cyan-500'">
                                         {{ slotRemainingCapacity(slot) }} left
@@ -1126,13 +1139,13 @@ const subscribePlan = async (plan) => {
                                         class="py-3 rounded-xl text-xs font-bold border-2 transition-all text-center relative flex flex-col items-center justify-center gap-0.5"
                                         :class="{
                                             'bg-black border-black text-white shadow-sm': slotState(slot) === 'selected',
-                                            'bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed': slotState(slot) === 'booked',
+                                            'bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed': slotState(slot) === 'booked' || slotState(slot) === 'past',
                                             'bg-red-50 border-red-200 text-red-300 cursor-not-allowed': slotState(slot) === 'blocked',
                                             'bg-amber-100 border-amber-200 text-amber-700 cursor-pointer': slotState(slot) === 'peak_morning',
                                             'bg-white border-gray-200 text-gray-700 hover:border-black/40 hover:bg-gray-100 active:scale-95 cursor-pointer': slotState(slot) === 'free',
                                         }">
                                         {{ slot.short }}
-                                        <span v-if="slotPrices[slot.hour] !== undefined && slotState(slot) !== 'booked' && slotState(slot) !== 'blocked'"
+                                        <span v-if="slotPrices[slot.hour] !== undefined && slotState(slot) !== 'booked' && slotState(slot) !== 'blocked' && slotState(slot) !== 'past'"
                                             class="text-[9px] font-normal leading-none"
                                             :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-gray-400'">
                                             ₹{{ slotPrices[slot.hour] }}
@@ -1156,13 +1169,13 @@ const subscribePlan = async (plan) => {
                                         class="py-3 rounded-xl text-xs font-bold border-2 transition-all text-center relative flex flex-col items-center justify-center gap-0.5"
                                         :class="{
                                             'bg-black border-black text-white shadow-sm': slotState(slot) === 'selected',
-                                            'bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed': slotState(slot) === 'booked',
+                                            'bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed': slotState(slot) === 'booked' || slotState(slot) === 'past',
                                             'bg-red-50 border-red-200 text-red-300 cursor-not-allowed': slotState(slot) === 'blocked',
                                             'bg-indigo-100 border-indigo-200 text-indigo-700 cursor-pointer': slotState(slot) === 'peak_evening',
                                             'bg-white border-gray-200 text-gray-700 hover:border-black/40 hover:bg-gray-100 active:scale-95 cursor-pointer': slotState(slot) === 'free',
                                         }">
                                         {{ slot.short }}
-                                        <span v-if="slotPrices[slot.hour] !== undefined && slotState(slot) !== 'booked' && slotState(slot) !== 'blocked'"
+                                        <span v-if="slotPrices[slot.hour] !== undefined && slotState(slot) !== 'booked' && slotState(slot) !== 'blocked' && slotState(slot) !== 'past'"
                                             class="text-[9px] font-normal leading-none"
                                             :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-gray-400'">
                                             ₹{{ slotPrices[slot.hour] }}
@@ -1181,11 +1194,11 @@ const subscribePlan = async (plan) => {
                                         class="py-3 rounded-xl text-xs font-bold border-2 transition-all text-center flex flex-col items-center justify-center gap-0.5"
                                         :class="{
                                             'bg-black border-black text-white shadow-sm': slotState(slot) === 'selected',
-                                            'bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed': slotState(slot) === 'booked',
+                                            'bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed': slotState(slot) === 'booked' || slotState(slot) === 'past',
                                             'bg-white border-gray-200 text-gray-700 hover:border-black/40 hover:bg-gray-100 active:scale-95 cursor-pointer': slotState(slot) === 'free',
                                         }">
                                         {{ slot.short }}
-                                        <span v-if="slotPrices[slot.hour] !== undefined && slotState(slot) !== 'booked'"
+                                        <span v-if="slotPrices[slot.hour] !== undefined && slotState(slot) !== 'booked' && slotState(slot) !== 'past'"
                                             class="text-[9px] font-normal leading-none"
                                             :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-gray-400'">
                                             ₹{{ slotPrices[slot.hour] }}

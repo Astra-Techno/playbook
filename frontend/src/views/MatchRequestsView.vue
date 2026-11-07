@@ -45,9 +45,14 @@ const fetchRequests = async () => {
 
 onMounted(fetchRequests)
 
-const isMember = (req) => req.participants?.some(p => p.user_id === auth.user?.id)
-const isOwner  = (req) => req.created_by === auth.user?.id
-const spotsLeft = (req) => Math.max(0, req.slots_needed - (req.participants?.length || 0))
+const sameId = (a, b) => a != null && b != null && String(a) === String(b)
+const isMember = (req) => req.participants?.some(p => sameId(p.user_id, auth.user?.id))
+const isOwner  = (req) => sameId(req.created_by ?? req.user_id, auth.user?.id)
+const spotsLeft = (req) => {
+    const needed = Math.max(1, Number(req.slots_needed ?? req.players_needed) || 1)
+    const count = Math.max(req.participants?.length || 0, Number(req.joined_count) || 0)
+    return Math.max(0, needed - Math.max(0, count - 1))
+}
 
 const joinRequest = async (req) => {
     if (!auth.isLoggedIn) { router.push('/login'); return }
@@ -144,10 +149,10 @@ const sportLabel = (id) => SPORTS.find(s => s.id === id)?.label || id
                         <div class="flex items-center gap-2 mb-1">
                             <span class="text-sm font-extrabold text-black truncate">{{ req.creator_name || 'Player' }}</span>
                             <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full"
-                                :class="req.status === 'full'
+                                :class="spotsLeft(req) === 0
                                     ? 'bg-green-100 text-green-600'
                                     : 'bg-gray-100 text-black'">
-                                {{ req.status === 'full' ? 'Full' : `${spotsLeft(req)} spot${spotsLeft(req) !== 1 ? 's' : ''} left` }}
+                                {{ spotsLeft(req) === 0 ? 'Full' : `${spotsLeft(req)} spot${spotsLeft(req) !== 1 ? 's' : ''} left` }}
                             </span>
                         </div>
 
@@ -196,11 +201,11 @@ const sportLabel = (id) => SPORTS.find(s => s.id === id)?.label || id
                 <template v-if="!isOwner(req)">
                     <button v-if="!isMember(req)"
                         @click="joinRequest(req)"
-                        :disabled="req.status === 'full' || joiningId === req.id"
+                        :disabled="spotsLeft(req) === 0 || joiningId === req.id"
                         class="w-full py-2.5 rounded-xl text-sm font-bold bg-black text-white flex items-center justify-center gap-1.5 disabled:opacity-40 transition active:scale-[0.98]">
                         <Loader2 v-if="joiningId === req.id" :size="13" class="animate-spin" />
                         <UserPlus v-else :size="13" />
-                        {{ req.status === 'full' ? 'Match Full' : 'Join Match' }}
+                        {{ spotsLeft(req) === 0 ? 'Match Full' : 'Join Match' }}
                     </button>
                     <button v-else
                         @click="leaveRequest(req)"

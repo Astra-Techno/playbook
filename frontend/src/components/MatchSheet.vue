@@ -29,7 +29,13 @@ const playHour   = ref(6)
 const slots      = ref(2)
 const notes      = ref('')
 
-const today = new Date().toISOString().slice(0, 10)
+const localDate = (d) => {
+    const y = d.getFullYear()
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${y}-${m}-${day}`
+}
+const today = localDate(new Date())
 const HOURS = Array.from({ length: 18 }, (_, i) => {
     const h = i + 5
     const h12 = h > 12 ? h - 12 : h
@@ -39,7 +45,7 @@ const HOURS = Array.from({ length: 18 }, (_, i) => {
 const dateOptions = computed(() =>
     Array.from({ length: 14 }, (_, i) => {
         const d = new Date(); d.setDate(d.getDate() + i)
-        return d.toISOString().slice(0, 10)
+        return localDate(d)
     })
 )
 
@@ -67,8 +73,9 @@ watch(() => props.modelValue, open => {
     }
 })
 
-const isMember = (req) => req.participants?.some(p => p.user_id === auth.user?.id)
-const isOwner  = (req) => req.created_by === auth.user?.id
+const sameId = (a, b) => a != null && b != null && String(a) === String(b)
+const isMember = (req) => req.participants?.some(p => sameId(p.user_id, auth.user?.id))
+const isOwner  = (req) => sameId(req.created_by ?? req.user_id, auth.user?.id)
 
 const createRequest = async () => {
     if (!playDate.value) { toast.error('Select a date'); return }
@@ -129,7 +136,11 @@ const formatPlayTime = (r) => {
            ' · ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
 }
 
-const spotsLeft = (req) => req.slots_needed - (req.participants?.length || 0)
+const spotsLeft = (req) => {
+    const needed = Math.max(1, Number(req.slots_needed ?? req.players_needed) || 1)
+    const count = Math.max(req.participants?.length || 0, Number(req.joined_count) || 0)
+    return Math.max(0, needed - Math.max(0, count - 1))
+}
 </script>
 
 <template>
@@ -266,11 +277,11 @@ const spotsLeft = (req) => req.slots_needed - (req.participants?.length || 0)
                                     <!-- Join/Leave -->
                                     <div v-if="!isOwner(req)">
                                         <button v-if="!isMember(req)" @click="joinRequest(req)"
-                                            :disabled="req.status === 'full' || joiningId === req.id"
+                                            :disabled="spotsLeft(req) === 0 || joiningId === req.id"
                                             class="w-full py-2.5 rounded-xl text-sm font-bold bg-black text-white flex items-center justify-center gap-1.5 disabled:opacity-40 transition">
                                             <Loader2 v-if="joiningId === req.id" :size="13" class="animate-spin" />
                                             <UserPlus v-else :size="13" />
-                                            {{ req.status === 'full' ? 'Match Full' : 'Join Match' }}
+                                            {{ spotsLeft(req) === 0 ? 'Match Full' : 'Join Match' }}
                                         </button>
                                         <button v-else @click="leaveRequest(req)" :disabled="leavingId === req.id"
                                             class="w-full py-2.5 rounded-xl text-sm font-bold bg-red-50 text-red-500 flex items-center justify-center gap-1.5 transition">

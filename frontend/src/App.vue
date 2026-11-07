@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, useTemplateRef, onMounted } from 'vue'
-import { RouterView, RouterLink, useRoute } from 'vue-router'
+import { RouterView, RouterLink, useRoute, useRouter } from 'vue-router'
 import {
     CalendarDays, User,
     CheckCircle2, XCircle, Info,
@@ -31,7 +31,30 @@ watch(() => auth.user?.id, async (uid) => {
 }, { immediate: true })
 
 const route   = useRoute()
+const router  = useRouter()
 const mainEl  = useTemplateRef('mainEl')
+const pageMotion = ref('page-fade')
+const tabPaths = new Set(['/', '/feed', '/matches', '/bookings', '/profile'])
+let pendingDirection = 'forward'
+
+if (typeof router.options.history.listen === 'function') {
+    router.options.history.listen((_to, _from, info) => {
+        pendingDirection = info?.direction === 'back' ? 'back' : 'forward'
+    })
+}
+
+router.beforeEach((to, from) => {
+    if (to.path === from.path) {
+        pageMotion.value = 'page-none'
+    } else if (tabPaths.has(to.path) && tabPaths.has(from.path)) {
+        pageMotion.value = 'page-fade'
+    } else if (pendingDirection === 'back') {
+        pageMotion.value = 'page-back'
+    } else {
+        pageMotion.value = 'page-forward'
+    }
+    pendingDirection = 'forward'
+})
 
 // Refresh user data from server on load so avatar/profile changes made on
 // other devices are picked up immediately (localStorage is device-local)
@@ -144,14 +167,18 @@ const submitPromptRating = async () => {
         <AppHeader v-if="!route.meta.hideHeader" />
 
         <!-- Page content -->
-        <main ref="mainEl" class="flex-1 min-h-0 scrollbar-hide overscroll-y-contain touch-pan-y"
+        <main ref="mainEl" class="relative flex-1 min-h-0 scrollbar-hide overscroll-y-contain touch-pan-y overflow-x-clip"
             :class="[
                 route.meta.fullScreen ? 'overflow-hidden' : 'overflow-y-auto',
                 auth.isLoggedIn && !route.meta.fullScreen && !route.meta.hideBottomNav
                     ? 'pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]'
                     : ''
             ]">
-            <RouterView />
+            <RouterView v-slot="{ Component, route: page }">
+                <Transition :name="pageMotion">
+                    <component :is="Component" :key="page.path" />
+                </Transition>
+            </RouterView>
 
             <!-- Public compliance links: visible without an account and crawlable by payment providers. -->
             <footer v-if="!auth.isLoggedIn && !route.meta.fullScreen" class="border-t border-gray-100 bg-white px-5 py-5 text-center">
@@ -237,3 +264,45 @@ const submitPromptRating = async () => {
     </div>
     </div>
 </template>
+
+<style>
+.page-forward-enter-active,
+.page-back-leave-active {
+    z-index: 2;
+}
+.page-forward-leave-active,
+.page-back-enter-active,
+.page-fade-leave-active {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: 100%;
+    overflow: hidden;
+    pointer-events: none;
+}
+.page-forward-enter-active,
+.page-forward-leave-active,
+.page-back-enter-active,
+.page-back-leave-active {
+    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.page-forward-enter-from { transform: translate3d(100%, 0, 0); }
+.page-forward-leave-to { transform: translate3d(-24%, 0, 0); }
+.page-back-enter-from { transform: translate3d(-24%, 0, 0); }
+.page-back-leave-to { transform: translate3d(100%, 0, 0); }
+.page-fade-enter-active,
+.page-fade-leave-active { transition: opacity 0.18s ease; }
+.page-fade-enter-from,
+.page-fade-leave-to { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+    .page-forward-enter-active,
+    .page-forward-leave-active,
+    .page-back-enter-active,
+    .page-back-leave-active,
+    .page-fade-enter-active,
+    .page-fade-leave-active {
+        transition: none;
+    }
+}
+</style>

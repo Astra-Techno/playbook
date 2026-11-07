@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'create_match_sheet.dart';
+import 'match_roster.dart';
 
 
 class MatchesScreen extends StatefulWidget {
@@ -180,15 +181,15 @@ class _MatchesScreenState extends State<MatchesScreen> {
 
   Widget _buildMatchCard(Map<String, dynamic> match) {
     final auth = context.read<AuthProvider>();
-    final isCreator = auth.userId == match['user_id'] || auth.userId == match['created_by'];
+    final isCreator = sameUser(auth.userId, match['user_id']) || sameUser(auth.userId, match['created_by']);
     final participants = List<Map<String, dynamic>>.from(
       (match['participants'] ?? []).map((e) => Map<String, dynamic>.from(e)),
     );
-    final hasJoined = participants.any((p) => p['user_id'] == auth.userId);
-    final isFull = match['status'] == 'full';
-    final slotsNeeded = int.tryParse('${match['slots_needed'] ?? match['players_needed'] ?? 0}') ?? 0;
+    final hasJoined = participants.any((p) => sameUser(p['user_id'], auth.userId));
+    final slotsNeeded = int.tryParse('${match['slots_needed'] ?? match['players_needed'] ?? 1}') ?? 1;
     final joinedCount = int.tryParse('${match['joined_count'] ?? participants.length}') ?? participants.length;
-    final spotsLeft = slotsNeeded - joinedCount + 1; // +1 because creator auto-joins
+    final spotsLeft = matchSpotsLeft(slotsNeeded, joinedCount > participants.length ? joinedCount : participants.length);
+    final isFull = spotsLeft == 0;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -351,7 +352,10 @@ class _MatchesScreenState extends State<MatchesScreen> {
                 SizedBox(
                   height: 36,
                   child: OutlinedButton(
-                    onPressed: () => _cancelMatch(match['id']),
+                    onPressed: () {
+                      final id = matchId(match['id']);
+                      if (id != null) _cancelMatch(id);
+                    },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.red,
                       side: const BorderSide(color: Colors.red, width: 1.5),
@@ -365,7 +369,10 @@ class _MatchesScreenState extends State<MatchesScreen> {
                 SizedBox(
                   height: 36,
                   child: OutlinedButton(
-                    onPressed: () => _leaveMatch(match['id']),
+                    onPressed: () {
+                      final id = matchId(match['id']);
+                      if (id != null) _leaveMatch(id);
+                    },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.grey[600],
                       side: BorderSide(color: Colors.grey[300]!),
@@ -379,7 +386,10 @@ class _MatchesScreenState extends State<MatchesScreen> {
                 SizedBox(
                   height: 36,
                   child: ElevatedButton(
-                    onPressed: () => _joinMatch(match['id']),
+                    onPressed: () {
+                      final id = matchId(match['id']);
+                      if (id != null) _joinMatch(id);
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.black,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),

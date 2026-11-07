@@ -158,17 +158,17 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int>(
-                        value: _selectedCourt?['id'],
+                      child: DropdownButton<String>(
+                        value: _selectedCourt == null ? null : '${_selectedCourt!['id']}',
                         hint: const Text('Select venue'),
                         isExpanded: true,
-                        items: _courts.map((c) => DropdownMenuItem<int>(
-                          value: c['id'],
+                        items: _courts.map((c) => DropdownMenuItem<String>(
+                          value: '${c['id']}',
                           child: Text(c['name'] ?? '', overflow: TextOverflow.ellipsis),
                         )).toList(),
                         onChanged: (id) {
                           setState(() {
-                            _selectedCourt = _courts.firstWhere((c) => c['id'] == id);
+                            _selectedCourt = _courts.firstWhere((c) => '${c['id']}' == id);
                             _selectedSport ??= _selectedCourt?['type'];
                           });
                         },

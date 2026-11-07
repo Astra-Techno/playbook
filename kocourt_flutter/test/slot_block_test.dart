@@ -23,6 +23,14 @@ void main() {
     );
   });
 
+  test('today hides hours that have already started', () {
+    final now = DateTime(2026, 11, 7, 19, 12);
+    expect(slotStartHasPassed('2026-11-07', 18, now), isTrue);
+    expect(slotStartHasPassed('2026-11-07', 19, now), isTrue);
+    expect(slotStartHasPassed('2026-11-07', 20, now), isFalse);
+    expect(slotStartHasPassed('2026-11-08', 8, now), isFalse);
+  });
+
   test('an annual window placed on this year covers that evening', () {
     expect(
       blockCoversSlot(

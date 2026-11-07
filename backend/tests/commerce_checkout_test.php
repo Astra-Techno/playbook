@@ -42,6 +42,16 @@ $close = $policy;
 $close['booking.minimum_notice_minutes'] = 10080;
 check(rejected(fn() => CommerceCheckout::validateTime(date('Y-m-d H:00:00', time() + 3600), date('Y-m-d H:00:00', time() + 7200), $close)), 'a slot inside the notice window is rejected');
 
+$pastStart = date('Y-m-d H:00:00', time() - 3600);
+$pastEnd = date('Y-m-d H:00:00', time());
+$pastMessage = '';
+try {
+    CommerceCheckout::validateTime($pastStart, $pastEnd, $policy);
+} catch (InvalidArgumentException $e) {
+    $pastMessage = $e->getMessage();
+}
+check($pastMessage === 'This time has already passed', 'a slot that already started is rejected');
+
 if ($failed > 0) {
     fwrite(STDERR, "$failed failed\n");
     exit(1);

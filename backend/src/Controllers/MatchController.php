@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/../MatchRoster.php';
+
 class MatchController
 {
     private PDO $db;
@@ -109,8 +111,11 @@ class MatchController
             ");
             $pStmt->execute([$r['id']]);
             $r['participants'] = $pStmt->fetchAll(PDO::FETCH_ASSOC);
-            // Derive status from participant count vs slots_needed
-            if ($r['status'] === 'open' && count($r['participants']) >= (int)$r['slots_needed']) {
+            // players_needed is extra seats. The host is already in participants.
+            $taken = count($r['participants']);
+            if ((int)($r['joined_count'] ?? 0) > $taken) $taken = (int)$r['joined_count'];
+            $r['spots_left'] = MatchRoster::spotsLeft((int)$r['players_needed'], $taken);
+            if ($r['status'] === 'open' && $r['spots_left'] === 0) {
                 $r['status'] = 'full';
             }
         }
@@ -186,23 +191,20 @@ class MatchController
         $match = $mr->fetch(PDO::FETCH_ASSOC);
         if (!$match) { http_response_code(404); echo json_encode(['message' => 'Match not found or not open']); return; }
 
-        // Check if already full
+        $already = $this->db->prepare("SELECT id FROM match_participants WHERE match_id=? AND user_id=?");
+        $already->execute([$id, $user_id]);
+        if ($already->fetch()) { http_response_code(409); echo json_encode(['message' => 'Already joined']); return; }
+
         $cnt = $this->db->prepare("SELECT COUNT(*) FROM match_participants WHERE match_id=?");
         $cnt->execute([$id]);
         $currentCount = (int)$cnt->fetchColumn();
-        if ($currentCount >= (int)$match['players_needed'] + 1) { // +1 for creator
+        if (MatchRoster::isFull((int)$match['players_needed'], $currentCount)) {
             http_response_code(409); echo json_encode(['message' => 'Match is already full']); return;
         }
 
-        try {
-            $this->db->prepare("INSERT INTO match_participants (match_id, user_id) VALUES (?,?)")->execute([$id, $user_id]);
-        } catch (PDOException $e) {
-            if ($e->getCode() === '23000') { http_response_code(409); echo json_encode(['message' => 'Already joined']); return; }
-        }
+        $this->db->prepare("INSERT INTO match_participants (match_id, user_id) VALUES (?,?)")->execute([$id, $user_id]);
 
-        // Mark full if needed
-        $newCount = $currentCount + 1;
-        if ($newCount >= (int)$match['players_needed'] + 1) {
+        if (MatchRoster::isFull((int)$match['players_needed'], $currentCount + 1)) {
             $this->db->prepare("UPDATE match_requests SET status='full' WHERE id=?")->execute([$id]);
         }
 
