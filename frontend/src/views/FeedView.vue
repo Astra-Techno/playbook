@@ -58,7 +58,7 @@ const fetchStories = async () => {
 }
 
 const postedFromHistory = () => {
-    const posted = history.state?.posted
+    const posted = window.history.state?.posted
     return posted && typeof posted === 'object' && posted.id != null ? posted : null
 }
 
