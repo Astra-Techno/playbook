@@ -17,6 +17,7 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> {
   List<Map<String, dynamic>> _posts = [];
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -33,13 +34,15 @@ class _FeedScreenState extends State<FeedScreen> {
             (res.data['records'] ?? res.data['posts'] ?? []).map((e) => Map<String, dynamic>.from(e)),
           );
           _posts = feedWithCreated(rows, created);
+          _error = null;
           _loading = false;
         });
       }
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       setState(() {
         _posts = feedWithCreated(_posts, created);
+        _error = _posts.isEmpty ? Api.failureMessage(error, fallback: 'Posts could not be loaded.') : null;
         _loading = false;
       });
     }
@@ -103,7 +106,13 @@ class _FeedScreenState extends State<FeedScreen> {
                     children: [
                       Icon(AppIcons.rss, size: 48, color: Colors.grey[300]),
                       const SizedBox(height: 16),
-                      Text('No posts yet', style: TextStyle(color: Colors.grey[500], fontWeight: FontWeight.w600)),
+                      Text(
+                        _error ?? 'No posts yet',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey[500], fontWeight: FontWeight.w600),
+                      ),
+                      if (_error != null)
+                        TextButton(onPressed: () => _loadPosts(), child: const Text('Try again')),
                     ],
                   ),
                 )

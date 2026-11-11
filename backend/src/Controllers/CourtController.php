@@ -66,6 +66,7 @@ class CourtController {
     // GET /api/courts/:id
     public function show($id) {
         $db   = Database::getConnection();
+        Court::ensureListing($db);
         $stmt = $db->prepare("
             SELECT c.*,
                    AVG(r.rating) AS avg_rating,
@@ -85,6 +86,35 @@ class CourtController {
         $row['image_url']    = self::normalizeImageUrl($row['image_url']);
         http_response_code(200);
         echo json_encode(['court' => $row]);
+    }
+
+    // POST /courts/:id/availability { available: true|false }
+    public function setAvailability(int $id): void {
+        $user = Auth::require();
+        $db = Database::getConnection();
+        Court::ensureListing($db);
+        $body = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($body) || !array_key_exists('available', $body)) {
+            http_response_code(400);
+            echo json_encode(['message' => 'available is required']);
+            return;
+        }
+        $open = !empty($body['available']) ? 1 : 0;
+        $stmt = $db->prepare('SELECT owner_id FROM courts WHERE id = ?');
+        $stmt->execute([$id]);
+        $ownerId = $stmt->fetchColumn();
+        if ($ownerId === false) {
+            http_response_code(404);
+            echo json_encode(['message' => 'Venue not found']);
+            return;
+        }
+        if ((int)$ownerId !== (int)$user['id'] && ($user['role'] ?? '') !== 'admin') {
+            http_response_code(403);
+            echo json_encode(['message' => 'Forbidden']);
+            return;
+        }
+        $db->prepare('UPDATE courts SET accepting_bookings = ? WHERE id = ?')->execute([$open, $id]);
+        echo json_encode(['accepting_bookings' => $open]);
     }
 
     /**

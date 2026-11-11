@@ -2,6 +2,7 @@
 require_once __DIR__ . '/../Models/Subscription.php';
 require_once __DIR__ . '/../Models/Plan.php';
 require_once __DIR__ . '/../MembershipDirectory.php';
+require_once __DIR__ . '/../AccountLookup.php';
 
 class SubscriptionController {
 
@@ -212,5 +213,57 @@ class SubscriptionController {
             http_response_code(503);
             echo json_encode(["message" => "Unable to create subscription"]);
         }
+    }
+
+    // POST /subscriptions/desk { plan_id, phone }
+    // The venue records a membership for someone standing at the desk. No online checkout.
+    public function desk() {
+        $authUser = Auth::require();
+        $data = json_decode(file_get_contents('php://input'));
+        $planId = (int)($data->plan_id ?? 0);
+        $phone = trim((string)($data->phone ?? ''));
+        if (!$planId || $phone === '') {
+            http_response_code(400);
+            echo json_encode(['message' => 'plan_id and phone are required']);
+            return;
+        }
+        $db = Database::getConnection();
+        $stmt = $db->prepare('SELECT * FROM plans WHERE id = ?');
+        $stmt->execute([$planId]);
+        $planRow = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$planRow) {
+            http_response_code(404);
+            echo json_encode(['message' => 'Plan not found']);
+            return;
+        }
+        $own = $db->prepare('SELECT owner_id FROM courts WHERE id = ?');
+        $own->execute([(int)$planRow['court_id']]);
+        $ownerId = $own->fetchColumn();
+        if ($ownerId === false || ((int)$ownerId !== (int)$authUser['id'] && ($authUser['role'] ?? '') !== 'admin')) {
+            http_response_code(403);
+            echo json_encode(['message' => 'Forbidden']);
+            return;
+        }
+        $player = AccountLookup::byPhone($db, $phone);
+        if (!$player) {
+            http_response_code(404);
+            echo json_encode(['message' => 'No KoCourt account found for this phone number']);
+            return;
+        }
+        $sub = new Subscription();
+        $userId = (int)$player['id'];
+        $existing = $sub->getActive($userId, (int)$planRow['court_id']);
+        if ($existing && Subscription::coversSlot($existing['slot_type'], $planRow['slot_type'])) {
+            http_response_code(409);
+            echo json_encode(['message' => 'This player already has an active membership covering these slots']);
+            return;
+        }
+        if ($sub->create($userId, $planId, (int)$planRow['court_id'], $planRow['slot_type'], (int)$planRow['duration_days'])) {
+            http_response_code(201);
+            echo json_encode(['message' => $player['name'] . ' is now a member']);
+            return;
+        }
+        http_response_code(503);
+        echo json_encode(['message' => 'Unable to create subscription']);
     }
 }

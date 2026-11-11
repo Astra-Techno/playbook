@@ -384,6 +384,13 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
     if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'featured') {
         Auth::requireAdmin(); $courtController->toggleFeatured((int)$seg[1]); exit();
     }
+    if (isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'availability' && !isset($seg[3]) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $courtController->setAvailability((int)$seg[1]); exit();
+    }
+    if (isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'cancellation' && !isset($seg[3]) && in_array($_SERVER['REQUEST_METHOD'], ['GET', 'POST'], true)) {
+        require_once __DIR__ . '/src/Controllers/SettingsController.php';
+        (new SettingsController())->venueCancellation((int)$seg[1]); exit();
+    }
     if ($_SERVER['REQUEST_METHOD'] === 'PUT'    && isset($seg[1])) { Auth::requireOwner(); $courtController->update((int)$seg[1]); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { Auth::requireOwner(); $courtController->delete((int)$seg[1]); exit(); }
 }
@@ -395,6 +402,12 @@ if (isset($seg[0]) && $seg[0] === 'plans') {
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $planController->index();
+        exit();
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'active' && !isset($seg[3])) {
+        Auth::requireOwner();
+        $planController->setActive((int)$seg[1]);
         exit();
     }
 
@@ -417,6 +430,7 @@ if (isset($seg[0]) && $seg[0] === 'subscriptions') {
     $subController = new SubscriptionController();
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'members') { Auth::requireOwner(); $subController->members(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'desk' && !isset($seg[2])) { Auth::requireOwner(); $subController->desk(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::require(); $subController->index(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'renew') { Auth::require(); $subController->renew(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($seg[1])) { Auth::require(); $subController->create(); exit(); }

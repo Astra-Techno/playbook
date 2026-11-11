@@ -38,6 +38,9 @@ class AuthProvider extends ChangeNotifier {
         _user = null;
       }
     }
+    if (_token != null && _token!.isNotEmpty) {
+      Api().setToken(_token);
+    }
     notifyListeners();
   }
 

@@ -28,6 +28,14 @@ class Court {
 
     public function __construct() {
         $this->conn = Database::getConnection();
+        self::ensureListing($this->conn);
+    }
+
+    public static function ensureListing(PDO $conn): void {
+        try {
+            $conn->exec('ALTER TABLE courts ADD COLUMN accepting_bookings TINYINT(1) NOT NULL DEFAULT 1');
+        } catch (Throwable $e) {
+        }
     }
 
     /**
@@ -45,6 +53,7 @@ class Court {
             $conditions = ['c.lat IS NOT NULL', 'c.lng IS NOT NULL'];
             if (!$for_admin) {
                 $conditions[] = "(c.claim_status IS NULL OR c.claim_status = 'approved')";
+                $conditions[] = "c.accepting_bookings = 1";
             }
             if ($type && $type !== 'All') $conditions[] = "c.type = ?";
             if ($featured)                $conditions[] = "c.is_featured = 1";
@@ -81,6 +90,7 @@ class Court {
         // Only exclude pending courts for public searches (not owner's own dashboard or admin list)
         if (!$owner_id && !$for_admin) {
             $conditions[] = "(c.claim_status IS NULL OR c.claim_status = 'approved')";
+            $conditions[] = "c.accepting_bookings = 1";
         }
         if ($location && $location !== 'All') $conditions[] = "c.location LIKE ?";
         if ($type     && $type     !== 'All') $conditions[] = "c.type = ?";

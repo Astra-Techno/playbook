@@ -22,25 +22,12 @@ class Auth
     {
         if (self::$resolved !== null) return self::$resolved ?: null;
 
-        $header = $_SERVER['HTTP_AUTHORIZATION']
-               ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION']
-               ?? '';
-
-        if ($header === '' && function_exists('getallheaders')) {
-            foreach (getallheaders() as $name => $value) {
-                if (strcasecmp((string) $name, 'Authorization') === 0) {
-                    $header = (string) $value;
-                    break;
-                }
-            }
-        }
-
-        if (!preg_match('/Bearer\s+(\S+)/i', $header, $m)) {
+        $token = self::bearerToken();
+        if ($token === '') {
             self::$resolved = [];
             return null;
         }
 
-        $token = $m[1];
         $db    = Database::getConnection();
         $stmt  = $db->prepare(
             "SELECT id, name, phone, role, avatar_url FROM users WHERE auth_token = ? LIMIT 1"
@@ -50,6 +37,40 @@ class Auth
 
         self::$resolved = $row ?? [];
         return $row;
+    }
+
+    /** Bearer token from the headers Apache and LiteSpeed actually keep. */
+    private static function bearerToken(): string
+    {
+        $candidates = [
+            $_SERVER['HTTP_AUTHORIZATION'] ?? '',
+            $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '',
+            $_SERVER['Authorization'] ?? '',
+            getenv('HTTP_AUTHORIZATION') ?: '',
+            getenv('REDIRECT_HTTP_AUTHORIZATION') ?: '',
+            $_SERVER['HTTP_X_AUTHORIZATION'] ?? '',
+            $_SERVER['REDIRECT_HTTP_X_AUTHORIZATION'] ?? '',
+        ];
+        if (function_exists('getallheaders')) {
+            foreach (getallheaders() ?: [] as $name => $value) {
+                if (strcasecmp((string) $name, 'Authorization') === 0) {
+                    $candidates[] = (string) $value;
+                }
+            }
+        }
+        if (function_exists('apache_request_headers')) {
+            foreach (apache_request_headers() ?: [] as $name => $value) {
+                if (strcasecmp((string) $name, 'Authorization') === 0) {
+                    $candidates[] = (string) $value;
+                }
+            }
+        }
+        foreach ($candidates as $header) {
+            if (preg_match('/Bearer\s+(\S+)/i', (string) $header, $match)) {
+                return $match[1];
+            }
+        }
+        return '';
     }
 
     /** Halt with 401 if not authenticated. Returns user row. */

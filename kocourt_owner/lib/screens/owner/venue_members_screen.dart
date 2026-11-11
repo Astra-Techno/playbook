@@ -39,11 +39,95 @@ class _VenueMembersScreenState extends State<VenueMembersScreen> {
     });
   }
 
+  Future<void> _desk() async {
+    List<Map<String, dynamic>> plans = [];
+    try {
+      final res = await Api().get('/plans', params: {'court_id': widget.courtId});
+      final records = res.data is Map ? res.data['records'] : null;
+      if (records is List) {
+        plans = records.map((row) => Map<String, dynamic>.from(row as Map)).toList();
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Api.failureMessage(error))));
+      return;
+    }
+    if (!mounted) return;
+    if (plans.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Create a subscription plan before recording a desk membership.')),
+      );
+      return;
+    }
+    final phone = TextEditingController();
+    var planId = plans.first['id'].toString();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialog) {
+            return AlertDialog(
+              title: const Text('Membership at the desk'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    initialValue: planId,
+                    decoration: const InputDecoration(labelText: 'Plan'),
+                    items: [
+                      for (final plan in plans)
+                        DropdownMenuItem(value: plan['id'].toString(), child: Text('${plan['name']}')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) setDialog(() => planId = value);
+                    },
+                  ),
+                  TextField(
+                    controller: phone,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(labelText: 'Player phone'),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancel')),
+                FilledButton(
+                  onPressed: () async {
+                    try {
+                      await Api().post('/subscriptions/desk', data: {
+                        'plan_id': int.parse(planId),
+                        'phone': phone.text.trim(),
+                      });
+                      if (dialogContext.mounted) Navigator.pop(dialogContext, true);
+                    } catch (error) {
+                      if (!dialogContext.mounted) return;
+                      ScaffoldMessenger.of(dialogContext).showSnackBar(
+                        SnackBar(content: Text(Api.failureMessage(error))),
+                      );
+                    }
+                  },
+                  child: const Text('Add member'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    phone.dispose();
+    if (saved == true) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text('Members', style: TextStyle(fontWeight: FontWeight.w800))),
+      appBar: AppBar(
+        title: const Text('Members', style: TextStyle(fontWeight: FontWeight.w800)),
+        actions: [
+          TextButton(onPressed: _loading ? null : _desk, child: const Text('At the desk')),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _error != null

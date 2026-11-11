@@ -1,6 +1,32 @@
 import 'package:flutter/material.dart';
 import '../core/api.dart';
 
+double venueNumber(dynamic value) {
+  if (value is num) return value.toDouble();
+  return double.tryParse('${value ?? ''}') ?? 0;
+}
+
+List<Map<String, dynamic>> sortVenueRows(List<Map<String, dynamic>> rows, String sortBy) {
+  final copy = [...rows];
+  if (sortBy == 'rating') {
+    copy.sort((a, b) {
+      final rating = venueNumber(b['avg_rating']).compareTo(venueNumber(a['avg_rating']));
+      if (rating != 0) return rating;
+      return venueNumber(b['review_count']).compareTo(venueNumber(a['review_count']));
+    });
+    return copy;
+  }
+  copy.sort((a, b) {
+    final aMissing = a['distance_km'] == null;
+    final bMissing = b['distance_km'] == null;
+    if (aMissing && bMissing) return 0;
+    if (aMissing) return 1;
+    if (bMissing) return -1;
+    return venueNumber(a['distance_km']).compareTo(venueNumber(b['distance_km']));
+  });
+  return copy;
+}
+
 class VenueProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _venues = [];
   List<Map<String, dynamic>> _ghostPlaces = [];
@@ -88,9 +114,9 @@ class VenueProvider extends ChangeNotifier {
       if (_selectedSport != 'All') params['type'] = _selectedSport;
 
       final res = await Api().get('/courts', params: params);
-      _venues = List<Map<String, dynamic>>.from(
+      _venues = sortVenueRows(List<Map<String, dynamic>>.from(
         (res.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
-      );
+      ), _sortBy);
     } catch (_) {
       _venues = [];
     } finally {

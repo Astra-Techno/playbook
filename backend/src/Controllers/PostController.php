@@ -56,12 +56,12 @@ class PostController {
                    u.id AS user_id, u.name AS user_name, u.avatar_url,
                    (SELECT COUNT(*) FROM post_likes WHERE post_id = p.id) AS likes_count,
                    (SELECT COUNT(*) FROM post_comments WHERE post_id = p.id) AS comment_count,
-                   (SELECT COUNT(*) > 0 FROM post_likes WHERE post_id = p.id AND user_id = :viewer) AS is_liked
+                   (SELECT COUNT(*) > 0 FROM post_likes WHERE post_id = p.id AND user_id = :viewer_liked) AS is_liked
             FROM posts p
             JOIN users u ON u.id = p.user_id
             WHERE (
                 COALESCE(p.visibility,'public') = 'public'
-                OR p.user_id = :viewer2
+                OR p.user_id = :viewer_author
                 OR (COALESCE(p.visibility,'public') = 'tagged'
                     AND p.tags IS NOT NULL
                     AND p.tags LIKE :tag_pattern)
@@ -70,7 +70,11 @@ class PostController {
             LIMIT 50
         ");
         $tagPattern = '%\"id\":' . $viewer_id . '%';
-        $stmt->execute([':viewer' => $viewer_id, ':viewer2' => $viewer_id, ':tag_pattern' => $tagPattern]);
+        $stmt->execute([
+            ':viewer_liked' => $viewer_id,
+            ':viewer_author' => $viewer_id,
+            ':tag_pattern' => $tagPattern,
+        ]);
         $posts = $stmt->fetchAll(PDO::FETCH_ASSOC);
         foreach ($posts as &$p) {
             $p['likes_count'] = (int)$p['likes_count'];

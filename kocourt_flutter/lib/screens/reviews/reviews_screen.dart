@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 
 class ReviewsScreen extends StatefulWidget {
@@ -17,18 +18,32 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
   }
 
   Future<void> _load() async {
+    final courtId = widget.courtId;
+    if (courtId == null || courtId < 1) {
+      final signedIn = context.read<AuthProvider>().isLoggedIn;
+      if (!signedIn) {
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _error = 'Sign in to see your reviews.';
+          });
+        }
+        return;
+      }
+    }
     try {
-      final res = await Api().get('/reviews', params: reviewListParams(courtId: widget.courtId));
+      final res = await Api().get('/reviews', params: reviewListParams(courtId: courtId));
       _reviews = List<Map<String, dynamic>>.from(
         (res.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
       _error = null;
     } catch (e) {
-      _error = Api.failureMessage(e);
+      final message = Api.failureMessage(e);
+      _error = message == 'court_id required' ? 'Sign in to see your reviews.' : message;
     }
     if (mounted) setState(() => _loading = false);
   }

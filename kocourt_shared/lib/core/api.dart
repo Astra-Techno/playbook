@@ -43,6 +43,11 @@ class Api {
     // Method tunneling interceptor: convert DELETE/PUT to POST + X-HTTP-Method-Override
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
+        final token = _token;
+        if (token != null && token.isNotEmpty) {
+          options.headers['Authorization'] = 'Bearer $token';
+          options.headers['X-Authorization'] = 'Bearer $token';
+        }
         if (options.method == 'DELETE' || options.method == 'PUT') {
           options.headers['X-HTTP-Method-Override'] = options.method;
           options.method = 'POST';
@@ -77,11 +82,13 @@ class Api {
 
   void setToken(String? token) {
     _token = token;
-    if (token != null) {
-      dio.options.headers['Authorization'] = 'Bearer $token';
-    } else {
-      dio.options.headers.remove('Authorization');
-    }
+    try {
+      if (token != null) {
+        dio.options.headers['Authorization'] = 'Bearer $token';
+      } else {
+        dio.options.headers.remove('Authorization');
+      }
+    } catch (_) {}
   }
 
   String? get token => _token;

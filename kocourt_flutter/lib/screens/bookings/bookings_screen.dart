@@ -340,12 +340,14 @@ class _BookingsScreenState extends State<BookingsScreen> {
     );
   }
 
-  Future<void> _cancelBooking(int bookingId) async {
+  Future<void> _cancelBooking(dynamic rawId) async {
+    final bookingId = int.tryParse('$rawId') ?? 0;
+    if (bookingId < 1) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Cancel Booking?'),
-        content: const Text('This action cannot be undone.'),
+        content: const Text('This follows the venue cancellation terms. Any refund is confirmed after you cancel.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Keep')),
           TextButton(
@@ -361,8 +363,8 @@ class _BookingsScreenState extends State<BookingsScreen> {
       final response = await Api().delete('/bookings/$bookingId');
       if (mounted) context.read<ToastProvider>().success(response.data['message'] ?? 'Booking cancelled');
       _loadBookings();
-    } catch (_) {
-      if (mounted) context.read<ToastProvider>().error('Failed to cancel booking');
+    } catch (error) {
+      if (mounted) context.read<ToastProvider>().error(Api.failureMessage(error, fallback: 'Failed to cancel booking'));
     }
   }
 
@@ -531,7 +533,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
 
     return GestureDetector(
       onTap: courtId != null
-          ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => CourtDetailsScreen(courtId: courtId)))
+          ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => CourtDetailsScreen(courtId: courtIdFrom(courtId))))
           : null,
       onLongPress: isConfirmed && !isPast
           ? () => _showBookingActions(booking)
@@ -571,7 +573,10 @@ class _BookingsScreenState extends State<BookingsScreen> {
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
-                  child: Row(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  Row(
                     children: [
                       // Time block
                       Container(
@@ -659,77 +664,60 @@ class _BookingsScreenState extends State<BookingsScreen> {
                                     style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                                   ),
                                 ],
-                                Text(
-                                  formattedDate,
-                                  style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                                Flexible(
+                                  child: Text(
+                                    formattedDate,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                                  ),
                                 ),
                               ],
                             ),
                           ],
                         ),
                       ),
-                      // Status badge or Book Again
-                      if (isPast && isConfirmed)
-                        GestureDetector(
-                          onTap: () => _bookAgain(booking),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.replay_rounded, size: 13, color: Colors.white),
-                                SizedBox(width: 4),
-                                Text('Book Again', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
-                              ],
-                            ),
-                          ),
-                        )
-                      else
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    ],
+                  ),
+                  if (isPast && isConfirmed) ...[
+                    const SizedBox(height: 10),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
+                        onTap: () => _bookAgain(booking),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                           decoration: BoxDecoration(
-                            color: isConfirmed
-                                ? AppColors.secondary.withValues(alpha: 0.08)
-                                : isCancelled
-                                    ? AppColors.errorLight
-                                    : AppColors.surface,
-                            borderRadius: BorderRadius.circular(8),
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 5,
-                                height: 5,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isConfirmed
-                                      ? AppColors.secondary
-                                      : isCancelled
-                                          ? AppColors.error
-                                          : AppColors.textMuted,
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                status[0].toUpperCase() + status.substring(1),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: isConfirmed
-                                      ? AppColors.secondary
-                                      : isCancelled
-                                          ? AppColors.error
-                                          : AppColors.textMuted,
-                                ),
-                              ),
-                            ],
-                          ),
+                          child: const Text('Book Again', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
                         ),
+                      ),
+                    ),
+                  ] else if (isConfirmed) ...[
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: () => _cancelBooking(booking['id']),
+                        style: TextButton.styleFrom(foregroundColor: AppColors.error, padding: EdgeInsets.zero),
+                        child: const Text('Cancel booking'),
+                      ),
+                    ),
+                  ] else ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        status.isEmpty ? '' : status[0].toUpperCase() + status.substring(1),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isCancelled ? AppColors.error : AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ],
                     ],
                   ),
                 ),

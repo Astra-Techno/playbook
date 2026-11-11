@@ -196,7 +196,7 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
             const Text('Sport', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
             const SizedBox(height: 8),
             SizedBox(
-              height: 36,
+              height: 44,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: sportCategories.where((s) => s.id != 'All').map((sport) {
@@ -231,47 +231,56 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
             // Date & Time
             const Text('Date & Time', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
             const SizedBox(height: 8),
-            Row(
+            Column(
               children: [
-                Expanded(
-                  child: GestureDetector(
-                    onTap: _pickDate,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                      decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(14)),
-                      child: Row(
-                        children: [
-                          Icon(AppIcons.calendarDays, size: 16, color: Colors.grey[600]),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
+                GestureDetector(
+                  onTap: _pickDate,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                    decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(14)),
+                    child: Row(
+                      children: [
+                        Icon(AppIcons.calendarDays, size: 16, color: Colors.grey[600]),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () => _pickTime(true),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                    decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(14)),
-                    child: Text(_startTime.format(context), style: const TextStyle(fontWeight: FontWeight.w600)),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: Text('–', style: TextStyle(color: Colors.grey[400])),
-                ),
-                GestureDetector(
-                  onTap: () => _pickTime(false),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                    decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(14)),
-                    child: Text(_endTime.format(context), style: const TextStyle(fontWeight: FontWeight.w600)),
-                  ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => _pickTime(true),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(14)),
+                          alignment: Alignment.center,
+                          child: Text(_startTime.format(context), style: const TextStyle(fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Text('–', style: TextStyle(color: Colors.grey[400])),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => _pickTime(false),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(14)),
+                          alignment: Alignment.center,
+                          child: Text(_endTime.format(context), style: const TextStyle(fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

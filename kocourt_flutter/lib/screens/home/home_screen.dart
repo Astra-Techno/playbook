@@ -421,7 +421,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text('MINIMUM RATING  ${minRating > 0 ? '${minRating.toStringAsFixed(0)}+ stars' : 'Any'}',
                       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textMuted, letterSpacing: 1.5)),
                     const SizedBox(height: 10),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [0.0, 3.0, 3.5, 4.0, 4.5].map((r) {
                         final selected = minRating == r;
                         final label = r == 0 ? 'Any' : '${r.toStringAsFixed(r == r.roundToDouble() ? 0 : 1)}+';
@@ -512,6 +514,7 @@ class _HomeScreenState extends State<HomeScreen> {
           slivers: [
             _buildHeader(),
             SliverToBoxAdapter(child: _buildSearchBar()),
+            SliverToBoxAdapter(child: _buildDiscovery()),
             SliverToBoxAdapter(child: SportChips()),
             _buildVenueList(),
             _buildGhostSection(),
@@ -527,13 +530,13 @@ class _HomeScreenState extends State<HomeScreen> {
     return SliverAppBar(
       floating: true,
       snap: true,
-      toolbarHeight: 68,
+      toolbarHeight: 80,
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
       flexibleSpace: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           child: Row(
             children: [
               // Logo
@@ -561,6 +564,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: GestureDetector(
                   onTap: _showLocationPicker,
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -696,6 +700,37 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDiscovery() {
+    final venues = context.watch<VenueProvider>();
+    Widget chip(String label, String sort) {
+      return Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: ChoiceChip(
+          label: Text(label),
+          selected: venues.sortBy == sort,
+          onSelected: (_) {
+            if (sort == 'distance' && venues.userLat == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Turn on location to sort venues that are nearby.')),
+              );
+            }
+            venues.setFilters(sortBy: sort);
+          },
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      child: Wrap(
+        children: [
+          chip('Nearby', 'distance'),
+          chip('Best review', 'rating'),
+        ],
       ),
     );
   }
@@ -908,7 +943,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => CourtDetailsScreen(courtId: venue['id']),
+                            builder: (_) => CourtDetailsScreen(courtId: courtIdFrom(venue['id'])),
                           ),
                         );
                       },

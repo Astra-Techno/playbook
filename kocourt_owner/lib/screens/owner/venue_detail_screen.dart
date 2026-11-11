@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'edit_venue_screen.dart';
 import 'spaces_screen.dart';
@@ -20,6 +20,7 @@ import 'venue_customers_screen.dart';
 import 'block_slots_screen.dart';
 import 'pricing_screen.dart';
 import 'manage_plans_screen.dart';
+import 'cancellation_terms_screen.dart';
 
 class VenueDetailScreen extends StatefulWidget {
   final int courtId;
@@ -135,6 +136,16 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                     venueVerificationLabel(_court!['is_verified']),
                     _court!['claim_rejection_reason']?.toString(),
                   ),
+                  if (canManage) ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(child: _listingButton('Available', true)),
+                        const SizedBox(width: 8),
+                        Expanded(child: _listingButton('Unavailable', false)),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   _sectionLabel('MANAGE'),
                   if (canManage)
@@ -186,19 +197,21 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                     _menuItem(AppIcons.award, 'Subscription Plans', 'Create and manage plans', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => ManagePlansScreen(courtId: widget.courtId)));
                     }),
+                    _menuItem(Icons.policy_outlined, 'Cancellation terms', 'Refund windows for this venue', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => CancellationTermsScreen(courtId: widget.courtId)));
+                    }),
                   ],
                   const SizedBox(height: 16),
                   _sectionLabel('PROMOTE'),
-                  _menuItem(Icons.share_outlined, 'Share Venue', 'Share via WhatsApp & social media', () {
-                    final name = _court!['name'] ?? 'KoCourt Venue';
-                    final location = _court!['location'] ?? '';
-                    final rate = _court!['hourly_rate'] ?? '';
-                    final text = '$name\n${location.isNotEmpty ? '$location\n' : ''}'
-                        '${rate.toString().isNotEmpty ? '\u20B9$rate/hr\n' : ''}'
-                        '\nBook now on KoCourt!\nhttps://www.kocourt.com/court/${widget.courtId}';
-                    final uri = Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}');
-                    launchUrl(uri, mode: LaunchMode.externalApplication);
-                  }),
+                    _menuItem(Icons.share_outlined, 'Share Venue', 'Share with any app on this phone', () {
+                      final name = _court!['name'] ?? 'KoCourt Venue';
+                      final location = _court!['location'] ?? '';
+                      final rate = _court!['hourly_rate'] ?? '';
+                      final text = '$name\n${location.isNotEmpty ? '$location\n' : ''}'
+                          '${rate.toString().isNotEmpty ? '\u20B9$rate/hr\n' : ''}'
+                          '\nBook now on KoCourt!\nhttps://www.kocourt.com/court/${widget.courtId}';
+                      SharePlus.instance.share(ShareParams(text: text));
+                    }),
                   const SizedBox(height: 24),
                   if (canManage)
                     SizedBox(
@@ -244,6 +257,39 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  bool get _listed {
+    final value = _court?['accepting_bookings'];
+    if (value == null) return true;
+    final text = value.toString();
+    return text != '0' && text != 'false';
+  }
+
+  Future<void> _setListed(bool available) async {
+    try {
+      await Api().post('/courts/${widget.courtId}/availability', data: {'available': available});
+      if (!mounted) return;
+      setState(() => _court!['accepting_bookings'] = available ? 1 : 0);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Api.failureMessage(error))));
+    }
+  }
+
+  Widget _listingButton(String label, bool available) {
+    final selected = _listed == available;
+    return OutlinedButton(
+      onPressed: selected ? null : () => _setListed(available),
+      style: OutlinedButton.styleFrom(
+        backgroundColor: selected ? AppColors.primary : Colors.white,
+        foregroundColor: selected ? Colors.white : AppColors.textPrimary,
+        disabledForegroundColor: Colors.white,
+        disabledBackgroundColor: AppColors.primary,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+      ),
+      child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 

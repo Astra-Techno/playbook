@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../StaffAccess.php';
+require_once __DIR__ . '/../AccountLookup.php';
 
 class StaffController
 {
@@ -88,17 +89,14 @@ class StaffController
             http_response_code(403); echo json_encode(['message' => 'Forbidden']); return;
         }
 
-        // Find user by phone
-        $uStmt = $this->db->prepare("SELECT id, name, phone, avatar_url FROM users WHERE phone = ?");
-        $uStmt->execute([$phone]);
-        $user = $uStmt->fetch(PDO::FETCH_ASSOC);
+        $user = AccountLookup::byPhone($this->db, $phone);
         if (!$user) {
             http_response_code(404);
             echo json_encode(['message' => 'No KoCourt account found for this phone number']);
             return;
         }
 
-        if ($user['id'] === $owner_id) {
+        if ((int)$user['id'] === $owner_id) {
             http_response_code(400);
             echo json_encode(['message' => 'You cannot add yourself as staff']);
             return;

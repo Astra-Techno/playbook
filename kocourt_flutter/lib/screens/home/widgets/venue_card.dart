@@ -352,10 +352,9 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
 
                         // Footer: status + reviews
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            // Availability indicator
-                            Container(
+                            Flexible(
+                              child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                               decoration: BoxDecoration(
                                 color: bookingCount > 0
@@ -377,22 +376,28 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                                     ),
                                   ),
                                   const SizedBox(width: 6),
-                                  Text(
-                                    bookingCount > 0
-                                        ? '$bookingCount booked today'
-                                        : 'Available now',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: bookingCount > 0
-                                          ? AppColors.accentDark
-                                          : AppColors.secondary,
+                                  Flexible(
+                                    child: Text(
+                                      bookingCount > 0
+                                          ? '$bookingCount booked today'
+                                          : 'Available now',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: bookingCount > 0
+                                            ? AppColors.accentDark
+                                            : AppColors.secondary,
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            if (reviewCount > 0)
+                            ),
+                            if (reviewCount > 0) ...[
+                              const SizedBox(width: 8),
                               Row(
                                 children: [
                                   Icon(Icons.chat_bubble_outline_rounded, size: 13, color: AppColors.textMuted),
@@ -407,6 +412,7 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                                   ),
                                 ],
                               ),
+                            ],
                           ],
                         ),
                       ],

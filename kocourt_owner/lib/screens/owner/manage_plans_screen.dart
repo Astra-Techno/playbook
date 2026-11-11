@@ -22,7 +22,7 @@ class _ManagePlansScreenState extends State<ManagePlansScreen> {
 
   Future<void> _load() async {
     try {
-      final res = await Api().get('/plans', params: {'court_id': widget.courtId});
+      final res = await Api().get('/plans', params: {'court_id': widget.courtId, 'manage': 1});
       _plans = List<Map<String, dynamic>>.from(
         (res.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
@@ -34,32 +34,50 @@ class _ManagePlansScreenState extends State<ManagePlansScreen> {
     final nameCtrl = TextEditingController();
     final priceCtrl = TextEditingController();
     final durationCtrl = TextEditingController(text: '30');
+    final detailCtrl = TextEditingController();
+    var active = true;
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
         title: const Text('Create Plan', style: TextStyle(fontWeight: FontWeight.w800)),
-        content: Column(
+        content: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(controller: nameCtrl, decoration: const InputDecoration(hintText: 'Plan name (e.g. Monthly Pro)')),
             const SizedBox(height: 12),
+            TextField(controller: detailCtrl, decoration: const InputDecoration(hintText: 'Benefits and description')),
+            const SizedBox(height: 12),
             TextField(controller: priceCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Price (\u20B9)')),
             const SizedBox(height: 12),
             TextField(controller: durationCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Duration (days)')),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Active'),
+              value: active,
+              activeThumbColor: AppColors.primary,
+              onChanged: (value) => setDialog(() => active = value),
+            ),
           ],
+        ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, {
               'name': nameCtrl.text.trim(),
+              'description': detailCtrl.text.trim(),
+              'benefits': detailCtrl.text.trim(),
               'price': priceCtrl.text.trim(),
               'duration_days': int.tryParse(durationCtrl.text.trim()) ?? 30,
+              'is_active': active,
             }),
             child: const Text('Create', style: TextStyle(fontWeight: FontWeight.w700)),
           ),
         ],
+      ),
       ),
     );
     if (result == null || result['name'].toString().isEmpty) return;
@@ -142,10 +160,19 @@ class _ManagePlansScreenState extends State<ManagePlansScreen> {
                                   Text(p['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                                   const SizedBox(height: 4),
                                   Text('\u20B9${p['price'] ?? 0} \u2022 ${p['duration_days'] ?? 30} days', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+                                  Text('${p['is_active']}' == '0' ? 'Inactive' : 'Active', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
                                 ],
                               ),
                             ),
-                            IconButton(onPressed: () => _deletePlan(p['id']), icon: Icon(Icons.delete_outline, size: 20, color: Colors.grey[400])),
+                            IconButton(
+                              onPressed: () async {
+                                final next = '${p['is_active']}' == '0';
+                                await Api().post('/plans/${p['id']}/active', data: {'active': next});
+                                _load();
+                              },
+                              icon: Icon('${p['is_active']}' == '0' ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20, color: Colors.grey[600]),
+                            ),
+                            IconButton(onPressed: () => _deletePlan(int.tryParse('${p['id']}') ?? 0), icon: Icon(Icons.delete_outline, size: 20, color: Colors.grey[400])),
                           ],
                         ),
                       );

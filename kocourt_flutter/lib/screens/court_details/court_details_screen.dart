@@ -6,10 +6,15 @@ import '../reviews/past_booking.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:intl/intl.dart';
+
+int courtIdFrom(dynamic value) {
+  if (value is int) return value;
+  return int.tryParse('$value') ?? 0;
+}
 
 class CourtDetailsScreen extends StatefulWidget {
   final int courtId;
@@ -32,6 +37,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
   List<String> _photos = [];
   double? _avgRating;
   int _reviewCount = 0;
+  String? _reviewsError;
   List<Map<String, dynamic>> _plans = [];
   bool _subscribing = false;
   late TabController _tabController;
@@ -72,7 +78,13 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
         );
         avgRating = double.tryParse('${rvRes.data['avg_rating'] ?? ''}');
         reviewCount = rvRes.data['review_count'] ?? reviews.length;
-      } catch (_) {}
+        _reviewsError = null;
+      } catch (error) {
+        _reviewsError = Api.failureMessage(error, fallback: 'Reviews could not be loaded.');
+        if (_reviewsError == 'court_id required') {
+          _reviewsError = 'Reviews for this venue could not be loaded.';
+        }
+      }
 
       // Load photo gallery
       List<String> photos = [];
@@ -191,15 +203,14 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     } catch (_) {}
   }
 
-  void _shareVenue() {
+  Future<void> _shareVenue() async {
     final name = _court?['name'] ?? 'KoCourt Venue';
     final location = _court?['location'] ?? '';
     final rate = _court?['hourly_rate'] ?? '';
     final text = '$name\n${location.isNotEmpty ? '$location\n' : ''}'
         '${rate.toString().isNotEmpty ? '\u20B9$rate/hr\n' : ''}'
         '\nBook now on KoCourt!\nhttps://www.kocourt.com/court/${widget.courtId}';
-    final uri = Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}');
-    launchUrl(uri, mode: LaunchMode.externalApplication);
+    await SharePlus.instance.share(ShareParams(text: text));
   }
 
   Future<void> _book() async {
@@ -261,14 +272,12 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
         } else {
           context.go('/bookings');
         }
-      } else {
+        } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.error ?? 'Payment failed'),
+          const SnackBar(
+            content: Text('Payment did not go through. This booking was not confirmed.'),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
           ),
         );
       }
@@ -577,6 +586,21 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
               ),
             ),
 
+          // Membership and plans
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => _tabController.animateTo(2),
+                  icon: const Icon(Icons.auto_awesome, size: 18),
+                  label: const Text('Highlights'),
+                ),
+              ),
+            ),
+          ),
+
           // Tab bar
           SliverToBoxAdapter(
             child: Container(
@@ -587,6 +611,8 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
               ),
               child: TabBar(
                 controller: _tabController,
+                isScrollable: true,
+                tabAlignment: TabAlignment.start,
                 indicatorSize: TabBarIndicatorSize.tab,
                 indicator: BoxDecoration(
                   color: AppColors.textPrimary,
@@ -691,17 +717,18 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                     ),
                   ),
                   // Book button
-                  SizedBox(
-                    height: 54,
-                    child: ElevatedButton(
-                      onPressed: _bookingLoading ? null : _book,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(horizontal: 36),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 0,
-                        shadowColor: AppColors.primary.withValues(alpha: 0.3),
-                      ),
+                  Flexible(
+                    child: SizedBox(
+                      height: 54,
+                      child: ElevatedButton(
+                        onPressed: _bookingLoading ? null : _book,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                          shadowColor: AppColors.primary.withValues(alpha: 0.3),
+                        ),
                       child: _bookingLoading
                           ? const SizedBox(
                               width: 20,
@@ -721,6 +748,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                             ),
                     ),
                   ),
+                ),
                 ],
               ),
             )
@@ -883,18 +911,20 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
             final disabled = booked || blocked || past;
 
             return GestureDetector(
-              onTap: disabled
-                  ? null
-                  : () {
-                      HapticFeedback.selectionClick();
-                      setState(() {
-                        if (selected) {
-                          _selectedSlots.remove(key);
-                        } else {
-                          _selectedSlots.add(key);
-                        }
-                      });
-                    },
+              onTap: () {
+                if (disabled) {
+                  if (booked) _suggestNextOpenSlot(i);
+                  return;
+                }
+                HapticFeedback.selectionClick();
+                setState(() {
+                  if (selected) {
+                    _selectedSlots.remove(key);
+                  } else {
+                    _selectedSlots.add(key);
+                  }
+                });
+              },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOutCubic,
@@ -1035,8 +1065,33 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     }
   }
 
+  void _suggestNextOpenSlot(int fromIndex) {
+    for (var i = fromIndex + 1; i < _slots.length; i++) {
+      final slot = _slots[i];
+      final hour = int.tryParse('${slot['start']}'.split(':').first) ?? 0;
+      final past = slotStartHasPassed(_selectedDate, hour, DateTime.now());
+      if (slot['booked'] == true || slot['blocked'] == true || past) continue;
+      final key = '${slot['key']}';
+      final label = '${slot['start'] ?? key}';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Next free slot is $label'),
+          action: SnackBarAction(
+            label: 'Select',
+            onPressed: () => setState(() => _selectedSlots.add(key)),
+          ),
+        ),
+      );
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('No later slot is free today. Try another date.')),
+    );
+  }
+
   Widget _buildPlans() {
-    if (_plans.isEmpty) {
+    final plans = _plans.where((plan) => '${plan['is_active'] ?? 1}' != '0').toList();
+    if (plans.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 40),
@@ -1053,7 +1108,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: _plans.map((plan) {
+      children: plans.map((plan) {
         final price = double.tryParse('${plan['price'] ?? 0}') ?? 0;
         final days = plan['duration_days'] ?? 30;
         return Container(
@@ -1090,7 +1145,13 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                 ],
               ),
               const SizedBox(height: 8),
-              if (plan['slot_type'] != null)
+              if ('${plan['benefits'] ?? plan['description'] ?? ''}'.trim().isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  '${plan['benefits'] ?? plan['description']}'.trim(),
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+              ],
                 Text(
                   'Access: ${plan['slot_type']}'.replaceAll('_', ' '),
                   style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
@@ -1165,7 +1226,12 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
           ),
         ),
         const SizedBox(height: 16),
-        if (_reviews.isEmpty)
+        if (_reviewsError != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(_reviewsError!, style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
+          ),
+        if (_reviews.isEmpty && _reviewsError == null)
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 20),
