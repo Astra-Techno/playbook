@@ -50,24 +50,34 @@ class Auth
             getenv('REDIRECT_HTTP_AUTHORIZATION') ?: '',
             $_SERVER['HTTP_X_AUTHORIZATION'] ?? '',
             $_SERVER['REDIRECT_HTTP_X_AUTHORIZATION'] ?? '',
+            $_SERVER['HTTP_X_AUTH_TOKEN'] ?? '',
+            $_SERVER['REDIRECT_HTTP_X_AUTH_TOKEN'] ?? '',
         ];
         if (function_exists('getallheaders')) {
             foreach (getallheaders() ?: [] as $name => $value) {
-                if (strcasecmp((string) $name, 'Authorization') === 0) {
+                if (strcasecmp((string) $name, 'Authorization') === 0
+                    || strcasecmp((string) $name, 'X-Authorization') === 0
+                    || strcasecmp((string) $name, 'X-Auth-Token') === 0) {
                     $candidates[] = (string) $value;
                 }
             }
         }
         if (function_exists('apache_request_headers')) {
             foreach (apache_request_headers() ?: [] as $name => $value) {
-                if (strcasecmp((string) $name, 'Authorization') === 0) {
+                if (strcasecmp((string) $name, 'Authorization') === 0
+                    || strcasecmp((string) $name, 'X-Authorization') === 0
+                    || strcasecmp((string) $name, 'X-Auth-Token') === 0) {
                     $candidates[] = (string) $value;
                 }
             }
         }
         foreach ($candidates as $header) {
-            if (preg_match('/Bearer\s+(\S+)/i', (string) $header, $match)) {
+            $header = trim((string) $header);
+            if (preg_match('/Bearer\s+(\S+)/i', $header, $match)) {
                 return $match[1];
+            }
+            if ($header !== '' && !str_contains($header, ' ')) {
+                return $header;
             }
         }
         return '';

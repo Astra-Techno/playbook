@@ -24,7 +24,8 @@ import 'cancellation_terms_screen.dart';
 
 class VenueDetailScreen extends StatefulWidget {
   final int courtId;
-  const VenueDetailScreen({super.key, required this.courtId});
+  final bool openedAsOwner;
+  const VenueDetailScreen({super.key, required this.courtId, this.openedAsOwner = false});
 
   @override
   State<VenueDetailScreen> createState() => _VenueDetailScreenState();
@@ -88,7 +89,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
     }
 
     final img = getVenueImage(_court!);
-    final canManage = venueOwnedBy(_court!, context.watch<AuthProvider>().userId);
+    final canManage = widget.openedAsOwner || venueOwnedBy(_court!, context.watch<AuthProvider>().userId);
     final verified = venueIsVerified(_court!['is_verified']);
 
     return Scaffold(
@@ -165,8 +166,14 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                   if (canManage) ...[
                     const SizedBox(height: 16),
                     _sectionLabel('OPERATIONS'),
-                    _menuItem(AppIcons.users, 'Staff', 'Manage staff and permissions', () {
+                    _menuItem(AppIcons.users, 'Staff', 'Add a staff account for this venue', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => StaffScreen(courtId: widget.courtId)));
+                    }),
+                    _menuItem(Icons.sports, 'Coach', 'Add a class and a coach name', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => VenueCoachingScreen(courtId: widget.courtId)));
+                    }),
+                    _menuItem(Icons.policy_outlined, 'Cancellation terms', 'Refund windows players see for this court', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => CancellationTermsScreen(courtId: widget.courtId)));
                     }),
                     _menuItem(AppIcons.award, 'Members', 'Active subscribers', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => VenueMembersScreen(courtId: widget.courtId)));
@@ -183,10 +190,6 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                     _menuItem(Icons.insights_outlined, 'Report', 'Prices, collections, and cancellations', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => VenueReportScreen(courtId: widget.courtId)));
                     }),
-                    if (releaseFlags.shows('coaching'))
-                      _menuItem(Icons.sports, 'Coaching', 'Classes, players, and attendance', () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => VenueCoachingScreen(courtId: widget.courtId)));
-                      }),
                     if (releaseFlags.shows('equipment'))
                       _menuItem(Icons.inventory_2_outlined, 'Equipment', 'Rentals, quantity, and deposit', () {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => VenueEquipmentScreen(courtId: widget.courtId)));
@@ -196,9 +199,6 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                     }),
                     _menuItem(AppIcons.award, 'Subscription Plans', 'Create and manage plans', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => ManagePlansScreen(courtId: widget.courtId)));
-                    }),
-                    _menuItem(Icons.policy_outlined, 'Cancellation terms', 'Refund windows for this venue', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => CancellationTermsScreen(courtId: widget.courtId)));
                     }),
                   ],
                   const SizedBox(height: 16),
@@ -280,16 +280,23 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
 
   Widget _listingButton(String label, bool available) {
     final selected = _listed == available;
-    return OutlinedButton(
-      onPressed: selected ? null : () => _setListed(available),
-      style: OutlinedButton.styleFrom(
-        backgroundColor: selected ? AppColors.primary : Colors.white,
-        foregroundColor: selected ? Colors.white : AppColors.textPrimary,
-        disabledForegroundColor: Colors.white,
-        disabledBackgroundColor: AppColors.primary,
-        padding: const EdgeInsets.symmetric(vertical: 12),
+    return SizedBox(
+      height: 48,
+      child: FilledButton(
+        onPressed: () {
+          if (!selected) _setListed(available);
+        },
+        style: FilledButton.styleFrom(
+          backgroundColor: selected ? AppColors.primary : const Color(0xFFF3F4F6),
+          foregroundColor: selected ? Colors.white : AppColors.textPrimary,
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          elevation: 0,
+        ),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(label, maxLines: 1, style: const TextStyle(fontWeight: FontWeight.w800)),
+        ),
       ),
-      child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
     );
   }
 

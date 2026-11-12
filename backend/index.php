@@ -577,7 +577,15 @@ if (isset($seg[0]) && $seg[0] === 'bookings') {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'attendance') {
         Auth::require(); $bookingController->attendance((int)$seg[1]); exit();
     }
-    if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::require(); $bookingController->index(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && !isset($seg[1])) {
+        $slotLookup = isset($_GET['court_id'], $_GET['date'])
+            && !isset($_GET['user_id']) && !isset($_GET['owner_id']) && !isset($_GET['staff_id']);
+        if (!$slotLookup) {
+            Auth::require();
+        }
+        $bookingController->index();
+        exit();
+    }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::require(); $bookingController->create(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) {
         Auth::require(); $bookingController->cancel((int)$seg[1]); exit();

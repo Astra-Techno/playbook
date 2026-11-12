@@ -31,6 +31,8 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
   bool _loading = true;
   String _selectedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
   List<Map<String, dynamic>> _slots = [];
+  bool _slotsLoading = true;
+  String? _slotsError;
   Set<String> _selectedSlots = {};
   bool _bookingLoading = false;
   List<Map<String, dynamic>> _reviews = [];
@@ -106,21 +108,25 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
       setState(() {
         _court = court;
         _spaces = spaces;
-        _selectedSpaceId = spaces.isNotEmpty ? spaces.first['id'] : null;
         _reviews = reviews;
         _photos = photos;
         _avgRating = avgRating;
         _reviewCount = reviewCount;
         _plans = plans;
         _loading = false;
+        final spaceId = spaces.isNotEmpty ? courtIdFrom(spaces.first['id']) : 0;
+        _selectedSpaceId = spaceId > 0 ? spaceId : null;
       });
 
       _loadSlots();
     } catch (e) {
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+        _slotsLoading = false;
+        _slotsError = 'Slots could not be loaded.';
+      });
     }
   }
-
   int _clockHour(dynamic value, int fallback) {
     final text = '${value ?? ''}'.trim();
     if (text.isEmpty) return fallback;
@@ -130,77 +136,88 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
   }
 
   Future<void> _loadSlots() async {
+    if (mounted) {
+      setState(() {
+        _slotsLoading = true;
+        _slotsError = null;
+      });
+    }
+    var bookings = <Map<String, dynamic>>[];
+    final blocked = <String>{};
     try {
       final params = <String, dynamic>{
         'court_id': widget.courtId,
         'date': _selectedDate,
       };
-      if (_selectedSpaceId != null) params['sub_court_id'] = _selectedSpaceId;
+      final spaceId = _selectedSpaceId ?? 0;
+      if (spaceId > 0) params['sub_court_id'] = spaceId;
 
       final res = await Api().get('/bookings', params: params);
-      final bookings = List<Map<String, dynamic>>.from(
+      bookings = List<Map<String, dynamic>>.from(
         (res.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
+    } catch (error) {
+      _slotsError = Api.failureMessage(error, fallback: 'Slots could not be loaded.');
+    }
 
-      Set<String> blocked = {};
-      try {
-        final bRes = await Api().get('/blocked-slots', params: {
-          'court_id': widget.courtId,
-          'date': _selectedDate,
-          if (_selectedSpaceId != null) 'sub_court_id': _selectedSpaceId,
-        });
-        final bSlots = bRes.data['blocks'] ?? [];
-        for (final b in bSlots) {
-          final appliesStart = '${b['applies_start'] ?? b['start_time'] ?? ''}';
-          final appliesEnd = '${b['applies_end'] ?? b['end_time'] ?? ''}';
-          blocked.add('$appliesStart|$appliesEnd');
-        }
-      } catch (_) {}
+    try {
+      final bRes = await Api().get('/blocked-slots', params: {
+        'court_id': widget.courtId,
+        'date': _selectedDate,
+        if ((_selectedSpaceId ?? 0) > 0) 'sub_court_id': _selectedSpaceId,
+      });
+      final bSlots = bRes.data['blocks'] ?? [];
+      for (final b in bSlots) {
+        final appliesStart = '${b['applies_start'] ?? b['start_time'] ?? ''}';
+        final appliesEnd = '${b['applies_end'] ?? b['end_time'] ?? ''}';
+        blocked.add('$appliesStart|$appliesEnd');
+      }
+    } catch (_) {}
 
-      final slots = <Map<String, dynamic>>[];
-      final now = DateTime.now();
-      final openHour = _clockHour(_court?['open_time'], 6);
-      final closeHour = _clockHour(_court?['close_time'], 22);
-      final firstHour = closeHour > openHour ? openHour : 6;
-      final lastHour = closeHour > openHour ? closeHour : 22;
-      for (int h = firstHour; h < lastHour; h++) {
-        final start = '${h.toString().padLeft(2, '0')}:00';
-        final end = '${(h + 1).toString().padLeft(2, '0')}:00';
-        final key = '$start-$end';
-        final slotStart = '$_selectedDate $start:00';
-        final slotEnd = '$_selectedDate $end:00';
-        final isBooked = bookings.any((b) => intervalsOverlap(
-          appliesStart: '${b['start_time'] ?? ''}',
-          appliesEnd: '${b['end_time'] ?? ''}',
+    final slots = <Map<String, dynamic>>[];
+    final now = DateTime.now();
+    final openHour = _clockHour(_court?['open_time'], 6);
+    final closeHour = _clockHour(_court?['close_time'], 22);
+    final firstHour = closeHour > openHour ? openHour : 6;
+    final lastHour = closeHour > openHour ? closeHour : 22;
+    for (int h = firstHour; h < lastHour; h++) {
+      final start = '${h.toString().padLeft(2, '0')}:00';
+      final end = '${(h + 1).toString().padLeft(2, '0')}:00';
+      final key = '$start-$end';
+      final slotStart = '$_selectedDate $start:00';
+      final slotEnd = '$_selectedDate $end:00';
+      final isBooked = bookings.any((b) => intervalsOverlap(
+        appliesStart: '${b['start_time'] ?? ''}',
+        appliesEnd: '${b['end_time'] ?? ''}',
+        slotStart: slotStart,
+        slotEnd: slotEnd,
+      ));
+      final isBlocked = blocked.any((row) {
+        final parts = row.split('|');
+        if (parts.length != 2) return false;
+        return blockCoversSlot(
+          appliesStart: parts[0],
+          appliesEnd: parts[1],
           slotStart: slotStart,
           slotEnd: slotEnd,
-        ));
-        final isBlocked = blocked.any((row) {
-          final parts = row.split('|');
-          if (parts.length != 2) return false;
-          return blockCoversSlot(
-            appliesStart: parts[0],
-            appliesEnd: parts[1],
-            slotStart: slotStart,
-            slotEnd: slotEnd,
-          );
-        });
-        final isPast = slotStartHasPassed(_selectedDate, h, now);
-        slots.add({
-          'start': start,
-          'end': end,
-          'key': key,
-          'booked': isBooked,
-          'blocked': isBlocked,
-          'past': isPast,
-        });
-      }
-
-      setState(() {
-        _slots = slots;
-        _selectedSlots = {};
+        );
       });
-    } catch (_) {}
+      slots.add({
+        'start': start,
+        'end': end,
+        'key': key,
+        'booked': isBooked,
+        'blocked': isBlocked,
+        'past': slotStartHasPassed(_selectedDate, h, now),
+      });
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _slots = slots;
+      _selectedSlots = {};
+      _slotsLoading = false;
+    });
   }
 
   Future<void> _shareVenue() async {
@@ -550,13 +567,14 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                         itemCount: _spaces.length,
                         itemBuilder: (_, i) {
                           final space = _spaces[i];
-                          final selected = _selectedSpaceId == space['id'];
+                          final selected = _selectedSpaceId == courtIdFrom(space['id']);
                           return Padding(
                             padding: const EdgeInsets.only(right: 8),
                             child: GestureDetector(
                               onTap: () {
                                 HapticFeedback.selectionClick();
-                                setState(() => _selectedSpaceId = space['id']);
+                                final nextSpace = courtIdFrom(space['id']);
+                                setState(() => _selectedSpaceId = nextSpace > 0 ? nextSpace : null);
                                 _loadSlots();
                               },
                               child: AnimatedContainer(
@@ -586,20 +604,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
               ),
             ),
 
-          // Membership and plans
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: () => _tabController.animateTo(2),
-                  icon: const Icon(Icons.auto_awesome, size: 18),
-                  label: const Text('Highlights'),
-                ),
-              ),
-            ),
-          ),
+          SliverToBoxAdapter(child: _buildMembershipSection()),
 
           // Tab bar
           SliverToBoxAdapter(
@@ -735,16 +740,13 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                               height: 20,
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
                             )
-                          : const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  'Book Now',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
-                                ),
-                                SizedBox(width: 8),
-                                Icon(Icons.arrow_forward_rounded, size: 20, color: Colors.white),
-                              ],
+                          : const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'Book Now',
+                                maxLines: 1,
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
+                              ),
                             ),
                     ),
                   ),
@@ -813,7 +815,11 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                             ),
                           ],
                   ),
-                  child: Column(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
@@ -844,6 +850,8 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                         ),
                       ),
                     ],
+                      ),
+                    ),
                   ),
                 ),
               );
@@ -855,24 +863,20 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
   }
 
   Widget _buildSlotsGrid() {
+    if (_slotsLoading && _slots.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 40),
+        child: Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5)),
+      );
+    }
     if (_slots.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40),
-        child: Center(
-          child: Column(
-            children: [
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  color: AppColors.primary,
-                  strokeWidth: 2.5,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text('Loading slots...', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-            ],
-          ),
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Column(
+          children: [
+            Text(_slotsError ?? 'No slots for this day.', textAlign: TextAlign.center),
+            TextButton(onPressed: _loadSlots, child: const Text('Try again')),
+          ],
         ),
       );
     }
@@ -1086,6 +1090,63 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     }
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('No later slot is free today. Try another date.')),
+    );
+  }
+
+  Widget _buildMembershipSection() {
+    final plans = _plans.where((plan) => '${plan['is_active'] ?? 1}' != '0').toList();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Membership', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 4),
+          Text('Subscription plans for this venue.', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+          const SizedBox(height: 12),
+          if (plans.isEmpty)
+            const Text('No membership plans yet.')
+          else
+            ...plans.map((plan) {
+              final price = double.tryParse('${plan['price'] ?? 0}') ?? 0;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.borderLight),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${plan['name'] ?? 'Plan'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
+                          Text('₹${price.toStringAsFixed(0)} · ${plan['duration_days'] ?? 30} days', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      height: 40,
+                      child: ElevatedButton(
+                        onPressed: _subscribing ? null : () => _subscribeToPlan(plan),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          elevation: 0,
+                        ),
+                        child: const FittedBox(child: Text('Join', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white))),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
     );
   }
 

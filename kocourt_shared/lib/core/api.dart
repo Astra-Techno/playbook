@@ -47,6 +47,7 @@ class Api {
         if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
           options.headers['X-Authorization'] = 'Bearer $token';
+          options.headers['X-Auth-Token'] = token;
         }
         if (options.method == 'DELETE' || options.method == 'PUT') {
           options.headers['X-HTTP-Method-Override'] = options.method;

@@ -141,6 +141,7 @@ Phase 9 — Staging. `playbook_staging` is schema version 36 and holds one booki
 - `php tests/coaching_session_test.php` in `backend`: all passed. The coaching routes were not called against a live database. Migration 030 was not applied to a live database in this session.
 - `php tests/equipment_rental_test.php` in `backend`: all passed. The equipment routes were not called against a live database. Migration 031 was not applied to a live database in this session. Two database connections were not raced.
 - `flutter test test/equipment_fields_test.dart` in `kocourt_owner`: 1 passed. `flutter analyze` on `equipment_fields.dart`, `venue_equipment_screen.dart`, and `venue_detail_screen.dart` reported no issues. The Equipment screen was not opened in a running app.
+- 12 November 2026: `php -l` on `backend/index.php` and `backend/src/Auth.php` reported no syntax errors. `flutter analyze` on the player court details screen and the owner venue detail and dashboard reported no issues. Slot loading, membership, listing status, staff, coach, and cancellation screens were not opened in a running app.
 - `php tests/tournament_participant_export_test.php` in `backend`: all passed. The export route was not called against a live database.
 
 ## Schema changes

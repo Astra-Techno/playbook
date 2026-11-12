@@ -441,7 +441,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       onTap: courtId == null
           ? null
           : () => Navigator.push(context, MaterialPageRoute(
-                builder: (_) => VenueDetailScreen(courtId: courtId),
+                builder: (_) => VenueDetailScreen(courtId: courtId, openedAsOwner: venue.isOwner),
               )).then((_) => _load()),
       margin: const EdgeInsets.only(bottom: 12),
       radius: 16,
