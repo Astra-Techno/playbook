@@ -7,7 +7,13 @@
     "test": "playwright test",
     "test:smoke": "playwright test live-smoke.spec.js",
     "test:ui": "playwright test --ui",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "agents": "node agents/index.js",
+    "agents:booking": "node agents/index.js --scenario=booking",
+    "agents:social": "node agents/index.js --scenario=social",
+    "agents:owner": "node agents/index.js --scenario=owner",
+    "agents:negative": "node agents/index.js --scenario=negative",
+    "agents:stress": "node agents/index.js --rounds=5"
   },
   "keywords": [],
   "author": "",

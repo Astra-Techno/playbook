@@ -1,0 +1,87 @@
+name: AI Agent Tests
+
+on:
+  # Run every 6 hours automatically
+  schedule:
+    - cron: '0 */6 * * *'
+  # Manual trigger with options
+  workflow_dispatch:
+    inputs:
+      scenario:
+        description: 'Scenario to run (or "all")'
+        required: false
+        default: 'all'
+      rounds:
+        description: 'Number of rounds'
+        required: false
+        default: '1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: agents-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  agent-tests:
+    name: Run AI Agent Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: e2e-tests/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: e2e-tests
+
+      - name: Verify API is reachable
+        run: curl --fail --silent --max-time 10 https://www.kocourt.com/api/courts > /dev/null
+
+      - name: Run agent tests
+        id: agents
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.scenario }}" != "" ] && [ "${{ github.event.inputs.scenario }}" != "all" ]; then
+            ARGS="--scenario=${{ github.event.inputs.scenario }}"
+          fi
+          if [ "${{ github.event.inputs.rounds }}" != "" ] && [ "${{ github.event.inputs.rounds }}" != "1" ]; then
+            ARGS="$ARGS --rounds=${{ github.event.inputs.rounds }}"
+          fi
+          node agents/index.js $ARGS 2>&1 | tee results.txt
+          EXIT_CODE=${PIPESTATUS[0]}
+
+          # Extract summary line
+          SUMMARY=$(grep "SUMMARY:" results.txt | sed 's/.*SUMMARY: //' || echo "unknown")
+          echo "summary=$SUMMARY" >> $GITHUB_OUTPUT
+          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+
+          # Post results to kocourt.com
+          PASSED=$(echo "$SUMMARY" | grep -oP '^\d+' || echo "0")
+          FAILED=$(echo "$SUMMARY" | grep -oP '\d+ failed' | grep -oP '^\d+' || echo "0")
+          TOTAL=$(echo "$SUMMARY" | grep -oP '\d+ total' | grep -oP '^\d+' || echo "0")
+
+          curl -s -X POST "https://www.kocourt.com/api/admin/test-results" \
+            -H "Content-Type: application/json" \
+            -d "{\"passed\":$PASSED,\"failed\":$FAILED,\"total\":$TOTAL,\"summary\":\"$SUMMARY\",\"run_url\":\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\",\"trigger\":\"${{ github.event_name }}\"}" \
+            || true
+
+          exit $EXIT_CODE
+        working-directory: e2e-tests
+        env:
+          E2E_API_BASE_URL: https://www.kocourt.com/api
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-test-results
+          path: e2e-tests/results.txt
+          retention-days: 30

@@ -947,7 +947,8 @@ if (isset($seg[0]) && $seg[0] === 'admin') {
         $branch = $_ENV['GITHUB_BRANCH'] ?? 'main';
         $token = $_ENV['GITHUB_TOKEN'] ?? '';
         if (!$token) { http_response_code(400); echo json_encode(['message' => 'GITHUB_TOKEN not configured in .env']); exit(); }
-        $workflowFile = $workflow === 'ios' ? 'ios.yml' : 'build.yml';
+        $workflowFiles = ['ios' => 'ios.yml', 'agents' => 'agents.yml', 'build' => 'build.yml'];
+        $workflowFile = $workflowFiles[$workflow] ?? 'build.yml';
         $url = "https://api.github.com/repos/{$repo}/actions/workflows/{$workflowFile}/dispatches";
         $body = json_encode(['ref' => $branch, 'inputs' => (object)$inputs]);
         $ch = curl_init($url);
@@ -1006,6 +1007,46 @@ if (isset($seg[0]) && $seg[0] === 'admin') {
         }, $data['workflow_runs'] ?? []);
         echo json_encode(['runs' => $runs]); exit();
     }
+    // POST /admin/test-results — store agent test results (no auth — called from CI)
+    if (isset($seg[1]) && $seg[1] === 'test-results' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $db = Database::getConnection();
+        $db->exec("CREATE TABLE IF NOT EXISTS test_results (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            passed INT DEFAULT 0,
+            failed INT DEFAULT 0,
+            total INT DEFAULT 0,
+            summary TEXT,
+            run_url VARCHAR(500),
+            trigger_type VARCHAR(50),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )");
+        $input = json_decode(file_get_contents('php://input'), true) ?: [];
+        $stmt = $db->prepare("INSERT INTO test_results (passed, failed, total, summary, run_url, trigger_type) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->execute([
+            (int)($input['passed'] ?? 0),
+            (int)($input['failed'] ?? 0),
+            (int)($input['total'] ?? 0),
+            $input['summary'] ?? '',
+            $input['run_url'] ?? '',
+            $input['trigger'] ?? 'manual',
+        ]);
+        // Keep only last 100 results
+        $db->exec("DELETE FROM test_results WHERE id NOT IN (SELECT id FROM (SELECT id FROM test_results ORDER BY id DESC LIMIT 100) t)");
+        echo json_encode(['status' => 'ok']); exit();
+    }
+
+    // GET /admin/test-results — get recent test results
+    if (isset($seg[1]) && $seg[1] === 'test-results' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        Auth::requireAdmin();
+        $db = Database::getConnection();
+        try {
+            $stmt = $db->query("SELECT * FROM test_results ORDER BY id DESC LIMIT 20");
+            echo json_encode(['results' => $stmt->fetchAll(PDO::FETCH_ASSOC)]); exit();
+        } catch (PDOException $e) {
+            echo json_encode(['results' => []]); exit();
+        }
+    }
+
     http_response_code(404); echo json_encode(['message' => 'Admin endpoint not found']); exit();
 }
 

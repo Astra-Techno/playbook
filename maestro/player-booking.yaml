@@ -1,0 +1,82 @@
+# Maestro Flow: Player Booking
+# Simulates a player browsing a venue and booking a slot.
+# Prerequisite: User must be logged in (run player-login.yaml first).
+#
+# Run: maestro test maestro/player-booking.yaml
+
+appId: com.kocourt.player
+
+---
+
+# 1. Launch (already logged in from previous flow)
+- launchApp
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# 2. Tap on Home tab to see venues
+- tapOn: "HOME"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# 3. Tap the first venue card
+- scroll:
+    direction: DOWN
+    duration: 500
+- waitForAnimationToEnd
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# 4. Take screenshot of court details
+- takeScreenshot: "court-details"
+
+# 5. Scroll down to see slots, reviews, plans
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "court-details-slots"
+
+# 6. Scroll down more to see reviews section
+- scroll:
+    direction: DOWN
+    duration: 1500
+- waitForAnimationToEnd
+- takeScreenshot: "court-details-reviews"
+
+# 7. Scroll back up to slot section
+- scroll:
+    direction: UP
+    duration: 3000
+- waitForAnimationToEnd
+
+# 8. Try tapping a time slot (if available)
+- tapOn:
+    text: "10:00"
+  optional: true
+- tapOn:
+    text: "11:00"
+  optional: true
+- waitForAnimationToEnd
+
+# 9. Look for Book / Pay button
+- tapOn: "Book"
+  optional: true
+- tapOn: "Pay"
+  optional: true
+- tapOn: "Continue"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# 10. Take screenshot of booking/payment screen
+- takeScreenshot: "booking-payment"
+
+# 11. Go back
+- pressKey: back
+- pressKey: back
+- waitForAnimationToEnd
