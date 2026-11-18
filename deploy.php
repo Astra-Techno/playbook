@@ -41,7 +41,7 @@ if (file_exists($envFile)) {
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 $deployKey = $_ENV['DEPLOY_KEY'] ?? '';
-$givenKey  = $_SERVER['HTTP_X_DEPLOY_KEY'] ?? '';
+$givenKey  = $_SERVER['HTTP_X_DEPLOY_KEY'] ?? $_GET['key'] ?? '';
 
 header('Content-Type: text/html; charset=UTF-8');
 
@@ -137,26 +137,62 @@ log_step('✓', 'Download complete (' . round($zipBytes / 1024) . ' KB)', 'ok');
 // ────────────────────────────────────────────────────────────────────────────
 // STEP 2 — Extract to temp dir
 // ────────────────────────────────────────────────────────────────────────────
-log_step('📦', 'Extracting ZIP…');
+log_step('📦', 'Extracting ZIP (selective)…');
 
 $zip = new ZipArchive();
 if ($zip->open($tmpZip) !== true) {
     @unlink($tmpZip);
     abort('Failed to open ZIP archive. ZipArchive extension may be missing.');
 }
-$zip->extractTo($tmpDir);
+
+// GitHub ZIP root folder is like: playbook-main/ — detect it from first entry
+$firstEntry = $zip->getNameIndex(0);
+$repoPrefix = substr($firstEntry, 0, strpos($firstEntry, '/') + 1);
+
+// Only extract backend/, public_html/, .htaccess, and migrations — skip APKs, Flutter, node_modules
+$needed = ['backend/', 'public_html/', '.htaccess'];
+$extracted = 0;
+if (!is_dir($tmpDir)) mkdir($tmpDir, 0755, true);
+
+for ($i = 0; $i < $zip->numFiles; $i++) {
+    $name = $zip->getNameIndex($i);
+    $rel  = substr($name, strlen($repoPrefix));
+    if ($rel === '' || $rel === false) continue;
+
+    // Check if this entry falls under a needed directory or is a needed file
+    $dominated = false;
+    foreach ($needed as $prefix) {
+        if (str_starts_with($rel, $prefix) || $rel === rtrim($prefix, '/')) {
+            $dominated = true;
+            break;
+        }
+    }
+    if (!$dominated) continue;
+
+    // Skip large binaries inside public_html (APKs are deployed by CI, not here)
+    if (preg_match('/\.(apk|aab|ipa)$/i', $name)) continue;
+
+    $dest = $tmpDir . '/' . $repoPrefix . $rel;
+    if (substr($name, -1) === '/') {
+        if (!is_dir($dest)) mkdir($dest, 0755, true);
+    } else {
+        $dir = dirname($dest);
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        file_put_contents($dest, $zip->getFromIndex($i));
+        $extracted++;
+    }
+}
 $zip->close();
 @unlink($tmpZip);
 
-// GitHub ZIP root folder is like: Astra-Techno-playbook-abc1234/
 $extractedDirs = glob($tmpDir . '/*', GLOB_ONLYDIR);
 if (empty($extractedDirs)) {
     rrmdir($tmpDir);
     abort('ZIP extraction failed — no directories found.');
 }
-$repoRoot = $extractedDirs[0]; // e.g. /tmp/kocourt_extract_xxx/Astra-Techno-playbook-abc123
+$repoRoot = $extractedDirs[0];
 
-log_step('✓', 'Extracted to temp directory', 'ok');
+log_step('✓', "Extracted {$extracted} files (skipped APKs, Flutter, node_modules)", 'ok');
 
 // ────────────────────────────────────────────────────────────────────────────
 // STEP 3 — Update backend files
@@ -313,15 +349,18 @@ function rcopy(string $src, string $dst, array $skip = [], array &$copied = []):
 /** Renders a collapsible file list for the deploy log */
 function render_file_list(array $files, string $baseDir): string {
     if (empty($files)) return 'No files copied.';
+    $count = count($files);
     $base  = rtrim($baseDir, '/');
     $items = '';
-    foreach ($files as $f) {
-        $rel    = ltrim(str_replace($base, '', $f), '/');
+    $shown = min($count, 50);
+    for ($i = 0; $i < $shown; $i++) {
+        $rel    = ltrim(str_replace($base, '', $files[$i]), '/');
         $items .= '<li style="font-family:monospace;font-size:.78rem;color:#475569">' . htmlspecialchars($rel) . '</li>';
     }
+    $more = $count > $shown ? '<li style="color:#94a3b8;font-size:.78rem">… and ' . ($count - $shown) . ' more</li>' : '';
     return '<details style="cursor:pointer"><summary style="font-size:.82rem;color:#64748b">'
-         . count($files) . ' files — click to expand</summary>'
-         . '<ul style="margin:6px 0 0 16px;padding:0;list-style:disc">' . $items . '</ul>'
+         . $count . ' files — click to expand</summary>'
+         . '<ul style="margin:6px 0 0 16px;padding:0;list-style:disc">' . $items . $more . '</ul>'
          . '</details>';
 }
 
