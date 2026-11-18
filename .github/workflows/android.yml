@@ -1,0 +1,104 @@
+name: Android AAB
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: 'Reachable HTTPS API URL baked into the release'
+        type: string
+        default: 'https://www.kocourt.com/api'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-aab-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: AAB ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: kocourt_flutter
+            artifact: kocourt-player
+          - app: kocourt_owner
+            artifact: kocourt-owner
+    env:
+      API_BASE_URL: ${{ inputs.api_base_url || 'https://www.kocourt.com/api' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Shared packages
+        run: flutter pub get
+        working-directory: kocourt_shared
+
+      - name: App packages
+        run: flutter pub get
+        working-directory: ${{ matrix.app }}
+
+      - name: Decode release keystore
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+            echo "No Android keystore secrets found. Building with the debug key (Play Console will reject this for production upload)."
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "${{ matrix.app }}/android/upload-keystore.jks"
+          {
+            echo "storePassword=$STORE_PASSWORD"
+            echo "keyPassword=$KEY_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "storeFile=upload-keystore.jks"
+          } > "${{ matrix.app }}/android/key.properties"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build app bundle
+        run: flutter build appbundle --release --dart-define="API_BASE_URL=$API_BASE_URL"
+        working-directory: ${{ matrix.app }}
+
+      - name: Rename AAB
+        run: |
+          src="${{ matrix.app }}/build/app/outputs/bundle/release/app-release.aab"
+          cp "$src" "${{ matrix.artifact }}.aab"
+          ls -lh "${{ matrix.artifact }}.aab"
+
+      - name: Job summary
+        run: |
+          {
+            echo "## ${{ matrix.artifact }}.aab"
+            echo ""
+            echo "- App: \`${{ matrix.app }}\`"
+            echo "- API: \`$API_BASE_URL\`"
+            if [ "${{ steps.signing.outputs.signed }}" = "true" ]; then
+              echo "- Signing: release keystore from repository secrets"
+            else
+              echo "- Signing: debug (add \`ANDROID_KEYSTORE_BASE64\`, \`ANDROID_STORE_PASSWORD\`, \`ANDROID_KEY_ALIAS\`, \`ANDROID_KEY_PASSWORD\` for Play upload)"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}-release-aab
+          path: ${{ matrix.artifact }}.aab
+          if-no-files-found: error
