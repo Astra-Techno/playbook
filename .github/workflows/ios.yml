@@ -47,6 +47,9 @@ jobs:
       API_BASE_URL: ${{ inputs.api_base_url || 'https://www.kocourt.com/api' }}
     steps:
       - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.44.8'
