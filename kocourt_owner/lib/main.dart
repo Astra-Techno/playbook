@@ -16,6 +16,9 @@ void main() async {
 
   final authProvider = AuthProvider();
   await authProvider.init();
+  Api().onUnauthorized = () async {
+    if (authProvider.isLoggedIn) await authProvider.logout();
+  };
 
   runApp(
     MultiProvider(

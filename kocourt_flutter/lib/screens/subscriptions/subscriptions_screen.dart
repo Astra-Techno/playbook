@@ -21,8 +21,13 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
 
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
+    final userId = auth.userId;
+    if (userId == null) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
     try {
-      final res = await Api().get('/subscriptions', params: {'user_id': auth.userId});
+      final res = await Api().get('/subscriptions', params: {'user_id': userId});
       _subs = List<Map<String, dynamic>>.from(
         (res.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );

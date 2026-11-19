@@ -12,6 +12,13 @@ class CourtController {
         $location = isset($_GET['location']) ? trim($_GET['location']) : null;
         $type     = isset($_GET['type'])     ? trim($_GET['type'])     : null;
         $owner_id = isset($_GET['owner_id']) ? (int)$_GET['owner_id'] : null;
+        if ($owner_id !== null) {
+            // Owner listings are private — require a valid token (query id is ignored below for non-admin).
+            $authUser = Auth::require();
+            if (($authUser['role'] ?? '') !== 'admin') {
+                $owner_id = (int)$authUser['id'];
+            }
+        }
         $lat      = isset($_GET['lat'])      ? (float)$_GET['lat']    : null;
         $lng      = isset($_GET['lng'])      ? (float)$_GET['lng']    : null;
         $radius    = isset($_GET['radius'])    ? (int)$_GET['radius']    : 25;

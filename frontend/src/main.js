@@ -10,16 +10,33 @@ import router from './router'
 // Base URL for all API requests — set VITE_API_BASE in .env to override
 axios.defaults.baseURL = import.meta.env.VITE_API_BASE || '/api'
 
-// Restore auth token on page load
-const token = localStorage.getItem('token')
-if (token) {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+const applyAuthHeaders = (token) => {
+    if (token) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        axios.defaults.headers.common['X-Authorization'] = `Bearer ${token}`
+        axios.defaults.headers.common['X-Auth-Token'] = token
+    } else {
+        delete axios.defaults.headers.common['Authorization']
+        delete axios.defaults.headers.common['X-Authorization']
+        delete axios.defaults.headers.common['X-Auth-Token']
+    }
 }
+
+// Restore auth token on page load (Authorization is often stripped by LiteSpeed)
+const token = localStorage.getItem('token')
+applyAuthHeaders(token)
 
 // Prevent browser from caching API responses
 axios.interceptors.request.use(config => {
     config.headers['Cache-Control'] = 'no-cache, no-store'
     config.headers['Pragma'] = 'no-cache'
+
+    const liveToken = localStorage.getItem('token')
+    if (liveToken) {
+        config.headers['Authorization'] = `Bearer ${liveToken}`
+        config.headers['X-Authorization'] = `Bearer ${liveToken}`
+        config.headers['X-Auth-Token'] = liveToken
+    }
 
     // LiteSpeed blocks DELETE/PUT at server level — tunnel them through POST
     if (['delete', 'put', 'patch'].includes(config.method)) {
@@ -28,6 +45,9 @@ axios.interceptors.request.use(config => {
     }
     return config
 })
+
+// Expose for the auth store so login/logout stay in sync
+window.__kocourtApplyAuthHeaders = applyAuthHeaders
 
 // Embedded WebViews sometimes report innerHeight === 0 before layout; never set height to 0
 // or the whole app collapses. CSS (main.css #app) provides fallbacks; JS only reinforces when h > 0.

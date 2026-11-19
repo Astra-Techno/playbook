@@ -372,7 +372,7 @@ class BookingController {
         if (isset($_GET['user_id']) || isset($_GET['owner_id']) || isset($_GET['staff_id'])) {
             if (!$authUser) {
                 http_response_code(401);
-                echo json_encode(['message' => 'Authentication required']);
+                echo json_encode(['error' => 'Unauthenticated', 'message' => 'Please sign in again.']);
                 return;
             }
         }

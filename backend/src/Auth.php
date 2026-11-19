@@ -50,8 +50,12 @@ class Auth
             getenv('REDIRECT_HTTP_AUTHORIZATION') ?: '',
             $_SERVER['HTTP_X_AUTHORIZATION'] ?? '',
             $_SERVER['REDIRECT_HTTP_X_AUTHORIZATION'] ?? '',
+            getenv('HTTP_X_AUTHORIZATION') ?: '',
+            getenv('REDIRECT_HTTP_X_AUTHORIZATION') ?: '',
             $_SERVER['HTTP_X_AUTH_TOKEN'] ?? '',
             $_SERVER['REDIRECT_HTTP_X_AUTH_TOKEN'] ?? '',
+            getenv('HTTP_X_AUTH_TOKEN') ?: '',
+            getenv('REDIRECT_HTTP_X_AUTH_TOKEN') ?: '',
         ];
         if (function_exists('getallheaders')) {
             foreach (getallheaders() ?: [] as $name => $value) {
@@ -89,7 +93,8 @@ class Auth
         $user = self::user();
         if (!$user) {
             http_response_code(401);
-            echo json_encode(['error' => 'Unauthenticated']);
+            // Both keys: Flutter reads message then error; older clients read error.
+            echo json_encode(['error' => 'Unauthenticated', 'message' => 'Please sign in again.']);
             exit();
         }
         return $user;

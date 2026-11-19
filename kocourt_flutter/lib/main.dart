@@ -18,6 +18,9 @@ void main() async {
   // Resolve persisted identity before the router evaluates role-protected
   // routes, avoiding a guest-route flash on cold start.
   await authProvider.init();
+  Api().onUnauthorized = () async {
+    if (authProvider.isLoggedIn) await authProvider.logout();
+  };
 
   runApp(
     MultiProvider(

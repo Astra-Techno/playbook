@@ -8,9 +8,13 @@
   RewriteEngine On
   RewriteBase /
 
-  # Apache/CGI often drops Authorization before PHP — expose it as HTTP_AUTHORIZATION
+  # Apache/CGI/LiteSpeed often drop Authorization before PHP — expose auth headers
   RewriteCond %{HTTP:Authorization} .
   RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+  RewriteCond %{HTTP:X-Authorization} .
+  RewriteRule ^ - [E=HTTP_X_AUTHORIZATION:%{HTTP:X-Authorization}]
+  RewriteCond %{HTTP:X-Auth-Token} .
+  RewriteRule ^ - [E=HTTP_X_AUTH_TOKEN:%{HTTP:X-Auth-Token}]
 
   # Force https://www.kocourt.com — skip localhost / 127.0.0.1
   RewriteCond %{HTTP_HOST} !^localhost [NC]

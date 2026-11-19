@@ -54,8 +54,8 @@ class _OwnerAppShellState extends State<OwnerAppShell> with TickerProviderStateM
         children: [
           const OwnerDashboardScreen(),
           OwnerBookingsScreen(active: _currentIndex == 1),
-          const OwnerEarningsScreen(),
-          const ChatThreadsScreen(),
+          OwnerEarningsScreen(active: _currentIndex == 2),
+          ChatThreadsScreen(active: _currentIndex == 3),
           const OwnerProfileScreen(),
         ],
       ),

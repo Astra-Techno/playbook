@@ -34,13 +34,23 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
 
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
+    final ownerId = auth.userId;
+    if (ownerId == null) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Please sign in again.';
+        });
+      }
+      return;
+    }
     if (_bookings.isEmpty && mounted) {
       setState(() => _loading = true);
     }
     String? error;
     List<Map<String, dynamic>>? bookings;
     try {
-      final res = await Api().get('/bookings', params: {'owner_id': auth.userId});
+      final res = await Api().get('/bookings', params: {'owner_id': ownerId});
       bookings = List<Map<String, dynamic>>.from(
         (res.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
@@ -57,8 +67,16 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
 
   Future<void> _addBooking() async {
     final auth = context.read<AuthProvider>();
+    final ownerId = auth.userId;
+    if (ownerId == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please sign in again.')),
+      );
+      return;
+    }
     try {
-      final res = await Api().get('/courts', params: {'owner_id': auth.userId});
+      final res = await Api().get('/courts', params: {'owner_id': ownerId});
       final courts = List<Map<String, dynamic>>.from(
         (res.data['records'] ?? []).map((row) => Map<String, dynamic>.from(row as Map)),
       );

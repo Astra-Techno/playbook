@@ -8,7 +8,8 @@ import 'earnings_figures.dart';
 import 'payout_request_fields.dart';
 
 class OwnerEarningsScreen extends StatefulWidget {
-  const OwnerEarningsScreen({super.key});
+  final bool active;
+  const OwnerEarningsScreen({super.key, this.active = true});
 
   @override
   State<OwnerEarningsScreen> createState() => _OwnerEarningsScreenState();
@@ -25,11 +26,27 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
   @override
   void initState() {
     super.initState();
-    _load();
+    if (widget.active) _load();
+  }
+
+  @override
+  void didUpdateWidget(OwnerEarningsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active && !oldWidget.active) _load();
   }
 
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
+    final ownerId = auth.userId;
+    if (ownerId == null) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = 'Please sign in again.';
+        });
+      }
+      return;
+    }
     if (_summary == null && mounted) {
       setState(() => _loading = true);
     }
@@ -39,7 +56,7 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
     List<Map<String, dynamic>>? payouts;
     List<Map<String, dynamic>>? requests;
     try {
-      final res = await Api().get('/earnings', params: {'owner_id': auth.userId});
+      final res = await Api().get('/earnings', params: {'owner_id': ownerId});
       final data = Map<String, dynamic>.from(res.data as Map);
       final rawSummary = data['summary'];
       if (rawSummary is! Map) {

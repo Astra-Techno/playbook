@@ -47,10 +47,20 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   Future<void> _load() async {
     final auth = context.read<AuthProvider>();
     final venues = context.read<VenueProvider>();
+    final ownerId = auth.userId;
+    if (ownerId == null) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _ownedError = 'Please sign in again.';
+        _staffError = 'Please sign in again.';
+      });
+      return;
+    }
     final together = await loadTogether(
       owned: () async {
         try {
-          final res = await Api().get('/courts', params: {'owner_id': auth.userId});
+          final res = await Api().get('/courts', params: {'owner_id': ownerId});
           return (
             rows: List<Map<String, dynamic>>.from((res.data['records'] ?? []).map(_courtMap)),
             error: null as String?,
@@ -72,7 +82,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       }(),
       ghosts: () async {
         try {
-          await venues.fetchGhostPlaces(userId: auth.userId);
+          await venues.fetchGhostPlaces(userId: ownerId);
           return venues.ghostPlaces;
         } catch (_) {
           return null;
@@ -88,9 +98,9 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     DayCollected? collected;
     String? collectedError;
     final showCollections = owned != null && owned.isNotEmpty;
-    if (showCollections && auth.userId != null) {
+    if (showCollections) {
       try {
-        final res = await Api().get('/earnings', params: {'owner_id': auth.userId});
+        final res = await Api().get('/earnings', params: {'owner_id': ownerId});
         final raw = res.data is Map ? res.data['summary'] : null;
         if (raw is! Map) {
           throw const FormatException('Collections response was incomplete.');

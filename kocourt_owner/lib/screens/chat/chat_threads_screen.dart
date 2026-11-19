@@ -6,7 +6,8 @@ import '../../widgets/tab_status.dart';
 import 'chat_screen.dart';
 
 class ChatThreadsScreen extends StatefulWidget {
-  const ChatThreadsScreen({super.key});
+  final bool active;
+  const ChatThreadsScreen({super.key, this.active = true});
 
   @override
   State<ChatThreadsScreen> createState() => _ChatThreadsScreenState();
@@ -20,7 +21,13 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadThreads();
+    if (widget.active) _loadThreads();
+  }
+
+  @override
+  void didUpdateWidget(ChatThreadsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.active && !oldWidget.active) _loadThreads();
   }
 
   Future<void> _loadThreads() async {

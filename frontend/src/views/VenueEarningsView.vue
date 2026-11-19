@@ -45,7 +45,11 @@ const exportCSV = async () => {
     try {
         const url = `/api/earnings/export?court_id=${courtId}&owner_id=${auth.user?.id}`
         const res = await fetch(url, {
-            headers: { Authorization: `Bearer ${auth.token}` }
+            headers: {
+                Authorization: `Bearer ${auth.token}`,
+                'X-Authorization': `Bearer ${auth.token}`,
+                'X-Auth-Token': auth.token,
+            }
         })
         if (!res.ok) throw new Error()
         const blob = await res.blob()

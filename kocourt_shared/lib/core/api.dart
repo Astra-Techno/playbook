@@ -20,6 +20,10 @@ class Api {
 
   late final Dio dio;
   String? _token;
+  bool _handlingUnauthorized = false;
+
+  /// Called once when a request returns 401 while a session token was set.
+  Future<void> Function()? onUnauthorized;
 
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
@@ -36,9 +40,7 @@ class Api {
       },
     ));
 
-    if (_token != null) {
-      dio.options.headers['Authorization'] = 'Bearer $_token';
-    }
+    _applyAuthHeaders(_token);
 
     // Method tunneling interceptor: convert DELETE/PUT to POST + X-HTTP-Method-Override
     dio.interceptors.add(InterceptorsWrapper(
@@ -48,6 +50,10 @@ class Api {
           options.headers['Authorization'] = 'Bearer $token';
           options.headers['X-Authorization'] = 'Bearer $token';
           options.headers['X-Auth-Token'] = token;
+        } else {
+          options.headers.remove('Authorization');
+          options.headers.remove('X-Authorization');
+          options.headers.remove('X-Auth-Token');
         }
         if (options.method == 'DELETE' || options.method == 'PUT') {
           options.headers['X-HTTP-Method-Override'] = options.method;
@@ -55,14 +61,53 @@ class Api {
         }
         handler.next(options);
       },
-    ));
+      onError: (error, handler) async {
+        final status = error.response?.statusCode;
+        final authFailure = status == 401 || _looksUnauthenticated(error);
 
-    dio.interceptors.add(InterceptorsWrapper(
-      onError: (error, handler) {
-        ApiErrorBus.publish(failureMessage(error));
+        // Screens already show their own failures. Toasting every 401 as
+        // "Unauthenticated" floods the owner shell when several tabs load at once.
+        if (!authFailure) {
+          ApiErrorBus.publish(failureMessage(error));
+        } else if (_token != null && _token!.isNotEmpty) {
+          await _notifyUnauthorized();
+        }
+
         handler.next(error);
       },
     ));
+  }
+
+  bool _looksUnauthenticated(DioException error) {
+    final data = error.response?.data;
+    if (data is! Map) return false;
+    final text = '${data['error'] ?? data['message'] ?? ''}'.toLowerCase();
+    return text.contains('unauthenticated') || text.contains('authentication required');
+  }
+
+  Future<void> _notifyUnauthorized() async {
+    if (_handlingUnauthorized) return;
+    _handlingUnauthorized = true;
+    try {
+      final hook = onUnauthorized;
+      if (hook != null) await hook();
+    } finally {
+      _handlingUnauthorized = false;
+    }
+  }
+
+  void _applyAuthHeaders(String? token) {
+    try {
+      if (token != null && token.isNotEmpty) {
+        dio.options.headers['Authorization'] = 'Bearer $token';
+        dio.options.headers['X-Authorization'] = 'Bearer $token';
+        dio.options.headers['X-Auth-Token'] = token;
+      } else {
+        dio.options.headers.remove('Authorization');
+        dio.options.headers.remove('X-Authorization');
+        dio.options.headers.remove('X-Auth-Token');
+      }
+    } catch (_) {}
   }
 
   /// A short, safe message suitable for a toast or inline error state.
@@ -82,14 +127,8 @@ class Api {
   }
 
   void setToken(String? token) {
-    _token = token;
-    try {
-      if (token != null) {
-        dio.options.headers['Authorization'] = 'Bearer $token';
-      } else {
-        dio.options.headers.remove('Authorization');
-      }
-    } catch (_) {}
+    _token = (token != null && token.isNotEmpty) ? token : null;
+    _applyAuthHeaders(_token);
   }
 
   String? get token => _token;

@@ -69,12 +69,13 @@ class _BookingsScreenState extends State<BookingsScreen> {
 
   Future<void> _loadBookings() async {
     final auth = context.read<AuthProvider>();
-    if (!auth.isLoggedIn) {
+    final userId = auth.userId;
+    if (!auth.isLoggedIn || userId == null) {
       setState(() => _loading = false);
       return;
     }
     try {
-      final res = await Api().get('/bookings', params: {'user_id': auth.userId});
+      final res = await Api().get('/bookings', params: {'user_id': userId});
       if (mounted) {
         setState(() {
           _bookings = List<Map<String, dynamic>>.from(
@@ -431,10 +432,15 @@ class _BookingsScreenState extends State<BookingsScreen> {
             child: ElevatedButton(
               onPressed: () async {
                 final auth = context.read<AuthProvider>();
+                final userId = auth.userId;
+                if (userId == null) {
+                  if (mounted) context.go('/login');
+                  return;
+                }
                 final result = await ReviewSheet.show(
                   context,
                   courtId: positiveId(booking['court_id']) ?? 0,
-                  userId: auth.userId ?? 0,
+                  userId: userId,
                   courtName: courtName,
                   bookingId: positiveId(booking['id']),
                 );

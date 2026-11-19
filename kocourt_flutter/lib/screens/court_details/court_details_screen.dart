@@ -1250,13 +1250,14 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
 
   void _writeReview() async {
     final auth = context.read<AuthProvider>();
-    if (!auth.isLoggedIn) {
+    final userId = auth.userId;
+    if (!auth.isLoggedIn || userId == null) {
       context.go('/login');
       return;
     }
     int? bookingId;
     try {
-      final res = await Api().get('/bookings', params: {'user_id': auth.userId ?? 0});
+      final res = await Api().get('/bookings', params: {'user_id': userId});
       final records = res.data is Map ? res.data['records'] : null;
       if (records is List) {
         bookingId = pastBookingId(records, widget.courtId, DateTime.now());
@@ -1266,7 +1267,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     final result = await ReviewSheet.show(
       context,
       courtId: widget.courtId,
-      userId: auth.userId ?? 0,
+      userId: userId,
       courtName: _court?['name'],
       bookingId: bookingId,
     );

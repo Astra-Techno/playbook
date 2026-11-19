@@ -25,7 +25,13 @@ export const useAuthStore = defineStore('auth', () => {
         token.value = tokenData
         localStorage.setItem('user', JSON.stringify(userData))
         localStorage.setItem('token', tokenData)
-        axios.defaults.headers.common['Authorization'] = `Bearer ${tokenData}`
+        if (typeof window.__kocourtApplyAuthHeaders === 'function') {
+            window.__kocourtApplyAuthHeaders(tokenData)
+        } else {
+            axios.defaults.headers.common['Authorization'] = `Bearer ${tokenData}`
+            axios.defaults.headers.common['X-Authorization'] = `Bearer ${tokenData}`
+            axios.defaults.headers.common['X-Auth-Token'] = tokenData
+        }
 
         // Sync user identity to AppifyWeb24 push system (works when running inside Android app)
         if (window.SaaS) {
@@ -60,7 +66,13 @@ export const useAuthStore = defineStore('auth', () => {
         token.value = null
         localStorage.removeItem('user')
         localStorage.removeItem('token')
-        delete axios.defaults.headers.common['Authorization']
+        if (typeof window.__kocourtApplyAuthHeaders === 'function') {
+            window.__kocourtApplyAuthHeaders(null)
+        } else {
+            delete axios.defaults.headers.common['Authorization']
+            delete axios.defaults.headers.common['X-Authorization']
+            delete axios.defaults.headers.common['X-Auth-Token']
+        }
     }
 
     function updateAvatar(url) {
