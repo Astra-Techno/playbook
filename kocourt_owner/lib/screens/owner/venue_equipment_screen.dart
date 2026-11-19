@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import '../../widgets/form_gap.dart';
 import '../../widgets/tab_status.dart';
 import 'equipment_fields.dart';
 
@@ -126,19 +127,22 @@ class _VenueEquipmentScreenState extends State<VenueEquipmentScreen> {
                 padding: const EdgeInsets.all(20),
                 children: [
                   if (_error != null) TabErrorBanner(message: _error!, onRetry: _load),
-                  TextField(controller: _name, decoration: const InputDecoration(labelText: 'Item name')),
-                  TextField(controller: _quantity, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Quantity on hand')),
-                  TextField(controller: _deposit, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Deposit, rupees')),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: FilledButton(
-                      onPressed: _acting ? null : _create,
-                      style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-                      child: const Text('Add item'),
-                    ),
+                  FormGap(
+                    children: [
+                      TextField(controller: _name, decoration: const InputDecoration(labelText: 'Item name')),
+                      TextField(controller: _quantity, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Quantity on hand')),
+                      TextField(controller: _deposit, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Deposit, rupees')),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: FilledButton(
+                          onPressed: _acting ? null : _create,
+                          style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                          child: const Text('Add item'),
+                        ),
+                      ),
+                      Text('A rental does not create a booking or a payment.', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                    ],
                   ),
-                  const SizedBox(height: 8),
-                  Text('A rental does not create a booking or a payment.', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
                   const SizedBox(height: 20),
                   if (_error == null && _items.isEmpty)
                     const Padding(
@@ -162,11 +166,16 @@ class _VenueEquipmentScreenState extends State<VenueEquipmentScreen> {
                           ],
                         ),
                     if (item['status'] == 'active') ...[
-                      TextField(controller: _player, decoration: const InputDecoration(labelText: 'Player name')),
-                      TextField(controller: _rentQuantity, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Quantity')),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton(onPressed: _acting ? null : () => _rent(_id(item)), child: const Text('Rent out')),
+                      const SizedBox(height: 8),
+                      FormGap(
+                        children: [
+                          TextField(controller: _player, decoration: const InputDecoration(labelText: 'Player name')),
+                          TextField(controller: _rentQuantity, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Quantity')),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton(onPressed: _acting ? null : () => _rent(_id(item)), child: const Text('Rent out')),
+                          ),
+                        ],
                       ),
                     ],
                     const SizedBox(height: 16),

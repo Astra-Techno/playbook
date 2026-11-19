@@ -116,7 +116,7 @@ class MessageController {
 
         $db = Database::getConnection();
 
-        // Verify sender is part of this booking (player or court owner)
+        // Verify sender is the player, the court owner, or a manager at this venue
         $chk = $db->prepare(
             "SELECT b.id FROM bookings b
              JOIN courts c ON c.id = b.court_id
@@ -124,9 +124,17 @@ class MessageController {
         );
         $chk->execute([$booking_id, $sender_id, $sender_id]);
         if (!$chk->fetch()) {
-            http_response_code(403);
-            echo json_encode(['message' => 'Not authorised']);
-            return;
+            $staff = $db->prepare(
+                "SELECT cs.id FROM court_staff cs
+                 JOIN bookings b ON b.court_id = cs.court_id
+                 WHERE b.id = ? AND cs.user_id = ? AND cs.role = 'manager'"
+            );
+            $staff->execute([$booking_id, $sender_id]);
+            if (!$staff->fetch()) {
+                http_response_code(403);
+                echo json_encode(['message' => 'Not authorised']);
+                return;
+            }
         }
 
         $stmt = $db->prepare(

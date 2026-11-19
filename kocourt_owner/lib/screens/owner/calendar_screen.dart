@@ -308,6 +308,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               children: [
                 Text(bookingPerson(booking), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 Text('${booking['start_time'] ?? ''} – ${booking['end_time'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                if (recordedAfterPlayLabel(booking) != null)
+                  Text(recordedAfterPlayLabel(booking)!, style: TextStyle(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w600)),
                 if (space.isNotEmpty) Text(space, style: TextStyle(fontSize: 11, color: Colors.grey[400])),
               ],
             ),

@@ -67,13 +67,18 @@ class StaffController
         $owner_id = (int)$authUser['id'];
         $data     = json_decode(file_get_contents('php://input'));
         $court_id = (int)($data->court_id ?? 0);
-        $phone    = trim($data->phone    ?? '');
+        $phone    = trim((string)($data->phone ?? ''));
         $rawRole  = trim((string)($data->role ?? ''));
         $role     = $rawRole === '' ? StaffAccess::MANAGER : StaffAccess::role($rawRole);
 
-        if (!$court_id || !$phone) {
+        if (!$court_id || $phone === '') {
             http_response_code(400);
             echo json_encode(['message' => 'court_id and phone required']);
+            return;
+        }
+        if (AccountLookup::normalize($phone) === '') {
+            http_response_code(400);
+            echo json_encode(['message' => 'Enter a 10-digit Indian mobile number']);
             return;
         }
         if ($role === null) {
@@ -92,7 +97,7 @@ class StaffController
         $user = AccountLookup::byPhone($this->db, $phone);
         if (!$user) {
             http_response_code(404);
-            echo json_encode(['message' => 'No KoCourt account found for this phone number']);
+            echo json_encode(['message' => 'No KoCourt account for this number. They must sign in to KoCourt once with this phone first.']);
             return;
         }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import '../chat/chat_screen.dart';
 import 'schedule_fields.dart';
 import 'walk_in_fields.dart';
 import 'attendance_fields.dart';
@@ -42,6 +43,36 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       _error = error;
       _loading = false;
     });
+  }
+
+  /// Online bookings have a player account. Walk-ins only have a guest name.
+  int? _playerUserId(Map<String, dynamic> booking) {
+    if ('${booking['guest_name'] ?? ''}'.trim().isNotEmpty) return null;
+    final id = int.tryParse('${booking['user_id'] ?? 0}') ?? 0;
+    return id > 0 ? id : null;
+  }
+
+  Future<void> _messagePlayer() async {
+    final booking = _booking;
+    if (booking == null) return;
+    final playerId = _playerUserId(booking);
+    if (playerId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Walk-in guests have no KoCourt chat account.')),
+      );
+      return;
+    }
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(
+          bookingId: widget.bookingId,
+          courtName: '${booking['court_name'] ?? ''}',
+          otherUserName: bookingPerson(booking),
+          receiverId: playerId,
+        ),
+      ),
+    );
   }
 
   Future<void> _mark(String action) async {
@@ -195,7 +226,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             const SizedBox(height: 8),
             Text(collectionLabel(booking['collection_method'])!, style: const TextStyle(fontWeight: FontWeight.w700)),
           ],
-          if (attendanceLabel(booking['attendance']) != null) ...[
+          if (recordedAfterPlayLabel(booking) != null) ...[
+            const SizedBox(height: 8),
+            Text(recordedAfterPlayLabel(booking)!, style: const TextStyle(fontWeight: FontWeight.w700)),
+          ] else if (attendanceLabel(booking['attendance']) != null) ...[
             const SizedBox(height: 8),
             Text(attendanceLabel(booking['attendance'])!, style: const TextStyle(fontWeight: FontWeight.w700)),
           ],
@@ -210,6 +244,15 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             Text(_error!, style: const TextStyle(color: AppColors.error)),
           ],
           const SizedBox(height: 24),
+          if (_playerUserId(booking) != null) ...[
+            FilledButton.icon(
+              onPressed: _busy ? null : _messagePlayer,
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+              label: const Text('Message player'),
+            ),
+            const SizedBox(height: 8),
+          ],
           if (canChange) ...[
             OutlinedButton(onPressed: _move, child: const Text('Move time')),
             const SizedBox(height: 8),

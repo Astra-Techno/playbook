@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import '../../widgets/form_gap.dart';
 import '../../widgets/tab_phase.dart';
 import '../../widgets/tab_status.dart';
 import 'event_fields.dart';
@@ -170,38 +171,40 @@ class _DraftSheetState extends State<_DraftSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('New draft', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 12),
-          TextField(controller: _title, decoration: const InputDecoration(labelText: 'Title')),
-          TextField(controller: _sport, decoration: const InputDecoration(labelText: 'Sport')),
-          DropdownButtonFormField<String>(
-            initialValue: _visibility,
-            decoration: const InputDecoration(labelText: 'Visibility'),
-            items: const [
-              DropdownMenuItem(value: 'private', child: Text('Private')),
-              DropdownMenuItem(value: 'public', child: Text('Public')),
+          FormGap(
+            children: [
+              const Text('New draft', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              TextField(controller: _title, decoration: const InputDecoration(labelText: 'Title')),
+              TextField(controller: _sport, decoration: const InputDecoration(labelText: 'Sport')),
+              DropdownButtonFormField<String>(
+                initialValue: _visibility,
+                decoration: const InputDecoration(labelText: 'Visibility'),
+                items: const [
+                  DropdownMenuItem(value: 'private', child: Text('Private')),
+                  DropdownMenuItem(value: 'public', child: Text('Public')),
+                ],
+                onChanged: (value) => setState(() => _visibility = value ?? 'private'),
+              ),
+              TextField(
+                controller: _court,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Venue id, optional'),
+              ),
+              TextField(
+                controller: _start,
+                decoration: const InputDecoration(labelText: 'Start, optional', hintText: 'YYYY-MM-DD HH:MM:SS'),
+              ),
+              TextField(
+                controller: _end,
+                decoration: const InputDecoration(labelText: 'End, optional', hintText: 'YYYY-MM-DD HH:MM:SS'),
+              ),
+              TextField(controller: _sponsor, decoration: const InputDecoration(labelText: 'Sponsor, optional')),
+              FilledButton(
+                onPressed: _saving ? null : _save,
+                style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                child: Text(_saving ? 'Saving' : 'Save draft'),
+              ),
             ],
-            onChanged: (value) => setState(() => _visibility = value ?? 'private'),
-          ),
-          TextField(
-            controller: _court,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Venue id, optional'),
-          ),
-          TextField(
-            controller: _start,
-            decoration: const InputDecoration(labelText: 'Start, optional', hintText: 'YYYY-MM-DD HH:MM:SS'),
-          ),
-          TextField(
-            controller: _end,
-            decoration: const InputDecoration(labelText: 'End, optional', hintText: 'YYYY-MM-DD HH:MM:SS'),
-          ),
-          TextField(controller: _sponsor, decoration: const InputDecoration(labelText: 'Sponsor, optional')),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: _saving ? null : _save,
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-            child: Text(_saving ? 'Saving' : 'Save draft'),
           ),
         ],
       ),

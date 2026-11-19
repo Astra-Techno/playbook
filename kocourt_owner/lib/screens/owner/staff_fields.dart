@@ -1,4 +1,22 @@
+import '../../core/phone_fields.dart';
+
+export '../../core/phone_fields.dart' show PhoneFieldError, normalizeIndianMobile, isTenDigitMobile;
+
 /// Owner staff list. Roles stay manager or viewer.
+
+class StaffFieldError extends PhoneFieldError {
+  const StaffFieldError(super.message);
+}
+
+/// Kept for existing call sites; prefers [normalizeIndianMobile].
+String normalizeStaffPhone(String phone) {
+  try {
+    return normalizeIndianMobile(phone);
+  } on PhoneFieldError catch (error) {
+    throw StaffFieldError(error.message);
+  }
+}
+
 List<Map<String, dynamic>> staffRows(Object? data) {
   if (data is! Map) return const [];
   final rows = data['staff'];
@@ -24,7 +42,7 @@ String? staffRole(Object? value) {
 Map<String, dynamic> staffInviteBody({required int courtId, required String phone, required String role}) {
   return {
     'court_id': courtId,
-    'phone': phone.trim(),
+    'phone': normalizeStaffPhone(phone),
     'role': staffRole(role) ?? 'viewer',
   };
 }

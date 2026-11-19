@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import '../../core/phone_fields.dart';
+import '../../widgets/form_gap.dart';
+import '../../widgets/phone_field.dart';
 import '../../widgets/tab_status.dart';
 import 'member_fields.dart';
 
@@ -68,8 +71,7 @@ class _VenueMembersScreenState extends State<VenueMembersScreen> {
           builder: (context, setDialog) {
             return AlertDialog(
               title: const Text('Membership at the desk'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
+              content: FormGap(
                 children: [
                   DropdownButtonFormField<String>(
                     initialValue: planId,
@@ -82,10 +84,11 @@ class _VenueMembersScreenState extends State<VenueMembersScreen> {
                       if (value != null) setDialog(() => planId = value);
                     },
                   ),
-                  TextField(
+                  PhoneField(
                     controller: phone,
-                    keyboardType: TextInputType.phone,
-                    decoration: const InputDecoration(labelText: 'Player phone'),
+                    label: 'Player mobile',
+                    helperText: 'They must already have signed in to KoCourt with this number',
+                    autofocus: true,
                   ),
                 ],
               ),
@@ -94,15 +97,22 @@ class _VenueMembersScreenState extends State<VenueMembersScreen> {
                 FilledButton(
                   onPressed: () async {
                     try {
+                      final mobile = normalizeIndianMobile(phone.text);
                       await Api().post('/subscriptions/desk', data: {
                         'plan_id': int.parse(planId),
-                        'phone': phone.text.trim(),
+                        'phone': mobile,
                       });
                       if (dialogContext.mounted) Navigator.pop(dialogContext, true);
                     } catch (error) {
                       if (!dialogContext.mounted) return;
                       ScaffoldMessenger.of(dialogContext).showSnackBar(
-                        SnackBar(content: Text(Api.failureMessage(error))),
+                        SnackBar(
+                          content: Text(
+                            error is PhoneFieldError
+                                ? error.message
+                                : Api.failureMessage(error),
+                          ),
+                        ),
                       );
                     }
                   },

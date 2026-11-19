@@ -24,6 +24,26 @@ void main() {
         'collection_method': 'pay_at_venue',
       },
     );
+    expect(
+      walkInBody(
+        courtId: 4,
+        date: '2026-10-31',
+        startHour: 18,
+        guestName: 'Asha',
+        guestPhone: '+91 90000 00000',
+      )['guest_phone'],
+      '9000000000',
+    );
+    expect(
+      walkInBody(
+        courtId: 4,
+        date: '2026-10-31',
+        startHour: 18,
+        guestName: 'Asha',
+        guestPhone: '',
+      )['guest_phone'],
+      '',
+    );
   });
 
   test('the last hour ends at midnight', () {
@@ -82,6 +102,40 @@ void main() {
   test('a walk-in shows the guest name', () {
     expect(bookingPerson({'guest_name': 'Asha', 'user_name': ''}), 'Asha');
     expect(bookingPerson({'user_name': 'Ravi'}), 'Ravi');
+  });
+
+  test('a past hour is marked for billing on the sheet', () {
+    final now = DateTime(2026, 11, 19, 15, 30);
+    expect(walkInStartHasPassed('2026-11-19', 14, now), isTrue);
+    expect(walkInStartHasPassed('2026-11-19', 16, now), isFalse);
+  });
+
+  test('a finished walk-in with check-in shows recorded after play', () {
+    final now = DateTime(2026, 11, 19, 15, 30);
+    expect(
+      recordedAfterPlayLabel({
+        'guest_name': 'Asha',
+        'attendance': 'checked_in',
+        'end_time': '2026-11-19 15:00:00',
+      }, now),
+      'Recorded after play',
+    );
+    expect(
+      recordedAfterPlayLabel({
+        'guest_name': 'Asha',
+        'attendance': 'checked_in',
+        'end_time': '2026-11-19 16:00:00',
+      }, now),
+      isNull,
+    );
+    expect(
+      recordedAfterPlayLabel({
+        'user_name': 'Ravi',
+        'attendance': 'checked_in',
+        'end_time': '2026-11-19 15:00:00',
+      }, now),
+      isNull,
+    );
   });
 
   test('a walk-in records how the price is taken', () {

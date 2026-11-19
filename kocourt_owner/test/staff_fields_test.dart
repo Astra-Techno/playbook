@@ -20,6 +20,14 @@ void main() {
       staffInviteBody(courtId: 9, phone: ' 9999900000 ', role: 'staff'),
       {'court_id': 9, 'phone': '9999900000', 'role': 'viewer'},
     );
+    expect(
+      staffInviteBody(courtId: 9, phone: '+91 99999 00000', role: 'manager'),
+      {'court_id': 9, 'phone': '9999900000', 'role': 'manager'},
+    );
+    expect(
+      () => staffInviteBody(courtId: 9, phone: '9999', role: 'viewer'),
+      throwsA(isA<StaffFieldError>()),
+    );
     expect(staffRoleBody('manager'), {'role': 'manager'});
     expect(staffPermissionLine('viewer'), contains('Calendar and bookings'));
     expect(staffPermissionLine('manager'), contains('walk-ins'));

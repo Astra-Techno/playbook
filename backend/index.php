@@ -375,7 +375,16 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
     if ($_SERVER['REQUEST_METHOD'] === 'PUT'  && isset($seg[1]) && $seg[1] === 'claims' && isset($seg[2]) && isset($seg[3]) && $seg[3] === 'reject')  { Auth::requireAdmin(); $courtController->rejectClaim((int)$seg[2]); exit(); }
     // POST /courts/claim — must check before generic create
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'claim') { Auth::require(); $courtController->claim(); exit(); }
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') { Auth::requireOwner(); $courtController->create(); exit(); }
+    // POST /courts/:id/availability — before generic POST create (create matches any POST)
+    if (isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'availability' && !isset($seg[3]) && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $courtController->setAvailability((int)$seg[1]); exit();
+    }
+    // GET|POST /courts/:id/cancellation — before generic POST create
+    if (isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'cancellation' && !isset($seg[3]) && in_array($_SERVER['REQUEST_METHOD'], ['GET', 'POST'], true)) {
+        require_once __DIR__ . '/src/Controllers/SettingsController.php';
+        (new SettingsController())->venueCancellation((int)$seg[1]); exit();
+    }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($seg[1])) { Auth::requireOwner(); $courtController->create(); exit(); }
     // PUT /courts/:id/verify  (before generic update)
     if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'verify') {
         Auth::requireAdmin(); $courtController->verify((int)$seg[1]); exit();
@@ -383,13 +392,6 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
     // PUT /courts/:id/featured
     if ($_SERVER['REQUEST_METHOD'] === 'PUT' && isset($seg[1]) && isset($seg[2]) && $seg[2] === 'featured') {
         Auth::requireAdmin(); $courtController->toggleFeatured((int)$seg[1]); exit();
-    }
-    if (isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'availability' && !isset($seg[3]) && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        $courtController->setAvailability((int)$seg[1]); exit();
-    }
-    if (isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'cancellation' && !isset($seg[3]) && in_array($_SERVER['REQUEST_METHOD'], ['GET', 'POST'], true)) {
-        require_once __DIR__ . '/src/Controllers/SettingsController.php';
-        (new SettingsController())->venueCancellation((int)$seg[1]); exit();
     }
     if ($_SERVER['REQUEST_METHOD'] === 'PUT'    && isset($seg[1])) { Auth::requireOwner(); $courtController->update((int)$seg[1]); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && isset($seg[1])) { Auth::requireOwner(); $courtController->delete((int)$seg[1]); exit(); }

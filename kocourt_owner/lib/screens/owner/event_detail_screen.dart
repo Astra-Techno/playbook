@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import '../../widgets/form_gap.dart';
 import '../../widgets/tab_status.dart';
 import 'event_fields.dart';
 
@@ -319,8 +320,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Score', style: TextStyle(fontWeight: FontWeight.w800)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+        content: FormGap(
           children: [
             TextField(controller: homeScore, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Home score')),
             TextField(controller: awayScore, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Away score')),
@@ -510,37 +510,41 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                       ),
                   if (event['status'] == 'draft') ...[
                     const SizedBox(height: 12),
-                    TextField(controller: _name, decoration: const InputDecoration(labelText: 'Category name')),
-                    DropdownButtonFormField<String>(
-                      initialValue: _format,
-                      decoration: const InputDecoration(labelText: 'Format'),
-                      items: const [
-                        DropdownMenuItem(value: 'singles', child: Text('Singles')),
-                        DropdownMenuItem(value: 'doubles', child: Text('Doubles')),
-                        DropdownMenuItem(value: 'team', child: Text('Team')),
+                    FormGap(
+                      children: [
+                        TextField(controller: _name, decoration: const InputDecoration(labelText: 'Category name')),
+                        DropdownButtonFormField<String>(
+                          initialValue: _format,
+                          decoration: const InputDecoration(labelText: 'Format'),
+                          items: const [
+                            DropdownMenuItem(value: 'singles', child: Text('Singles')),
+                            DropdownMenuItem(value: 'doubles', child: Text('Doubles')),
+                            DropdownMenuItem(value: 'team', child: Text('Team')),
+                          ],
+                          onChanged: (value) => setState(() => _format = value ?? 'singles'),
+                        ),
+                        TextField(controller: _fee, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Fee, optional')),
+                        TextField(controller: _capacity, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Capacity, optional')),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Waitlist when full'),
+                          value: _waitlist,
+                          activeThumbColor: AppColors.primary,
+                          onChanged: (value) => setState(() => _waitlist = value),
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Organizer approves entries'),
+                          value: _approval,
+                          activeThumbColor: AppColors.primary,
+                          onChanged: (value) => setState(() => _approval = value),
+                        ),
+                        FilledButton(
+                          onPressed: _acting ? null : _addCategory,
+                          style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+                          child: const Text('Add category'),
+                        ),
                       ],
-                      onChanged: (value) => setState(() => _format = value ?? 'singles'),
-                    ),
-                    TextField(controller: _fee, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Fee, optional')),
-                    TextField(controller: _capacity, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Capacity, optional')),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Waitlist when full'),
-                      value: _waitlist,
-                      activeThumbColor: AppColors.primary,
-                      onChanged: (value) => setState(() => _waitlist = value),
-                    ),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Organizer approves entries'),
-                      value: _approval,
-                      activeThumbColor: AppColors.primary,
-                      onChanged: (value) => setState(() => _approval = value),
-                    ),
-                    FilledButton(
-                      onPressed: _acting ? null : _addCategory,
-                      style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-                      child: const Text('Add category'),
                     ),
                   ],
                   const SizedBox(height: 24),
@@ -560,16 +564,20 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                           ],
                         ),
                       ),
-                  TextField(controller: _announceTitle, decoration: const InputDecoration(labelText: 'Announcement title')),
-                  TextField(
-                    controller: _announceBody,
-                    minLines: 2,
-                    maxLines: 4,
-                    decoration: const InputDecoration(labelText: 'Message'),
-                  ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton(onPressed: _acting ? null : _announce, child: const Text('Send announcement')),
+                  FormGap(
+                    children: [
+                      TextField(controller: _announceTitle, decoration: const InputDecoration(labelText: 'Announcement title')),
+                      TextField(
+                        controller: _announceBody,
+                        minLines: 2,
+                        maxLines: 4,
+                        decoration: const InputDecoration(labelText: 'Message'),
+                      ),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(onPressed: _acting ? null : _announce, child: const Text('Send announcement')),
+                      ),
+                    ],
                   ),
                 ],
               ],

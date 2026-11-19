@@ -247,7 +247,7 @@ class SubscriptionController {
         $player = AccountLookup::byPhone($db, $phone);
         if (!$player) {
             http_response_code(404);
-            echo json_encode(['message' => 'No KoCourt account found for this phone number']);
+            echo json_encode(['message' => 'No KoCourt account for this number. They must sign in to KoCourt once with this phone first.']);
             return;
         }
         $sub = new Subscription();

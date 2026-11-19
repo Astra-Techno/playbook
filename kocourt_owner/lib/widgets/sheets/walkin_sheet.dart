@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import '../../screens/owner/walk_in_fields.dart';
+import '../form_gap.dart';
+import '../phone_field.dart';
 
 class WalkInSheet extends StatefulWidget {
   final int courtId;
@@ -161,67 +163,69 @@ class _WalkInSheetState extends State<WalkInSheet> {
           const SizedBox(height: 4),
           Text('${widget.date} · $_hour:00', style: const TextStyle(color: AppColors.textMuted)),
           const SizedBox(height: 12),
-          const Text(
-            'This confirms the hour for the guest. The price is calculated on the server and stored with the method below.',
-            style: TextStyle(fontSize: 12, height: 1.4, color: AppColors.textMuted),
+          Text(
+            walkInStartHasPassed(widget.date, _hour)
+                ? 'This hour has already passed. It will be saved as completed for billing (Recorded after play).'
+                : 'This confirms the hour for the guest. The price is calculated on the server and stored with the method below.',
+            style: const TextStyle(fontSize: 12, height: 1.4, color: AppColors.textMuted),
           ),
           const SizedBox(height: 16),
-          if (widget.spaces.isNotEmpty)
-            DropdownButtonFormField<int>(
-              initialValue: _spaceId,
-              decoration: const InputDecoration(labelText: 'Space'),
-              items: [
-                for (final space in widget.spaces)
-                  if (int.tryParse('${space['id']}') != null)
-                    DropdownMenuItem(value: int.parse('${space['id']}'), child: Text('${space['name'] ?? 'Space'}')),
-              ],
-              onChanged: (value) => setState(() => _spaceId = value),
-            ),
-          DropdownButtonFormField<String>(
-            initialValue: _collectionMethod,
-            decoration: const InputDecoration(labelText: 'How the price is taken'),
-            items: [
-              for (final method in walkInCollectionMethods)
-                DropdownMenuItem(value: method, child: Text(collectionLabel(method) ?? method)),
+          FormGap(
+            children: [
+              if (widget.spaces.isNotEmpty)
+                DropdownButtonFormField<int>(
+                  initialValue: _spaceId,
+                  decoration: const InputDecoration(labelText: 'Space'),
+                  items: [
+                    for (final space in widget.spaces)
+                      if (int.tryParse('${space['id']}') != null)
+                        DropdownMenuItem(value: int.parse('${space['id']}'), child: Text('${space['name'] ?? 'Space'}')),
+                  ],
+                  onChanged: (value) => setState(() => _spaceId = value),
+                ),
+              DropdownButtonFormField<String>(
+                initialValue: _collectionMethod,
+                decoration: const InputDecoration(labelText: 'How the price is taken'),
+                items: [
+                  for (final method in walkInCollectionMethods)
+                    DropdownMenuItem(value: method, child: Text(collectionLabel(method) ?? method)),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _collectionMethod = value);
+                },
+              ),
+              DropdownButtonFormField<int>(
+                initialValue: _hour,
+                decoration: const InputDecoration(labelText: 'Hour'),
+                items: [for (var hour = 0; hour <= 23; hour++) DropdownMenuItem(value: hour, child: Text('${hour.toString().padLeft(2, '0')}:00'))],
+                onChanged: (value) {
+                  if (value != null) setState(() => _hour = value);
+                },
+              ),
+              TextField(
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: 'Guest name'),
+                textCapitalization: TextCapitalization.words,
+              ),
+              PhoneField(
+                controller: _phoneController,
+                label: 'Guest mobile',
+                helperText: 'Optional · 10 digits if entered',
+              ),
+              if (_error != null) Text(_error!, style: const TextStyle(color: AppColors.error)),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _submitting ? null : _submit,
+                  child: _submitting
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : Text(
+                          walkInStartHasPassed(widget.date, _hour) ? 'Save for billing' : 'Add booking',
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                        ),
+                ),
+              ),
             ],
-            onChanged: (value) {
-              if (value != null) setState(() => _collectionMethod = value);
-            },
-          ),
-          DropdownButtonFormField<int>(
-            initialValue: _hour,
-            decoration: const InputDecoration(labelText: 'Hour'),
-            items: [for (var hour = 0; hour <= 23; hour++) DropdownMenuItem(value: hour, child: Text('${hour.toString().padLeft(2, '0')}:00'))],
-            onChanged: (value) {
-              if (value != null) setState(() => _hour = value);
-            },
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _nameController,
-            decoration: const InputDecoration(labelText: 'Guest name'),
-            textCapitalization: TextCapitalization.words,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(labelText: 'Guest phone'),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: AppColors.error)),
-          ],
-          const SizedBox(height: 20),
-
-          SizedBox(
-            height: 52,
-            child: ElevatedButton(
-              onPressed: _submitting ? null : _submit,
-              child: _submitting
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Add booking', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-            ),
           ),
         ],
         ),

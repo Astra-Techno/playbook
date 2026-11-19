@@ -1,3 +1,4 @@
+import '../../core/phone_fields.dart';
 import 'schedule_fields.dart';
 
 class WalkInFieldError implements Exception {
@@ -33,6 +34,12 @@ Map<String, dynamic> walkInBody({
   if (!walkInCollectionMethods.contains(collectionMethod)) {
     throw const WalkInFieldError('Choose how this price will be taken.');
   }
+  String phone;
+  try {
+    phone = normalizeIndianMobile(guestPhone, required: false);
+  } on PhoneFieldError catch (error) {
+    throw WalkInFieldError(error.message);
+  }
   final window = hourWindow(date, startHour);
   return {
     'court_id': courtId,
@@ -40,7 +47,7 @@ Map<String, dynamic> walkInBody({
     'start_time': window.start,
     'end_time': window.end,
     'guest_name': name,
-    'guest_phone': guestPhone.trim(),
+    'guest_phone': phone,
     'type': 'hourly',
     'collection_method': collectionMethod,
   };
@@ -108,4 +115,29 @@ String bookingPerson(Map<String, dynamic> booking) {
   final user = '${booking['user_name'] ?? ''}'.trim();
   if (user.isNotEmpty) return user;
   return 'Player';
+}
+
+/// Local Asia/Kolkata wall clock is not required here; the phone clock is enough
+/// for the owner sheet notice. The server decides attendance on create.
+bool walkInStartHasPassed(String date, int startHour, [DateTime? now]) {
+  final parts = date.split('-');
+  if (parts.length != 3 || startHour < 0 || startHour > 23) return false;
+  final year = int.tryParse(parts[0]);
+  final month = int.tryParse(parts[1]);
+  final day = int.tryParse(parts[2]);
+  if (year == null || month == null || day == null) return false;
+  final start = DateTime(year, month, day, startHour);
+  return !start.isAfter(now ?? DateTime.now());
+}
+
+/// Walk-in that ended (or started) in the past and is already checked in.
+String? recordedAfterPlayLabel(Map<String, dynamic> booking, [DateTime? now]) {
+  final guest = '${booking['guest_name'] ?? ''}'.trim();
+  if (guest.isEmpty) return null;
+  if ('${booking['attendance'] ?? ''}' != 'checked_in') return null;
+  final endRaw = '${booking['end_time'] ?? booking['start_time'] ?? ''}';
+  final end = DateTime.tryParse(endRaw.replaceFirst(' ', 'T'));
+  if (end == null) return null;
+  if (end.isAfter(now ?? DateTime.now())) return null;
+  return 'Recorded after play';
 }

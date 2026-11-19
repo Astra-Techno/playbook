@@ -9,6 +9,7 @@ require_once __DIR__ . '/../CommerceCheckout.php';
 require_once __DIR__ . '/../RefundService.php';
 require_once __DIR__ . '/../CollectionMethod.php';
 require_once __DIR__ . '/../Attendance.php';
+require_once __DIR__ . '/../WalkInBilling.php';
 
 class BookingController {
 
@@ -570,8 +571,20 @@ class BookingController {
             if ($booking->create()) {
                 http_response_code(201);
                 $newId = (int)$booking->conn->lastInsertId();
-                $msg   = $isWalkIn ? "Walk-in booking created." : "Booking confirmed.";
-                echo json_encode(["message" => $msg, "id" => $newId]);
+                $attendance = WalkInBilling::attendanceOnCreate($isWalkIn, (string)$data->start_time);
+                if ($attendance !== null && $newId > 0) {
+                    $mark = $db->prepare("UPDATE bookings SET attendance = ? WHERE id = ? AND attendance IS NULL");
+                    $mark->execute([$attendance, $newId]);
+                }
+                $msg = $isWalkIn
+                    ? ($attendance === 'checked_in' ? 'Walk-in saved for billing.' : 'Walk-in booking created.')
+                    : 'Booking confirmed.';
+                $payload = ['message' => $msg, 'id' => $newId];
+                if ($attendance !== null) {
+                    $payload['attendance'] = $attendance;
+                    $payload['recorded_after_play'] = true;
+                }
+                echo json_encode($payload);
 
                 // Push: notify court owner of new booking
                 if (!$isWalkIn && $court && !empty($court['owner_id'])) {

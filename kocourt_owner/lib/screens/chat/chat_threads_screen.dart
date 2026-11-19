@@ -108,12 +108,12 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
                 if (phase == TabPhase.failed)
                   TabErrorBanner(message: _error ?? 'Could not load messages.', onRetry: _loadThreads)
                 else
-                  const Padding(
+                    const Padding(
                     padding: EdgeInsets.only(top: 100),
                     child: TabEmptyMessage(
                       icon: AppIcons.messageCircle,
                       title: 'No conversations yet',
-                      subtitle: 'Messages from bookings will appear here',
+                      subtitle: 'Open a booking and tap Message player to start a chat',
                     ),
                   ),
               ],
