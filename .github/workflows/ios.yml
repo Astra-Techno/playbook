@@ -29,7 +29,7 @@ concurrency:
 jobs:
   build:
     name: iOS ${{ matrix.app }}
-    runs-on: macos-15
+    runs-on: macos-15-xlarge
     timeout-minutes: 60
     strategy:
       fail-fast: false
