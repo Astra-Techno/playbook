@@ -57,7 +57,27 @@ class _VenueMembersScreenState extends State<VenueMembersScreen> {
     }
     if (!mounted) return;
     if (plans.isEmpty) {
-      context.toastInfo('Create a subscription plan before recording a desk membership.');],
+      context.toastInfo('Create a subscription plan before recording a desk membership.');
+      return;
+    }
+    final phone = TextEditingController();
+    var planId = plans.first['id'].toString();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialog) {
+            return AlertDialog(
+              title: const Text('Membership at the desk'),
+              content: FormGap(
+                children: [
+                  DropdownButtonFormField<String>(
+                    initialValue: planId,
+                    decoration: const InputDecoration(labelText: 'Plan'),
+                    items: [
+                      for (final plan in plans)
+                        DropdownMenuItem(value: plan['id'].toString(), child: Text('${plan['name']}')),
+                    ],
                     onChanged: (value) {
                       if (value != null) setDialog(() => planId = value);
                     },
@@ -83,9 +103,29 @@ class _VenueMembersScreenState extends State<VenueMembersScreen> {
                       if (dialogContext.mounted) Navigator.pop(dialogContext, true);
                     } catch (error) {
                       if (!dialogContext.mounted) return;
-                      dialogContext.toastError(error is PhoneFieldError
-                                ? error.message
-                                : Api.failureMessage(error),
+                      dialogContext.toastError(
+                        error is PhoneFieldError ? error.message : Api.failureMessage(error),
+                      );
+                    }
+                  },
+                  child: const Text('Add member'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    phone.dispose();
+    if (saved == true) _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Members', style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           TextButton(onPressed: _loading ? null : _desk, child: const Text('At the desk')),
         ],
