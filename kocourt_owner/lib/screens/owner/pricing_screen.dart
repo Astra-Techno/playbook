@@ -155,7 +155,7 @@ class _PricingScreenState extends State<PricingScreen> {
                   final message = caught is ScheduleFieldError
                       ? caught.message
                       : Api.failureMessage(caught, fallback: 'Could not save this rule.');
-                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(message), backgroundColor: AppColors.error));
+                  ctx.toastError(message);
                 }
               },
               child: const Text('Add', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -185,10 +185,7 @@ class _PricingScreenState extends State<PricingScreen> {
       _load();
     } catch (caught) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(Api.failureMessage(caught, fallback: 'Could not delete this rule.')),
-        backgroundColor: AppColors.error,
-      ));
+      context.toastError(Api.failureMessage(caught, fallback: 'Could not delete this rule.'));
     }
   }
 

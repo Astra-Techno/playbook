@@ -62,19 +62,14 @@ class _MatchesScreenState extends State<MatchesScreen> {
   }
 
   Future<void> _cancelMatch(int matchId) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Cancel Match?', style: TextStyle(fontWeight: FontWeight.w700)),
-        content: const Text('This will cancel the match for all participants.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Yes, Cancel', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+    final confirmed = await AppConfirmDialog.show(
+      context,
+      title: 'Cancel match?',
+      body: 'This will cancel the match for all participants.',
+      cancelLabel: 'No',
+      confirmLabel: 'Yes, cancel',
+      destructive: true,
+      icon: Icons.cancel_rounded,
     );
     if (confirmed != true) return;
     try {

@@ -81,52 +81,16 @@ class _ClaimVenueSheetState extends State<ClaimVenueSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-      ),
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 20,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return AppSheetScaffold(
+      child: FormGap(
         children: [
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.textDisabled,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text('Claim This Venue', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 4),
+          Text('Claim this venue', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: context.brand.ink)),
           const Text(
             'Prove you own or manage this venue',
             style: TextStyle(fontSize: 13, color: AppColors.textMuted),
           ),
-          const SizedBox(height: 20),
-
-          TextField(
-            controller: _nameController,
-            decoration: const InputDecoration(labelText: 'Venue Name'),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(labelText: 'Your Phone Number'),
-          ),
-          const SizedBox(height: 16),
-
-          // Proof image
+          AppTextField(controller: _nameController, label: 'Venue name'),
+          PhoneField(controller: _phoneController, label: 'Your mobile number'),
           GestureDetector(
             onTap: _uploading ? null : _pickProofImage,
             child: Container(
@@ -134,10 +98,10 @@ class _ClaimVenueSheetState extends State<ClaimVenueSheet> {
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(AppRadius.md),
-                border: Border.all(color: AppColors.border, style: BorderStyle.solid),
+                border: Border.all(color: AppColors.border),
               ),
               child: _uploading
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                  ? Center(child: CircularProgressIndicator(color: context.brandPrimary))
                   : _proofImageUrl != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(AppRadius.md),
@@ -153,15 +117,13 @@ class _ClaimVenueSheetState extends State<ClaimVenueSheet> {
                         ),
             ),
           ),
-          const SizedBox(height: 20),
-
           SizedBox(
             height: 52,
             child: ElevatedButton(
               onPressed: _submitting ? null : _submit,
               child: _submitting
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Submit Claim', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                  : const Text('Submit claim', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
             ),
           ),
         ],

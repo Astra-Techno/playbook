@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
-import '../../widgets/form_gap.dart';
-import '../../widgets/phone_field.dart';
 import '../../widgets/tab_status.dart';
 import 'staff_fields.dart';
 
@@ -44,48 +42,65 @@ class _StaffScreenState extends State<StaffScreen> {
   Future<void> _addStaff() async {
     final phoneCtrl = TextEditingController();
     var role = 'viewer';
-    final result = await showDialog<Map<String, String>>(
+    final result = await showAppSheet<Map<String, String>>(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) => AlertDialog(
-          title: const Text('Add staff', style: TextStyle(fontWeight: FontWeight.w800)),
-          content: FormGap(
-            children: [
-              PhoneField(
-                controller: phoneCtrl,
-                label: 'Staff mobile',
-                helperText: 'They must already have signed in to KoCourt with this number',
-                autofocus: true,
-              ),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'viewer', label: Text('Viewer')),
-                  ButtonSegment(value: 'manager', label: Text('Manager')),
-                ],
-                selected: {role},
-                onSelectionChanged: (next) => setDialog(() => role = next.first),
-              ),
-              Text(staffPermissionLine(role), style: TextStyle(fontSize: 12, color: Colors.grey[700], height: 1.3)),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-            TextButton(
-              onPressed: () {
-                if (!isTenDigitMobile(phoneCtrl.text)) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('Enter a 10-digit mobile number')),
-                  );
-                  return;
-                }
-                Navigator.pop(ctx, {'phone': phoneCtrl.text.trim(), 'role': role});
-              },
-              child: const Text('Add', style: TextStyle(fontWeight: FontWeight.w700)),
+        builder: (ctx, setDialog) => FormGap(
+          children: [
+            Text(
+              'Add staff',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: ctx.brand.ink),
+            ),
+            PhoneField(
+              controller: phoneCtrl,
+              label: 'Staff mobile',
+              helperText: 'They must already have signed in to KoCourt with this number',
+              autofocus: true,
+            ),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'viewer', label: Text('Viewer')),
+                ButtonSegment(value: 'manager', label: Text('Manager')),
+              ],
+              selected: {role},
+              onSelectionChanged: (next) => setDialog(() => role = next.first),
+            ),
+            Text(staffPermissionLine(role), style: TextStyle(fontSize: 12, color: Colors.grey[700], height: 1.3)),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () {
+                      if (!isTenDigitMobile(phoneCtrl.text)) {
+                        ctx.toastError('Enter a 10-digit mobile number');
+                        return;
+                      }
+                      try {
+                        Navigator.pop(ctx, {
+                          'phone': normalizeIndianMobile(phoneCtrl.text),
+                          'role': role,
+                        });
+                      } on PhoneFieldError catch (e) {
+                        ctx.toastError(e.message);
+                      }
+                    },
+                    child: const Text('Add'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
       ),
     );
+    phoneCtrl.dispose();
     if (result == null || (result['phone'] ?? '').isEmpty) return;
     try {
       await Api().post('/court-staff', data: staffInviteBody(
@@ -96,14 +111,11 @@ class _StaffScreenState extends State<StaffScreen> {
       _load();
     } catch (caught) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-            caught is PhoneFieldError
-                ? caught.message
-                : Api.failureMessage(caught, fallback: 'Failed to add staff'),
-          ),
-          backgroundColor: AppColors.error,
-        ));
+        context.toastError(
+          caught is PhoneFieldError
+              ? caught.message
+              : Api.failureMessage(caught, fallback: 'Failed to add staff'),
+        );
       }
     }
   }
@@ -116,10 +128,7 @@ class _StaffScreenState extends State<StaffScreen> {
       _load();
     } catch (caught) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(Api.failureMessage(caught, fallback: 'Could not change the role')),
-          backgroundColor: AppColors.error,
-        ));
+        context.toastError(Api.failureMessage(caught, fallback: 'Could not change the role'));
       }
     }
   }
@@ -130,16 +139,14 @@ class _StaffScreenState extends State<StaffScreen> {
       _load();
     } catch (caught) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(Api.failureMessage(caught, fallback: 'Could not remove staff')),
-          backgroundColor: AppColors.error,
-        ));
+        context.toastError(Api.failureMessage(caught, fallback: 'Could not remove staff'));
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.brand;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -149,10 +156,10 @@ class _StaffScreenState extends State<StaffScreen> {
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? Center(child: CircularProgressIndicator(color: brand.primary))
           : RefreshIndicator(
               onRefresh: _load,
-              color: AppColors.primary,
+              color: brand.primary,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(20),
@@ -176,10 +183,10 @@ class _StaffScreenState extends State<StaffScreen> {
                         children: [
                           CircleAvatar(
                             radius: 20,
-                            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                            backgroundColor: brand.primary.withValues(alpha: 0.1),
                             child: Text(
                               ((member['name'] ?? 'S').toString().isEmpty ? 'S' : (member['name'] ?? 'S').toString())[0].toUpperCase(),
-                              style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary),
+                              style: TextStyle(fontWeight: FontWeight.w800, color: brand.primary),
                             ),
                           ),
                           const SizedBox(width: 12),

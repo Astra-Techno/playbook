@@ -40,7 +40,7 @@ class ContactSupportScreen extends StatelessWidget {
 
   void _copy(BuildContext context, String value, String label) {
     Clipboard.setData(ClipboardData(text: value));
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$label copied')));
+    context.toastSuccess('$label copied');
   }
 
   @override

@@ -378,64 +378,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
-                children: List.generate(4, (i) {
-                  final filled = _otpControllers[i].text.isNotEmpty;
-                  return Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(
-                        left: i == 0 ? 0 : 6,
-                        right: i == 3 ? 0 : 6,
-                      ),
-                      child: AspectRatio(
-                        aspectRatio: 1,
-                        child: TextField(
-                          controller: _otpControllers[i],
-                          focusNode: _otpFocusNodes[i],
-                          keyboardType: TextInputType.number,
-                          textAlign: TextAlign.center,
-                          maxLength: 1,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            color: filled ? Colors.white : AppColors.textPrimary,
-                          ),
-                          decoration: InputDecoration(
-                            counterText: '',
-                            filled: true,
-                            fillColor: filled ? AppColors.textPrimary : AppColors.surface,
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                              borderSide: BorderSide(
-                                color: filled ? AppColors.textPrimary : AppColors.border,
-                                width: 2,
-                              ),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                              borderSide: BorderSide(
-                                color: filled ? AppColors.textPrimary : AppColors.border,
-                                width: 2,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                              borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                            ),
-                          ),
-                          onChanged: (val) {
-                            setState(() {});
-                            if (val.isNotEmpty && i < 3) {
-                              _otpFocusNodes[i + 1].requestFocus();
-                            }
-                            if (_otpString.length == 4) _verifyOtp();
-                          },
-                        ),
-                      ),
-                    ),
-                  );
-                }),
+              AppOtpRow(
+                controllers: _otpControllers,
+                focusNodes: _otpFocusNodes,
+                length: 4,
+                onCompleted: (_) => _verifyOtp(),
               ),
               const SizedBox(height: 28),
               Consumer<AuthProvider>(

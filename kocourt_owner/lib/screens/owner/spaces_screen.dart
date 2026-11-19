@@ -79,18 +79,14 @@ class _SpacesScreenState extends State<SpacesScreen> {
   Future<void> _deleteSpace(Map<String, dynamic> space) async {
     final id = asSpaceId(space['id']);
     if (id == null) return;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete space?'),
-        content: const Text(
+    final confirm = await AppConfirmDialog.show(
+      context,
+      title: 'Delete space?',
+      body:
           'This removes the space from the venue. Existing bookings stay on record. A space with an upcoming booking cannot be deleted.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: AppColors.error))),
-        ],
-      ),
+      confirmLabel: 'Delete',
+      destructive: true,
+      icon: Icons.delete_forever_rounded,
     );
     if (confirm != true || !mounted) return;
     try {
@@ -98,10 +94,7 @@ class _SpacesScreenState extends State<SpacesScreen> {
       _load();
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(Api.failureMessage(error, fallback: 'Could not delete this space.')),
-        backgroundColor: AppColors.error,
-      ));
+      context.toastError(Api.failureMessage(error, fallback: 'Could not delete this space.'));
     }
   }
 

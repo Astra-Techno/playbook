@@ -69,7 +69,7 @@ class _ClaimVenueSheetState extends State<ClaimVenueSheet> {
       mobile = normalizeIndianMobile(_phoneController.text);
     } on PhoneFieldError catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.message)));
+      context.toastError(error.message);
       return;
     }
 

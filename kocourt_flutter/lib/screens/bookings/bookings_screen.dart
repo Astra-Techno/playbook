@@ -344,19 +344,14 @@ class _BookingsScreenState extends State<BookingsScreen> {
   Future<void> _cancelBooking(dynamic rawId) async {
     final bookingId = int.tryParse('$rawId') ?? 0;
     if (bookingId < 1) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Cancel Booking?'),
-        content: const Text('This follows the venue cancellation terms. Any refund is confirmed after you cancel.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Keep')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Cancel Booking', style: TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
+    final confirmed = await AppConfirmDialog.show(
+      context,
+      title: 'Cancel booking?',
+      body: 'This follows the venue cancellation terms. Any refund is confirmed after you cancel.',
+      cancelLabel: 'Keep',
+      confirmLabel: 'Cancel booking',
+      destructive: true,
+      icon: Icons.event_busy_rounded,
     );
     if (confirmed != true) return;
 

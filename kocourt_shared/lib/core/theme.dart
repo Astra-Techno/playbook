@@ -2,12 +2,115 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Per-app brand. Player = sports red; Owner = forest ops green.
+class BrandTokens extends ThemeExtension<BrandTokens> {
+  final Color primary;
+  final Color primaryDark;
+  final Color primaryLight;
+  final Color onPrimary;
+  final Color surface;
+  final Color ink;
+  final LinearGradient gradient;
+
+  const BrandTokens({
+    required this.primary,
+    required this.primaryDark,
+    required this.primaryLight,
+    required this.onPrimary,
+    required this.surface,
+    required this.ink,
+    required this.gradient,
+  });
+
+  static const player = BrandTokens(
+    primary: Color(0xFFE23D28),
+    primaryDark: Color(0xFFB82D1A),
+    primaryLight: Color(0xFFFF6B52),
+    onPrimary: Color(0xFFFFFFFF),
+    surface: Color(0xFFF7F8FA),
+    ink: Color(0xFF1C1C1E),
+    gradient: LinearGradient(
+      colors: [Color(0xFFE23D28), Color(0xFFFF6B52)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+  );
+
+  static const owner = BrandTokens(
+    primary: Color(0xFF0B5F3A),
+    primaryDark: Color(0xFF08472C),
+    primaryLight: Color(0xFF1A7A4C),
+    onPrimary: Color(0xFFFFFFFF),
+    surface: Color(0xFFF3F6F4),
+    ink: Color(0xFF122018),
+    gradient: LinearGradient(
+      colors: [Color(0xFF0B5F3A), Color(0xFF1A7A4C)],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+  );
+
+  @override
+  BrandTokens copyWith({
+    Color? primary,
+    Color? primaryDark,
+    Color? primaryLight,
+    Color? onPrimary,
+    Color? surface,
+    Color? ink,
+    LinearGradient? gradient,
+  }) {
+    return BrandTokens(
+      primary: primary ?? this.primary,
+      primaryDark: primaryDark ?? this.primaryDark,
+      primaryLight: primaryLight ?? this.primaryLight,
+      onPrimary: onPrimary ?? this.onPrimary,
+      surface: surface ?? this.surface,
+      ink: ink ?? this.ink,
+      gradient: gradient ?? this.gradient,
+    );
+  }
+
+  @override
+  BrandTokens lerp(ThemeExtension<BrandTokens>? other, double t) {
+    if (other is! BrandTokens) return this;
+    return BrandTokens(
+      primary: Color.lerp(primary, other.primary, t)!,
+      primaryDark: Color.lerp(primaryDark, other.primaryDark, t)!,
+      primaryLight: Color.lerp(primaryLight, other.primaryLight, t)!,
+      onPrimary: Color.lerp(onPrimary, other.onPrimary, t)!,
+      surface: Color.lerp(surface, other.surface, t)!,
+      ink: Color.lerp(ink, other.ink, t)!,
+      gradient: LinearGradient(
+        colors: [
+          Color.lerp(gradient.colors.first, other.gradient.colors.first, t)!,
+          Color.lerp(gradient.colors.last, other.gradient.colors.last, t)!,
+        ],
+        begin: gradient.begin,
+        end: gradient.end,
+      ),
+    );
+  }
+}
+
+extension BrandContext on BuildContext {
+  BrandTokens get brand => Theme.of(this).extension<BrandTokens>() ?? BrandTokens.player;
+  Color get brandPrimary => Theme.of(this).colorScheme.primary;
+}
+
 class AppColors {
-  // Primary brand - warm burnt orange
+  // Default / player brand constants (legacy call sites without context)
   static const primary = Color(0xFFE23D28);
   static const primaryDark = Color(0xFFB82D1A);
   static const primaryLight = Color(0xFFFF6B52);
   static const onPrimary = Color(0xFFFFFFFF);
+
+  // Owner brand constants (for owner-only hardcodes when context is awkward)
+  static const ownerPrimary = Color(0xFF0B5F3A);
+  static const ownerPrimaryDark = Color(0xFF08472C);
+  static const ownerPrimaryLight = Color(0xFF1A7A4C);
+  static const ownerSurface = Color(0xFFF3F6F4);
+  static const ownerInk = Color(0xFF122018);
 
   // Secondary - forest green for success/confirmed states
   static const secondary = Color(0xFF1B8C3D);
@@ -42,6 +145,9 @@ class AppColors {
   static const info = Color(0xFF3B82F6);
   static const infoLight = Color(0xFFDBEAFE);
 
+  // Soft toast wells
+  static const successLight = Color(0xFFDCFCE7);
+
   // Shadows
   static const shadowLight = Color(0x0A000000);
   static const shadowMedium = Color(0x14000000);
@@ -50,6 +156,12 @@ class AppColors {
   // Gradients
   static const primaryGradient = LinearGradient(
     colors: [Color(0xFFE23D28), Color(0xFFFF6B52)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const ownerGradient = LinearGradient(
+    colors: [Color(0xFF0B5F3A), Color(0xFF1A7A4C)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -102,9 +214,9 @@ class AppShadows {
     ),
   ];
 
-  static List<BoxShadow> primaryGlow(double opacity) => [
+  static List<BoxShadow> primaryGlow(double opacity, [Color? color]) => [
     BoxShadow(
-      color: AppColors.primary.withValues(alpha: opacity),
+      color: (color ?? AppColors.primary).withValues(alpha: opacity),
       blurRadius: 24,
       offset: const Offset(0, 8),
     ),
@@ -132,25 +244,39 @@ class AppSpacing {
 }
 
 class AppTheme {
-  static ThemeData get theme {
+  /// Legacy alias → player theme.
+  static ThemeData get theme => player;
+
+  static ThemeData get player => _build(BrandTokens.player);
+
+  static ThemeData get owner => _build(BrandTokens.owner);
+
+  static ThemeData _build(BrandTokens brand) {
     final textTheme = GoogleFonts.plusJakartaSansTextTheme();
+    final radius = BorderRadius.circular(AppRadius.md);
+
+    OutlineInputBorder border(Color color, {double width = 1}) => OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide(color: color, width: width),
+        );
 
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      scaffoldBackgroundColor: AppColors.surface,
+      scaffoldBackgroundColor: brand.surface,
+      extensions: [brand],
       textTheme: textTheme.apply(
         bodyColor: AppColors.textPrimary,
-        displayColor: AppColors.textPrimary,
+        displayColor: brand.ink,
       ),
-      colorScheme: const ColorScheme.light(
-        primary: AppColors.primary,
-        onPrimary: AppColors.onPrimary,
-        primaryContainer: AppColors.primaryLight,
+      colorScheme: ColorScheme.light(
+        primary: brand.primary,
+        onPrimary: brand.onPrimary,
+        primaryContainer: brand.primaryLight,
         secondary: AppColors.secondary,
         onSecondary: AppColors.onSecondary,
-        surface: AppColors.surface,
-        onSurface: AppColors.textPrimary,
+        surface: brand.surface,
+        onSurface: brand.ink,
         onSurfaceVariant: AppColors.textSecondary,
         error: AppColors.error,
         onError: AppColors.onPrimary,
@@ -162,9 +288,9 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        iconTheme: IconThemeData(color: brand.ink),
         titleTextStyle: GoogleFonts.plusJakartaSans(
-          color: AppColors.textPrimary,
+          color: brand.ink,
           fontSize: 18,
           fontWeight: FontWeight.w800,
         ),
@@ -177,7 +303,7 @@ class AppTheme {
             return GoogleFonts.plusJakartaSans(
               fontSize: 10,
               fontWeight: FontWeight.w800,
-              color: AppColors.primary,
+              color: brand.primary,
               letterSpacing: 0.5,
             );
           }
@@ -190,50 +316,115 @@ class AppTheme {
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const IconThemeData(color: AppColors.primary, size: 24);
+            return IconThemeData(color: brand.primary, size: 24);
           }
           return const IconThemeData(color: AppColors.textMuted, size: 24);
         }),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: AppColors.onPrimary,
+          backgroundColor: brand.primary,
+          foregroundColor: brand.onPrimary,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+          shape: RoundedRectangleBorder(borderRadius: radius),
+          textStyle: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: brand.primary,
+          foregroundColor: brand.onPrimary,
+          elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: radius),
+          textStyle: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: brand.primary,
           textStyle: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.textPrimary,
+          foregroundColor: brand.ink,
           side: const BorderSide(color: AppColors.border),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+          shape: RoundedRectangleBorder(borderRadius: radius),
           textStyle: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.surfaceWhite,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.border),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          borderSide: const BorderSide(color: AppColors.primary, width: 2),
-        ),
+        border: border(AppColors.border),
+        enabledBorder: border(AppColors.border),
+        focusedBorder: border(brand.primary, width: 2),
+        errorBorder: border(AppColors.error),
+        focusedErrorBorder: border(AppColors.error, width: 2),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        labelStyle: GoogleFonts.plusJakartaSans(
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+        floatingLabelStyle: GoogleFonts.plusJakartaSans(
+          color: brand.primary,
+          fontWeight: FontWeight.w700,
+          fontSize: 14,
+        ),
         hintStyle: GoogleFonts.plusJakartaSans(
           color: AppColors.textDisabled,
           fontWeight: FontWeight.w500,
         ),
+        helperStyle: GoogleFonts.plusJakartaSans(
+          color: AppColors.textMuted,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+        errorStyle: GoogleFonts.plusJakartaSans(
+          color: AppColors.error,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.surfaceWhite,
+        elevation: 0,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+        titleTextStyle: GoogleFonts.plusJakartaSans(
+          color: brand.ink,
+          fontSize: 18,
+          fontWeight: FontWeight.w800,
+        ),
+        contentTextStyle: GoogleFonts.plusJakartaSans(
+          color: AppColors.textSecondary,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          height: 1.45,
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: AppColors.surfaceWhite,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+        ),
+        showDragHandle: false,
+        clipBehavior: Clip.antiAlias,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: brand.ink,
+        contentTextStyle: GoogleFonts.plusJakartaSans(
+          color: Colors.white,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        elevation: 0,
       ),
       cardTheme: CardThemeData(
         color: Colors.white,

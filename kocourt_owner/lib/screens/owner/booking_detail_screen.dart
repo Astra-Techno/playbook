@@ -57,9 +57,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     if (booking == null) return;
     final playerId = _playerUserId(booking);
     if (playerId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Walk-in guests have no KoCourt chat account.')),
-      );
+      context.toastInfo('Walk-in guests have no KoCourt chat account.');
       return;
     }
     await Navigator.push(
@@ -80,33 +78,25 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     try {
       final res = await Api().post('/bookings/${widget.bookingId}/attendance', data: {'action': action});
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${res.data['message'] ?? 'Saved.'}')),
-      );
+      context.toastSuccess('${res.data['message'] ?? 'Saved.'}');
       await _load();
     } catch (caught) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(Api.failureMessage(caught, fallback: 'Could not mark this booking.')),
-        backgroundColor: AppColors.error,
-      ));
+      context.toastError(Api.failureMessage(caught, fallback: 'Could not mark this booking.'));
     }
     if (mounted) setState(() => _busy = false);
   }
 
   Future<void> _cancel() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Cancel booking?'),
-        content: const Text(
+    final confirm = await AppConfirmDialog.show(
+      context,
+      title: 'Cancel booking?',
+      body:
           'This marks the booking cancelled and frees the time. If a payment is attached, the server records the refund review from the booking terms.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cancel booking', style: TextStyle(color: AppColors.error))),
-        ],
-      ),
+      cancelLabel: 'Keep',
+      confirmLabel: 'Cancel booking',
+      destructive: true,
+      icon: Icons.event_busy_rounded,
     );
     if (confirm != true || !mounted) return;
     setState(() => _busy = true);
@@ -114,15 +104,12 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       final res = await Api().delete('/bookings/${widget.bookingId}');
       if (!mounted) return;
       final message = '${res.data['message'] ?? 'Booking cancelled.'}';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      context.toastInfo(message);
       Navigator.pop(context, true);
     } catch (caught) {
       if (!mounted) return;
       setState(() => _busy = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(Api.failureMessage(caught, fallback: 'Could not cancel this booking.')),
-        backgroundColor: AppColors.error,
-      ));
+      context.toastError(Api.failureMessage(caught, fallback: 'Could not cancel this booking.'));
     }
   }
 
@@ -179,7 +166,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   final message = caught is ScheduleFieldError
                       ? caught.message
                       : Api.failureMessage(caught, fallback: 'Could not move this booking.');
-                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(message), backgroundColor: AppColors.error));
+                  ctx.toastError(message);
                 }
               },
               child: const Text('Move'),

@@ -5,6 +5,9 @@ import 'dart:io';
 import '../../core/api.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../forms/app_sheet.dart';
+import '../forms/app_text_field.dart';
+import '../forms/form_gap.dart';
 
 class ProfileEditSheet extends StatefulWidget {
   const ProfileEditSheet({super.key});
@@ -84,33 +87,12 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final brand = context.brand;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-      ),
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 20,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return AppSheetScaffold(
+      child: FormGap(
         children: [
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(color: AppColors.textDisabled, borderRadius: BorderRadius.circular(2)),
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text('Edit Profile', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 20),
-
-          // Avatar
+          Text('Edit profile', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: brand.ink)),
           Center(
             child: GestureDetector(
               onTap: _pickAvatar,
@@ -123,7 +105,7 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
                     child: auth.avatarUrl == null
                         ? Text(
                             auth.userName.isNotEmpty ? auth.userName[0].toUpperCase() : '?',
-                            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.primary),
+                            style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: brand.primary),
                           )
                         : null,
                   ),
@@ -134,7 +116,7 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
                       width: 28,
                       height: 28,
                       decoration: BoxDecoration(
-                        color: AppColors.primary,
+                        color: brand.primary,
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 2),
                       ),
@@ -145,40 +127,33 @@ class _ProfileEditSheetState extends State<ProfileEditSheet> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
-
-          TextField(
+          AppTextField(
             controller: _nameController,
-            decoration: const InputDecoration(labelText: 'Name'),
-            textCapitalization: TextCapitalization.words,
+            label: 'Name',
           ),
-          const SizedBox(height: 12),
-          TextField(
+          AppTextField(
             controller: _bioController,
-            decoration: const InputDecoration(labelText: 'Bio (optional)'),
+            label: 'Bio (optional)',
             maxLines: 2,
           ),
-          const SizedBox(height: 12),
-
-          // Skill level
           DropdownButtonFormField<String>(
             value: _skillLevel,
-            decoration: const InputDecoration(labelText: 'Skill Level'),
-            items: _skillLevels.map((s) => DropdownMenuItem(
-              value: s,
-              child: Text(s[0].toUpperCase() + s.substring(1)),
-            )).toList(),
+            decoration: const InputDecoration(labelText: 'Skill level'),
+            items: _skillLevels
+                .map((s) => DropdownMenuItem(
+                      value: s,
+                      child: Text(s[0].toUpperCase() + s.substring(1)),
+                    ))
+                .toList(),
             onChanged: (v) => setState(() => _skillLevel = v),
           ),
-          const SizedBox(height: 24),
-
           SizedBox(
             height: 52,
             child: ElevatedButton(
               onPressed: _saving ? null : _save,
               child: _saving
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                  : const Text('Save changes', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
             ),
           ),
         ],

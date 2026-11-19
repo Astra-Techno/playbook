@@ -51,7 +51,7 @@ class _KoCourtAppState extends State<KoCourtApp> {
     return MaterialApp.router(
       title: 'KoCourt',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.theme,
+      theme: AppTheme.player,
       routerConfig: _router,
       builder: (context, child) {
         return ToastOverlay(child: child ?? const SizedBox.shrink());

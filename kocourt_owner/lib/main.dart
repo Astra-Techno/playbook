@@ -49,7 +49,7 @@ class _KoCourtOwnerAppState extends State<KoCourtOwnerApp> {
     return MaterialApp.router(
       title: 'KoCourt Owner',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.theme,
+      theme: AppTheme.owner,
       routerConfig: _router,
       builder: (context, child) {
         return ToastOverlay(child: child ?? const SizedBox.shrink());

@@ -42,9 +42,9 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
       try {
         await Api().post('/subscriptions/renew', data: {'subscription_id': sub['id']});
         _load();
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Renewed!'), backgroundColor: AppColors.secondary));
+        if (mounted) context.toastSuccess('Renewed!');
       } catch (_) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Renewal failed'), backgroundColor: AppColors.error));
+        if (mounted) context.toastError('Renewal failed');
       }
       return;
     }
@@ -64,10 +64,10 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     if (!mounted) return;
 
     if (result.success) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Subscription renewed!'), backgroundColor: AppColors.secondary));
+      context.toastSuccess('Subscription renewed!');
       _load();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.error ?? 'Renewal failed'), backgroundColor: AppColors.error));
+      context.toastError(result.error ?? 'Renewal failed');
     }
   }
 

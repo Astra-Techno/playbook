@@ -43,7 +43,7 @@ class _ToastOverlayState extends State<ToastOverlay> {
             builder: (_, toasts, __) {
               return Column(
                 children: toasts.toasts.map((toast) {
-                  return _ToastCard(toast: toast);
+                  return _ToastCard(key: ValueKey(toast.id), toast: toast);
                 }).toList(),
               );
             },
@@ -54,52 +54,116 @@ class _ToastOverlayState extends State<ToastOverlay> {
   }
 }
 
-class _ToastCard extends StatelessWidget {
+class _ToastCard extends StatefulWidget {
   final ToastItem toast;
-  const _ToastCard({required this.toast});
+  const _ToastCard({super.key, required this.toast});
+
+  @override
+  State<_ToastCard> createState() => _ToastCardState();
+}
+
+class _ToastCardState extends State<_ToastCard> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 280),
+  );
+  late final Animation<Offset> _slide = Tween<Offset>(
+    begin: const Offset(0, -0.25),
+    end: Offset.zero,
+  ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+  late final Animation<double> _fade = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (toast.type) {
+    final accent = switch (widget.toast.type) {
       ToastType.success => AppColors.secondary,
       ToastType.error => AppColors.error,
       ToastType.warning => AppColors.warning,
       ToastType.info => AppColors.info,
     };
-    final icon = switch (toast.type) {
+    final well = switch (widget.toast.type) {
+      ToastType.success => AppColors.successLight,
+      ToastType.error => AppColors.errorLight,
+      ToastType.warning => AppColors.warningLight,
+      ToastType.info => AppColors.infoLight,
+    };
+    final icon = switch (widget.toast.type) {
       ToastType.success => Icons.check_circle_rounded,
       ToastType.error => Icons.error_rounded,
-      ToastType.warning => Icons.warning_rounded,
+      ToastType.warning => Icons.warning_amber_rounded,
       ToastType.info => Icons.info_rounded,
     };
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        boxShadow: AppShadows.elevated,
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              toast.message,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+    return SlideTransition(
+      position: _slide,
+      child: FadeTransition(
+        opacity: _fade,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceWhite,
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            boxShadow: AppShadows.elevated,
+            border: Border.all(color: AppColors.borderLight),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            child: IntrinsicHeight(
+              child: Row(
+                children: [
+                  Container(width: 4, color: accent),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: well,
+                              borderRadius: BorderRadius.circular(AppRadius.sm),
+                            ),
+                            child: Icon(icon, color: accent, size: 20),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              widget.toast.message,
+                              style: TextStyle(
+                                color: context.brand.ink,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => context.read<ToastProvider>().dismiss(widget.toast.id),
+                            icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
-          GestureDetector(
-            onTap: () => context.read<ToastProvider>().dismiss(toast.id),
-            child: const Icon(Icons.close_rounded, color: Colors.white, size: 18),
-          ),
-        ],
+        ),
       ),
     );
   }

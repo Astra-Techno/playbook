@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
-import '../../widgets/form_gap.dart';
 import '../../widgets/tab_status.dart';
 import 'equipment_fields.dart';
 
@@ -59,7 +58,7 @@ class _VenueEquipmentScreenState extends State<VenueEquipmentScreen> {
   Future<void> _create() async {
     final body = equipmentBody(name: _name.text, quantity: _quantity.text, deposit: _deposit.text);
     if (body == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add a name, a quantity from 1 to 200, and a deposit.')));
+      context.toastError('Add a name, a quantity from 1 to 200, and a deposit.');
       return;
     }
     setState(() => _acting = true);
@@ -69,7 +68,7 @@ class _VenueEquipmentScreenState extends State<VenueEquipmentScreen> {
       await _load();
     } catch (caught) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Api.failureMessage(caught, fallback: 'The item could not be saved.'))));
+        context.toastError(Api.failureMessage(caught, fallback: 'The item could not be saved.'));
       }
     } finally {
       if (mounted) setState(() => _acting = false);
@@ -79,7 +78,7 @@ class _VenueEquipmentScreenState extends State<VenueEquipmentScreen> {
   Future<void> _rent(int itemId) async {
     final body = rentalBody(_player.text, _rentQuantity.text);
     if (body == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add the player name and a quantity.')));
+      context.toastError('Add the player name and a quantity.');
       return;
     }
     setState(() => _acting = true);
@@ -89,7 +88,7 @@ class _VenueEquipmentScreenState extends State<VenueEquipmentScreen> {
       await _load();
     } catch (caught) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Api.failureMessage(caught, fallback: 'The rental could not be saved.'))));
+        context.toastError(Api.failureMessage(caught, fallback: 'The rental could not be saved.'));
       }
     } finally {
       if (mounted) setState(() => _acting = false);
@@ -105,7 +104,7 @@ class _VenueEquipmentScreenState extends State<VenueEquipmentScreen> {
       await _load();
     } catch (caught) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Api.failureMessage(caught, fallback: 'The return could not be saved.'))));
+        context.toastError(Api.failureMessage(caught, fallback: 'The return could not be saved.'));
       }
     } finally {
       if (mounted) setState(() => _acting = false);

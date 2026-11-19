@@ -84,12 +84,11 @@ class _PayoutSettingsScreenState extends State<PayoutSettingsScreen> {
       final status = res.data['cf_status'] ?? 'pending';
       if (mounted) {
         setState(() => _cfStatus = status);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(status == 'active' ? 'Payout account verified!' : 'Details saved. Verification pending.'),
-            backgroundColor: status == 'active' ? AppColors.secondary : Colors.orange,
-          ),
-        );
+        if (status == 'active') {
+          context.toastSuccess('Payout account verified!');
+        } else {
+          context.toastWarning('Details saved. Verification pending.');
+        }
       }
     } catch (e) {
       _showError('Failed to save. Please try again.');
@@ -98,9 +97,7 @@ class _PayoutSettingsScreenState extends State<PayoutSettingsScreen> {
   }
 
   void _showError(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: AppColors.error),
-    );
+    context.toastError(msg);
   }
 
   @override

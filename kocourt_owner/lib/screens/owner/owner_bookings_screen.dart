@@ -70,9 +70,7 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
     final ownerId = auth.userId;
     if (ownerId == null) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please sign in again.')),
-      );
+      context.toastInfo('Please sign in again.');
       return;
     }
     try {
@@ -82,9 +80,7 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
       );
       if (!mounted) return;
       if (courts.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Add a venue before recording a booking.')),
-        );
+        context.toastInfo('Add a venue before recording a booking.');
         return;
       }
       final court = courts.length == 1 ? courts.first : await _pickVenue(courts);
@@ -94,9 +90,7 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
       if (saved && mounted) _load();
     } catch (caught) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(Api.failureMessage(caught, fallback: 'Could not load your venues.'))),
-      );
+      context.toastError(Api.failureMessage(caught, fallback: 'Could not load your venues.'));
     }
   }
 

@@ -109,7 +109,7 @@ class _OwnerAppShellState extends State<OwnerAppShell> with TickerProviderStateM
                   scale: Tween(begin: 1.0, end: 1.3).animate(
                     CurvedAnimation(parent: _iconControllers[index], curve: Curves.easeOutBack),
                   ),
-                  child: Icon(icon, size: 24, color: active ? AppColors.primary : AppColors.textMuted),
+                  child: Icon(icon, size: 24, color: active ? context.brandPrimary : AppColors.textMuted),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -120,7 +120,7 @@ class _OwnerAppShellState extends State<OwnerAppShell> with TickerProviderStateM
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: active ? FontWeight.w800 : FontWeight.w500,
-                    color: active ? AppColors.primary : AppColors.textMuted,
+                    color: active ? context.brandPrimary : AppColors.textMuted,
                   ),
                 ),
               ],

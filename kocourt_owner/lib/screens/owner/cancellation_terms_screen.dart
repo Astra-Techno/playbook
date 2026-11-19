@@ -59,10 +59,10 @@ class _CancellationTermsScreenState extends State<CancellationTermsScreen> {
         'late_percent': num.tryParse(_latePercent.text.trim()) ?? 0,
       });
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cancellation terms saved')));
+      context.toastSuccess('Cancellation terms saved');
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Api.failureMessage(error))));
+      context.toastError(Api.failureMessage(error));
     }
     if (mounted) setState(() => _saving = false);
   }

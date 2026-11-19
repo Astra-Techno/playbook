@@ -88,15 +88,13 @@ class _ManagePlansScreenState extends State<ManagePlansScreen> {
   }
 
   Future<void> _deletePlan(int id) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Plan?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: AppColors.error))),
-        ],
-      ),
+    final confirm = await AppConfirmDialog.show(
+      context,
+      title: 'Delete plan?',
+      body: 'This removes the membership plan from the venue. Existing members keep their current period.',
+      confirmLabel: 'Delete',
+      destructive: true,
+      icon: Icons.delete_forever_rounded,
     );
     if (confirm != true) return;
     try {

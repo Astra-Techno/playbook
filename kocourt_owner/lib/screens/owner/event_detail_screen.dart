@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
-import '../../widgets/form_gap.dart';
 import '../../widgets/tab_status.dart';
 import 'event_fields.dart';
 
@@ -109,13 +108,13 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       }
       await Clipboard.setData(ClipboardData(text: body));
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Participants copied.')));
+      context.toastSuccess('Participants copied.');
     } catch (caught) {
       if (!mounted) return;
       final message = caught is FormatException
           ? caught.message
           : Api.failureMessage(caught, fallback: 'Could not export participants.');
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      context.toastInfo(message);
     } finally {
       if (mounted) setState(() => _acting = false);
     }
@@ -124,9 +123,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Future<void> _checkInCode() async {
     final body = checkInCodeBody(_door.text);
     if (body == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter the 8-character entry code.')),
-      );
+      context.toastInfo('Enter the 8-character entry code.');
       return;
     }
     if (_acting) return;
@@ -136,13 +133,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       if (!mounted) return;
       final message = res.data is Map ? (res.data['message'] ?? 'Checked in.').toString() : 'Checked in.';
       _door.clear();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      context.toastInfo(message);
       await _load();
     } catch (caught) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(Api.failureMessage(caught, fallback: 'This entry could not be checked in.'))),
-      );
+      context.toastError(Api.failureMessage(caught, fallback: 'This entry could not be checked in.'));
     } finally {
       if (mounted) setState(() => _acting = false);
     }
@@ -155,13 +150,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       final res = await Api().post('/tournaments/${widget.tournamentId}/categories/$categoryId/registrations/$registrationId/$action');
       if (!mounted) return;
       final message = res.data is Map ? (res.data['message'] ?? 'Saved.').toString() : 'Saved.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      context.toastInfo(message);
       await _load();
     } catch (caught) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(Api.failureMessage(caught, fallback: 'This entry could not be reviewed.'))),
-      );
+      context.toastError(Api.failureMessage(caught, fallback: 'This entry could not be reviewed.'));
     } finally {
       if (mounted) setState(() => _acting = false);
     }
@@ -174,13 +167,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       final res = await Api().post('/tournaments/${widget.tournamentId}/categories/$categoryId/registrations/$registrationId/check-in');
       if (!mounted) return;
       final message = res.data is Map ? (res.data['message'] ?? 'Checked in.').toString() : 'Checked in.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      context.toastInfo(message);
       await _load();
     } catch (caught) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(Api.failureMessage(caught, fallback: 'This entry could not be checked in.'))),
-      );
+      context.toastError(Api.failureMessage(caught, fallback: 'This entry could not be checked in.'));
     } finally {
       if (mounted) setState(() => _acting = false);
     }
@@ -194,13 +185,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       final res = await Api().post('/tournaments/${widget.tournamentId}/$action');
       if (!mounted) return;
       final message = res.data is Map ? (res.data['message'] ?? 'Saved.').toString() : 'Saved.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      context.toastInfo(message);
       await _load();
     } catch (caught) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(Api.failureMessage(caught, fallback: 'The event could not be updated.'))),
-      );
+      context.toastError(Api.failureMessage(caught, fallback: 'The event could not be updated.'));
     } finally {
       if (mounted) setState(() => _acting = false);
     }
@@ -209,9 +198,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   Future<void> _announce() async {
     final body = announcementBody(title: _announceTitle.text, body: _announceBody.text);
     if (body == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add a title and a message. Keep the message within 500 characters.')),
-      );
+      context.toastInfo('Add a title and a message. Keep the message within 500 characters.');
       return;
     }
     if (_acting) return;
@@ -222,13 +209,11 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       final message = res.data is Map ? (res.data['message'] ?? 'Announcement sent.').toString() : 'Announcement sent.';
       _announceTitle.clear();
       _announceBody.clear();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      context.toastInfo(message);
       await _load();
     } catch (caught) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(Api.failureMessage(caught, fallback: 'The announcement could not be sent.'))),
-      );
+      context.toastError(Api.failureMessage(caught, fallback: 'The announcement could not be sent.'));
     } finally {
       if (mounted) setState(() => _acting = false);
     }
@@ -240,7 +225,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         if (entry is Map && entry['state'] == 'confirmed') Map<String, dynamic>.from(entry),
     ];
     if (confirmed.length < 2) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('A match needs two confirmed entries')));
+      context.toastInfo('A match needs two confirmed entries');
       return;
     }
     var home = int.tryParse('${confirmed.first['id']}') ?? 0;
@@ -281,7 +266,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     if (picked == null || !mounted) return;
     final body = matchBody(homeId: picked['home'] ?? 0, awayId: picked['away'] ?? 0);
     if (body == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('A match needs two different entries')));
+      context.toastInfo('A match needs two different entries');
       return;
     }
     final categoryId = int.tryParse('${category['id']}') ?? 0;
@@ -291,7 +276,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       await _load();
     } catch (caught) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Api.failureMessage(caught, fallback: 'The match could not be added.'))));
+        context.toastError(Api.failureMessage(caught, fallback: 'The match could not be added.'));
       }
     } finally {
       if (mounted) setState(() => _acting = false);
@@ -306,7 +291,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       await _load();
     } catch (caught) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Api.failureMessage(caught, fallback: 'The bracket could not be saved.'))));
+        context.toastError(Api.failureMessage(caught, fallback: 'The bracket could not be saved.'));
       }
     } finally {
       if (mounted) setState(() => _acting = false);
@@ -343,7 +328,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       awayScore: picked['away'] ?? '',
     );
     if (body == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('A winner needs a higher score')));
+      context.toastInfo('A winner needs a higher score');
       return;
     }
     final categoryId = int.tryParse('${category['id']}') ?? 0;
@@ -354,7 +339,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       await _load();
     } catch (caught) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Api.failureMessage(caught, fallback: 'The score could not be saved.'))));
+        context.toastError(Api.failureMessage(caught, fallback: 'The score could not be saved.'));
       }
     } finally {
       if (mounted) setState(() => _acting = false);
@@ -371,9 +356,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       approval: _approval,
     );
     if (body == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add a category name. Fee and capacity must be zero or more.')),
-      );
+      context.toastInfo('Add a category name. Fee and capacity must be zero or more.');
       return;
     }
     setState(() => _acting = true);
@@ -385,9 +368,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       await _load();
     } catch (caught) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(Api.failureMessage(caught, fallback: 'The category could not be saved.'))),
-      );
+      context.toastError(Api.failureMessage(caught, fallback: 'The category could not be saved.'));
     } finally {
       if (mounted) setState(() => _acting = false);
     }

@@ -81,7 +81,7 @@ class _VenueEarningsScreenState extends State<VenueEarningsScreen> {
     }
     if (!mounted) return;
     setState(() => _exporting = false);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    context.toastInfo(message);
   }
 
   String _formatCurrency(dynamic val) {

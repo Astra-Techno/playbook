@@ -66,7 +66,7 @@ class _VenueCoachingScreenState extends State<VenueCoachingScreen> {
       end: _end.text,
     );
     if (body == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add a name, an instructor, a capacity, and a start before the end.')));
+      context.toastError('Add a name, an instructor, a capacity, and a start before the end.');
       return;
     }
     setState(() => _acting = true);
@@ -77,7 +77,7 @@ class _VenueCoachingScreenState extends State<VenueCoachingScreen> {
       await _load();
     } catch (caught) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Api.failureMessage(caught, fallback: 'The class could not be saved.'))));
+        context.toastError(Api.failureMessage(caught, fallback: 'The class could not be saved.'));
       }
     } finally {
       if (mounted) setState(() => _acting = false);
@@ -87,7 +87,7 @@ class _VenueCoachingScreenState extends State<VenueCoachingScreen> {
   Future<void> _enroll(int sessionId) async {
     final body = enrollmentBody(_player.text);
     if (body == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add the player name.')));
+      context.toastError('Add the player name.');
       return;
     }
     setState(() => _acting = true);
@@ -97,7 +97,7 @@ class _VenueCoachingScreenState extends State<VenueCoachingScreen> {
       await _load();
     } catch (caught) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Api.failureMessage(caught, fallback: 'The player could not be added.'))));
+        context.toastError(Api.failureMessage(caught, fallback: 'The player could not be added.'));
       }
     } finally {
       if (mounted) setState(() => _acting = false);
@@ -113,7 +113,7 @@ class _VenueCoachingScreenState extends State<VenueCoachingScreen> {
       await _load();
     } catch (caught) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Api.failureMessage(caught, fallback: 'Attendance could not be saved.'))));
+        context.toastError(Api.failureMessage(caught, fallback: 'Attendance could not be saved.'));
       }
     } finally {
       if (mounted) setState(() => _acting = false);
@@ -127,7 +127,7 @@ class _VenueCoachingScreenState extends State<VenueCoachingScreen> {
       await _load();
     } catch (caught) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Api.failureMessage(caught, fallback: 'The class could not be cancelled.'))));
+        context.toastError(Api.failureMessage(caught, fallback: 'The class could not be cancelled.'));
       }
     } finally {
       if (mounted) setState(() => _acting = false);

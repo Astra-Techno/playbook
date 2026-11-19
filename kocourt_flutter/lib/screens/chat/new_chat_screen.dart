@@ -114,9 +114,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
 
     // Group
     if (_nameCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a group name'), backgroundColor: AppColors.error),
-      );
+      context.toastError('Enter a group name');
       return;
     }
 

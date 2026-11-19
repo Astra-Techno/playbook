@@ -7,6 +7,7 @@ import 'package:flutter_cashfree_pg_sdk/api/cfpayment/cfwebcheckoutpayment.dart'
 import 'package:flutter_cashfree_pg_sdk/api/cfsession/cfsession.dart';
 import 'package:flutter_cashfree_pg_sdk/utils/cfenums.dart';
 import '../core/api.dart';
+import '../core/theme.dart';
 
 class PaymentResult {
   final bool success;
@@ -61,22 +62,94 @@ class PaymentService {
               : 'Customer cancellation is disabled. Venue cancellations refund the full payment.';
       final accepted = await showDialog<bool>(
         context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('Review payment'),
-          content: SingleChildScrollView(child: Text(
-            'Venue: INR ${money(price['venue']['base'])}\n'
-            'Venue GST: INR ${money(price['venue']['tax'])}\n'
-            'KoCourt fee: INR ${money(price['fee']['base'])}\n'
-            'Fee GST: INR ${money(price['fee']['tax'])}\n'
-            'Total: INR ${money(price['total'])}\n\n$terms\n\n'
-            'Eligible refunds return to the original payment method; exceptions require review. Expected credit: '
-            '${policy['refund.expected_days']} business days after initiation.',
-          )),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Back')),
-            FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Continue')),
-          ],
-        ),
+        builder: (dialogContext) {
+          final brand = dialogContext.brand;
+          Widget row(String label, String value, {bool emphasize = false}) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontWeight: emphasize ? FontWeight.w700 : FontWeight.w500,
+                        fontSize: emphasize ? 15 : 13,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      color: brand.ink,
+                      fontWeight: FontWeight.w800,
+                      fontSize: emphasize ? 16 : 13,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return Dialog(
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Review payment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: brand.ink)),
+                  const SizedBox(height: 16),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          row('Venue', 'INR ${money(price['venue']['base'])}'),
+                          row('Venue GST', 'INR ${money(price['venue']['tax'])}'),
+                          row('KoCourt fee', 'INR ${money(price['fee']['base'])}'),
+                          row('Fee GST', 'INR ${money(price['fee']['tax'])}'),
+                          const Divider(height: 20),
+                          row('Total', 'INR ${money(price['total'])}', emphasize: true),
+                          const SizedBox(height: 12),
+                          Text(
+                            terms,
+                            style: const TextStyle(fontSize: 12, height: 1.45, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Eligible refunds return to the original payment method; exceptions require review. Expected credit: ${policy['refund.expected_days']} business days after initiation.',
+                            style: const TextStyle(fontSize: 12, height: 1.45, color: AppColors.textMuted, fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('Back'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          child: const Text('Continue'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       );
       if (accepted != true) return PaymentResult(success: false, error: 'Payment cancelled');
       final orderRes = await Api().post('/payments/create-order', data: {

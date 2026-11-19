@@ -205,16 +205,13 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
             const Divider(height: 32),
             _menuItem(Icons.logout, 'Logout', () async {
               final authProvider = context.read<AuthProvider>();
-              final confirm = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: const Text('Logout?'),
-                  content: const Text('Are you sure you want to logout?'),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-                    TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Logout', style: TextStyle(color: AppColors.error))),
-                  ],
-                ),
+              final confirm = await AppConfirmDialog.show(
+                context,
+                title: 'Log out?',
+                body: 'Are you sure you want to log out of KoCourt Owner?',
+                confirmLabel: 'Log out',
+                destructive: true,
+                icon: Icons.logout_rounded,
               );
               if (confirm == true) {
                 authProvider.logout();

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
-import '../../widgets/form_gap.dart';
 import '../../widgets/tab_phase.dart';
 import '../../widgets/tab_status.dart';
 import 'event_fields.dart';
@@ -144,9 +143,7 @@ class _DraftSheetState extends State<_DraftSheet> {
       sponsor: _sponsor.text,
     );
     if (body == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add a title and a sport. Times use YYYY-MM-DD HH:MM:SS.')),
-      );
+      context.toastError('Add a title and a sport. Times use YYYY-MM-DD HH:MM:SS.');
       return;
     }
     setState(() => _saving = true);
@@ -156,9 +153,7 @@ class _DraftSheetState extends State<_DraftSheet> {
     } catch (caught) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(Api.failureMessage(caught, fallback: 'The draft could not be saved.'))),
-      );
+      context.toastError(Api.failureMessage(caught, fallback: 'The draft could not be saved.'));
     }
   }
 

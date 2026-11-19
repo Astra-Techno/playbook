@@ -56,23 +56,29 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
     final nameCtrl = TextEditingController(text: _group?['name'] ?? '');
     final descCtrl = TextEditingController(text: _group?['description'] ?? '');
 
-    final result = await showDialog<Map<String, String>>(
+    final result = await showAppSheet<Map<String, String>>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Edit Group'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Group name')),
-            const SizedBox(height: 12),
-            TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description'), maxLines: 3),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, {'name': nameCtrl.text.trim(), 'description': descCtrl.text.trim()}),
-            child: const Text('Save'),
+      builder: (ctx) => FormGap(
+        children: [
+          Text('Edit group', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: ctx.brand.ink)),
+          AppTextField(controller: nameCtrl, label: 'Group name'),
+          AppTextField(controller: descCtrl, label: 'Description', maxLines: 3),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(ctx, {
+                    'name': nameCtrl.text.trim(),
+                    'description': descCtrl.text.trim(),
+                  }),
+                  child: const Text('Save'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -102,20 +108,13 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
   }
 
   Future<void> _removeMember(int userId, String name) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Remove member'),
-        content: Text('Remove $name from this group?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Remove'),
-          ),
-        ],
-      ),
+    final confirm = await AppConfirmDialog.show(
+      context,
+      title: 'Remove member',
+      body: 'Remove $name from this group?',
+      confirmLabel: 'Remove',
+      destructive: true,
+      icon: Icons.person_remove_rounded,
     );
     if (confirm == true) {
       try {
@@ -127,20 +126,13 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
 
   Future<void> _leaveGroup() async {
     final userId = context.read<AuthProvider>().userId;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Leave group'),
-        content: const Text('Are you sure you want to leave this group?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Leave'),
-          ),
-        ],
-      ),
+    final confirm = await AppConfirmDialog.show(
+      context,
+      title: 'Leave group',
+      body: 'Are you sure you want to leave this group?',
+      confirmLabel: 'Leave',
+      destructive: true,
+      icon: Icons.logout_rounded,
     );
     if (confirm == true) {
       try {
@@ -162,20 +154,13 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
   }
 
   Future<void> _deleteGroup() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete group'),
-        content: const Text('This will permanently delete the group and all messages.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirm = await AppConfirmDialog.show(
+      context,
+      title: 'Delete group',
+      body: 'This will permanently delete the group and all messages.',
+      confirmLabel: 'Delete',
+      destructive: true,
+      icon: Icons.delete_forever_rounded,
     );
     if (confirm == true) {
       try {

@@ -115,7 +115,7 @@ class _BlockSlotsScreenState extends State<BlockSlotsScreen> {
                   final message = caught is ScheduleFieldError
                       ? caught.message
                       : Api.failureMessage(caught, fallback: 'Could not close this time.');
-                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(message), backgroundColor: AppColors.error));
+                  ctx.toastError(message);
                 }
               },
               child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.error)),
@@ -153,10 +153,7 @@ class _BlockSlotsScreenState extends State<BlockSlotsScreen> {
       _load();
     } catch (caught) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(Api.failureMessage(caught, fallback: 'Could not remove this closure.')),
-        backgroundColor: AppColors.error,
-      ));
+      context.toastError(Api.failureMessage(caught, fallback: 'Could not remove this closure.'));
     }
   }
 

@@ -44,7 +44,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       final data = res.data;
       Navigator.pop(context, data is Map ? Map<String, dynamic>.from(data) : true);
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to post'), backgroundColor: AppColors.error));
+      if (mounted) context.toastError('Failed to post');
     }
     if (mounted) setState(() => _posting = false);
   }

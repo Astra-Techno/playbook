@@ -112,10 +112,7 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
       if (mounted) setState(() {});
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(Api.failureMessage(error, fallback: 'Could not add this photo.')),
-        backgroundColor: AppColors.error,
-      ));
+      context.toastError(Api.failureMessage(error, fallback: 'Could not add this photo.'));
     }
   }
 
@@ -128,10 +125,7 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
       if (mounted) setState(() {});
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(Api.failureMessage(error, fallback: 'Could not remove this photo.')),
-        backgroundColor: AppColors.error,
-      ));
+      context.toastError(Api.failureMessage(error, fallback: 'Could not remove this photo.'));
     }
   }
 
@@ -145,50 +139,14 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
       if (mounted) setState(() => _imageUrl = res.data['url']);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(Api.failureMessage(error, fallback: 'Could not upload this photo.')),
-        backgroundColor: AppColors.error,
-      ));
+      context.toastError(Api.failureMessage(error, fallback: 'Could not upload this photo.'));
     }
   }
 
   Future<void> _save() async {
     if (_nameCtrl.text.trim().isEmpty) return;
     if (!locationReady(_locationCtrl.text, _lat, _lng)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Choose a location from search, or use current location.')),
-      );
-      return;
-    }
-    setState(() => _saving = true);
-    final auth = context.read<AuthProvider>();
-    try {
-      final data = {
-        'name': _nameCtrl.text.trim(),
-        'location': _locationCtrl.text.trim(),
-        'lat': _lat,
-        'lng': _lng,
-        'type': _type,
-        'hourly_rate': _rateCtrl.text.trim(),
-        'description': _descCtrl.text.trim(),
-        'image_url': _imageUrl ?? '',
-        'open_time': _openTimeCtrl.text.trim(),
-        'close_time': _closeTimeCtrl.text.trim(),
-        'amenities': _amenities,
-        'owner_id': auth.userId,
-      };
-      if (isCreate) {
-        await Api().post('/courts', data: data);
-      } else {
-        await Api().put('/courts/${widget.courtId}', data: data);
-      }
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      String msg = 'Save failed';
-      if (e is DioException && e.response?.data is Map) {
-        msg = e.response?.data['message'] ?? e.response?.data['error'] ?? msg;
-      }
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: AppColors.error));
+      context.toastError('Choose a location from search, or use current location.');
     }
     if (mounted) setState(() => _saving = false);
   }

@@ -274,7 +274,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
       setState(() => _court!['accepting_bookings'] = available ? 1 : 0);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Api.failureMessage(error))));
+      context.toastError(Api.failureMessage(error));
     }
   }
 
@@ -333,18 +333,14 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
   }
 
   Future<void> _deleteCourt() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Venue?'),
-        content: const Text(
+    final confirm = await AppConfirmDialog.show(
+      context,
+      title: 'Delete venue?',
+      body:
           'This removes the venue. Existing booking records stay until you delete a venue with no upcoming bookings. A venue with an upcoming booking cannot be deleted.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: AppColors.error))),
-        ],
-      ),
+      confirmLabel: 'Delete',
+      destructive: true,
+      icon: Icons.delete_forever_rounded,
     );
     if (confirm != true) return;
     try {
@@ -352,10 +348,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
       if (mounted) Navigator.pop(context);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(Api.failureMessage(error, fallback: 'Could not delete this venue.')),
-        backgroundColor: AppColors.error,
-      ));
+      context.toastError(Api.failureMessage(error, fallback: 'Could not delete this venue.'));
     }
   }
 }

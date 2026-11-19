@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import '../../core/api.dart';
 import '../../core/theme.dart';
 import '../../reviews/review_body.dart';
+import '../forms/app_sheet.dart';
+import '../forms/app_text_field.dart';
+import '../forms/form_gap.dart';
 
 class ReviewSheet extends StatefulWidget {
   final int courtId;
@@ -70,35 +73,13 @@ class _ReviewSheetState extends State<ReviewSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-      ),
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 20,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return AppSheetScaffold(
+      child: FormGap(
         children: [
-          Center(
-            child: Container(
-              width: 40, height: 4,
-              decoration: BoxDecoration(color: AppColors.textDisabled, borderRadius: BorderRadius.circular(2)),
-            ),
-          ),
-          const SizedBox(height: 16),
           Text(
             'Rate ${widget.courtName ?? 'this venue'}',
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: context.brand.ink),
           ),
-          const SizedBox(height: 20),
-
-          // Star rating
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(5, (i) {
@@ -123,7 +104,6 @@ class _ReviewSheetState extends State<ReviewSheet> {
               );
             }),
           ),
-          const SizedBox(height: 6),
           Center(
             child: Text(
               _rating == 0
@@ -136,29 +116,20 @@ class _ReviewSheetState extends State<ReviewSheet> {
               ),
             ),
           ),
-          const SizedBox(height: 20),
-
-          TextField(
+          AppTextField(
             controller: _commentController,
+            hint: 'Share your experience (optional)',
             maxLines: 3,
-            decoration: const InputDecoration(
-              hintText: 'Share your experience (optional)',
-              alignLabelWithHint: true,
-            ),
           ),
-          const SizedBox(height: 20),
-          if (_error != null) ...[
+          if (_error != null)
             Text(_error!, style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w700)),
-            const SizedBox(height: 12),
-          ],
-
           SizedBox(
             height: 52,
             child: ElevatedButton(
               onPressed: _rating == 0 || _submitting ? null : _submit,
               child: _submitting
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Submit Review', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                  : const Text('Submit review', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
             ),
           ),
         ],

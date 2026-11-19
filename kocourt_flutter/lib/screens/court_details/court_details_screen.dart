@@ -236,9 +236,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
       _selectedSlots.removeWhere((key) => slotStartHasPassed(_selectedDate, int.tryParse(key.split(':').first) ?? 0, now));
     });
     if (_selectedSlots.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('That time has already passed'), behavior: SnackBarBehavior.floating),
-      );
+      context.toastError('That time has already passed');
       return;
     }
     final auth = context.read<AuthProvider>();
@@ -290,25 +288,11 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
           context.go('/bookings');
         }
         } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Payment did not go through. This booking was not confirmed.'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        context.toastError('Payment did not go through. This booking was not confirmed.');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Booking failed: ${e.toString()}'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+        context.toastError('Booking failed: ${e.toString()}');
       }
     } finally {
       if (mounted) setState(() => _bookingLoading = false);
@@ -1026,43 +1010,13 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
 
       if (result.success) {
         HapticFeedback.heavyImpact();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
-                SizedBox(width: 10),
-                Text('Subscription activated!', style: TextStyle(fontWeight: FontWeight.w700)),
-              ],
-            ),
-            backgroundColor: AppColors.secondary,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+        context.toastSuccess('Subscription activated!');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.error ?? 'Subscription failed'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+        context.toastError(result.error ?? 'Subscription failed');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Subscription failed: $e'),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+        context.toastError('Subscription failed: $e');
       }
     } finally {
       if (mounted) setState(() => _subscribing = false);
@@ -1077,20 +1031,10 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
       if (slot['booked'] == true || slot['blocked'] == true || past) continue;
       final key = '${slot['key']}';
       final label = '${slot['start'] ?? key}';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Next free slot is $label'),
-          action: SnackBarAction(
-            label: 'Select',
-            onPressed: () => setState(() => _selectedSlots.add(key)),
-          ),
-        ),
-      );
+      context.toastInfo('Next free slot is $label');
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('No later slot is free today. Try another date.')),
-    );
+    context.toastInfo('No later slot is free today. Try another date.');
   }
 
   Widget _buildMembershipSection() {

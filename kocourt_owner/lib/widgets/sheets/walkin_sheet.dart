@@ -34,9 +34,7 @@ class WalkInSheet extends StatefulWidget {
         rows = spaceRows(res.data);
       } catch (caught) {
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(Api.failureMessage(caught, fallback: 'Could not load spaces.'))),
-          );
+          context.toastError(Api.failureMessage(caught, fallback: 'Could not load spaces.'));
         }
         return false;
       }

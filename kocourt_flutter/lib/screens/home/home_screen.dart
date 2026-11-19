@@ -714,9 +714,7 @@ class _HomeScreenState extends State<HomeScreen> {
           selected: venues.sortBy == sort,
           onSelected: (_) {
             if (sort == 'distance' && venues.userLat == null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Turn on location to sort venues that are nearby.')),
-              );
+              context.toastError('Turn on location to sort venues that are nearby.');
             }
             venues.setFilters(sortBy: sort);
           },
