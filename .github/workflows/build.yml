@@ -117,7 +117,11 @@ jobs:
           distribution: temurin
           java-version: 17
       - name: Install Maestro CLI
-        run: curl -fsSL "https://get.maestro.mobile.dev" | bash
+        run: |
+          export MAESTRO_VERSION=1.39.14
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+          $HOME/.maestro/bin/maestro --version
       - uses: actions/download-artifact@v4
         with:
           name: kocourt_owner-release-apk
@@ -130,7 +134,7 @@ jobs:
           profile: pixel_6
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
-            export PATH="$HOME/.maestro/bin:$PATH"
+            maestro --version
             mkdir -p maestro-output/player maestro-output/owner
 
             # Player app tests (19 flows)
