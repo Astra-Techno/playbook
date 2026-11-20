@@ -1,0 +1,33 @@
+# Browse community feed, like a post, view comments
+# Tags: social, feed
+appId: com.kocourt.player
+tags:
+  - social
+  - feed
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Navigate to Feed tab
+- tapOn:
+    id: "nav_feed"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "feed-home"
+
+# Scroll through posts
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "feed-scrolled"
+
+# Try liking a post (heart icon)
+- tapOn: "Like"
+  optional: true
+- takeScreenshot: "feed-liked"
+
+# Scroll back up
+- scroll:
+    direction: UP
+    duration: 2000

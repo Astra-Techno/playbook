@@ -167,7 +167,11 @@ class _NavBarItem extends StatelessWidget {
       CurvedAnimation(parent: controller, curve: Curves.easeOutBack),
     );
 
-    return GestureDetector(
+    return Semantics(
+      identifier: 'nav_${item.label.toLowerCase()}',
+      button: true,
+      label: item.label,
+      child: GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
@@ -213,6 +217,7 @@ class _NavBarItem extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }

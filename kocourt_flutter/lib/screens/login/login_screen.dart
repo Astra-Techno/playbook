@@ -273,7 +273,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                       ),
                     ),
                     Expanded(
-                      child: TextField(
+                      child: Semantics(
+                        identifier: 'phone_input',
+                        child: TextField(
                         controller: _phoneController,
                         keyboardType: TextInputType.phone,
                         inputFormatters: [
@@ -300,6 +302,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         ),
                         onSubmitted: (_) => _sendOtp(),
                       ),
+                    ),
                     ),
                   ],
                 ),
@@ -481,7 +484,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 ),
               ),
               const SizedBox(height: 8),
-              TextField(
+              Semantics(
+                identifier: 'name_input',
+                child: TextField(
                 controller: _nameController,
                 autofocus: true,
                 textCapitalization: TextCapitalization.words,
@@ -510,6 +515,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 ),
                 onSubmitted: (_) => _verifyOtp(),
+              ),
               ),
               const SizedBox(height: 20),
               Consumer<AuthProvider>(
