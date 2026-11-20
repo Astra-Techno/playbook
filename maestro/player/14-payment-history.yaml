@@ -1,0 +1,42 @@
+# PERSONA: Player checking their spending
+# SCENARIO: Opens profile, checks payment history, reviews transactions
+# Like checking "Transaction History" in Google Pay
+tags:
+  - payment
+  - auth
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Go to Profile
+- tapOn:
+    id: "nav_profile"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Open payment history
+- tapOn: "Payment History"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "payment-history"
+
+# Scroll through transactions
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "payment-history-scrolled"
+
+# Tap a transaction for details
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "payment-detail"
+
+# Go back
+- back
+- back
+  optional: true

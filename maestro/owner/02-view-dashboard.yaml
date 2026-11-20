@@ -1,0 +1,31 @@
+# PERSONA: Owner checking their business at a glance
+# SCENARIO: Views dashboard — today's bookings, revenue, occupancy
+# Like checking your Shopify dashboard — sales today, orders pending
+tags:
+  - dashboard
+  - smoke
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Dashboard should show key metrics
+- takeScreenshot: "dashboard-overview"
+
+# Scroll to see more stats
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "dashboard-stats"
+
+# Check if there are venue cards
+- scroll:
+    direction: DOWN
+    duration: 1500
+- waitForAnimationToEnd
+- takeScreenshot: "dashboard-venues"
+
+# Scroll back up
+- scroll:
+    direction: UP
+    duration: 3000

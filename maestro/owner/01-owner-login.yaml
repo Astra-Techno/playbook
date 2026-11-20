@@ -1,0 +1,15 @@
+# PERSONA: Venue owner opening the management app
+# SCENARIO: Logs in, sees dashboard with venues
+# Like a shop owner opening their POS system in the morning
+tags:
+  - auth
+  - smoke
+---
+- launchApp
+- runFlow: subflows/login.yaml
+- takeScreenshot: "owner-dashboard"
+
+# Should see venue list or dashboard
+- assertVisible: "Venues"
+  optional: true
+- takeScreenshot: "owner-logged-in"

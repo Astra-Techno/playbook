@@ -1,0 +1,45 @@
+# PERSONA: Owner adding staff who can manage bookings
+# SCENARIO: Opens staff screen, views existing staff, adds new staff
+# Like adding team members in Slack — give them access to the workspace
+tags:
+  - venue
+  - staff
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Open first venue
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Navigate to Staff
+- tapOn: "Staff"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "staff-list"
+
+# Check existing staff
+- scroll:
+    direction: DOWN
+    duration: 1000
+- waitForAnimationToEnd
+- takeScreenshot: "staff-scrolled"
+
+# Try adding new staff
+- tapOn: "Add Staff"
+  optional: true
+- tapOn: "+"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "staff-add-form"
+
+# Go back
+- back
+- back
+  optional: true

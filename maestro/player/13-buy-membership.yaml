@@ -1,0 +1,62 @@
+# PERSONA: Regular player who wants a monthly membership
+# SCENARIO: Opens venue, checks plans, subscribes to a plan
+# Like buying a gym membership — pick a plan, pay monthly
+tags:
+  - subscription
+  - payment
+  - auth
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Open a venue
+- tapOn:
+    id: "nav_explore"
+- scrollUntilVisible:
+    element: "Book Now"
+    direction: DOWN
+    timeout: 10000
+  optional: true
+- tapOn: "Book Now"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Scroll to plans section
+- scrollUntilVisible:
+    element: "Plans"
+    direction: DOWN
+    timeout: 10000
+  optional: true
+- scrollUntilVisible:
+    element: "Membership"
+    direction: DOWN
+    timeout: 5000
+  optional: true
+- takeScreenshot: "venue-plans"
+
+# Tap on a plan
+- tapOn: "Subscribe"
+  optional: true
+- tapOn: "Buy Plan"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "plan-checkout"
+
+# Go back
+- back
+- back
+  optional: true
+
+# Check subscriptions from profile
+- tapOn:
+    id: "nav_profile"
+- tapOn: "My Memberships"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "my-memberships"
+
+# Go back
+- back

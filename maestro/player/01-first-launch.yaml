@@ -1,0 +1,45 @@
+# PERSONA: New user who just downloaded the app
+# SCENARIO: Opens app for the first time, browses without logging in
+# Like someone opening Instagram for the first time — just looking around
+tags:
+  - smoke
+  - guest
+---
+- launchApp
+- assertVisible:
+    id: "nav_explore"
+- takeScreenshot: "first-launch-home"
+
+# Scroll through venue cards like browsing a social feed
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "first-launch-scrolled"
+
+# Try each tab as guest — some should prompt login
+- tapOn:
+    id: "nav_feed"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "guest-feed"
+
+- tapOn:
+    id: "nav_matches"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "guest-matches"
+
+- tapOn:
+    id: "nav_bookings"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "guest-bookings"
+
+- tapOn:
+    id: "nav_profile"
+- waitForAnimationToEnd:
+    timeout: 5000
+# Should see login screen or login prompt
+- assertVisible: "Continue"
+- takeScreenshot: "guest-profile-login-prompt"

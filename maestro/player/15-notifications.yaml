@@ -1,0 +1,35 @@
+# PERSONA: Player checking their notifications
+# SCENARIO: Opens notification bell, reads notifications, taps one
+# Like checking notification tray on Instagram
+tags:
+  - notifications
+  - auth
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Tap notification bell from home screen
+- tapOn: "Open notifications"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "notifications-list"
+
+# Scroll through notifications
+- scroll:
+    direction: DOWN
+    duration: 1500
+  optional: true
+- takeScreenshot: "notifications-scrolled"
+
+# Tap a notification
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "notification-detail"
+
+# Go back
+- back

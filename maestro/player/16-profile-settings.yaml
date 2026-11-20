@@ -1,0 +1,72 @@
+# PERSONA: Player managing their account
+# SCENARIO: Views profile, checks all menu items, reads static pages
+# Like going through Settings on any app — checking every option
+tags:
+  - profile
+  - auth
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Go to Profile
+- tapOn:
+    id: "nav_profile"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "profile-main"
+
+# Check My Bookings
+- tapOn: "My Bookings"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "profile-my-bookings"
+- back
+
+# Check My Reviews
+- tapOn: "My Reviews"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "profile-my-reviews"
+- back
+
+# Check Find Available Courts
+- tapOn: "Find Available Courts"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "profile-find-courts"
+- back
+
+# Check Help & FAQ
+- tapOn: "Help & FAQ"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "profile-faq"
+- back
+
+# Check Terms
+- tapOn: "Terms & Conditions"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "profile-terms"
+- back
+
+# Check Privacy Policy
+- tapOn: "Privacy Policy"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "profile-privacy"
+- back
+
+# Check Refund Policy
+- tapOn: "Refund & Cancellation"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "profile-refund"
+- back
+
+# Check Contact Support
+- tapOn: "Contact Support"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "profile-contact"
+- back

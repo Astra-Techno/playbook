@@ -1,0 +1,56 @@
+# PERSONA: New owner setting up their first venue
+# SCENARIO: Creates a new venue with name, address, sports, description
+# Like creating a new business page on Google My Business
+tags:
+  - venue
+  - setup
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Tap Add Venue / New Venue
+- tapOn: "Add Venue"
+  optional: true
+- tapOn: "New Venue"
+  optional: true
+- tapOn: "+"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "create-venue-form"
+
+# Fill in venue name
+- inputText: "Test Sports Arena"
+  optional: true
+- takeScreenshot: "venue-name-entered"
+
+# Scroll to see more fields
+- scroll:
+    direction: DOWN
+    duration: 1500
+- waitForAnimationToEnd
+- takeScreenshot: "venue-form-more-fields"
+
+# Fill address if visible
+- inputText: "123 Test Street, Chennai"
+  optional: true
+
+# Select sports
+- tapOn: "Badminton"
+  optional: true
+- tapOn: "Tennis"
+  optional: true
+- takeScreenshot: "venue-sports-selected"
+
+# Save
+- tapOn: "Save"
+  optional: true
+- tapOn: "Create"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "venue-created"
+
+# Go back
+- back
+  optional: true

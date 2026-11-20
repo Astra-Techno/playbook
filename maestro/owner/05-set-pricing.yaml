@@ -1,0 +1,43 @@
+# PERSONA: Owner configuring how much to charge per hour
+# SCENARIO: Opens venue pricing, sets rates for different times/days
+# Like setting prices on your Etsy shop — weekday vs weekend rates
+tags:
+  - venue
+  - pricing
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Open first venue
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Navigate to Pricing
+- tapOn: "Pricing"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "pricing-screen"
+
+# Scroll to see all pricing rules
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "pricing-rules"
+
+# Try editing a price
+- tapOn: "Edit"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "pricing-edit"
+
+# Go back without saving
+- back
+- back
+  optional: true

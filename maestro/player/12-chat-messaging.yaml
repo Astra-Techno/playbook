@@ -1,0 +1,48 @@
+# PERSONA: Player chatting with co-players or venue
+# SCENARIO: Opens messages, views conversation, sends a message
+# Like opening WhatsApp — see chat list, tap a chat, type and send
+tags:
+  - chat
+  - auth
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Go to Profile > Messages
+- tapOn:
+    id: "nav_profile"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn: "Messages"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "chat-list"
+
+# Tap first conversation
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "chat-conversation"
+
+# Type and send a message
+- inputText: "Hey, what time are we playing tomorrow?"
+  optional: true
+- tapOn: "Send"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "chat-message-sent"
+
+# Scroll up to see older messages
+- scroll:
+    direction: UP
+    duration: 1500
+  optional: true
+- takeScreenshot: "chat-history"
+
+# Go back to chat list
+- back

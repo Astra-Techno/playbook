@@ -1,0 +1,39 @@
+# PERSONA: Player checking their upcoming and past bookings
+# SCENARIO: Opens bookings tab, views upcoming, checks past, taps a booking
+# Like checking "My Orders" on Amazon
+tags:
+  - booking
+  - auth
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Go to Bookings tab
+- tapOn:
+    id: "nav_bookings"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "my-bookings"
+
+# Try switching between upcoming/past tabs if they exist
+- tapOn: "Upcoming"
+  optional: true
+- waitForAnimationToEnd
+- takeScreenshot: "bookings-upcoming"
+
+- tapOn: "Past"
+  optional: true
+- waitForAnimationToEnd
+- takeScreenshot: "bookings-past"
+
+# Tap on a booking to see details
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "booking-detail"
+
+# Go back
+- back

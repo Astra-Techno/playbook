@@ -1,0 +1,80 @@
+# PERSONA: Player checking what's happening in the community
+# SCENARIO: Browses feed, likes a post, reads comments, creates a post
+# Like scrolling through Instagram stories and posts
+tags:
+  - social
+  - feed
+  - auth
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Go to Feed tab
+- tapOn:
+    id: "nav_feed"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "feed-home"
+
+# Scroll through posts
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "feed-scrolled"
+
+# Like a post
+- tapOn: "Like"
+  optional: true
+- takeScreenshot: "feed-liked"
+
+# Tap on a post to see comments
+- tapOn: "Comment"
+  optional: true
+- tapOn: "comments"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "feed-comments"
+
+# Type a comment
+- inputText: "Nice shot!"
+  optional: true
+- tapOn: "Send"
+  optional: true
+- tapOn: "Post"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "feed-comment-posted"
+
+# Go back
+- back
+  optional: true
+
+# Create a new post
+- tapOn: "Create"
+  optional: true
+- tapOn: "New Post"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "feed-create-post"
+
+# Type post content
+- inputText: "Looking for badminton partners this weekend!"
+  optional: true
+- takeScreenshot: "feed-post-typed"
+
+# Submit post
+- tapOn: "Post"
+  optional: true
+- tapOn: "Share"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "feed-post-created"
+
+# Go back if needed
+- back
+  optional: true

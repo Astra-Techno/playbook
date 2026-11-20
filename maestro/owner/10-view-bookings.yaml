@@ -1,0 +1,40 @@
+# PERSONA: Owner checking who's booked today
+# SCENARIO: Opens bookings tab, sees today's bookings, checks details
+# Like a restaurant checking tonight's reservations on OpenTable
+tags:
+  - bookings
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Tap Bookings tab (second tab in owner nav)
+- tapOn: "Bookings"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "owner-bookings"
+
+# Scroll through today's bookings
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "owner-bookings-list"
+
+# Tap a booking for details
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "owner-booking-detail"
+
+# Check if cancel/refund options exist
+- scroll:
+    direction: DOWN
+    duration: 1000
+- takeScreenshot: "owner-booking-actions"
+
+# Go back
+- back

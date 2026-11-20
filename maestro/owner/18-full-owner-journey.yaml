@@ -1,0 +1,74 @@
+# PERSONA: Owner's complete morning routine
+# SCENARIO: Login > Dashboard > Calendar > Bookings > Earnings > Chat > Profile
+# Like a shop owner opening up — check schedule, orders, revenue, messages
+tags:
+  - e2e
+  - full
+---
+- launchApp
+- runFlow: subflows/login.yaml
+- takeScreenshot: "owner-01-dashboard"
+
+# Check venue details
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "owner-02-venue"
+
+# Check calendar
+- tapOn: "Calendar"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "owner-03-calendar"
+- back
+  optional: true
+
+# Check spaces
+- tapOn: "Spaces"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "owner-04-spaces"
+- back
+  optional: true
+
+# Back to dashboard
+- back
+  optional: true
+
+# Check Bookings tab
+- tapOn: "Bookings"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "owner-05-bookings"
+
+# Check Earnings tab
+- tapOn: "Earnings"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "owner-06-earnings"
+
+# Check Chat tab
+- tapOn: "Chat"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "owner-07-chat"
+
+# Check Profile tab
+- tapOn: "Profile"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "owner-08-profile"
+
+# Back to venues
+- tapOn: "Venues"
+  optional: true
+- takeScreenshot: "owner-09-complete"

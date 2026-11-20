@@ -1,0 +1,48 @@
+# PERSONA: Owner adding courts/spaces to their venue
+# SCENARIO: Opens venue, goes to spaces, adds a new court with capacity
+# Like adding rooms to a hotel listing on Booking.com
+tags:
+  - venue
+  - spaces
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Tap first venue
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "venue-detail"
+
+# Navigate to Spaces/Courts
+- tapOn: "Spaces"
+  optional: true
+- tapOn: "Courts"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "spaces-list"
+
+# Scroll through existing spaces
+- scroll:
+    direction: DOWN
+    duration: 1500
+- waitForAnimationToEnd
+- takeScreenshot: "spaces-scrolled"
+
+# Tap on a space to view details
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "space-detail"
+
+# Go back
+- back
+- back
+  optional: true

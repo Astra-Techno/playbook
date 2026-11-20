@@ -1,0 +1,44 @@
+# PERSONA: Owner updating venue information
+# SCENARIO: Edits venue name, description, photos, timing
+# Like updating your business hours on Google My Business
+tags:
+  - venue
+  - edit
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Open first venue
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Tap Edit
+- tapOn: "Edit"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "edit-venue-form"
+
+# Scroll through editable fields
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "edit-venue-fields"
+
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "edit-venue-more"
+
+# Go back without saving
+- back
+- tapOn: "Discard"
+  optional: true
+- tapOn: "Cancel"
+  optional: true

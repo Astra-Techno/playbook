@@ -1,0 +1,44 @@
+# PERSONA: Owner analyzing their business performance
+# SCENARIO: Views reports, occupancy rates, revenue trends, customer stats
+# Like checking Google Analytics for your website
+tags:
+  - reports
+  - analytics
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Open first venue
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Navigate to Reports/Analytics
+- tapOn: "Reports"
+  optional: true
+- tapOn: "Analytics"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "venue-reports"
+
+# Scroll through charts and stats
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "reports-charts"
+
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "reports-more"
+
+# Go back
+- back
+- back
+  optional: true

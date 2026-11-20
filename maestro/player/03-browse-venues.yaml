@@ -1,0 +1,34 @@
+# PERSONA: Player looking for a court to play
+# SCENARIO: Browses venues, uses sort chips, scrolls through cards
+# Like scrolling through Zomato restaurants looking for a good place
+tags:
+  - discovery
+  - browse
+---
+- launchApp
+- assertVisible:
+    id: "nav_explore"
+
+# Try sort chips
+- tapOn: "Nearby"
+  optional: true
+- waitForAnimationToEnd
+- takeScreenshot: "sort-nearby"
+
+- tapOn: "Best review"
+  optional: true
+- waitForAnimationToEnd
+- takeScreenshot: "sort-rating"
+
+# Scroll through venue cards
+- scroll:
+    direction: DOWN
+    duration: 3000
+- waitForAnimationToEnd
+- takeScreenshot: "venues-scrolled-down"
+
+# Scroll back to top
+- scroll:
+    direction: UP
+    duration: 3000
+- waitForAnimationToEnd

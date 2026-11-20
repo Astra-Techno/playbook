@@ -1,0 +1,54 @@
+# PERSONA: Owner checking today's schedule
+# SCENARIO: Opens calendar, sees booked/free slots, taps a booking
+# Like checking your Google Calendar in the morning — what's booked today
+tags:
+  - calendar
+  - bookings
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Open first venue
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Navigate to Calendar
+- tapOn: "Calendar"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "calendar-today"
+
+# Scroll to see full day
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "calendar-scrolled"
+
+# Try tapping a booked slot for details
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "calendar-booking-detail"
+
+# Try switching to next day
+- swipe:
+    direction: LEFT
+    duration: 500
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "calendar-tomorrow"
+
+# Go back
+- back
+- back
+  optional: true

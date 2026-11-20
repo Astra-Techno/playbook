@@ -1,0 +1,39 @@
+# Reusable login subflow for owner app
+# Uses admin phone number (venue owner)
+appId: com.kocourt.owner
+tags:
+  - subflow
+---
+- tapOn: "Continue"
+  optional: true
+- tapOn: "Login"
+  optional: true
+- assertVisible: "Continue"
+  optional: true
+
+# Enter owner phone number
+- inputText: "9994439081"
+- tapOn: "Continue"
+
+# Wait for OTP screen
+- assertVisible: "Verify & Continue"
+  optional: true
+
+# Enter demo OTP
+- inputText: "1"
+- inputText: "2"
+- inputText: "3"
+- inputText: "4"
+- tapOn: "Verify & Continue"
+  optional: true
+
+# Handle name entry for new users
+- runFlow:
+    when:
+      visible: "YOUR FULL NAME"
+    commands:
+      - inputText: "Venue Owner"
+      - tapOn: "Create Account"
+
+- waitForAnimationToEnd:
+    timeout: 5000

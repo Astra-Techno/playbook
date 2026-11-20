@@ -1,0 +1,46 @@
+# PERSONA: Player logging out and back in
+# SCENARIO: Logs out from profile, verifies logged out state, logs back in
+# Like logging out of Netflix to switch accounts
+tags:
+  - auth
+  - logout
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Go to Profile and logout
+- tapOn:
+    id: "nav_profile"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Scroll down to find Logout
+- scrollUntilVisible:
+    element: "Logout"
+    direction: DOWN
+    timeout: 10000
+- tapOn: "Logout"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "logout-confirmation"
+
+# Confirm logout
+- tapOn: "Yes"
+  optional: true
+- tapOn: "Confirm"
+  optional: true
+- tapOn: "Logout"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "logged-out"
+
+# Verify we see login prompt
+- tapOn:
+    id: "nav_profile"
+- assertVisible: "Continue"
+- takeScreenshot: "login-screen-after-logout"
+
+# Log back in
+- runFlow: subflows/login.yaml
+- takeScreenshot: "re-logged-in"

@@ -118,7 +118,11 @@ jobs:
           java-version: 17
       - name: Install Maestro CLI
         run: curl -fsSL "https://get.maestro.mobile.dev" | bash
-      - name: Run Maestro tests
+      - uses: actions/download-artifact@v4
+        with:
+          name: kocourt_owner-release-apk
+          path: .
+      - name: Run Maestro tests (Player + Owner)
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -126,10 +130,16 @@ jobs:
           profile: pixel_6
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
-            adb install kocourt-player.apk
             export PATH="$HOME/.maestro/bin:$PATH"
-            mkdir -p maestro-output
-            maestro test --debug-output maestro-output maestro/ || true
+            mkdir -p maestro-output/player maestro-output/owner
+
+            # Player app tests (19 flows)
+            adb install kocourt-player.apk
+            maestro test --debug-output maestro-output/player maestro/player/ || true
+
+            # Owner app tests (18 flows)
+            adb install kocourt-owner.apk
+            maestro test --debug-output maestro-output/owner maestro/owner/ || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:

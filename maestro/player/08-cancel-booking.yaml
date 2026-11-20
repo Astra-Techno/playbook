@@ -1,0 +1,47 @@
+# PERSONA: Player who needs to cancel a booking
+# SCENARIO: Opens a booking, taps cancel, confirms cancellation
+# Like cancelling an Uber ride — tap booking, cancel, confirm
+tags:
+  - booking
+  - cancellation
+  - auth
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Go to Bookings tab
+- tapOn:
+    id: "nav_bookings"
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Tap first booking
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "cancel-booking-detail"
+
+# Look for cancel button
+- tapOn: "Cancel Booking"
+  optional: true
+- tapOn: "Cancel"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "cancel-confirmation-dialog"
+
+# Confirm cancellation
+- tapOn: "Yes, Cancel"
+  optional: true
+- tapOn: "Confirm"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "cancel-result"
+
+# Go back
+- back
+  optional: true

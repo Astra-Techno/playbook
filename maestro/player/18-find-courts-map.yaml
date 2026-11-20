@@ -1,0 +1,41 @@
+# PERSONA: Player looking for courts on a map
+# SCENARIO: Opens Find Courts, views map, taps a pin, checks court
+# Like finding a gym near you on Google Maps
+tags:
+  - discovery
+  - map
+  - auth
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Go to Profile > Find Available Courts
+- tapOn:
+    id: "nav_profile"
+- waitForAnimationToEnd:
+    timeout: 3000
+- tapOn: "Find Available Courts"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "find-courts"
+
+# If map view exists, interact with it
+- tapOn: "Map"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "courts-map"
+
+# Tap a map pin
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "map-pin-detail"
+
+# Go back
+- back
+- back
+  optional: true

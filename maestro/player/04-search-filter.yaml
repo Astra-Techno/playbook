@@ -1,0 +1,41 @@
+# PERSONA: Player searching for a specific sport or venue
+# SCENARIO: Uses search bar, opens filter sheet, tries sport chips
+# Like searching "biryani near me" on Swiggy
+tags:
+  - discovery
+  - search
+---
+- launchApp
+- assertVisible:
+    id: "nav_explore"
+
+# Tap search bar and type a query
+- tapOn: "98765 43210"
+  optional: true
+- tapOn: "Open search filters"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "search-filters-open"
+- back
+  optional: true
+
+# Try sport filter chips (on login screen they're visible, check home too)
+- tapOn: "Badminton"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "filter-badminton"
+
+- tapOn: "Football"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "filter-football"
+
+# Clear filter — tap same chip again or "All"
+- tapOn: "Badminton"
+  optional: true
+- tapOn: "All"
+  optional: true
+- waitForAnimationToEnd

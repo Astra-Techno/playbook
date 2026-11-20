@@ -1,0 +1,38 @@
+# PERSONA: Owner responding to customer messages
+# SCENARIO: Opens chat tab, reads messages, replies to a customer
+# Like a shop owner replying to Instagram DMs about products
+tags:
+  - chat
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Tap Chat tab (4th tab)
+- tapOn: "Chat"
+  optional: true
+- tapOn: "Messages"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "owner-chat-list"
+
+# Open first conversation
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "owner-chat-conversation"
+
+# Type a reply
+- inputText: "Sure, the court is available at 6 PM tomorrow!"
+  optional: true
+- tapOn: "Send"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "owner-chat-replied"
+
+# Go back
+- back

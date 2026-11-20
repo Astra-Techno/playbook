@@ -1,0 +1,38 @@
+# PERSONA: Owner blocking time for maintenance or private events
+# SCENARIO: Opens calendar, blocks a time range, adds reason
+# Like blocking dates on Airbnb — "not available for these hours"
+tags:
+  - venue
+  - calendar
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Open first venue
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Navigate to Block Slots
+- tapOn: "Block"
+  optional: true
+- tapOn: "Block Slots"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "block-slots-screen"
+
+# Try selecting a date range
+- tapOn: "Select Date"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "block-date-picker"
+
+# Go back
+- back
+- back
+  optional: true

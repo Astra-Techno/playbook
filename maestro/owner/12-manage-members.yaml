@@ -1,0 +1,45 @@
+# PERSONA: Owner checking who's a member of their venue
+# SCENARIO: Views member list, checks membership details
+# Like checking your gym's member database
+tags:
+  - venue
+  - members
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Open first venue
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Navigate to Members
+- tapOn: "Members"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "members-list"
+
+# Scroll through members
+- scroll:
+    direction: DOWN
+    duration: 1500
+- waitForAnimationToEnd
+- takeScreenshot: "members-scrolled"
+
+# Tap a member for details
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "member-detail"
+
+# Go back
+- back
+- back
+  optional: true

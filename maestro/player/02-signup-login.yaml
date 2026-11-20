@@ -1,0 +1,18 @@
+# PERSONA: New player signing up
+# SCENARIO: Enters phone, receives OTP, enters name, lands on home
+# Like signing up for WhatsApp — phone number is your identity
+tags:
+  - auth
+  - signup
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Verify logged in state
+- tapOn:
+    id: "nav_profile"
+- waitForAnimationToEnd:
+    timeout: 5000
+# Should see profile with user name, not login screen
+- assertNotVisible: "Login / Sign Up"
+- takeScreenshot: "signup-complete"

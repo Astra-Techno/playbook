@@ -1,0 +1,47 @@
+# PERSONA: Owner organizing a tournament or event
+# SCENARIO: Opens events, creates a new event with details
+# Like creating a Facebook Event — name, date, description, invite people
+tags:
+  - events
+  - tournament
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Navigate to Events
+- tapOn: "Events"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "events-list"
+
+# View existing events
+- scroll:
+    direction: DOWN
+    duration: 1500
+- waitForAnimationToEnd
+- takeScreenshot: "events-scrolled"
+
+# Try creating new event
+- tapOn: "Create Event"
+  optional: true
+- tapOn: "New Event"
+  optional: true
+- tapOn: "+"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "event-create-form"
+
+# Fill details
+- inputText: "Weekend Badminton Tournament"
+  optional: true
+- scroll:
+    direction: DOWN
+    duration: 1000
+- takeScreenshot: "event-form-filled"
+
+# Go back
+- back
+- back
+  optional: true

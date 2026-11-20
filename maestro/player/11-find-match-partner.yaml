@@ -1,0 +1,63 @@
+# PERSONA: Player looking for someone to play with
+# SCENARIO: Browses match requests, creates own request, joins an existing one
+# Like posting on a Facebook group "anyone up for badminton tonight?"
+tags:
+  - social
+  - matches
+  - auth
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Go to Matches tab
+- tapOn:
+    id: "nav_matches"
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "matches-home"
+
+# Scroll through available match requests
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "matches-list"
+
+# Try joining an existing match
+- tapOn: "Join"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "match-joined"
+
+# Scroll back up
+- scroll:
+    direction: UP
+    duration: 2000
+
+# Create a new match request
+- tapOn: "Create"
+  optional: true
+- tapOn: "New Match"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "match-create-form"
+
+# Fill match details if form appears
+- inputText: "Badminton doubles"
+  optional: true
+- takeScreenshot: "match-form-filled"
+
+# Submit
+- tapOn: "Create"
+  optional: true
+- tapOn: "Post"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "match-created"
+
+# Go back
+- back
+  optional: true

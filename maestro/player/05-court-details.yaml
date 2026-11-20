@@ -1,0 +1,51 @@
+# PERSONA: Player checking out a venue before booking
+# SCENARIO: Opens venue card, reads reviews, checks photos, looks at pricing
+# Like checking a restaurant on Google Maps — photos, reviews, menu, hours
+tags:
+  - discovery
+  - court-detail
+---
+- launchApp
+- assertVisible:
+    id: "nav_explore"
+
+# Tap first venue card
+- scrollUntilVisible:
+    element: "Book Now"
+    direction: DOWN
+    timeout: 10000
+  optional: true
+- tapOn: "Book Now"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "court-top"
+
+# Scroll through — photos, description, sports, amenities
+- scroll:
+    direction: DOWN
+    duration: 1500
+- waitForAnimationToEnd
+- takeScreenshot: "court-mid-section"
+
+# Keep scrolling — slots, pricing, reviews
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "court-slots-reviews"
+
+# Scroll all the way down — review section, plans
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "court-bottom"
+
+# Scroll back to top
+- scroll:
+    direction: UP
+    duration: 5000
+
+# Go back
+- back

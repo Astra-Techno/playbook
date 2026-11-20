@@ -1,35 +1,22 @@
-# Subflow: Login with demo OTP
-# Usage: - runFlow: subflows/login.yaml
-
+# Reusable login subflow for player app
 appId: com.kocourt.player
 tags:
   - subflow
 ---
-# Tap Profile tab to trigger login
 - tapOn:
     id: "nav_profile"
 - assertVisible: "Continue"
-
-# Enter phone number
 - tapOn:
     id: "phone_input"
 - inputText: "9000000099"
 - tapOn: "Continue"
-
-# Wait for OTP screen
 - assertVisible: "Verify & Continue"
-
-# Enter demo OTP 1234 — segmented 4-digit input, auto-advances focus
 - inputText: "1"
 - inputText: "2"
 - inputText: "3"
 - inputText: "4"
-
-# OTP auto-verifies on 4th digit; if not, tap verify
 - tapOn: "Verify & Continue"
   optional: true
-
-# Handle new user name entry (only shows for first-time users)
 - runFlow:
     when:
       visible: "YOUR FULL NAME"
@@ -38,7 +25,5 @@ tags:
           id: "name_input"
       - inputText: "Test Player"
       - tapOn: "Create Account"
-
-# Should land on profile or home
 - assertVisible:
     id: "nav_explore"

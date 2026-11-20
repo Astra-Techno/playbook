@@ -1,0 +1,38 @@
+# PERSONA: Owner tracking money flow
+# SCENARIO: Checks payout settings, views ledger, reviews transactions
+# Like checking your bank statement and setting up direct deposit
+tags:
+  - finance
+  - payout
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Navigate to Payout Settings (from profile or menu)
+- tapOn: "Profile"
+  optional: true
+- tapOn: "Payout Settings"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "payout-settings"
+
+# Go back and check Ledger
+- back
+  optional: true
+- tapOn: "Ledger"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "ledger"
+
+# Scroll through transactions
+- scroll:
+    direction: DOWN
+    duration: 2000
+- waitForAnimationToEnd
+- takeScreenshot: "ledger-scrolled"
+
+# Go back
+- back
+  optional: true

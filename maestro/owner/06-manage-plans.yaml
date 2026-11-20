@@ -1,0 +1,47 @@
+# PERSONA: Owner creating membership plans for regulars
+# SCENARIO: Opens plans, creates a monthly plan with benefits
+# Like creating a subscription tier on Patreon
+tags:
+  - venue
+  - plans
+---
+- launchApp
+- runFlow: subflows/login.yaml
+
+# Open first venue
+- tapOn:
+    index: 0
+    retryTapIfNoChange: false
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# Navigate to Plans
+- tapOn: "Plans"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: "plans-list"
+
+# Check existing plans
+- scroll:
+    direction: DOWN
+    duration: 1500
+- waitForAnimationToEnd
+- takeScreenshot: "plans-scrolled"
+
+# Try creating a new plan
+- tapOn: "Add Plan"
+  optional: true
+- tapOn: "New Plan"
+  optional: true
+- tapOn: "+"
+  optional: true
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: "plan-create-form"
+
+# Go back
+- back
+- back
+  optional: true
