@@ -96,6 +96,47 @@ jobs:
           php backend/tests/commerce_cancellation_test.php
           php backend/tests/refund_service_test.php
 
+  maestro:
+    name: Maestro E2E tests
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip ci]')
+    needs: [flutter]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: kocourt_flutter-release-apk
+          path: .
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Install Maestro CLI
+        run: curl -fsSL "https://get.maestro.mobile.dev" | bash
+      - name: Run Maestro tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          script: |
+            adb install kocourt-player.apk
+            export PATH="$HOME/.maestro/bin:$PATH"
+            mkdir -p maestro-output
+            maestro test --debug-output maestro-output maestro/ || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: maestro-screenshots
+          path: maestro-output/
+          retention-days: 14
+
   publish-web-build:
     name: Publish verified web build
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, '[skip ci]')
