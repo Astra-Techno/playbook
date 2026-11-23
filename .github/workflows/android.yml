@@ -25,7 +25,7 @@ jobs:
       matrix:
         include:
           - app: kocourt_flutter
-            artifact: kocourt-player
+            artifact: com.kocourt.player
           - app: kocourt_owner
             artifact: kocourt-owner
     env:
