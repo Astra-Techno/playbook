@@ -205,7 +205,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         children: [
           Text(bookingPerson(booking), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
-          Text('${booking['court_name'] ?? ''}', style: TextStyle(color: Colors.grey[700])),
+          Text('${booking['court_name'] ?? ''}', style: TextStyle(color: AppColors.textSecondary)),
           if ('${booking['space_name'] ?? ''}'.isNotEmpty) Text('${booking['space_name']}'),
           const SizedBox(height: 16),
           Text('${booking['start_time']} – ${booking['end_time']}'),

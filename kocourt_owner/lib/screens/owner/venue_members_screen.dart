@@ -143,9 +143,9 @@ class _VenueMembersScreenState extends State<VenueMembersScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(AppIcons.award, size: 48, color: Colors.grey[300]),
+                      Icon(AppIcons.award, size: 48, color: AppColors.textDisabled),
                       const SizedBox(height: 16),
-                      Text('No active members', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
+                      Text('No active members', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
                     ],
                   ),
                 )
@@ -161,7 +161,7 @@ class _VenueMembersScreenState extends State<VenueMembersScreen> {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
+                        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
                         child: Row(
                           children: [
                             CircleAvatar(
@@ -175,8 +175,8 @@ class _VenueMembersScreenState extends State<VenueMembersScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(m['user_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                                  Text('${m['plan_name'] ?? ''} · ${membershipSlotLabel(m['slot_type'])}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                                  Text('Expires: ${m['end_date'] ?? ''}', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                                  Text('${m['plan_name'] ?? ''} · ${membershipSlotLabel(m['slot_type'])}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                  Text('Expires: ${m['end_date'] ?? ''}', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                                 ],
                               ),
                             ),

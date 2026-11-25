@@ -125,7 +125,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                     children: [
                       const Icon(AppIcons.mapPin, size: 14, color: AppColors.primary),
                       const SizedBox(width: 4),
-                      Expanded(child: Text(_court!['location'] ?? '', style: TextStyle(fontSize: 13, color: Colors.grey[500]))),
+                      Expanded(child: Text(_court!['location'] ?? '', style: TextStyle(fontSize: 13, color: AppColors.textSecondary))),
                     ],
                   ),
                   if (_court!['hourly_rate'] != null) ...[
@@ -246,7 +246,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -254,7 +254,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
         children: [
           Text(listing, style: const TextStyle(fontWeight: FontWeight.w700, height: 1.4)),
           const SizedBox(height: 4),
-          Text(verification, style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.4)),
+          Text(verification, style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4)),
           if (rejection != null && rejection.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(rejection, style: const TextStyle(fontSize: 13, color: AppColors.error, height: 1.4)),
@@ -307,7 +307,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
   Widget _sectionLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey[400], letterSpacing: 1.5)),
+      child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textMuted, letterSpacing: 1.5)),
     );
   }
 
@@ -318,18 +318,18 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: Colors.grey[700]),
+            Icon(icon, size: 20, color: AppColors.textSecondary),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                  Text(desc, style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                  Text(desc, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                 ],
               ),
             ),
-            Icon(AppIcons.chevronRight, size: 18, color: Colors.grey[300]),
+            Icon(AppIcons.chevronRight, size: 18, color: AppColors.textDisabled),
           ],
         ),
       ),

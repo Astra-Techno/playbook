@@ -179,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Center(
                       child: Container(
                         width: 40, height: 4,
-                        decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                        decoration: BoxDecoration(color: AppColors.textDisabled, borderRadius: BorderRadius.circular(2)),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -198,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               )
                             : null,
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: AppColors.surfaceDim,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                       ),
@@ -258,7 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     if (suggestions.isNotEmpty) ...[
-                      Divider(height: 1, color: Colors.grey[200]),
+                      Divider(height: 1, color: AppColors.border),
                       const SizedBox(height: 4),
                       Flexible(
                         child: ListView.builder(
@@ -357,7 +357,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Center(
                       child: Container(
                         width: 40, height: 4,
-                        decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                        decoration: BoxDecoration(color: AppColors.textDisabled, borderRadius: BorderRadius.circular(2)),
                       ),
                     ),
                     const SizedBox(height: 20),

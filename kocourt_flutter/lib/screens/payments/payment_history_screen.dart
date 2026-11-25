@@ -45,9 +45,9 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
       case 'paid':
         return AppColors.secondary;
       case 'demo':
-        return Colors.blue;
+        return AppColors.info;
       case 'created':
-        return Colors.orange;
+        return AppColors.warningDark;
       case 'refund_pending':
         return Colors.deepOrange;
       case 'failed':
@@ -98,11 +98,11 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(AppIcons.wallet, size: 48, color: Colors.grey[300]),
+                      Icon(AppIcons.wallet, size: 48, color: AppColors.textDisabled),
                       const SizedBox(height: 16),
-                      Text('No payments yet', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
+                      Text('No payments yet', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
                       const SizedBox(height: 8),
-                      Text('Your payment history will appear here', style: TextStyle(fontSize: 13, color: Colors.grey[400])),
+                      Text('Your payment history will appear here', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
                     ],
                   ),
                 )
@@ -128,7 +128,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey[100]!),
+                          border: Border.all(color: AppColors.surfaceDim),
                           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
                         ),
                         child: Row(
@@ -186,7 +186,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                                       Expanded(
                                         child: Text(
                                           _formatDate(p['created_at']),
-                                          style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                                          style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
@@ -196,7 +196,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       'Order: ${p['cf_order_id']}',
-                                      style: TextStyle(fontSize: 10, color: Colors.grey[350]),
+                                      style: TextStyle(fontSize: 10, color: AppColors.textMuted),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ],

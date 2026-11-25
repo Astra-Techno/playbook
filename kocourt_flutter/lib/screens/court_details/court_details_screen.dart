@@ -1037,7 +1037,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
           padding: const EdgeInsets.symmetric(vertical: 40),
           child: Column(
             children: [
-              Icon(Icons.card_membership_rounded, size: 40, color: Colors.grey[300]),
+              Icon(Icons.card_membership_rounded, size: 40, color: AppColors.textDisabled),
               const SizedBox(height: 12),
               Text('No plans available', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600)),
             ],

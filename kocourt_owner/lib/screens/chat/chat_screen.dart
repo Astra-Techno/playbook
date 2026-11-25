@@ -166,7 +166,7 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             if (widget.otherUserName != null && widget.courtName != null)
-              Text(widget.otherUserName!, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              Text(widget.otherUserName!, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ],
         ),
         backgroundColor: Colors.white,
@@ -211,7 +211,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                   padding: const EdgeInsets.symmetric(vertical: 12),
                                   child: Text(
                                     _dateBadge(msg['created_at']),
-                                    style: TextStyle(fontSize: 11, color: Colors.grey[400], fontWeight: FontWeight.w600),
+                                    style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w600),
                                   ),
                                 ),
                               _MessageBubble(message: msg, isMe: isMe, formatTime: _formatTime),

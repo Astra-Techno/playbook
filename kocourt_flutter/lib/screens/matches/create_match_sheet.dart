@@ -134,13 +134,13 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
             Center(
               child: Container(
                 width: 40, height: 4,
-                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                decoration: BoxDecoration(color: AppColors.textDisabled, borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 20),
             const Text('Create Match', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
             const SizedBox(height: 4),
-            Text('Find players for your game', style: TextStyle(color: Colors.grey[500], fontSize: 14)),
+            Text('Find players for your game', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
             const SizedBox(height: 24),
 
             // Venue selection
@@ -154,7 +154,7 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
                 : Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     decoration: BoxDecoration(
-                      color: Colors.grey[100],
+                      color: AppColors.surfaceDim,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: DropdownButtonHideUnderline(
@@ -185,7 +185,7 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
               decoration: InputDecoration(
                 hintText: 'Looking for players',
                 filled: true,
-                fillColor: Colors.grey[100],
+                fillColor: AppColors.surfaceDim,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               ),
@@ -208,7 +208,7 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                         decoration: BoxDecoration(
-                          color: selected ? AppColors.primary : Colors.grey[100],
+                          color: selected ? AppColors.primary : AppColors.surfaceDim,
                           borderRadius: BorderRadius.circular(18),
                         ),
                         alignment: Alignment.center,
@@ -217,7 +217,7 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: selected ? Colors.white : Colors.grey[700],
+                            color: selected ? Colors.white : AppColors.textSecondary,
                           ),
                         ),
                       ),
@@ -238,10 +238,10 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                    decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(14)),
+                    decoration: BoxDecoration(color: AppColors.surfaceDim, borderRadius: BorderRadius.circular(14)),
                     child: Row(
                       children: [
-                        Icon(AppIcons.calendarDays, size: 16, color: Colors.grey[600]),
+                        Icon(AppIcons.calendarDays, size: 16, color: AppColors.textSecondary),
                         const SizedBox(width: 8),
                         Text(
                           '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
@@ -259,7 +259,7 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
                         onTap: () => _pickTime(true),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(14)),
+                          decoration: BoxDecoration(color: AppColors.surfaceDim, borderRadius: BorderRadius.circular(14)),
                           alignment: Alignment.center,
                           child: Text(_startTime.format(context), style: const TextStyle(fontWeight: FontWeight.w600)),
                         ),
@@ -267,14 +267,14 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 6),
-                      child: Text('–', style: TextStyle(color: Colors.grey[400])),
+                      child: Text('–', style: TextStyle(color: AppColors.textMuted)),
                     ),
                     Expanded(
                       child: GestureDetector(
                         onTap: () => _pickTime(false),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(14)),
+                          decoration: BoxDecoration(color: AppColors.surfaceDim, borderRadius: BorderRadius.circular(14)),
                           alignment: Alignment.center,
                           child: Text(_endTime.format(context), style: const TextStyle(fontWeight: FontWeight.w600)),
                         ),
@@ -297,7 +297,7 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
                   },
                   child: Container(
                     width: 40, height: 40,
-                    decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(color: AppColors.surfaceDim, borderRadius: BorderRadius.circular(12)),
                     child: const Icon(AppIcons.minus, size: 18),
                   ),
                 ),
@@ -311,7 +311,7 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
                   },
                   child: Container(
                     width: 40, height: 40,
-                    decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(color: AppColors.surfaceDim, borderRadius: BorderRadius.circular(12)),
                     child: const Icon(AppIcons.plus, size: 18),
                   ),
                 ),
@@ -328,7 +328,7 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
               decoration: InputDecoration(
                 hintText: 'Skill level, rules, etc.',
                 filled: true,
-                fillColor: Colors.grey[100],
+                fillColor: AppColors.surfaceDim,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               ),
@@ -345,7 +345,7 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
-                  disabledBackgroundColor: Colors.grey[300],
+                  disabledBackgroundColor: AppColors.textDisabled,
                 ),
                 child: _submitting
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))

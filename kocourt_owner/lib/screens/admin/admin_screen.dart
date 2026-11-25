@@ -87,7 +87,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
 
   Widget _buildPayoutRequests() {
     if (_payoutRequests.isEmpty) {
-      return Center(child: Text('No payout requests', style: TextStyle(color: Colors.grey[400])));
+      return Center(child: Text('No payout requests', style: TextStyle(color: AppColors.textMuted)));
     }
     return ListView.builder(
       padding: const EdgeInsets.all(20),
@@ -97,17 +97,17 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('${row['owner_name'] ?? 'Owner'} · ₹${row['amount']}', style: const TextStyle(fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
-              Text('${row['owner_phone'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              Text('${row['owner_phone'] ?? ''}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               if ('${row['note'] ?? ''}'.isNotEmpty)
-                Text('${row['note']}', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                Text('${row['note']}', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
               const SizedBox(height: 4),
-              Text('Requested. This is not a recorded payout.', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              Text('Requested. This is not a recorded payout.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
             ],
           ),
         );
@@ -116,7 +116,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
   }
 
   Widget _buildClaims() {
-    if (_claims.isEmpty) return Center(child: Text('No pending claims', style: TextStyle(color: Colors.grey[400])));
+    if (_claims.isEmpty) return Center(child: Text('No pending claims', style: TextStyle(color: AppColors.textMuted)));
     return RefreshIndicator(
       onRefresh: _load,
       color: AppColors.primary,
@@ -130,7 +130,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.grey[50],
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -138,18 +138,18 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
               children: [
                 Text(c['venue_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 const SizedBox(height: 4),
-                Text('Claimed by: ${c['user_name'] ?? c['phone'] ?? ''}', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
-                Text('Phone: ${c['phone'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                Text('Claimed by: ${c['user_name'] ?? c['phone'] ?? ''}', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                Text('Phone: ${c['phone'] ?? ''}', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: isPending ? Colors.orange.withValues(alpha: 0.1) : AppColors.secondary.withValues(alpha: 0.1),
+                    color: isPending ? AppColors.warningLight : AppColors.secondary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     (c['status'] ?? 'pending').toString().toUpperCase(),
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: isPending ? Colors.orange : AppColors.secondary),
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: isPending ? AppColors.warningDark : AppColors.secondary),
                   ),
                 ),
                 if (isPending) ...[
@@ -183,7 +183,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
 
   Widget _buildUsers() {
     if (_users.isEmpty) {
-      return Center(child: Text('No users found', style: TextStyle(color: Colors.grey[400])));
+      return Center(child: Text('No users found', style: TextStyle(color: AppColors.textMuted)));
     }
     return RefreshIndicator(
       onRefresh: _load,

@@ -241,15 +241,15 @@ class _NewChatScreenState extends State<NewChatScreen> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.people_outline_rounded, size: 56, color: Colors.grey[300]),
+                              Icon(Icons.people_outline_rounded, size: 56, color: AppColors.textDisabled),
                               const SizedBox(height: 16),
                               Text('No connections yet',
-                                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.grey[600])),
+                                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.textSecondary)),
                               const SizedBox(height: 8),
                               Text(
                                 'You can chat with people you\'ve played with, share a venue membership, or interacted with on posts.',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(fontSize: 13, color: Colors.grey[400], height: 1.4),
+                                style: TextStyle(fontSize: 13, color: AppColors.textMuted, height: 1.4),
                               ),
                             ],
                           ),
@@ -257,7 +257,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
                       )
                     : _filtered.isEmpty
                         ? Center(
-                            child: Text('No matches', style: TextStyle(color: Colors.grey[500])),
+                            child: Text('No matches', style: TextStyle(color: AppColors.textSecondary)),
                           )
                         : ListView.builder(
                             itemCount: _filtered.length,
@@ -267,7 +267,7 @@ class _NewChatScreenState extends State<NewChatScreen> {
                               final isSelected = _selected.contains(userId);
                               return ListTile(
                                 leading: CircleAvatar(
-                                  backgroundColor: Colors.grey[200],
+                                  backgroundColor: AppColors.border,
                                   backgroundImage: user['avatar_url'] != null ? NetworkImage(user['avatar_url']) : null,
                                   child: user['avatar_url'] == null
                                       ? Text(
@@ -278,11 +278,11 @@ class _NewChatScreenState extends State<NewChatScreen> {
                                 ),
                                 title: Text(user['name'] ?? 'User', style: const TextStyle(fontWeight: FontWeight.w600)),
                                 subtitle: user['phone'] != null
-                                    ? Text(user['phone'], style: TextStyle(fontSize: 12, color: Colors.grey[500]))
+                                    ? Text(user['phone'], style: TextStyle(fontSize: 12, color: AppColors.textSecondary))
                                     : null,
                                 trailing: isSelected
                                     ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
-                                    : Icon(Icons.circle_outlined, color: Colors.grey[300]),
+                                    : Icon(Icons.circle_outlined, color: AppColors.textDisabled),
                                 onTap: () => _toggleUser(userId),
                               );
                             },

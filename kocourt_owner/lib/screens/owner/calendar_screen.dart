@@ -149,7 +149,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: ['S', 'M', 'T', 'W', 'T', 'F', 'S']
-                  .map((d) => Expanded(child: Center(child: Text(d, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey[400])))))
+                  .map((d) => Expanded(child: Center(child: Text(d, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textMuted)))))
                   .toList(),
             ),
           ),
@@ -203,7 +203,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               children: [
                 Text(DateFormat('EEE, MMM d').format(_selectedDate), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
                 const Spacer(),
-                Text('${_bookings.length} bookings', style: TextStyle(fontSize: 13, color: Colors.grey[400])),
+                Text('${_bookings.length} bookings', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
               ],
             ),
           ),
@@ -216,7 +216,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     : _dayError != null && _bookings.isEmpty && _blocks.isEmpty
                     ? Center(child: Padding(padding: const EdgeInsets.all(24), child: TabErrorBanner(message: _dayError!, onRetry: _loadDay)))
                     : _bookings.isEmpty && _blocks.isEmpty
-                        ? Center(child: Text('No bookings', style: TextStyle(color: Colors.grey[400])))
+                        ? Center(child: Text('No bookings', style: TextStyle(color: AppColors.textMuted)))
                         : ListView(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             children: [
@@ -294,7 +294,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
       child: Row(
         children: [
           Container(
@@ -307,10 +307,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(bookingPerson(booking), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                Text('${booking['start_time'] ?? ''} – ${booking['end_time'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                Text('${booking['start_time'] ?? ''} – ${booking['end_time'] ?? ''}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                 if (recordedAfterPlayLabel(booking) != null)
-                  Text(recordedAfterPlayLabel(booking)!, style: TextStyle(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w600)),
-                if (space.isNotEmpty) Text(space, style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                  Text(recordedAfterPlayLabel(booking)!, style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                if (space.isNotEmpty) Text(space, style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
               ],
             ),
           ),
@@ -333,9 +333,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Closed', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-          Text('${block['start_time'] ?? ''} – ${block['end_time'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          Text('${block['start_time'] ?? ''} – ${block['end_time'] ?? ''}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           if ('${block['reason'] ?? ''}'.isNotEmpty)
-            Text('${block['reason']}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+            Text('${block['reason']}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
         ],
       ),
     );

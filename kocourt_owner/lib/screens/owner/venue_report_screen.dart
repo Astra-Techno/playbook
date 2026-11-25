@@ -61,7 +61,7 @@ class _VenueReportScreenState extends State<VenueReportScreen> {
                 children: [
                   if (_error != null) TabErrorBanner(message: _error!, onRetry: _load),
                   if (report != null) ...[
-                    Text('${report.from} to ${report.to}', style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w700)),
+                    Text('${report.from} to ${report.to}', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 16),
                     _figure('Booking prices', reportMoney(report.bookingGross), 'Confirmed booking prices, including walk-ins'),
                     _figure('Collected', reportMoney(report.collected), 'Paid booking and membership payments, after successful refunds'),
@@ -81,11 +81,11 @@ class _VenueReportScreenState extends State<VenueReportScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[700], fontWeight: FontWeight.w700)),
+          Text(label, style: TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
           const SizedBox(height: 2),
-          Text(detail, style: TextStyle(fontSize: 12, color: Colors.grey[600], height: 1.3)),
+          Text(detail, style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.3)),
         ],
       ),
     );

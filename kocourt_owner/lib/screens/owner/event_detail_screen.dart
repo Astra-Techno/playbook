@@ -442,7 +442,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   const Text('Categories', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 8),
                   if (_categories.isEmpty)
-                    Text('No categories yet', style: TextStyle(color: Colors.grey[600]))
+                    Text('No categories yet', style: TextStyle(color: AppColors.textSecondary))
                   else
                     for (final category in _categories)
                       Padding(
@@ -454,7 +454,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                             Text('${category['format'] ?? 'singles'} · fee ${category['fee'] ?? 0} · seats ${category['capacity'] ?? 0}'),
                             const SizedBox(height: 4),
                             if (category['entries'] is! List || (category['entries'] as List).isEmpty)
-                              Text('No entries yet', style: TextStyle(color: Colors.grey[600]))
+                              Text('No entries yet', style: TextStyle(color: AppColors.textSecondary))
                             else
                               for (final entry in category['entries'] as List)
                                 if (entry is Map) _entryRow(category, Map<String, dynamic>.from(entry)),
@@ -532,7 +532,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   const Text('Announcements', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 8),
                   if (_announcements.isEmpty)
-                    Text('No announcements yet', style: TextStyle(color: Colors.grey[600]))
+                    Text('No announcements yet', style: TextStyle(color: AppColors.textSecondary))
                   else
                     for (final note in _announcements)
                       Padding(

@@ -160,7 +160,7 @@ class _SlotChatScreenState extends State<SlotChatScreen> {
                 children: [
                   CircleAvatar(
                     radius: 20,
-                    backgroundColor: Colors.grey[200],
+                    backgroundColor: AppColors.border,
                     backgroundImage: m['avatar_url'] != null && m['avatar_url'].toString().isNotEmpty
                         ? NetworkImage(m['avatar_url'])
                         : null,
@@ -241,7 +241,7 @@ class _SlotChatScreenState extends State<SlotChatScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-            Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+            Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ],
         ),
         backgroundColor: Colors.white,
@@ -292,7 +292,7 @@ class _SlotChatScreenState extends State<SlotChatScreen> {
                       children: [
                         CircleAvatar(
                           radius: 15,
-                          backgroundColor: Colors.grey[200],
+                          backgroundColor: AppColors.border,
                           backgroundImage: m['avatar_url'] != null && m['avatar_url'].toString().isNotEmpty
                               ? NetworkImage(m['avatar_url'])
                               : null,
@@ -321,7 +321,7 @@ class _SlotChatScreenState extends State<SlotChatScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.forum_rounded, size: 48, color: Colors.grey[300]),
+                            Icon(Icons.forum_rounded, size: 48, color: AppColors.textDisabled),
                             const SizedBox(height: 12),
                             const Text('No messages yet', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600)),
                             const SizedBox(height: 4),
@@ -352,7 +352,7 @@ class _SlotChatScreenState extends State<SlotChatScreen> {
                                   padding: const EdgeInsets.symmetric(vertical: 12),
                                   child: Text(
                                     _dateBadge(msg['created_at']),
-                                    style: TextStyle(fontSize: 11, color: Colors.grey[400], fontWeight: FontWeight.w600),
+                                    style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w600),
                                   ),
                                 ),
                               _GroupMessageBubble(

@@ -377,7 +377,7 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.border)),
       child: Row(
         children: [
-          const Icon(Icons.payments_outlined, size: 18, color: Colors.orange),
+          const Icon(Icons.payments_outlined, size: 18, color: AppColors.warningDark),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

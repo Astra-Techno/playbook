@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class FaqScreen extends StatelessWidget {
   const FaqScreen({super.key});
@@ -23,13 +24,13 @@ class FaqScreen extends StatelessWidget {
         itemBuilder: (_, i) {
           return Container(
             margin: const EdgeInsets.only(bottom: 8),
-            decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
             child: ExpansionTile(
               tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
               title: Text(_faqs[i]['q']!, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-              children: [Text(_faqs[i]['a']!, style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.5))],
+              children: [Text(_faqs[i]['a']!, style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.5))],
             ),
           );
         },

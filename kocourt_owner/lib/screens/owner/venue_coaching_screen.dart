@@ -181,7 +181,7 @@ class _VenueCoachingScreenState extends State<VenueCoachingScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text('Saving a class closes that court time.', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                  Text('Saving a class closes that court time.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   const SizedBox(height: 20),
                   if (_error == null && _sessions.isEmpty)
                     const Padding(

@@ -139,7 +139,7 @@ class _VenueEquipmentScreenState extends State<VenueEquipmentScreen> {
                           child: const Text('Add item'),
                         ),
                       ),
-                      Text('A rental does not create a booking or a payment.', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                      Text('A rental does not create a booking or a payment.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     ],
                   ),
                   const SizedBox(height: 20),

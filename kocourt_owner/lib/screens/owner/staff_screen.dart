@@ -65,7 +65,7 @@ class _StaffScreenState extends State<StaffScreen> {
               selected: {role},
               onSelectionChanged: (next) => setDialog(() => role = next.first),
             ),
-            Text(staffPermissionLine(role), style: TextStyle(fontSize: 12, color: Colors.grey[700], height: 1.3)),
+            Text(staffPermissionLine(role), style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.3)),
             Row(
               children: [
                 Expanded(
@@ -178,7 +178,7 @@ class _StaffScreenState extends State<StaffScreen> {
                     Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
                       child: Row(
                         children: [
                           CircleAvatar(
@@ -196,7 +196,7 @@ class _StaffScreenState extends State<StaffScreen> {
                               children: [
                                 Text((member['name'] ?? member['phone'] ?? '').toString(), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                                 const SizedBox(height: 2),
-                                Text(staffPermissionLine(member['role']), style: TextStyle(fontSize: 12, color: Colors.grey[700], height: 1.3)),
+                                Text(staffPermissionLine(member['role']), style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.3)),
                               ],
                             ),
                           ),
@@ -206,7 +206,7 @@ class _StaffScreenState extends State<StaffScreen> {
                           ),
                           IconButton(
                             onPressed: () => _removeStaff(int.tryParse('${member['id']}') ?? 0),
-                            icon: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                            icon: Icon(Icons.close, size: 18, color: AppColors.textMuted),
                           ),
                         ],
                       ),

@@ -179,7 +179,7 @@ class _SpacesScreenState extends State<SpacesScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -226,7 +226,7 @@ class _SpacesScreenState extends State<SpacesScreen> {
           if (_canManage)
             IconButton(
               onPressed: () => _deleteSpace(space),
-              icon: Icon(Icons.delete_outline, size: 20, color: Colors.grey[400]),
+              icon: Icon(Icons.delete_outline, size: 20, color: AppColors.textMuted),
             ),
         ],
       ),

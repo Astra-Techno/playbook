@@ -96,7 +96,7 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(vertical: 8),
               itemCount: _threads.length + (_error != null ? 1 : 0),
-              separatorBuilder: (context, index) => Divider(height: 1, color: Colors.grey[100], indent: 76),
+              separatorBuilder: (context, index) => Divider(height: 1, color: AppColors.surfaceDim, indent: 76),
               itemBuilder: (_, i) {
                 if (_error != null && i == 0) {
                   return Padding(
@@ -158,7 +158,7 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
           children: [
             CircleAvatar(
               radius: 26,
-              backgroundColor: Colors.grey[200],
+              backgroundColor: AppColors.border,
               backgroundImage: otherAvatar != null ? NetworkImage(otherAvatar) : null,
               child: otherAvatar == null
                   ? Text(
@@ -188,7 +188,7 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
                         _timeAgo(lastAt),
                         style: TextStyle(
                           fontSize: 12,
-                          color: hasUnread ? AppColors.primary : Colors.grey[400],
+                          color: hasUnread ? AppColors.primary : AppColors.textMuted,
                           fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w400,
                         ),
                       ),
@@ -197,7 +197,7 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
                   const SizedBox(height: 2),
                   Text(
                     courtName,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[400], fontWeight: FontWeight.w500),
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w500),
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
@@ -208,7 +208,7 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
                           lastMessage,
                           style: TextStyle(
                             fontSize: 13,
-                            color: hasUnread ? AppColors.textPrimary : Colors.grey[500],
+                            color: hasUnread ? AppColors.textPrimary : AppColors.textSecondary,
                             fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
                           ),
                           maxLines: 1,

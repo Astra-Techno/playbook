@@ -213,7 +213,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             children: [
               Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
               if (subtitle != null)
-                Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
             ],
           ),
         ),
@@ -271,12 +271,12 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: Colors.grey[200],
+                                      color: AppColors.border,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Text(
                                       _dateBadge(msg['created_at']),
-                                      style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w600),
+                                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 ),
@@ -298,8 +298,8 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
-                border: Border(top: BorderSide(color: Colors.grey[200]!)),
+                color: AppColors.surface,
+                border: Border(top: BorderSide(color: AppColors.border)),
               ),
               child: Row(
                 children: [
@@ -310,13 +310,13 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(_replyToSender ?? '', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                        Text(_replyToContent ?? '', style: TextStyle(fontSize: 12, color: Colors.grey[600]), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text(_replyToContent ?? '', style: TextStyle(fontSize: 12, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),
                   GestureDetector(
                     onTap: _clearReply,
-                    child: Icon(Icons.close_rounded, size: 18, color: Colors.grey[400]),
+                    child: Icon(Icons.close_rounded, size: 18, color: AppColors.textMuted),
                   ),
                 ],
               ),
@@ -334,7 +334,7 @@ class _GroupChatScreenState extends State<GroupChatScreen> {
                   onTap: _sendImage,
                   child: Padding(
                     padding: const EdgeInsets.all(8),
-                    child: Icon(Icons.image_rounded, color: Colors.grey[500], size: 24),
+                    child: Icon(Icons.image_rounded, color: AppColors.textSecondary, size: 24),
                   ),
                 ),
                 Expanded(
@@ -454,7 +454,7 @@ class _MessageBubble extends StatelessWidget {
                       margin: const EdgeInsets.only(bottom: 6),
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: isMe ? Colors.white.withValues(alpha: 0.15) : Colors.grey[100],
+                        color: isMe ? Colors.white.withValues(alpha: 0.15) : AppColors.surfaceDim,
                         borderRadius: BorderRadius.circular(8),
                         border: Border(left: BorderSide(color: isMe ? Colors.white54 : AppColors.primary, width: 3)),
                       ),
@@ -467,7 +467,7 @@ class _MessageBubble extends StatelessWidget {
                           ),
                           Text(
                             message['reply_content'],
-                            style: TextStyle(fontSize: 12, color: isMe ? Colors.white60 : Colors.grey[600]),
+                            style: TextStyle(fontSize: 12, color: isMe ? Colors.white60 : AppColors.textSecondary),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -514,9 +514,9 @@ class _MessageBubble extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
+                          color: AppColors.surfaceDim,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey[300]!),
+                          border: Border.all(color: AppColors.textDisabled),
                         ),
                         child: Text('${e.key} ${e.value.length}', style: const TextStyle(fontSize: 12)),
                       ),
@@ -550,7 +550,7 @@ class _MessageBubble extends StatelessWidget {
                     },
                     child: Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle),
+                      decoration: BoxDecoration(color: AppColors.surfaceDim, shape: BoxShape.circle),
                       child: Text(emoji, style: const TextStyle(fontSize: 24)),
                     ),
                   );

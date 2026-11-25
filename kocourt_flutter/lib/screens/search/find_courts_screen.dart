@@ -75,7 +75,7 @@ class _FindCourtsScreenState extends State<FindCourtsScreen> {
                 prefixIcon: const Icon(AppIcons.search, size: 18),
                 suffixIcon: IconButton(onPressed: _search, icon: const Icon(AppIcons.compass, size: 18)),
                 filled: true,
-                fillColor: Colors.grey[100],
+                fillColor: AppColors.surfaceDim,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               ),
@@ -99,10 +99,10 @@ class _FindCourtsScreenState extends State<FindCourtsScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: sel ? Colors.black : Colors.grey[100],
+                        color: sel ? Colors.black : AppColors.surfaceDim,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Text(c.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: sel ? Colors.white : Colors.grey[600])),
+                      child: Text(c.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: sel ? Colors.white : AppColors.textSecondary)),
                     ),
                   ),
                 );
@@ -128,7 +128,7 @@ class _FindCourtsScreenState extends State<FindCourtsScreen> {
                         ),
                       )
                     : _results.isEmpty
-                    ? Center(child: Text(_searched ? 'No venues found' : 'Loading venues', style: TextStyle(color: Colors.grey[400])))
+                    ? Center(child: Text(_searched ? 'No venues found' : 'Loading venues', style: TextStyle(color: AppColors.textMuted)))
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),
                         itemCount: _results.length,
@@ -142,7 +142,7 @@ class _FindCourtsScreenState extends State<FindCourtsScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.grey[100]!),
+                                border: Border.all(color: AppColors.surfaceDim),
                                 boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
                               ),
                               child: Row(
@@ -160,7 +160,7 @@ class _FindCourtsScreenState extends State<FindCourtsScreen> {
                                         children: [
                                           Text(c['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                                           const SizedBox(height: 4),
-                                          Text(c['location'] ?? '', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                                          Text(c['location'] ?? '', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                                           if (c['hourly_rate'] != null)
                                             Text('₹${c['hourly_rate']}/slot', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primary)),
                                         ],

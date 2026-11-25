@@ -43,7 +43,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               alignment: Alignment.topRight,
               child: TextButton(
                 onPressed: _goToLogin,
-                child: Text('Skip', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[500])),
+                child: Text('Skip', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
               ),
             ),
             // Pages
@@ -70,7 +70,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         const SizedBox(height: 40),
                         Text(p['title'] as String, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900), textAlign: TextAlign.center),
                         const SizedBox(height: 16),
-                        Text(p['desc'] as String, style: TextStyle(fontSize: 15, color: Colors.grey[500], height: 1.5), textAlign: TextAlign.center),
+                        Text(p['desc'] as String, style: TextStyle(fontSize: 15, color: AppColors.textSecondary, height: 1.5), textAlign: TextAlign.center),
                       ],
                     ),
                   );
@@ -85,7 +85,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 height: 8,
                 margin: const EdgeInsets.symmetric(horizontal: 3),
                 decoration: BoxDecoration(
-                  color: _page == i ? Colors.black : Colors.grey[300],
+                  color: _page == i ? Colors.black : AppColors.textDisabled,
                   borderRadius: BorderRadius.circular(4),
                 ),
               )),

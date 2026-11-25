@@ -29,7 +29,7 @@ class TabErrorBanner extends StatelessWidget {
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
           ),
           const SizedBox(height: 6),
-          Text(message, style: TextStyle(fontSize: 13, color: Colors.grey[700], height: 1.4)),
+          Text(message, style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4)),
           const SizedBox(height: 4),
           TextButton(onPressed: onRetry, child: const Text('Try again')),
         ],
@@ -54,11 +54,11 @@ class TabEmptyMessage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, size: 48, color: Colors.grey[300]),
+        Icon(icon, size: 48, color: AppColors.textDisabled),
         const SizedBox(height: 16),
-        Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
+        Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
         const SizedBox(height: 4),
-        Text(subtitle, style: TextStyle(fontSize: 13, color: Colors.grey[400])),
+        Text(subtitle, style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
       ],
     );
   }

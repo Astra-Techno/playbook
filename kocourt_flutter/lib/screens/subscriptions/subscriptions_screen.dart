@@ -83,11 +83,11 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(AppIcons.award, size: 48, color: Colors.grey[300]),
+                      Icon(AppIcons.award, size: 48, color: AppColors.textDisabled),
                       const SizedBox(height: 16),
-                      Text('No memberships', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
+                      Text('No memberships', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
                       const SizedBox(height: 8),
-                      Text('Subscribe to a venue plan to get started', style: TextStyle(fontSize: 13, color: Colors.grey[400])),
+                      Text('Subscribe to a venue plan to get started', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
                     ],
                   ),
                 )
@@ -108,7 +108,7 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: isExpiring ? AppColors.error.withValues(alpha: 0.3) : Colors.grey[100]!),
+                          border: Border.all(color: isExpiring ? AppColors.error.withValues(alpha: 0.3) : AppColors.surfaceDim),
                           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
                         ),
                         child: Column(
@@ -131,16 +131,16 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                               ],
                             ),
                             const SizedBox(height: 8),
-                            Text(s['plan_name'] ?? '', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[600])),
+                            Text(s['plan_name'] ?? '', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
                             const SizedBox(height: 4),
-                            Text('${s['start_date'] ?? ''} → ${s['end_date'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                            Text('${s['start_date'] ?? ''} → ${s['end_date'] ?? ''}', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                             if (isExpiring && isActive) ...[
                               const SizedBox(height: 12),
                               Row(
                                 children: [
-                                  Icon(Icons.warning_amber_rounded, size: 14, color: Colors.orange[700]),
+                                  Icon(Icons.warning_amber_rounded, size: 14, color: AppColors.warningDark),
                                   const SizedBox(width: 4),
-                                  Text('Expiring in $daysRemaining days', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.orange[700])),
+                                  Text('Expiring in $daysRemaining days', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.warningDark)),
                                 ],
                               ),
                             ],

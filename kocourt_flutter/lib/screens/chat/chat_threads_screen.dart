@@ -59,16 +59,16 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(AppIcons.messageCircle, size: 48, color: Colors.grey[300]),
+                      Icon(AppIcons.messageCircle, size: 48, color: AppColors.textDisabled),
                       const SizedBox(height: 16),
                       Text(
                         'No conversations yet',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.grey[700]),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         'Messages from bookings will appear here',
-                        style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                       ),
                     ],
                   ),
@@ -82,7 +82,7 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
                   child: ListView.separated(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: _threads.length,
-                    separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[100], indent: 76),
+                    separatorBuilder: (_, __) => Divider(height: 1, color: AppColors.surfaceDim, indent: 76),
                     itemBuilder: (_, i) => _buildThread(_threads[i]),
                   ),
                 ),
@@ -120,7 +120,7 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
             // Avatar
             CircleAvatar(
               radius: 26,
-              backgroundColor: Colors.grey[200],
+              backgroundColor: AppColors.border,
               backgroundImage: otherAvatar != null ? NetworkImage(otherAvatar) : null,
               child: otherAvatar == null
                   ? Text(
@@ -151,7 +151,7 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
                         _timeAgo(lastAt),
                         style: TextStyle(
                           fontSize: 12,
-                          color: hasUnread ? AppColors.primary : Colors.grey[400],
+                          color: hasUnread ? AppColors.primary : AppColors.textMuted,
                           fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w400,
                         ),
                       ),
@@ -160,7 +160,7 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
                   const SizedBox(height: 2),
                   Text(
                     courtName,
-                    style: TextStyle(fontSize: 12, color: Colors.grey[400], fontWeight: FontWeight.w500),
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w500),
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
@@ -171,7 +171,7 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
                           lastMessage,
                           style: TextStyle(
                             fontSize: 13,
-                            color: hasUnread ? AppColors.textPrimary : Colors.grey[500],
+                            color: hasUnread ? AppColors.textPrimary : AppColors.textSecondary,
                             fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
                           ),
                           maxLines: 1,

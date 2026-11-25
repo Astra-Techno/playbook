@@ -125,17 +125,17 @@ class _PayoutSettingsScreenState extends State<PayoutSettingsScreen> {
                       decoration: BoxDecoration(
                         color: _cfStatus == 'active'
                             ? AppColors.secondary.withValues(alpha: 0.08)
-                            : Colors.orange.withValues(alpha: 0.08),
+                            : AppColors.warningLight,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: _cfStatus == 'active' ? AppColors.secondary.withValues(alpha: 0.3) : Colors.orange.withValues(alpha: 0.3),
+                          color: _cfStatus == 'active' ? AppColors.secondary.withValues(alpha: 0.3) : AppColors.warningLight,
                         ),
                       ),
                       child: Row(
                         children: [
                           Icon(
                             _cfStatus == 'active' ? Icons.check_circle_rounded : Icons.schedule_rounded,
-                            color: _cfStatus == 'active' ? AppColors.secondary : Colors.orange,
+                            color: _cfStatus == 'active' ? AppColors.secondary : AppColors.warningDark,
                             size: 20,
                           ),
                           const SizedBox(width: 10),
@@ -146,7 +146,7 @@ class _PayoutSettingsScreenState extends State<PayoutSettingsScreen> {
                                   : 'Verification pending. Payouts will start once verified.',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: _cfStatus == 'active' ? AppColors.secondary : Colors.orange[800],
+                                color: _cfStatus == 'active' ? AppColors.secondary : AppColors.warningDark,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -161,17 +161,17 @@ class _PayoutSettingsScreenState extends State<PayoutSettingsScreen> {
                     padding: const EdgeInsets.all(16),
                     margin: const EdgeInsets.only(bottom: 24),
                     decoration: BoxDecoration(
-                      color: Colors.grey[50],
+                      color: AppColors.surface,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.info_outline_rounded, color: Colors.grey[500], size: 20),
+                        Icon(Icons.info_outline_rounded, color: AppColors.textSecondary, size: 20),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
                             'Platform fee: ${_commission.toStringAsFixed(0)}% · You receive: ${(100 - _commission).toStringAsFixed(0)}% per booking',
-                            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                           ),
                         ),
                       ],
@@ -189,23 +189,23 @@ class _PayoutSettingsScreenState extends State<PayoutSettingsScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             decoration: BoxDecoration(
-                              color: _accountType == 'bank_account' ? AppColors.primary.withValues(alpha: 0.1) : Colors.grey[100],
+                              color: _accountType == 'bank_account' ? AppColors.primary.withValues(alpha: 0.1) : AppColors.surfaceDim,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: _accountType == 'bank_account' ? AppColors.primary : Colors.grey[200]!,
+                                color: _accountType == 'bank_account' ? AppColors.primary : AppColors.border,
                                 width: _accountType == 'bank_account' ? 2 : 1,
                               ),
                             ),
                             child: Column(
                               children: [
                                 Icon(Icons.account_balance_rounded,
-                                    color: _accountType == 'bank_account' ? AppColors.primary : Colors.grey[400], size: 28),
+                                    color: _accountType == 'bank_account' ? AppColors.primary : AppColors.textMuted, size: 28),
                                 const SizedBox(height: 6),
                                 Text('Bank Account',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 12,
-                                      color: _accountType == 'bank_account' ? AppColors.primary : Colors.grey[500],
+                                      color: _accountType == 'bank_account' ? AppColors.primary : AppColors.textSecondary,
                                     )),
                               ],
                             ),
@@ -219,23 +219,23 @@ class _PayoutSettingsScreenState extends State<PayoutSettingsScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             decoration: BoxDecoration(
-                              color: _accountType == 'upi' ? AppColors.primary.withValues(alpha: 0.1) : Colors.grey[100],
+                              color: _accountType == 'upi' ? AppColors.primary.withValues(alpha: 0.1) : AppColors.surfaceDim,
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: _accountType == 'upi' ? AppColors.primary : Colors.grey[200]!,
+                                color: _accountType == 'upi' ? AppColors.primary : AppColors.border,
                                 width: _accountType == 'upi' ? 2 : 1,
                               ),
                             ),
                             child: Column(
                               children: [
                                 Icon(Icons.currency_rupee_rounded,
-                                    color: _accountType == 'upi' ? AppColors.primary : Colors.grey[400], size: 28),
+                                    color: _accountType == 'upi' ? AppColors.primary : AppColors.textMuted, size: 28),
                                 const SizedBox(height: 6),
                                 Text('UPI',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 12,
-                                      color: _accountType == 'upi' ? AppColors.primary : Colors.grey[500],
+                                      color: _accountType == 'upi' ? AppColors.primary : AppColors.textSecondary,
                                     )),
                               ],
                             ),

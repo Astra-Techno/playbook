@@ -228,17 +228,17 @@ class _BlockSlotsScreenState extends State<BlockSlotsScreen> {
                 Text('${block['start_time']} → ${block['end_time']}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                 Text(
                   '$scope · $kind${repeat ? ' · every year' : ''}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
                 if ('${block['reason'] ?? ''}'.isNotEmpty)
-                  Text('${block['reason']}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                  Text('${block['reason']}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               ],
             ),
           ),
           if (id != null)
             IconButton(
               onPressed: () => _removeBlock(id),
-              icon: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+              icon: Icon(Icons.close, size: 18, color: AppColors.textMuted),
             ),
         ],
       ),

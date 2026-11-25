@@ -235,7 +235,7 @@ class _PricingScreenState extends State<PricingScreen> {
   Widget _previewCard() {
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -283,7 +283,7 @@ class _PricingScreenState extends State<PricingScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
       child: Row(
         children: [
           const Icon(Icons.price_change, size: 18, color: AppColors.primary),
@@ -295,7 +295,7 @@ class _PricingScreenState extends State<PricingScreen> {
                 Text('${rule['name'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                 Text(
                   '$day · ${rule['start_hour']}:00–${rule['end_hour']}:00 · ₹${rule['price']}/hr · priority ${rule['priority'] ?? 0}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
               ],
             ),
@@ -303,7 +303,7 @@ class _PricingScreenState extends State<PricingScreen> {
           if (id != null)
             IconButton(
               onPressed: () => _deleteRule(id),
-              icon: Icon(Icons.delete_outline, size: 18, color: Colors.grey[400]),
+              icon: Icon(Icons.delete_outline, size: 18, color: AppColors.textMuted),
             ),
         ],
       ),

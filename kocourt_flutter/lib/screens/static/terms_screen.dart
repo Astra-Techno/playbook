@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class TermsScreen extends StatelessWidget {
   const TermsScreen({super.key});
@@ -44,7 +45,7 @@ We may update these terms at any time. Continued use constitutes acceptance.
 
 10. Contact
 For questions, call +91 99944 39081 or email support@kocourt.com.''',
-          style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.6),
+          style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.6),
         ),
       ),
     );

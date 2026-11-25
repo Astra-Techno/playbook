@@ -104,7 +104,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             const Divider(),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: Icon(AppIcons.camera, color: Colors.grey[600]),
+              leading: Icon(AppIcons.camera, color: AppColors.textSecondary),
               title: const Text('Add Photo', style: TextStyle(fontWeight: FontWeight.w600)),
               onTap: _pickImage,
             ),

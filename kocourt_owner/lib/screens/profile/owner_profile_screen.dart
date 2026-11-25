@@ -131,7 +131,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Row(
                   children: [
-                    Icon(Icons.language, size: 22, color: Colors.grey[700]),
+                    Icon(Icons.language, size: 22, color: AppColors.textSecondary),
                     const SizedBox(width: 14),
                     Expanded(child: Text(ownerPhrase(language, 'language'), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600))),
                     Semantics(
@@ -142,7 +142,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                         onPressed: () => chooseOwnerLanguage('en'),
                         child: Text(
                           ownerPhrase(language, 'english'),
-                          style: TextStyle(fontWeight: language == 'en' ? FontWeight.w800 : FontWeight.w500, color: language == 'en' ? AppColors.primary : Colors.grey[700]),
+                          style: TextStyle(fontWeight: language == 'en' ? FontWeight.w800 : FontWeight.w500, color: language == 'en' ? AppColors.primary : AppColors.textSecondary),
                         ),
                       ),
                     ),
@@ -154,7 +154,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                         onPressed: () => chooseOwnerLanguage('ta'),
                         child: Text(
                           ownerPhrase(language, 'tamil'),
-                          style: TextStyle(fontWeight: language == 'ta' ? FontWeight.w800 : FontWeight.w500, color: language == 'ta' ? AppColors.primary : Colors.grey[700]),
+                          style: TextStyle(fontWeight: language == 'ta' ? FontWeight.w800 : FontWeight.w500, color: language == 'ta' ? AppColors.primary : AppColors.textSecondary),
                         ),
                       ),
                     ),
@@ -211,7 +211,7 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
             MenuIcon(icon, color: color),
             const SizedBox(width: 14),
             Expanded(child: Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: color))),
-            Icon(AppIcons.chevronRight, size: 18, color: Colors.grey[300]),
+            Icon(AppIcons.chevronRight, size: 18, color: AppColors.textDisabled),
           ],
         ),
       ),

@@ -223,9 +223,9 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           Center(
             child: Column(
               children: [
-                Icon(AppIcons.layoutGrid, size: 48, color: Colors.grey[300]),
+                Icon(AppIcons.layoutGrid, size: 48, color: AppColors.textDisabled),
                 const SizedBox(height: 16),
-                Text('No venues yet', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
+                Text('No venues yet', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
                 const SizedBox(height: 8),
                 ElevatedButton.icon(
                   onPressed: () => Navigator.push(context, MaterialPageRoute(
@@ -286,14 +286,14 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w800,
-              color: Colors.grey[400],
+              color: AppColors.textMuted,
               letterSpacing: 1.5,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             'Nearby venues not yet on KoCourt',
-            style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
           ..._ghostPlaces.map((place) => _ghostPlaceCard(place)),
@@ -323,7 +323,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
           ),
           const SizedBox(height: 6),
-          Text(messages.join('\n'), style: TextStyle(fontSize: 13, color: Colors.grey[700], height: 1.4)),
+          Text(messages.join('\n'), style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4)),
           const SizedBox(height: 12),
           TextButton(
             onPressed: _loading ? null : () {
@@ -463,7 +463,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                   const SizedBox(height: 4),
                   StatusTag(venue.accessLabel, tone: venue.isOwner ? TagTone.brand : TagTone.free),
                   const SizedBox(height: 2),
-                  Text(c['location'] ?? '', style: TextStyle(fontSize: 12, color: Colors.grey[500]), overflow: TextOverflow.ellipsis),
+                  Text(c['location'] ?? '', style: TextStyle(fontSize: 12, color: AppColors.textSecondary), overflow: TextOverflow.ellipsis),
                   if (courtId != null && _occupancy[courtId] != null) ...[
                     const SizedBox(height: 4),
                     Text(
@@ -521,7 +521,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                   const SizedBox(height: 3),
                   Text(
                     place['address'] ?? '',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

@@ -132,7 +132,7 @@ class AppColors {
   // Text
   static const textPrimary = Color(0xFF111827);
   static const textSecondary = Color(0xFF5B6475);
-  static const textMuted = Color(0xFF9CA3AF);
+  static const textMuted = Color(0xFF6B7280); // v4: small text must pass 4.5:1
   static const textDisabled = Color(0xFFD1D5DB);
 
   // Borders
@@ -144,6 +144,8 @@ class AppColors {
   static const errorLight = Color(0xFFFEE2E2);
   static const warning = Color(0xFFF59E0B);
   static const warningLight = Color(0xFFFEF3C7);
+  /// Amber readable as text on white (4.8:1); `warning` is for fills and icons.
+  static const warningDark = Color(0xFFB45309);
   static const info = Color(0xFF3B82F6);
   static const infoLight = Color(0xFFDBEAFE);
 
