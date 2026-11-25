@@ -194,7 +194,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       );
     }
     final status = '${booking['status'] ?? ''}';
-    final canChange = status == 'confirmed' && !_busy;
+    // Server refuses changes once play has started (BookingController "Cannot cancel past bookings").
+    final start = DateTime.tryParse('${booking['start_time']}');
+    final started = start != null && !start.isAfter(DateTime.now());
+    final canChange = status == 'confirmed' && !_busy && !started;
     return Scaffold(
       appBar: AppBar(title: const Text('Booking', style: TextStyle(fontWeight: FontWeight.w800))),
       body: ListView(

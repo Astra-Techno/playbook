@@ -39,14 +39,18 @@ class _ToastOverlayState extends State<ToastOverlay> {
           top: MediaQuery.of(context).padding.top + 8,
           left: 16,
           right: 16,
-          child: Consumer<ToastProvider>(
-            builder: (_, toasts, __) {
-              return Column(
-                children: toasts.toasts.map((toast) {
-                  return _ToastCard(key: ValueKey(toast.id), toast: toast);
-                }).toList(),
-              );
-            },
+          // Sits above the Navigator, so it needs its own Material for text style and ink.
+          child: Material(
+            type: MaterialType.transparency,
+            child: Consumer<ToastProvider>(
+              builder: (_, toasts, __) {
+                return Column(
+                  children: toasts.toasts.map((toast) {
+                    return _ToastCard(key: ValueKey(toast.id), toast: toast);
+                  }).toList(),
+                );
+              },
+            ),
           ),
         ),
       ],

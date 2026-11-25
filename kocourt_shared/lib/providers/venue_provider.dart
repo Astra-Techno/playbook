@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/api.dart';
+import '../core/constants.dart';
 
 double venueNumber(dynamic value) {
   if (value is num) return value.toDouble();
@@ -27,6 +28,28 @@ List<Map<String, dynamic>> sortVenueRows(List<Map<String, dynamic>> rows, String
   return copy;
 }
 
+/// Home search and filter sheet. Text matches name, location or sport.
+List<Map<String, dynamic>> filterVenueRows(
+  List<Map<String, dynamic>> rows, {
+  String query = '',
+  double minPrice = 0,
+  double maxPrice = 10000,
+  double minRating = 0,
+}) {
+  final q = query.trim().toLowerCase();
+  return rows.where((v) {
+    if (q.isNotEmpty) {
+      final sport = sportCategories.where((c) => c.id == v['type']).map((c) => c.label).join();
+      final text = '${v['name'] ?? ''} ${v['location'] ?? ''} ${v['type'] ?? ''} $sport'.toLowerCase();
+      if (!text.contains(q)) return false;
+    }
+    final price = venueNumber(v['hourly_rate']);
+    if (price < minPrice) return false;
+    if (maxPrice < 10000 && price > maxPrice) return false; // 10000 is the slider's "no limit" end
+    return venueNumber(v['avg_rating']) >= minRating;
+  }).toList();
+}
+
 class VenueProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _venues = [];
   List<Map<String, dynamic>> _ghostPlaces = [];
@@ -44,7 +67,10 @@ class VenueProvider extends ChangeNotifier {
   double _minRating = 0;
   String _sortBy = 'distance';
 
-  List<Map<String, dynamic>> get venues => _venues;
+  List<Map<String, dynamic>> get venues => sortVenueRows(
+        filterVenueRows(_venues, query: _searchText, minPrice: _minPrice, maxPrice: _maxPrice, minRating: _minRating),
+        _sortBy,
+      );
   List<Map<String, dynamic>> get ghostPlaces => _ghostPlaces;
   Set<int> get favorites => _favorites;
   bool get isLoading => _isLoading;
@@ -96,7 +122,6 @@ class VenueProvider extends ChangeNotifier {
     _minRating = minRating ?? _minRating;
     _sortBy = sortBy ?? _sortBy;
     notifyListeners();
-    fetchVenues();
   }
 
   Future<void> fetchVenues() async {
@@ -108,15 +133,13 @@ class VenueProvider extends ChangeNotifier {
         params['lat'] = _userLat;
         params['lng'] = _userLng;
         params['radius'] = _selectedRadius;
-      } else if (_searchText.isNotEmpty) {
-        params['location'] = _searchText;
       }
       if (_selectedSport != 'All') params['type'] = _selectedSport;
 
       final res = await Api().get('/courts', params: params);
-      _venues = sortVenueRows(List<Map<String, dynamic>>.from(
+      _venues = List<Map<String, dynamic>>.from(
         (res.data['records'] ?? []).map((e) => Map<String, dynamic>.from(e)),
-      ), _sortBy);
+      );
     } catch (_) {
       _venues = [];
     } finally {
