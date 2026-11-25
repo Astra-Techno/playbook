@@ -70,7 +70,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
         bottom: TabBar(
           controller: _tabCtrl,
           indicatorColor: AppColors.primary,
-          labelColor: Colors.black,
+          labelColor: AppColors.textPrimary,
           unselectedLabelColor: Colors.grey,
           labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
           tabs: const [Tab(text: 'Claims'), Tab(text: 'Users'), Tab(text: 'Payouts')],
@@ -97,7 +97,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.border)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -141,16 +141,9 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
                 Text('Claimed by: ${c['user_name'] ?? c['phone'] ?? ''}', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                 Text('Phone: ${c['phone'] ?? ''}', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                 const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: isPending ? AppColors.warningLight : AppColors.secondary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    (c['status'] ?? 'pending').toString().toUpperCase(),
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: isPending ? AppColors.warningDark : AppColors.secondary),
-                  ),
+                StatusTag(
+                  '${c['status'] ?? 'pending'}'[0].toUpperCase() + '${c['status'] ?? 'pending'}'.substring(1),
+                  tone: isPending ? TagTone.ending : TagTone.free,
                 ),
                 if (isPending) ...[
                   const SizedBox(height: 12),

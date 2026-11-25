@@ -140,8 +140,7 @@ class _ManagePlansScreenState extends State<ManagePlansScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: AppColors.surfaceDim),
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                          border: Border.all(color: AppColors.border),
                         ),
                         child: Row(
                           children: [

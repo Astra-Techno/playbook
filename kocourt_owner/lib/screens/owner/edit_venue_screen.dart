@@ -314,7 +314,7 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
                                         : _locationCtrl.text.trim(),
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      color: locationReady(_locationCtrl.text, _lat, _lng) ? Colors.black : AppColors.textSecondary,
+                                      color: locationReady(_locationCtrl.text, _lat, _lng) ? AppColors.textPrimary : AppColors.textSecondary,
                                     ),
                                   ),
                                   if (!locationReady(_locationCtrl.text, _lat, _lng))
@@ -343,7 +343,7 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: sel ? Colors.black : AppColors.surfaceDim,
+                            color: sel ? AppColors.primary : AppColors.surfaceDim,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(

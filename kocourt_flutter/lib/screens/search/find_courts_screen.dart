@@ -99,7 +99,7 @@ class _FindCourtsScreenState extends State<FindCourtsScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: sel ? Colors.black : AppColors.surfaceDim,
+                        color: sel ? AppColors.primary : AppColors.surfaceDim,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(c.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: sel ? Colors.white : AppColors.textSecondary)),
@@ -142,8 +142,7 @@ class _FindCourtsScreenState extends State<FindCourtsScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: AppColors.surfaceDim),
-                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                                border: Border.all(color: AppColors.border),
                               ),
                               child: Row(
                                 children: [

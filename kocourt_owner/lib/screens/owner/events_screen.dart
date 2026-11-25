@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import '../../widgets/tab_phase.dart';
@@ -87,15 +88,48 @@ class _EventsScreenState extends State<EventsScreen> {
                     )
                   else
                     for (final event in _events)
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: Text(
-                          (event['title'] ?? 'Event').toString(),
-                          style: const TextStyle(fontWeight: FontWeight.w800),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Card(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
+                            onTap: () => context.push('/events/${event['id']}'),
+                            child: Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: Row(
+                                children: [
+                                  const MenuIcon(Icons.emoji_events_rounded),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text((event['title'] ?? 'Event').toString(),
+                                            style: GoogleFonts.archivo(fontSize: 17, fontWeight: FontWeight.w900)),
+                                        const SizedBox(height: 6),
+                                        Wrap(
+                                          spacing: 6,
+                                          children: [
+                                            if ('${event['sport'] ?? ''}'.isNotEmpty) StatusTag('${event['sport']}', tone: TagTone.brand),
+                                            StatusTag(
+                                              eventStatusLabel(event['status']),
+                                              tone: switch ('${event['status']}') {
+                                                'published' => TagTone.free,
+                                                'cancelled' => TagTone.due,
+                                                _ => TagTone.muted,
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Icon(Icons.chevron_right, color: AppColors.textMuted),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                        subtitle: Text('${event['sport'] ?? ''} · ${eventStatusLabel(event['status'])}'),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => context.push('/events/${event['id']}'),
                       ),
                 ],
               ),

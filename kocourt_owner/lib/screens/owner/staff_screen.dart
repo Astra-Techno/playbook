@@ -178,16 +178,13 @@ class _StaffScreenState extends State<StaffScreen> {
                     Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.border)),
                       child: Row(
                         children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor: brand.primary.withValues(alpha: 0.1),
-                            child: Text(
-                              ((member['name'] ?? 'S').toString().isEmpty ? 'S' : (member['name'] ?? 'S').toString())[0].toUpperCase(),
-                              style: TextStyle(fontWeight: FontWeight.w800, color: brand.primary),
-                            ),
+                          TimePlate(
+                            top: ((member['name'] ?? 'S').toString().isEmpty ? 'S' : (member['name'] ?? 'S').toString())[0].toUpperCase(),
+                            filled: member['role'] == 'manager',
+                            width: 44,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
