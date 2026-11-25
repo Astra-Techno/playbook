@@ -105,11 +105,22 @@ class _OwnerAppShellState extends State<OwnerAppShell> with TickerProviderStateM
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ScaleTransition(
-                  scale: Tween(begin: 1.0, end: 1.3).animate(
-                    CurvedAnimation(parent: _iconControllers[index], curve: Curves.easeOutBack),
+                // v4: the active tab sits on a soft brand pill, like the Player app.
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutCubic,
+                  width: 48,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    color: active ? context.brandPrimary.withValues(alpha: 0.1) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(15),
                   ),
-                  child: Icon(icon, size: 24, color: active ? context.brandPrimary : AppColors.textMuted),
+                  child: ScaleTransition(
+                    scale: Tween(begin: 1.0, end: 1.15).animate(
+                      CurvedAnimation(parent: _iconControllers[index], curve: Curves.easeOutBack),
+                    ),
+                    child: Icon(icon, size: 22, color: active ? context.brandPrimary : AppColors.textMuted),
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(

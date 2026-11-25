@@ -1,5 +1,5 @@
-/// Pure rules behind the Court register (tested in test/register_logic_test.dart).
-/// Rows come from `GET /courts/:id/calendar?date=…` (day view).
+// Pure rules behind the Court register (tested in test/register_logic_test.dart).
+// Rows come from `GET /courts/:id/calendar?date=…` (day view).
 
 DateTime? _at(Object? raw) => DateTime.tryParse('${raw ?? ''}');
 

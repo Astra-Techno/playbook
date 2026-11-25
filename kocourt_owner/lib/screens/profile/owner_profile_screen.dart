@@ -105,37 +105,14 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
                       ),
                     )
                   else ...[
-                    const SizedBox(height: 20),
-                    CircleAvatar(
-                      radius: 48,
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                      backgroundImage: avatar is String && avatar.isNotEmpty ? NetworkImage(avatar) : null,
-                      child: avatar is String && avatar.isNotEmpty
-                          ? null
-                          : Text(
-                              initial,
-                              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: AppColors.primary),
-                            ),
+                    ProfileHeader(
+                      name: name,
+                      phone: phone,
+                      initial: initial,
+                      avatarUrl: avatar is String ? avatar : null,
+                      role: auth.isAdmin ? 'Admin' : 'Venue owner',
                     ),
-                    const SizedBox(height: 16),
-                    Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-                    const SizedBox(height: 4),
-                    Text(phone, style: TextStyle(fontSize: 14, color: Colors.grey[500])),
-            if (auth.isAdmin) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'ADMIN',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primary, letterSpacing: 1),
-                ),
-              ),
-            ],
-            const SizedBox(height: 32),
+                    const SizedBox(height: 20),
 
             _menuItem(Icons.person_outline, 'Edit Profile', () {
               showModalBottomSheet(
@@ -231,9 +208,9 @@ class _OwnerProfileScreenState extends State<OwnerProfileScreen> {
         padding: const EdgeInsets.symmetric(vertical: 14),
         child: Row(
           children: [
-            Icon(icon, size: 22, color: color ?? Colors.grey[700]),
+            MenuIcon(icon, color: color),
             const SizedBox(width: 14),
-            Expanded(child: Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: color))),
+            Expanded(child: Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: color))),
             Icon(AppIcons.chevronRight, size: 18, color: Colors.grey[300]),
           ],
         ),

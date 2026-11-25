@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../bookings/bookings_screen.dart';
 import '../reviews/reviews_screen.dart';
 import '../subscriptions/subscriptions_screen.dart';
@@ -90,83 +89,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 16),
 
                     // Profile card
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 20),
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        boxShadow: AppShadows.card,
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 64,
-                            height: 64,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.15), width: 3),
-                            ),
-                            child: ClipOval(
-                              child: auth.avatarUrl != null
-                                  ? CachedNetworkImage(imageUrl: auth.avatarUrl!, fit: BoxFit.cover)
-                                  : Container(
-                                      color: AppColors.primary.withValues(alpha: 0.08),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        auth.userName.isNotEmpty ? auth.userName[0].toUpperCase() : '?',
-                                        style: const TextStyle(
-                                          fontSize: 26,
-                                          fontWeight: FontWeight.w900,
-                                          color: AppColors.primary,
-                                        ),
-                                      ),
-                                    ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  auth.userName,
-                                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Icon(AppIcons.phone, size: 12, color: AppColors.textMuted),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '+91 ${auth.userPhone}',
-                                      style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                GestureDetector(
-                                  onTap: () => ProfileEditSheet.show(context),
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.06),
-                                      borderRadius: BorderRadius.circular(AppRadius.full),
-                                    ),
-                                    child: const Text(
-                                      'Edit Profile',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: ProfileHeader(
+                        name: auth.userName,
+                        phone: auth.userPhone.isEmpty ? '' : '+91 ${auth.userPhone}',
+                        initial: auth.userName.isNotEmpty ? auth.userName[0].toUpperCase() : '?',
+                        avatarUrl: auth.avatarUrl,
+                        role: 'Player',
                       ),
                     ),
 
@@ -175,6 +105,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // Main menu section
                     _MenuSection(
                       children: [
+                        _MenuItem(
+                          icon: AppIcons.user,
+                          label: 'Edit Profile',
+                          onTap: () => ProfileEditSheet.show(context),
+                        ),
                         _MenuItem(
                           icon: AppIcons.calendarDays,
                           label: 'My Bookings',
@@ -291,7 +226,7 @@ class _MenuSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        boxShadow: AppShadows.card,
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         children: [
@@ -333,22 +268,14 @@ class _MenuItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: (color ?? AppColors.textSecondary).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(AppRadius.sm),
-              ),
-              child: Icon(icon, size: 18, color: color ?? AppColors.textSecondary),
-            ),
+            MenuIcon(icon, color: color),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 label,
                 style: TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: color ?? AppColors.textPrimary,
                 ),
               ),

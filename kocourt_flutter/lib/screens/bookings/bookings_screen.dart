@@ -5,6 +5,7 @@ import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../court_details/court_details_screen.dart';
+import 'booking_ticket.dart' show passCountdown;
 import '../court_details/slot_block.dart';
 import '../chat/chat_screen.dart';
 import '../chat/slot_chat_screen.dart';
@@ -529,201 +530,96 @@ class _BookingsScreenState extends State<BookingsScreen> {
     final isCancelled = status == 'cancelled';
     final isPast = endDt != null ? endDt.isBefore(DateTime.now()) : _isPastBooking(date, rawEnd);
 
-    final startFormatted = startDt != null ? DateFormat('HH:mm').format(startDt) : rawStart;
-    final endFormatted = endDt != null ? DateFormat('HH:mm').format(endDt) : rawEnd;
+    final countdown = isConfirmed && !isPast ? passCountdown(startDt, endDt, DateTime.now()) : '';
+    final timeRange = startDt == null
+        ? '$rawStart'
+        : endDt == null
+            ? DateFormat('h:mm a').format(startDt)
+            : '${DateFormat('h:mm').format(startDt)} – ${DateFormat('h:mm a').format(endDt)}';
 
-    return GestureDetector(
-      onTap: courtId != null
-          ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => CourtDetailsScreen(courtId: courtIdFrom(courtId))))
-          : null,
-      onLongPress: isConfirmed && !isPast
-          ? () => _showBookingActions(booking)
-          : null,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: IntrinsicHeight(
-          child: Row(
-            children: [
-              // Left accent strip
-              Container(
-                width: 4,
-                decoration: BoxDecoration(
-                  color: isConfirmed
-                      ? AppColors.secondary
-                      : isCancelled
-                          ? AppColors.error
-                          : AppColors.textMuted,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    bottomLeft: Radius.circular(20),
-                  ),
-                ),
-              ),
-              // Content
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Row(
-                    children: [
-                      // Time block
-                      Container(
-                        width: 60,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: isConfirmed
-                              ? AppColors.secondary.withValues(alpha: 0.08)
-                              : AppColors.surface,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              startFormatted,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w900,
-                                color: isConfirmed ? AppColors.secondary : AppColors.textMuted,
-                              ),
-                            ),
-                            if (endFormatted.isNotEmpty) ...[
-                              Container(
-                                width: 8,
-                                height: 1,
-                                margin: const EdgeInsets.symmetric(vertical: 3),
-                                color: isConfirmed
-                                    ? AppColors.secondary.withValues(alpha: 0.3)
-                                    : AppColors.textDisabled,
-                              ),
-                              Text(
-                                endFormatted,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: isConfirmed
-                                      ? AppColors.secondary.withValues(alpha: 0.6)
-                                      : AppColors.textDisabled,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      // Details
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              courtName,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (booking['refund_status'] != null) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                'Refund: ${booking['refund_status'].toString().replaceAll('_', ' ')} · INR ${((num.tryParse(booking['refund_amount_paise'].toString()) ?? 0) / 100).toStringAsFixed(2)}',
-                                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                              ),
-                            ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          onTap: courtId != null
+              ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => CourtDetailsScreen(courtId: courtIdFrom(courtId))))
+              : null,
+          onLongPress: isConfirmed && !isPast ? () => _showBookingActions(booking) : null,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    TimePlate(
+                      top: startDt == null ? '—' : DateFormat('h a').format(startDt),
+                      bottom: dayLabel.isNotEmpty ? dayLabel : formattedDate,
+                      filled: isConfirmed && !isPast,
+                      width: 78,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(courtName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 2),
+                          Text('$formattedDate · $timeRange', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          if (countdown.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Row(
                               children: [
-                                Icon(AppIcons.calendarDays, size: 12, color: AppColors.textMuted),
+                                Icon(Icons.timer_outlined, size: 13, color: context.brand.primary),
                                 const SizedBox(width: 4),
-                                if (dayLabel.isNotEmpty) ...[
-                                  Text(
-                                    dayLabel,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w700,
-                                      color: dayLabel == 'Today' ? AppColors.primary : AppColors.textSecondary,
-                                    ),
-                                  ),
-                                  Text(
-                                    ' \u00B7 ',
-                                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-                                  ),
-                                ],
-                                Flexible(
-                                  child: Text(
-                                    formattedDate,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-                                  ),
-                                ),
+                                Text(countdown, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: context.brand.primary)),
                               ],
                             ),
                           ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (isPast && isConfirmed) ...[
-                    const SizedBox(height: 10),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: GestureDetector(
-                        onTap: () => _bookAgain(booking),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Text('Book Again', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
-                        ),
+                          if (booking['refund_status'] != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Refund: ${booking['refund_status'].toString().replaceAll('_', ' ')} · INR ${((num.tryParse(booking['refund_amount_paise'].toString()) ?? 0) / 100).toStringAsFixed(2)}',
+                              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                  ] else if (isConfirmed) ...[
-                    const SizedBox(height: 4),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton(
-                        onPressed: () => _cancelBooking(booking['id']),
-                        style: TextButton.styleFrom(foregroundColor: AppColors.error, padding: EdgeInsets.zero),
-                        child: const Text('Cancel booking'),
-                      ),
-                    ),
-                  ] else ...[
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        status.isEmpty ? '' : status[0].toUpperCase() + status.substring(1),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: isCancelled ? AppColors.error : AppColors.textMuted,
-                        ),
-                      ),
-                    ),
+                    const SizedBox(width: 8),
+                    isPast && isConfirmed ? const StatusTag('Played', tone: TagTone.muted) : StatusTag.forBooking('$status'),
                   ],
+                ),
+                if (isConfirmed) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      if (isPast)
+                        TextButton.icon(
+                          onPressed: () => _bookAgain(booking),
+                          icon: const Icon(Icons.replay_rounded, size: 18),
+                          label: const Text('Book again'),
+                        )
+                      else ...[
+                        TextButton.icon(
+                          onPressed: () => context.push('/booking-confirmation/${booking['id']}'),
+                          icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+                          label: const Text('Pass'),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () => _cancelBooking(booking['id']),
+                          style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                          child: const Text('Cancel booking'),
+                        ),
+                      ],
                     ],
                   ),
-                ),
-              ),
-            ],
+                ] else if (isCancelled)
+                  const SizedBox(height: 4),
+              ],
+            ),
           ),
         ),
       ),

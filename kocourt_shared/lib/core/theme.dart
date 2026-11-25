@@ -315,7 +315,8 @@ class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Colors.white,
-        indicatorColor: Colors.transparent,
+        // v4: the active tab sits on a soft brand pill.
+        indicatorColor: brand.primary.withValues(alpha: 0.1),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return GoogleFonts.inter(
@@ -447,11 +448,36 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: Colors.white,
         elevation: 0,
+        margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          side: const BorderSide(color: AppColors.borderLight),
+          side: const BorderSide(color: AppColors.border),
         ),
       ),
+      chipTheme: ChipThemeData(
+        backgroundColor: Colors.white,
+        selectedColor: brand.primary,
+        disabledColor: AppColors.surfaceDim,
+        side: const BorderSide(color: AppColors.border),
+        shape: const StadiumBorder(),
+        showCheckmark: false,
+        labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: brand.ink),
+        secondaryLabelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: brand.primary,
+        foregroundColor: brand.onPrimary,
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        extendedTextStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: brand.ink,
+        titleTextStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: brand.ink),
+        subtitleTextStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(color: brand.primary),
       dividerTheme: const DividerThemeData(
         color: AppColors.borderLight,
         thickness: 1,

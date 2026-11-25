@@ -48,7 +48,7 @@ tags:
 # Proceed to checkout
 - tapOn: "Proceed to Pay"
   optional: true
-- tapOn: "Book Now"
+- tapOn: "Continue to pay"
   optional: true
 - waitForAnimationToEnd:
     timeout: 5000

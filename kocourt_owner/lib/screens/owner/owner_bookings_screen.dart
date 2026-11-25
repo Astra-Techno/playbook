@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import '../../widgets/tab_phase.dart';
@@ -116,14 +117,12 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('Bookings', style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text('Bookings'),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _addBooking,
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
         label: const Text('Add booking'),
       ),
@@ -169,65 +168,63 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
   }
 
   Widget _bookingTile(Map<String, dynamic> b) {
-                      final status = (b['status'] ?? 'confirmed').toString();
-                      final isCancelled = status == 'cancelled';
-                      final statusColor = isCancelled ? AppColors.error : AppColors.secondary;
-                      return InkWell(
-                        onTap: () {
-                          final id = int.tryParse('${b['id']}');
-                          if (id == null) return;
-                          Navigator.push<bool>(
-                            context,
-                            MaterialPageRoute(builder: (_) => BookingDetailScreen(bookingId: id)),
-                          ).then((changed) {
-                            if (changed == true) _load();
-                          });
-                        },
-                        child: Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.grey[100]!),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 40, height: 40,
-                              decoration: BoxDecoration(
-                                color: statusColor.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(AppIcons.calendarDays, size: 18, color: statusColor),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(b['court_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                                  const SizedBox(height: 3),
-                                  Text('${b['date'] ?? ''} \u2022 ${b['start_time'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                                  if ('${b['guest_name'] ?? b['user_name'] ?? ''}'.isNotEmpty)
-                                    Text(bookingPerson(b), style: TextStyle(fontSize: 12, color: Colors.grey[400])),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: statusColor.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                status.toUpperCase(),
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: statusColor),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      );
+    final status = (b['status'] ?? 'confirmed').toString();
+    final start = DateTime.tryParse('${b['start_time'] ?? ''}');
+    final person = '${b['guest_name'] ?? b['user_name'] ?? ''}'.isNotEmpty ? bookingPerson(b) : '';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Card(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          onTap: () {
+            final id = int.tryParse('${b['id']}');
+            if (id == null) return;
+            Navigator.push<bool>(
+              context,
+              MaterialPageRoute(builder: (_) => BookingDetailScreen(bookingId: id)),
+            ).then((changed) {
+              if (changed == true) _load();
+            });
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                TimePlate(
+                  top: start == null ? '\u2014' : DateFormat('h a').format(start),
+                  bottom: start == null ? '' : DateFormat('EEE d MMM').format(start),
+                  filled: status != 'cancelled',
+                  width: 76,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${b['court_name'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      if (person.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(person, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    StatusTag.forBooking(status),
+                    if (b['attendance'] == 'checked_in') ...[
+                      const SizedBox(height: 6),
+                      const StatusTag('Checked in', tone: TagTone.brand),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
