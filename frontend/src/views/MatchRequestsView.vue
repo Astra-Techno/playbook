@@ -99,8 +99,8 @@ const sportLabel = (id) => SPORTS.find(s => s.id === id)?.label || id
                     @click="activeFilter = sport.id"
                     class="flex items-center gap-1.5 shrink-0 px-3.5 py-2 rounded-full text-xs font-bold border-2 transition-all"
                     :class="activeFilter === sport.id
-                        ? 'bg-black border-black text-white'
-                        : 'bg-white border-gray-200 text-gray-500'">
+                        ? 'bg-primary border-black text-white'
+                        : 'bg-white border-gray-200 text-on-surface-variant'">
                     <component :is="sport.icon" :size="12" />
                     {{ sport.label }}
                 </button>
@@ -110,14 +110,14 @@ const sportLabel = (id) => SPORTS.find(s => s.id === id)?.label || id
         <!-- Post a request CTA -->
         <div v-if="auth.isLoggedIn" class="px-4 pt-4">
             <button @click="router.push('/')"
-                class="w-full bg-black text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
+                class="w-full bg-primary text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
                 <Plus :size="16" />
                 Post a Match Request at a Court
             </button>
         </div>
         <div v-else class="px-4 pt-4">
             <button @click="router.push('/login')"
-                class="w-full bg-black text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
+                class="w-full bg-primary text-white font-bold py-3.5 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all">
                 Sign in to post &amp; join matches
             </button>
         </div>
@@ -132,8 +132,8 @@ const sportLabel = (id) => SPORTS.find(s => s.id === id)?.label || id
             <div class="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
                 <Users :size="28" class="text-gray-300" />
             </div>
-            <p class="font-extrabold text-black text-lg mb-1">No open matches</p>
-            <p class="text-sm text-gray-400">
+            <p class="font-extrabold text-on-surface text-lg mb-1">No open matches</p>
+            <p class="text-sm text-outline">
                 {{ activeFilter === 'All' ? 'No match requests posted yet. Be the first!' : `No open ${sportLabel(activeFilter)} matches right now.` }}
             </p>
         </div>
@@ -147,35 +147,35 @@ const sportLabel = (id) => SPORTS.find(s => s.id === id)?.label || id
                 <div class="flex items-start justify-between mb-3">
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 mb-1">
-                            <span class="text-sm font-extrabold text-black truncate">{{ req.creator_name || 'Player' }}</span>
+                            <span class="text-sm font-extrabold text-on-surface truncate">{{ req.creator_name || 'Player' }}</span>
                             <span class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full"
                                 :class="spotsLeft(req) === 0
-                                    ? 'bg-green-100 text-green-600'
-                                    : 'bg-gray-100 text-black'">
+                                    ? 'bg-green-100 text-free'
+                                    : 'bg-gray-100 text-on-surface'">
                                 {{ spotsLeft(req) === 0 ? 'Full' : `${spotsLeft(req)} spot${spotsLeft(req) !== 1 ? 's' : ''} left` }}
                             </span>
                         </div>
 
                         <!-- Court name + location -->
                         <button v-if="req.court_id" @click="router.push(`/courts/${req.court_id}`)"
-                            class="flex items-center gap-1 text-xs text-black font-semibold active:opacity-70">
-                            <MapPin :size="11" class="text-gray-400 shrink-0" />
+                            class="flex items-center gap-1 text-xs text-on-surface font-semibold active:opacity-70">
+                            <MapPin :size="11" class="text-outline shrink-0" />
                             <span class="truncate">{{ req.court_name || 'Court' }}</span>
-                            <span v-if="req.court_location" class="text-gray-400 font-normal">· {{ req.court_location }}</span>
+                            <span v-if="req.court_location" class="text-outline font-normal">· {{ req.court_location }}</span>
                         </button>
 
                         <!-- Date + time -->
-                        <div class="flex items-center gap-1 mt-1 text-xs text-gray-400">
+                        <div class="flex items-center gap-1 mt-1 text-xs text-outline">
                             <Clock :size="11" class="shrink-0" />
                             <span>{{ formatPlayTime(req) }}</span>
                         </div>
 
                         <!-- Notes -->
-                        <p v-if="req.notes" class="text-xs text-gray-500 mt-1.5 italic">{{ req.notes }}</p>
+                        <p v-if="req.notes" class="text-xs text-on-surface-variant mt-1.5 italic">{{ req.notes }}</p>
                     </div>
 
                     <!-- Sport badge -->
-                    <span class="shrink-0 ml-2 text-[10px] font-bold bg-gray-50 border border-gray-200 rounded-xl px-2 py-1 text-gray-500 capitalize">
+                    <span class="shrink-0 ml-2 text-[10px] font-bold bg-gray-50 border border-gray-200 rounded-xl px-2 py-1 text-on-surface-variant capitalize">
                         {{ sportLabel(req.sport) }}
                     </span>
                 </div>
@@ -184,15 +184,15 @@ const sportLabel = (id) => SPORTS.find(s => s.id === id)?.label || id
                 <div v-if="req.participants?.length" class="flex items-center gap-2 mb-3">
                     <div class="flex -space-x-1.5">
                         <div v-for="p in req.participants.slice(0, 5)" :key="p.user_id"
-                            class="w-6 h-6 rounded-full bg-black flex items-center justify-center text-[9px] font-bold text-white border-2 border-white">
+                            class="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-[9px] font-bold text-white border-2 border-white">
                             {{ (p.name || '?')[0].toUpperCase() }}
                         </div>
                         <div v-if="req.participants.length > 5"
-                            class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[9px] font-bold text-gray-500 border-2 border-white">
+                            class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[9px] font-bold text-on-surface-variant border-2 border-white">
                             +{{ req.participants.length - 5 }}
                         </div>
                     </div>
-                    <span class="text-xs text-gray-400">
+                    <span class="text-xs text-outline">
                         {{ req.participants.map(p => p.name?.split(' ')[0]).join(', ') }}
                     </span>
                 </div>
@@ -202,7 +202,7 @@ const sportLabel = (id) => SPORTS.find(s => s.id === id)?.label || id
                     <button v-if="!isMember(req)"
                         @click="joinRequest(req)"
                         :disabled="spotsLeft(req) === 0 || joiningId === req.id"
-                        class="w-full py-2.5 rounded-xl text-sm font-bold bg-black text-white flex items-center justify-center gap-1.5 disabled:opacity-40 transition active:scale-[0.98]">
+                        class="w-full py-2.5 rounded-xl text-sm font-bold bg-primary text-white flex items-center justify-center gap-1.5 disabled:opacity-40 transition active:scale-[0.98]">
                         <Loader2 v-if="joiningId === req.id" :size="13" class="animate-spin" />
                         <UserPlus v-else :size="13" />
                         {{ spotsLeft(req) === 0 ? 'Match Full' : 'Join Match' }}
@@ -210,13 +210,13 @@ const sportLabel = (id) => SPORTS.find(s => s.id === id)?.label || id
                     <button v-else
                         @click="leaveRequest(req)"
                         :disabled="leavingId === req.id"
-                        class="w-full py-2.5 rounded-xl text-sm font-bold bg-red-50 text-red-500 flex items-center justify-center gap-1.5 transition active:scale-[0.98]">
+                        class="w-full py-2.5 rounded-xl text-sm font-bold bg-red-50 text-due flex items-center justify-center gap-1.5 transition active:scale-[0.98]">
                         <Loader2 v-if="leavingId === req.id" :size="13" class="animate-spin" />
                         <UserMinus v-else :size="13" />
                         Leave Match
                     </button>
                 </template>
-                <p v-else class="text-center text-xs text-gray-400 font-semibold">Your request</p>
+                <p v-else class="text-center text-xs text-outline font-semibold">Your request</p>
             </div>
         </div>
 

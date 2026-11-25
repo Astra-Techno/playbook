@@ -109,7 +109,7 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
         <!-- ── STEP 1: Phone ─────────────────────────────── -->
         <template v-if="step === 1">
             <!-- Compact brand bar -->
-            <div class="bg-black px-5 pb-6" :style="{ paddingTop: 'max(3.5rem, calc(env(safe-area-inset-top, 0px) + 1rem))' }">
+            <div class="bg-primary px-5 pb-6" :style="{ paddingTop: 'max(3.5rem, calc(env(safe-area-inset-top, 0px) + 1rem))' }">
                 <div class="flex items-center gap-3 mb-4">
                     <img src="/logo.png" alt="KoCourt" class="w-10 h-10 rounded-xl object-cover" />
                     <div>
@@ -124,15 +124,15 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
             <!-- Form (no flex-1 — sits in document flow, page scrolls) -->
             <div class="px-5 pt-6 pb-10">
                 <div v-if="error"
-                    class="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm font-semibold px-4 py-3 rounded-2xl mb-5">
+                    class="flex items-start gap-2 bg-red-50 border border-red-200 text-due text-sm font-semibold px-4 py-3 rounded-2xl mb-5">
                     ⚠ {{ error }}
                 </div>
 
-                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Mobile Number</label>
+                <label class="block text-xs font-bold text-outline uppercase tracking-widest mb-2">Mobile Number</label>
                 <div class="flex rounded-2xl border-2 border-gray-200 focus-within:border-black transition-colors overflow-hidden mb-4 bg-gray-50 focus-within:bg-white">
                     <div class="flex items-center gap-1.5 px-4 border-r border-gray-200 shrink-0">
                         <span class="text-base">🇮🇳</span>
-                        <span class="text-sm font-bold text-gray-500">+91</span>
+                        <span class="text-sm font-bold text-on-surface-variant">+91</span>
                     </div>
                     <input v-model="phone" type="tel" inputmode="numeric" maxlength="10"
                         placeholder="98765 43210"
@@ -146,16 +146,16 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
                     <template v-else>Continue <ArrowRight :size="18" /></template>
                 </button>
 
-                <p class="text-center text-[11px] text-gray-400 leading-relaxed">
+                <p class="text-center text-[11px] text-outline leading-relaxed">
                     By continuing you agree to our
-                    <RouterLink to="/terms" class="text-black font-semibold">Terms</RouterLink> &amp;
-                    <RouterLink to="/privacy" class="text-black font-semibold">Privacy Policy</RouterLink>
+                    <RouterLink to="/terms" class="text-on-surface font-semibold">Terms</RouterLink> &amp;
+                    <RouterLink to="/privacy" class="text-on-surface font-semibold">Privacy Policy</RouterLink>
                 </p>
 
                 <!-- Sport chips at bottom — decorative, below the fold is fine -->
                 <div class="flex gap-2 mt-8 flex-wrap justify-center">
                     <span v-for="c in categories" :key="c"
-                        class="bg-gray-100 text-gray-500 text-[11px] font-semibold px-3 py-1.5 rounded-full">
+                        class="bg-gray-100 text-on-surface-variant text-[11px] font-semibold px-3 py-1.5 rounded-full">
                         {{ c }}
                     </span>
                 </div>
@@ -165,7 +165,7 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
         <!-- ── STEP 2: OTP ────────────────────────────────── -->
         <template v-else-if="step === 2">
             <!-- Compact header -->
-            <div class="bg-black px-5 pb-6 relative" :style="{ paddingTop: 'max(3.5rem, calc(env(safe-area-inset-top, 0px) + 1rem))' }">
+            <div class="bg-primary px-5 pb-6 relative" :style="{ paddingTop: 'max(3.5rem, calc(env(safe-area-inset-top, 0px) + 1rem))' }">
                 <button @click="goBack"
                     class="absolute left-4 w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 transition-transform" style="top: max(3.5rem, calc(env(safe-area-inset-top, 0px) + 1rem))">
                     <ArrowLeft :size="18" />
@@ -179,11 +179,11 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
 
             <div class="px-5 pt-7 pb-10">
                 <div v-if="error"
-                    class="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm font-semibold px-4 py-3 rounded-2xl mb-5">
+                    class="flex items-start gap-2 bg-red-50 border border-red-200 text-due text-sm font-semibold px-4 py-3 rounded-2xl mb-5">
                     ⚠ {{ error }}
                 </div>
 
-                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 text-center">Enter 4-digit OTP</label>
+                <label class="block text-xs font-bold text-outline uppercase tracking-widest mb-4 text-center">Enter 4-digit OTP</label>
 
                 <!-- Responsive OTP grid — 4 equal columns, fills full width -->
                 <div class="grid grid-cols-4 gap-3 mb-7">
@@ -194,7 +194,7 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
                         @input="handleOtpInput(i, $event)"
                         @keydown="handleOtpKeydown(i, $event)"
                         class="aspect-square w-full text-center text-3xl font-extrabold border-2 rounded-2xl focus:outline-none transition-all"
-                        :class="otp[i] ? 'border-black bg-black text-white shadow-lg' : 'border-gray-200 bg-gray-50 text-black'" />
+                        :class="otp[i] ? 'border-black bg-primary text-white shadow-lg' : 'border-gray-200 bg-gray-50 text-on-surface'" />
                 </div>
 
                 <button @click="verifyOtp" :disabled="loading || otpString.length < 4"
@@ -203,9 +203,9 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
                     <template v-else>Verify &amp; Continue <CheckCircle2 :size="18" /></template>
                 </button>
 
-                <p class="text-center text-sm text-gray-400">
+                <p class="text-center text-sm text-outline">
                     Didn't receive the OTP?
-                    <button @click="resendOtp" class="text-black font-bold ml-1 underline underline-offset-2">Resend</button>
+                    <button @click="resendOtp" class="text-on-surface font-bold ml-1 underline underline-offset-2">Resend</button>
                 </p>
             </div>
         </template>
@@ -213,7 +213,7 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
         <!-- ── STEP 3: Name ───────────────────────────────── -->
         <template v-else>
             <!-- Compact header -->
-            <div class="bg-black px-5 pb-6 relative" :style="{ paddingTop: 'max(3.5rem, calc(env(safe-area-inset-top, 0px) + 1rem))' }">
+            <div class="bg-primary px-5 pb-6 relative" :style="{ paddingTop: 'max(3.5rem, calc(env(safe-area-inset-top, 0px) + 1rem))' }">
                 <button @click="goBack"
                     class="absolute left-4 w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 transition-transform" style="top: max(3.5rem, calc(env(safe-area-inset-top, 0px) + 1rem))">
                     <ArrowLeft :size="18" />
@@ -226,19 +226,19 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
 
             <div class="px-5 pt-7 pb-10">
                 <div v-if="error"
-                    class="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm font-semibold px-4 py-3 rounded-2xl mb-5">
+                    class="flex items-start gap-2 bg-red-50 border border-red-200 text-due text-sm font-semibold px-4 py-3 rounded-2xl mb-5">
                     ⚠ {{ error }}
                 </div>
 
                 <div class="flex items-center gap-3 bg-gray-50 rounded-2xl px-4 py-3 mb-6 border border-gray-100">
                     <span class="text-2xl shrink-0">👋</span>
-                    <p class="text-sm text-gray-500 leading-snug">
+                    <p class="text-sm text-on-surface-variant leading-snug">
                         Welcome! Signing up with<br>
-                        <span class="font-bold text-black">+91 {{ phone }}</span>
+                        <span class="font-bold text-on-surface">+91 {{ phone }}</span>
                     </p>
                 </div>
 
-                <label class="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Your Full Name</label>
+                <label class="block text-xs font-bold text-outline uppercase tracking-widest mb-2">Your Full Name</label>
                 <input v-model="name" type="text" placeholder="e.g. Mathavan Kumar"
                     @keyup.enter="handleRegisterSubmit"
                     autofocus

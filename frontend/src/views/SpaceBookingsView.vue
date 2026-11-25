@@ -70,21 +70,21 @@ const cancelBooking = async (id) => {
     <div class="min-h-full bg-white">
         <!-- Header -->
         <div class="bg-white px-5 pt-5 pb-4 border-b border-gray-100">
-            <h1 class="text-lg font-bold text-black">Bookings</h1>
-            <p class="text-xs text-gray-500 mb-3">{{ space?.name || 'Space' }} bookings</p>
+            <h1 class="text-lg font-bold text-on-surface">Bookings</h1>
+            <p class="text-xs text-on-surface-variant mb-3">{{ space?.name || 'Space' }} bookings</p>
             <!-- Tabs -->
             <div class="flex gap-1 bg-gray-100 rounded-xl p-1">
                 <button @click="tab = 'upcoming'"
                     class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all"
-                    :class="tab === 'upcoming' ? 'bg-white text-black shadow-sm' : 'text-gray-500'">
+                    :class="tab === 'upcoming' ? 'bg-white text-on-surface shadow-sm' : 'text-on-surface-variant'">
                     Upcoming
-                    <span v-if="upcoming.length" class="ml-1 bg-black text-white px-1.5 py-0.5 rounded-full text-[10px]">
+                    <span v-if="upcoming.length" class="ml-1 bg-primary text-white px-1.5 py-0.5 rounded-full text-[10px]">
                         {{ upcoming.length }}
                     </span>
                 </button>
                 <button @click="tab = 'past'"
                     class="flex-1 py-1.5 rounded-lg text-xs font-bold transition-all"
-                    :class="tab === 'past' ? 'bg-white text-black shadow-sm' : 'text-gray-500'">
+                    :class="tab === 'past' ? 'bg-white text-on-surface shadow-sm' : 'text-on-surface-variant'">
                     Past
                 </button>
             </div>
@@ -99,8 +99,8 @@ const cancelBooking = async (id) => {
                 <div class="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                     <CalendarCheck :size="24" class="text-gray-300" />
                 </div>
-                <p class="font-semibold text-gray-700">No {{ tab }} bookings</p>
-                <p class="text-xs text-gray-400 mt-1">{{ tab === 'upcoming' ? 'No upcoming bookings for this space' : 'No past bookings found' }}</p>
+                <p class="font-semibold text-on-surface-variant">No {{ tab }} bookings</p>
+                <p class="text-xs text-outline mt-1">{{ tab === 'upcoming' ? 'No upcoming bookings for this space' : 'No past bookings found' }}</p>
             </div>
 
             <div v-else class="space-y-2">
@@ -108,19 +108,19 @@ const cancelBooking = async (id) => {
                     class="bg-white rounded-2xl px-4 py-3.5 shadow-sm ring-1 ring-slate-100">
                     <div class="flex items-start gap-3">
                         <div class="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
-                            <CalendarCheck :size="17" class="text-black" />
+                            <CalendarCheck :size="17" class="text-on-surface" />
                         </div>
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm font-bold text-black truncate">
+                            <p class="text-sm font-bold text-on-surface truncate">
                                 {{ b.guest_name || b.user_name || 'Player' }}
                             </p>
-                            <p class="text-xs text-gray-500">{{ formatTime(b.start_time) }}</p>
-                            <p v-if="b.guest_phone" class="text-[11px] text-gray-400">{{ b.guest_phone }}</p>
+                            <p class="text-xs text-on-surface-variant">{{ formatTime(b.start_time) }}</p>
+                            <p v-if="b.guest_phone" class="text-[11px] text-outline">{{ b.guest_phone }}</p>
                         </div>
                         <div class="text-right shrink-0">
-                            <p class="text-sm font-extrabold text-emerald-600">₹{{ b.total_price }}</p>
+                            <p class="text-sm font-extrabold text-free">₹{{ b.total_price }}</p>
                             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                                :class="b.status === 'confirmed' ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'">
+                                :class="b.status === 'confirmed' ? 'bg-emerald-50 text-free' : 'bg-gray-100 text-outline'">
                                 {{ b.status }}
                             </span>
                         </div>
@@ -129,7 +129,7 @@ const cancelBooking = async (id) => {
                     <div v-if="b.status === 'confirmed' && new Date(b.start_time) >= now"
                         class="mt-2.5 pt-2.5 border-t border-slate-50 flex justify-end">
                         <button @click="cancelBooking(b.id)"
-                            class="flex items-center gap-1 text-xs font-semibold text-red-400 hover:text-red-600 transition-colors">
+                            class="flex items-center gap-1 text-xs font-semibold text-due hover:text-due transition-colors">
                             <X :size="12" /> Cancel
                         </button>
                     </div>

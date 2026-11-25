@@ -78,14 +78,14 @@ onMounted(() => {
 
         <!-- Actions bar -->
         <div v-if="notifications.length" class="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-gray-100 px-5 py-3 flex items-center justify-between">
-            <p class="text-xs font-bold text-gray-500">
-                <span v-if="unreadCount > 0" class="text-black">{{ unreadCount }} unread</span>
-                <span v-else class="text-emerald-600">All caught up</span>
+            <p class="text-xs font-bold text-on-surface-variant">
+                <span v-if="unreadCount > 0" class="text-on-surface">{{ unreadCount }} unread</span>
+                <span v-else class="text-free">All caught up</span>
             </p>
             <button v-if="unreadCount > 0"
                 @click="markAllRead"
                 :disabled="markingAll"
-                class="flex items-center gap-1.5 text-xs font-bold text-black bg-gray-100 px-3 py-1.5 rounded-full active:scale-95 transition-transform disabled:opacity-50">
+                class="flex items-center gap-1.5 text-xs font-bold text-on-surface bg-gray-100 px-3 py-1.5 rounded-full active:scale-95 transition-transform disabled:opacity-50">
                 <Loader2 v-if="markingAll" :size="12" class="animate-spin" />
                 <CheckCheck v-else :size="12" />
                 Mark all read
@@ -102,8 +102,8 @@ onMounted(() => {
             <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-5">
                 <Bell :size="36" class="text-gray-300" />
             </div>
-            <p class="font-black text-gray-700 text-lg mb-2">No notifications</p>
-            <p class="text-sm text-gray-400">You're all caught up! Check back later.</p>
+            <p class="font-black text-on-surface-variant text-lg mb-2">No notifications</p>
+            <p class="text-sm text-outline">You're all caught up! Check back later.</p>
         </div>
 
         <!-- Notifications list -->
@@ -115,17 +115,17 @@ onMounted(() => {
                 <div class="flex items-start gap-3">
                     <!-- Unread dot -->
                     <div class="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5"
-                        :class="isUnread(n) ? 'bg-black' : 'bg-transparent'"></div>
+                        :class="isUnread(n) ? 'bg-primary' : 'bg-transparent'"></div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-start justify-between gap-2">
-                            <p class="text-sm font-bold text-black leading-snug"
+                            <p class="text-sm font-bold text-on-surface leading-snug"
                                 :class="isUnread(n) ? 'font-black' : ''">
                                 {{ n.title }}
                             </p>
-                            <span class="text-[10px] font-semibold text-gray-400 shrink-0 mt-0.5">{{ timeAgo(n.created_at) }}</span>
+                            <span class="text-[10px] font-semibold text-outline shrink-0 mt-0.5">{{ timeAgo(n.created_at) }}</span>
                         </div>
-                        <p v-if="n.body" class="text-xs text-gray-500 mt-1 leading-relaxed">{{ n.body }}</p>
-                        <p v-if="n.court_name" class="text-[11px] font-bold text-black mt-1.5">{{ n.court_name }}</p>
+                        <p v-if="n.body" class="text-xs text-on-surface-variant mt-1 leading-relaxed">{{ n.body }}</p>
+                        <p v-if="n.court_name" class="text-[11px] font-bold text-on-surface mt-1.5">{{ n.court_name }}</p>
                     </div>
                 </div>
             </div>

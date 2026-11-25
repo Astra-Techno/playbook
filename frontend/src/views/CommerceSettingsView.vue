@@ -81,7 +81,7 @@ onMounted(async () => {
 <template>
   <main class="max-w-3xl mx-auto p-5 pb-28 space-y-5">
     <RouterLink to="/admin" class="text-sm underline">Back to admin</RouterLink>
-    <div><h1 class="text-2xl font-bold">Commercial settings</h1><p class="text-sm text-gray-500 mt-2">Manage prices, tax treatment and cancellation rules for new bookings.</p></div>
+    <div><h1 class="text-2xl font-bold">Commercial settings</h1><p class="text-sm text-on-surface-variant mt-2">Manage prices, tax treatment and cancellation rules for new bookings.</p></div>
     <div class="rounded-xl bg-amber-50 p-4 text-sm space-y-2">
       <p>Enable GST only after confirming registration and service classification. A GSTIN format check does not verify registration.</p>
       <p>Enable automatic refunds after testing Cashfree sandbox and scheduling the refund worker. Exceptions and legacy payments require review. Easy Split uses the existing immediate split integration. Deferred settlement is not enabled by these settings.</p>
@@ -93,10 +93,10 @@ onMounted(async () => {
         <option v-for="venue in venues" :key="venue.id" :value="String(venue.id)">{{ venue.name }} (#{{ venue.id }})</option>
       </select>
     </label>
-    <p v-if="venueId" class="text-sm text-gray-600">Saving pins these venue tax, booking and cancellation values for this venue. Other platform settings stay inherited.</p>
+    <p v-if="venueId" class="text-sm text-on-surface-variant">Saving pins these venue tax, booking and cancellation values for this venue. Other platform settings stay inherited.</p>
     <p v-if="loading" role="status">Loading settings...</p>
-    <p v-if="error" role="alert" class="text-red-700">{{ error }}</p>
-    <p v-if="message" role="status" class="text-green-700">{{ message }}</p>
+    <p v-if="error" role="alert" class="text-due">{{ error }}</p>
+    <p v-if="message" role="status" class="text-free">{{ message }}</p>
     <form v-if="!loading && loadedScope === venueId" class="space-y-5" @submit.prevent="save">
       <fieldset v-for="(fields, group) in groups" :key="group" :disabled="saving" class="border rounded-xl p-4 space-y-4">
         <legend class="px-2 font-bold">{{ group }}</legend>
@@ -110,14 +110,14 @@ onMounted(async () => {
           <input v-else :id="key" v-model="values[key]" type="text" maxlength="250" class="w-full border rounded-lg p-2.5" />
         </label>
       </fieldset>
-      <button :disabled="saving" class="bg-black text-white rounded-lg px-5 py-3 font-semibold disabled:opacity-50">{{ saving ? 'Saving...' : 'Save settings' }}</button>
+      <button :disabled="saving" class="bg-primary text-white rounded-lg px-5 py-3 font-semibold disabled:opacity-50">{{ saving ? 'Saving...' : 'Save settings' }}</button>
       <button v-if="venueId" type="button" :disabled="saving" class="ml-3 border rounded-lg px-4 py-3" @click="resetVenue">Use platform defaults</button>
     </form>
     <section v-if="history.length" class="text-sm"><h2 class="font-bold mb-2">Recent changes</h2><p v-for="entry in history" :key="entry.id">{{ entry.created_at }} - admin #{{ entry.actor_id }}</p></section>
     <section class="border rounded-xl p-4 space-y-3">
       <h2 class="font-bold">Refund requests</h2>
       <button class="underline text-sm" @click="refreshRefunds().catch(() => error = 'Could not refresh refunds')">Refresh status</button>
-      <p class="text-sm text-gray-600">Success means Cashfree confirmed the refund. Pending requests are checked by the worker. Simulated requests move no money. Review exceptions before submitting.</p>
+      <p class="text-sm text-on-surface-variant">Success means Cashfree confirmed the refund. Pending requests are checked by the worker. Simulated requests move no money. Review exceptions before submitting.</p>
       <p v-if="!refunds.length" class="text-sm">No refund requests.</p>
       <div v-for="refund in refunds" :key="`${refund.legacy ? 'legacy' : 'request'}-${refund.id}`" class="border-t pt-3 text-sm space-y-2">
         <p class="font-semibold">{{ refund.booking_id ? `Booking #${refund.booking_id}` : 'Unfulfilled payment' }} {{ refund.court_name || '' }}</p>

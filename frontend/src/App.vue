@@ -182,8 +182,8 @@ const submitPromptRating = async () => {
 
             <!-- Public compliance links: visible without an account and crawlable by payment providers. -->
             <footer v-if="!auth.isLoggedIn && !route.meta.fullScreen" class="border-t border-gray-100 bg-white px-5 py-5 text-center">
-                <p class="mb-3 text-xs font-semibold text-gray-500">KoCourt sports venue booking</p>
-                <div class="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs font-semibold text-gray-700">
+                <p class="mb-3 text-xs font-semibold text-on-surface-variant">KoCourt sports venue booking</p>
+                <div class="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs font-semibold text-on-surface-variant">
                     <RouterLink to="/terms" class="underline underline-offset-4">Terms</RouterLink>
                     <RouterLink to="/privacy" class="underline underline-offset-4">Privacy</RouterLink>
                     <RouterLink to="/refund-policy" class="underline underline-offset-4">Refund & Cancellation</RouterLink>
@@ -230,20 +230,20 @@ const submitPromptRating = async () => {
                 <div class="w-full rounded-t-3xl bg-white px-5 pt-5 pb-[max(2.5rem,calc(env(safe-area-inset-bottom,0px)+1.5rem))]">
                     <div class="flex items-center justify-between mb-1">
                         <div>
-                            <p class="text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">How was your session?</p>
-                            <h3 class="font-bold text-black text-base">Rate Your Experience</h3>
+                            <p class="text-[10px] font-bold text-on-surface uppercase tracking-wider mb-0.5">How was your session?</p>
+                            <h3 class="font-bold text-on-surface text-base">Rate Your Experience</h3>
                         </div>
                         <button @click="dismissPrompt" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                            <X :size="16" class="text-gray-500" />
+                            <X :size="16" class="text-on-surface-variant" />
                         </button>
                     </div>
-                    <p class="text-sm text-gray-500 mb-5">{{ reviewPrompt.booking?.court_name }}</p>
+                    <p class="text-sm text-on-surface-variant mb-5">{{ reviewPrompt.booking?.court_name }}</p>
 
                     <!-- Stars -->
                     <div class="flex gap-2 justify-center mb-5">
                         <button v-for="n in 5" :key="n" @click="reviewPrompt.rating = n" class="active:scale-90 transition-transform">
                             <Star :size="40"
-                                :class="n <= reviewPrompt.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200 fill-slate-200'" />
+                                :class="n <= reviewPrompt.rating ? 'text-ending fill-amber-400' : 'text-slate-200 fill-slate-200'" />
                         </button>
                     </div>
 

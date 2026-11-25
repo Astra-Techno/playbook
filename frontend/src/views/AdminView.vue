@@ -264,7 +264,7 @@ const goTo = (s) => {
     if (s === 'claims')       fetchClaims(true)
 }
 
-const roleBadge = { admin: 'bg-gray-100 text-black', user: 'bg-gray-100 text-gray-500' }
+const roleBadge = { admin: 'bg-gray-100 text-on-surface', user: 'bg-gray-100 text-on-surface-variant' }
 
 onMounted(() => {
     fetchDemand()
@@ -281,13 +281,13 @@ onMounted(() => {
             <!-- Admin card -->
             <div class="mx-4 mt-4 bg-white rounded-2xl p-5 shadow-sm ring-1 ring-slate-100">
                 <div class="flex items-center gap-4">
-                    <div class="w-14 h-14 rounded-2xl bg-black flex items-center justify-center shrink-0">
+                    <div class="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center shrink-0">
                         <ShieldCheck :size="26" class="text-white" />
                     </div>
                     <div>
-                        <h2 class="text-base font-extrabold text-black">{{ auth.user?.name }}</h2>
-                        <p class="text-sm text-gray-400">{{ auth.user?.phone }}</p>
-                        <span class="mt-1 inline-block text-[10px] font-black bg-black text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider">Admin</span>
+                        <h2 class="text-base font-extrabold text-on-surface">{{ auth.user?.name }}</h2>
+                        <p class="text-sm text-outline">{{ auth.user?.phone }}</p>
+                        <span class="mt-1 inline-block text-[10px] font-black bg-primary text-white px-2.5 py-0.5 rounded-full uppercase tracking-wider">Admin</span>
                     </div>
                 </div>
             </div>
@@ -295,57 +295,57 @@ onMounted(() => {
             <!-- Stats row -->
             <div class="px-4 pt-3 pb-1 grid grid-cols-3 gap-2">
                 <div class="bg-white rounded-2xl p-3 text-center ring-1 ring-slate-100 shadow-sm">
-                    <p class="text-2xl font-black text-black">{{ totalPlaces }}</p>
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mt-0.5">Venues</p>
+                    <p class="text-2xl font-black text-on-surface">{{ totalPlaces }}</p>
+                    <p class="text-[10px] font-bold text-outline uppercase tracking-wide mt-0.5">Venues</p>
                 </div>
                 <div class="bg-white rounded-2xl p-3 text-center ring-1 ring-slate-100 shadow-sm">
-                    <p class="text-2xl font-black text-black">{{ totalRequests }}</p>
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mt-0.5">Requests</p>
+                    <p class="text-2xl font-black text-on-surface">{{ totalRequests }}</p>
+                    <p class="text-[10px] font-bold text-outline uppercase tracking-wide mt-0.5">Requests</p>
                 </div>
                 <div class="bg-white rounded-2xl p-3 text-center ring-1 ring-slate-100 shadow-sm">
-                    <p class="text-2xl font-black text-amber-500">{{ contactedCount }}</p>
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mt-0.5">Contacted</p>
+                    <p class="text-2xl font-black text-ending">{{ contactedCount }}</p>
+                    <p class="text-[10px] font-bold text-outline uppercase tracking-wide mt-0.5">Contacted</p>
                 </div>
             </div>
 
             <!-- Menu -->
             <div class="px-4 pt-3 space-y-3">
-                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest px-1">Manage</p>
+                <p class="text-[11px] font-bold text-outline uppercase tracking-widest px-1">Manage</p>
                 <div class="bg-white rounded-2xl overflow-hidden ring-1 ring-slate-100 shadow-sm divide-y divide-slate-50">
                     <button @click="goTo('demand')"
                         class="w-full flex items-center gap-3 px-4 py-4 hover:bg-white active:bg-gray-100 transition-colors">
                         <div class="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
-                            <TrendingUp :size="17" class="text-black" />
+                            <TrendingUp :size="17" class="text-on-surface" />
                         </div>
                         <div class="flex-1 text-left">
-                            <p class="text-sm font-semibold text-black">Demand Signals</p>
-                            <p class="text-[11px] text-gray-400">{{ totalPlaces }} venues · {{ contactedCount }} contacted</p>
+                            <p class="text-sm font-semibold text-on-surface">Demand Signals</p>
+                            <p class="text-[11px] text-outline">{{ totalPlaces }} venues · {{ contactedCount }} contacted</p>
                         </div>
                         <ChevronRight :size="16" class="text-gray-300" />
                     </button>
                     <RouterLink to="/admin/settings" class="w-full flex items-center gap-3 px-4 py-4 hover:bg-white">
-                        <div class="flex-1 text-left"><p class="text-sm font-semibold text-black">Commercial Settings</p><p class="text-[11px] text-gray-400">Platform fees, GST, cancellation and settlement</p></div>
+                        <div class="flex-1 text-left"><p class="text-sm font-semibold text-on-surface">Commercial Settings</p><p class="text-[11px] text-outline">Platform fees, GST, cancellation and settlement</p></div>
                         <ChevronRight :size="16" class="text-gray-300" />
                     </RouterLink>
                     <button @click="goTo('users')"
                         class="w-full flex items-center gap-3 px-4 py-4 hover:bg-white active:bg-gray-100 transition-colors">
                         <div class="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center shrink-0">
-                            <Users :size="17" class="text-amber-600" />
+                            <Users :size="17" class="text-ending" />
                         </div>
                         <div class="flex-1 text-left">
-                            <p class="text-sm font-semibold text-black">Users</p>
-                            <p class="text-[11px] text-gray-400">All registered users</p>
+                            <p class="text-sm font-semibold text-on-surface">Users</p>
+                            <p class="text-[11px] text-outline">All registered users</p>
                         </div>
                         <ChevronRight :size="16" class="text-gray-300" />
                     </button>
                     <button @click="goTo('claims')"
                         class="w-full flex items-center gap-3 px-4 py-4 hover:bg-white active:bg-gray-100 transition-colors relative">
                         <div class="w-9 h-9 bg-amber-50 rounded-xl flex items-center justify-center shrink-0">
-                            <ClipboardCheck :size="17" class="text-amber-600" />
+                            <ClipboardCheck :size="17" class="text-ending" />
                         </div>
                         <div class="flex-1 text-left">
-                            <p class="text-sm font-semibold text-black">Claim Reviews</p>
-                            <p class="text-[11px] text-gray-400">Verify venue ownership claims</p>
+                            <p class="text-sm font-semibold text-on-surface">Claim Reviews</p>
+                            <p class="text-[11px] text-outline">Verify venue ownership claims</p>
                         </div>
                         <div v-if="pendingClaimsCount > 0"
                             class="w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center mr-1">
@@ -356,11 +356,11 @@ onMounted(() => {
                     <button @click="goTo('verification')"
                         class="w-full flex items-center gap-3 px-4 py-4 hover:bg-white active:bg-gray-100 transition-colors">
                         <div class="w-9 h-9 bg-emerald-50 rounded-xl flex items-center justify-center shrink-0">
-                            <CheckCircle2 :size="17" class="text-emerald-600" />
+                            <CheckCircle2 :size="17" class="text-free" />
                         </div>
                         <div class="flex-1 text-left">
-                            <p class="text-sm font-semibold text-black">Court Verification</p>
-                            <p class="text-[11px] text-gray-400">Verify listed courts</p>
+                            <p class="text-sm font-semibold text-on-surface">Court Verification</p>
+                            <p class="text-[11px] text-outline">Verify listed courts</p>
                         </div>
                         <ChevronRight :size="16" class="text-gray-300" />
                     </button>
@@ -374,9 +374,9 @@ onMounted(() => {
                 style="box-shadow:0 1px 6px rgba(0,0,0,0.06)">
                 <button @click="section = 'home'"
                     class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center active:scale-90 transition-transform shrink-0">
-                    <ArrowLeft :size="20" class="text-gray-500" />
+                    <ArrowLeft :size="20" class="text-on-surface-variant" />
                 </button>
-                <h1 class="flex-1 font-extrabold text-black text-base">
+                <h1 class="flex-1 font-extrabold text-on-surface text-base">
                     {{ section === 'demand' ? 'Demand Signals' : section === 'users' ? 'Users' : section === 'claims' ? 'Claim Reviews' : 'Court Verification' }}
                 </h1>
             </div>
@@ -387,34 +387,34 @@ onMounted(() => {
             <!-- Filter bar -->
             <div class="px-4 pt-3 pb-1 space-y-2">
                 <div class="flex items-center gap-2">
-                    <span v-if="activeFilters" class="text-[10px] font-black bg-black text-white px-1.5 py-0.5 rounded-full">{{ activeFilters }}</span>
-                    <span class="text-[10px] text-gray-400 font-medium ml-auto">{{ filtered.length }} venues</span>
+                    <span v-if="activeFilters" class="text-[10px] font-black bg-primary text-white px-1.5 py-0.5 rounded-full">{{ activeFilters }}</span>
+                    <span class="text-[10px] text-outline font-medium ml-auto">{{ filtered.length }} venues</span>
                 </div>
                 <div class="flex gap-2">
                     <button v-for="s in [['all','All'],['pending','Pending'],['contacted','Contacted']]" :key="s[0]"
                         @click="filterStatus = s[0]"
                         class="text-[11px] font-bold px-3 py-1.5 rounded-full border transition-all"
-                        :class="filterStatus === s[0] ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200'">
+                        :class="filterStatus === s[0] ? 'bg-primary text-white border-black' : 'bg-white text-on-surface-variant border-gray-200'">
                         {{ s[1] }}
                     </button>
                     <div class="ml-auto relative">
                         <select v-model="filterType"
-                            class="text-[11px] font-bold pl-7 pr-3 py-1.5 rounded-full border border-gray-200 bg-white text-gray-500 appearance-none cursor-pointer focus:outline-none focus:border-black">
+                            class="text-[11px] font-bold pl-7 pr-3 py-1.5 rounded-full border border-gray-200 bg-white text-on-surface-variant appearance-none cursor-pointer focus:outline-none focus:border-black">
                             <option v-for="o in typeOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
                         </select>
-                        <Filter :size="11" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        <Filter :size="11" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-outline pointer-events-none" />
                     </div>
                 </div>
                 <!-- City chips -->
                 <div v-if="cityOptions.length > 1" class="flex gap-2 overflow-x-auto scrollbar-hide pb-0.5">
                     <button @click="filterCity = 'all'"
                         class="shrink-0 text-[11px] font-bold px-3 py-1.5 rounded-full border transition-all"
-                        :class="filterCity === 'all' ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200'">
+                        :class="filterCity === 'all' ? 'bg-primary text-white border-black' : 'bg-white text-on-surface-variant border-gray-200'">
                         All Cities
                     </button>
                     <button v-for="city in cityOptions" :key="city" @click="filterCity = city"
                         class="shrink-0 flex items-center gap-1 text-[11px] font-bold px-3 py-1.5 rounded-full border transition-all"
-                        :class="filterCity === city ? 'bg-black text-white border-black' : 'bg-white text-gray-500 border-gray-200'">
+                        :class="filterCity === city ? 'bg-primary text-white border-black' : 'bg-white text-on-surface-variant border-gray-200'">
                         <MapPin :size="9" />{{ city }}
                     </button>
                 </div>
@@ -434,9 +434,9 @@ onMounted(() => {
 
             <div v-else-if="filtered.length === 0" class="flex flex-col items-center py-20 text-center px-8">
                 <Building2 :size="28" class="text-gray-300 mb-3" />
-                <p class="font-bold text-gray-500">No venues found</p>
+                <p class="font-bold text-on-surface-variant">No venues found</p>
                 <button v-if="activeFilters" @click="filterStatus='all'; filterType='all'; filterCity='all'"
-                    class="mt-3 text-xs font-bold text-black flex items-center gap-1">
+                    class="mt-3 text-xs font-bold text-on-surface flex items-center gap-1">
                     <X :size="12" /> Clear filters
                 </button>
             </div>
@@ -451,41 +451,41 @@ onMounted(() => {
                         </div>
                         <div class="flex-1 min-w-0">
                             <div class="flex items-start justify-between gap-2">
-                                <h3 class="font-extrabold text-black text-sm leading-tight flex-1">{{ place.name }}</h3>
+                                <h3 class="font-extrabold text-on-surface text-sm leading-tight flex-1">{{ place.name }}</h3>
                                 <span class="shrink-0 text-[9px] font-black px-2 py-1 rounded-full uppercase tracking-wider"
-                                    :class="place.status === 'contacted' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'">
+                                    :class="place.status === 'contacted' ? 'bg-amber-100 text-ending' : 'bg-gray-100 text-on-surface-variant'">
                                     {{ place.status === 'contacted' ? 'Contacted' : 'Pending' }}
                                 </span>
                             </div>
-                            <div class="flex items-center gap-1 text-gray-400 text-[11px] mt-0.5">
+                            <div class="flex items-center gap-1 text-outline text-[11px] mt-0.5">
                                 <MapPin :size="10" class="shrink-0" />
                                 <span class="truncate">{{ place.address }}</span>
                             </div>
                             <div class="flex items-center gap-2 mt-1.5">
                                 <span v-if="extractCity(place.address)"
-                                    class="text-[10px] font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                    <MapPin :size="9" class="text-black" />{{ extractCity(place.address) }}
+                                    class="text-[10px] font-bold bg-gray-100 text-on-surface-variant px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <MapPin :size="9" class="text-on-surface" />{{ extractCity(place.address) }}
                                 </span>
                             </div>
                             <div class="flex items-center gap-3 mt-1.5">
-                                <span class="text-[10px] font-bold bg-gray-50 text-black px-2 py-0.5 rounded-full">{{ typeLabel(place.type) }}</span>
-                                <span v-if="place.rating" class="flex items-center gap-1 text-[10px] font-bold text-amber-600">
-                                    <Star :size="10" class="fill-amber-400 text-amber-400" />{{ place.rating }}
+                                <span class="text-[10px] font-bold bg-gray-50 text-on-surface px-2 py-0.5 rounded-full">{{ typeLabel(place.type) }}</span>
+                                <span v-if="place.rating" class="flex items-center gap-1 text-[10px] font-bold text-ending">
+                                    <Star :size="10" class="fill-amber-400 text-ending" />{{ place.rating }}
                                 </span>
-                                <span class="flex items-center gap-1 text-[10px] font-bold text-black ml-auto">
+                                <span class="flex items-center gap-1 text-[10px] font-bold text-on-surface ml-auto">
                                     <Users :size="10" />{{ parseInt(place.request_count) || 0 }} interested
                                 </span>
                             </div>
                         </div>
                     </div>
                     <div class="mx-4 mb-3 rounded-xl bg-white px-3 py-2.5 space-y-1.5">
-                        <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Venue Contact</p>
+                        <p class="text-[9px] font-black text-outline uppercase tracking-widest">Venue Contact</p>
                         <div v-if="place.phone" class="flex items-center gap-2">
-                            <Phone :size="11" class="text-green-500 shrink-0" />
-                            <a :href="`tel:${place.phone}`" class="text-[12px] font-bold text-gray-700">{{ place.phone }}</a>
+                            <Phone :size="11" class="text-free shrink-0" />
+                            <a :href="`tel:${place.phone}`" class="text-[12px] font-bold text-on-surface-variant">{{ place.phone }}</a>
                             <a :href="`tel:${place.phone}`" class="ml-auto text-[10px] font-bold bg-green-500 text-white px-2.5 py-1 rounded-lg">Call</a>
                         </div>
-                        <p v-else class="text-[11px] text-gray-400 italic">No phone on Google Maps</p>
+                        <p v-else class="text-[11px] text-outline italic">No phone on Google Maps</p>
                         <div v-if="place.website" class="flex items-center gap-2">
                             <Globe :size="11" class="text-blue-500 shrink-0" />
                             <a :href="place.website" target="_blank" rel="noopener" class="text-[11px] font-semibold text-blue-600 truncate hover:underline">
@@ -496,17 +496,17 @@ onMounted(() => {
                     <div class="flex items-center gap-2 px-4 pb-3">
                         <button v-if="place.status !== 'contacted'"
                             @click="markContacted(place)" :disabled="contactingId === place.id"
-                            class="flex items-center gap-1.5 text-xs font-bold bg-black text-white px-4 py-2 rounded-xl active:scale-95 disabled:opacity-60 transition-all">
+                            class="flex items-center gap-1.5 text-xs font-bold bg-primary text-white px-4 py-2 rounded-xl active:scale-95 disabled:opacity-60 transition-all">
                             <Loader2 v-if="contactingId === place.id" :size="12" class="animate-spin" />
                             <Phone v-else :size="12" />
                             Mark Contacted
                         </button>
-                        <div v-else class="flex items-center gap-1.5 text-xs font-bold text-amber-600 bg-amber-50 px-4 py-2 rounded-xl">
+                        <div v-else class="flex items-center gap-1.5 text-xs font-bold text-ending bg-amber-50 px-4 py-2 rounded-xl">
                             <CheckCircle2 :size="12" />Contacted
                         </div>
                         <button v-if="place.requesters?.length"
                             @click="expandedId = expandedId === place.id ? null : place.id"
-                            class="flex items-center gap-1 text-xs font-bold text-gray-500 ml-auto px-3 py-2 rounded-xl hover:bg-white">
+                            class="flex items-center gap-1 text-xs font-bold text-on-surface-variant ml-auto px-3 py-2 rounded-xl hover:bg-white">
                             <Users :size="12" />{{ place.requesters.length }} {{ place.requesters.length === 1 ? 'person' : 'people' }}
                             <ChevronDown v-if="expandedId !== place.id" :size="14" />
                             <ChevronUp   v-else                          :size="14" />
@@ -514,16 +514,16 @@ onMounted(() => {
                     </div>
                     <Transition enter-active-class="transition duration-200 ease-out" enter-from-class="opacity-0 -translate-y-1" enter-to-class="opacity-100 translate-y-0" leave-active-class="transition duration-150" leave-from-class="opacity-100" leave-to-class="opacity-0">
                         <div v-if="expandedId === place.id && place.requesters?.length" class="border-t border-slate-50 px-4 pb-3 pt-2 space-y-2">
-                            <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Interested Users</p>
+                            <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-2">Interested Users</p>
                             <div v-for="(user, i) in place.requesters" :key="i" class="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0">
                                 <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                                    <span class="text-[10px] font-extrabold text-black">{{ user.name ? user.name[0].toUpperCase() : '?' }}</span>
+                                    <span class="text-[10px] font-extrabold text-on-surface">{{ user.name ? user.name[0].toUpperCase() : '?' }}</span>
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-bold text-black truncate">{{ user.name || 'Unknown' }}</p>
-                                    <p class="text-[11px] text-gray-400">{{ user.phone || 'No phone' }}</p>
+                                    <p class="text-sm font-bold text-on-surface truncate">{{ user.name || 'Unknown' }}</p>
+                                    <p class="text-[11px] text-outline">{{ user.phone || 'No phone' }}</p>
                                 </div>
-                                <a v-if="user.phone" :href="`tel:${user.phone}`" class="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-green-600">
+                                <a v-if="user.phone" :href="`tel:${user.phone}`" class="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center text-free">
                                     <Phone :size="14" />
                                 </a>
                             </div>
@@ -551,7 +551,7 @@ onMounted(() => {
                     </div>
                 </div>
 
-                <div v-else-if="filteredUsers.length === 0" class="text-center py-16 text-gray-400">
+                <div v-else-if="filteredUsers.length === 0" class="text-center py-16 text-outline">
                     <Users :size="32" class="mx-auto mb-3 text-slate-200" />
                     <p class="text-sm font-semibold">No users found</p>
                 </div>
@@ -562,14 +562,14 @@ onMounted(() => {
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
                                 <img v-if="user.avatar_url" :src="user.avatar_url" class="w-full h-full object-cover rounded-full" />
-                                <span v-else class="text-sm font-extrabold text-black">{{ user.name?.[0]?.toUpperCase() || '?' }}</span>
+                                <span v-else class="text-sm font-extrabold text-on-surface">{{ user.name?.[0]?.toUpperCase() || '?' }}</span>
                             </div>
                             <div class="flex-1 min-w-0">
-                                <p class="font-bold text-sm text-black truncate">{{ user.name || 'No name' }}</p>
-                                <p class="text-[11px] text-gray-400">{{ user.phone }}</p>
+                                <p class="font-bold text-sm text-on-surface truncate">{{ user.name || 'No name' }}</p>
+                                <p class="text-[11px] text-outline">{{ user.phone }}</p>
                             </div>
                             <span class="text-[10px] font-bold px-2.5 py-1 rounded-full capitalize shrink-0"
-                                :class="roleBadge[user.role] || 'bg-gray-100 text-gray-500'">
+                                :class="roleBadge[user.role] || 'bg-gray-100 text-on-surface-variant'">
                                 {{ user.role }}
                             </span>
                         </div>
@@ -582,11 +582,11 @@ onMounted(() => {
                             </button>
                             <button v-if="user.role !== 'user'" @click="changeRole(user, 'user')"
                                 :disabled="changingRoleId === user.id"
-                                class="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 disabled:opacity-50">
+                                class="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-gray-100 text-on-surface-variant disabled:opacity-50">
                                 → User
                             </button>
                             <button @click="openPayoutModal(user)"
-                                class="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700">
+                                class="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-emerald-50 text-free">
                                 Record Payout
                             </button>
                         </div>
@@ -601,7 +601,7 @@ onMounted(() => {
                 <div v-if="claimsLoading" class="space-y-3">
                     <div v-for="i in 3" :key="i" class="bg-white rounded-2xl p-4 animate-pulse ring-1 ring-slate-100 h-32"></div>
                 </div>
-                <div v-else-if="!claims.length" class="text-center py-16 text-gray-400 text-sm">
+                <div v-else-if="!claims.length" class="text-center py-16 text-outline text-sm">
                     No claim requests yet
                 </div>
                 <div v-else class="space-y-3">
@@ -610,9 +610,9 @@ onMounted(() => {
 
                         <!-- Status strip -->
                         <div class="px-4 py-2 flex items-center gap-2 text-xs font-bold"
-                            :class="claim.claim_status === 'pending' ? 'bg-amber-50 text-amber-700' :
-                                    claim.claim_status === 'approved' ? 'bg-emerald-50 text-emerald-700' :
-                                    'bg-red-50 text-red-600'">
+                            :class="claim.claim_status === 'pending' ? 'bg-amber-50 text-ending' :
+                                    claim.claim_status === 'approved' ? 'bg-emerald-50 text-free' :
+                                    'bg-red-50 text-due'">
                             <Clock v-if="claim.claim_status === 'pending'" :size="12" />
                             <CheckCircle2 v-else-if="claim.claim_status === 'approved'" :size="12" />
                             <XCircle v-else :size="12" />
@@ -625,32 +625,32 @@ onMounted(() => {
                         <div class="p-4 space-y-3">
                             <!-- Venue info -->
                             <div>
-                                <p class="font-extrabold text-black text-sm">{{ claim.name }}</p>
-                                <p class="text-xs text-gray-400 mt-0.5">{{ claim.location }}</p>
-                                <p class="text-xs text-black font-bold mt-0.5">₹{{ claim.hourly_rate }}/hr · {{ claim.type }}</p>
+                                <p class="font-extrabold text-on-surface text-sm">{{ claim.name }}</p>
+                                <p class="text-xs text-outline mt-0.5">{{ claim.location }}</p>
+                                <p class="text-xs text-on-surface font-bold mt-0.5">₹{{ claim.hourly_rate }}/hr · {{ claim.type }}</p>
                             </div>
 
                             <!-- Claimant -->
                             <div class="flex items-center gap-3 bg-white rounded-xl px-3 py-2.5">
-                                <div class="w-8 h-8 rounded-full bg-black flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
                                     {{ claim.owner_name?.charAt(0).toUpperCase() }}
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-bold text-black truncate">{{ claim.owner_name }}</p>
-                                    <p class="text-xs text-gray-400">{{ claim.owner_phone }}</p>
+                                    <p class="text-sm font-bold text-on-surface truncate">{{ claim.owner_name }}</p>
+                                    <p class="text-xs text-outline">{{ claim.owner_phone }}</p>
                                 </div>
                             </div>
 
                             <!-- Proof image -->
                             <div v-if="claim.claim_proof_url">
-                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                                <p class="text-[10px] font-black text-outline uppercase tracking-wider mb-1.5 flex items-center gap-1">
                                     <FileImage :size="10" />Proof Submitted
                                 </p>
                                 <a :href="claim.claim_proof_url" target="_blank" rel="noopener"
                                     class="block relative rounded-xl overflow-hidden ring-1 ring-slate-200">
                                     <img :src="claim.claim_proof_url"
                                         class="w-full h-36 object-cover"
-                                        onerror="this.parentElement.innerHTML='<div class=\'flex items-center justify-center h-12 text-gray-400 text-xs\'>View document ↗</div>'" />
+                                        onerror="this.parentElement.innerHTML='<div class=\'flex items-center justify-center h-12 text-outline text-xs\'>View document ↗</div>'" />
                                     <div class="absolute inset-0 bg-black/0 hover:bg-black/10 transition-colors flex items-center justify-center">
                                         <span class="opacity-0 hover:opacity-100 bg-black/60 text-white text-xs px-3 py-1 rounded-full font-bold transition-opacity">
                                             Open full size ↗
@@ -658,20 +658,20 @@ onMounted(() => {
                                     </div>
                                 </a>
                             </div>
-                            <div v-else class="text-[11px] text-red-400 font-semibold flex items-center gap-1">
+                            <div v-else class="text-[11px] text-due font-semibold flex items-center gap-1">
                                 <XCircle :size="11" />No proof uploaded
                             </div>
 
                             <!-- Rejection reason (if rejected) -->
                             <div v-if="claim.claim_status === 'rejected' && claim.claim_rejection_reason"
-                                class="bg-red-50 rounded-xl px-3 py-2 text-xs text-red-600">
+                                class="bg-red-50 rounded-xl px-3 py-2 text-xs text-due">
                                 <span class="font-bold">Reason:</span> {{ claim.claim_rejection_reason }}
                             </div>
 
                             <!-- Action buttons (only for pending) -->
                             <div v-if="claim.claim_status === 'pending'" class="flex gap-2 pt-1">
                                 <button @click="openRejectModal(claim)" :disabled="actionId === claim.id"
-                                    class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-red-50 text-red-500 flex items-center justify-center gap-1.5 active:scale-95 transition disabled:opacity-50">
+                                    class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-red-50 text-due flex items-center justify-center gap-1.5 active:scale-95 transition disabled:opacity-50">
                                     <XCircle :size="13" />
                                     Reject
                                 </button>
@@ -692,13 +692,13 @@ onMounted(() => {
                         leave-active-class="transition duration-150 ease-in"  leave-from-class="opacity-100" leave-to-class="opacity-0">
                 <div v-if="rejectModal.show" class="fixed inset-0 bg-black/50 z-50 flex items-end" @click.self="rejectModal.show = false">
                     <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-10 space-y-4">
-                        <h3 class="text-base font-extrabold text-black">Reject Claim</h3>
-                        <p class="text-sm text-gray-500">Tell the claimant why their submission was rejected. This message will be shown on their dashboard.</p>
+                        <h3 class="text-base font-extrabold text-on-surface">Reject Claim</h3>
+                        <p class="text-sm text-on-surface-variant">Tell the claimant why their submission was rejected. This message will be shown on their dashboard.</p>
                         <textarea v-model="rejectModal.reason" rows="3" placeholder="e.g. Photo was unclear, please upload a readable GST certificate or shop license..."
                             class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-red-400 focus:outline-none resize-none"></textarea>
                         <div class="flex gap-2">
                             <button @click="rejectModal.show = false"
-                                class="flex-1 py-3 rounded-2xl text-sm font-bold bg-gray-100 text-gray-500">
+                                class="flex-1 py-3 rounded-2xl text-sm font-bold bg-gray-100 text-on-surface-variant">
                                 Cancel
                             </button>
                             <button @click="submitReject" :disabled="actionId !== null"
@@ -715,36 +715,36 @@ onMounted(() => {
         <!-- ── COURT VERIFICATION ── -->
         <template v-if="section === 'verification'">
             <div class="px-4 pt-3">
-                <div v-if="courtsLoading" class="text-center py-10 text-gray-400 text-sm">Loading courts…</div>
-                <div v-else-if="!allCourts.length" class="text-center py-16 px-6 text-gray-400 text-sm space-y-2">
+                <div v-if="courtsLoading" class="text-center py-10 text-outline text-sm">Loading courts…</div>
+                <div v-else-if="!allCourts.length" class="text-center py-16 px-6 text-outline text-sm space-y-2">
                     <Building2 :size="32" class="mx-auto text-gray-300" />
-                    <p class="font-semibold text-gray-500">No courts to show</p>
-                    <p class="text-xs text-gray-500 leading-relaxed">
-                        If you submitted an <strong class="text-gray-700">ownership claim</strong>, open
-                        <strong class="text-gray-700">Claim Reviews</strong> from the admin home — those are listed separately until approved.
+                    <p class="font-semibold text-on-surface-variant">No courts to show</p>
+                    <p class="text-xs text-on-surface-variant leading-relaxed">
+                        If you submitted an <strong class="text-on-surface-variant">ownership claim</strong>, open
+                        <strong class="text-on-surface-variant">Claim Reviews</strong> from the admin home — those are listed separately until approved.
                     </p>
                 </div>
                 <div v-else class="space-y-2">
                     <div v-for="court in allCourts" :key="court.id"
                         class="bg-white rounded-xl p-4 ring-1 ring-slate-100 flex items-center gap-3">
                         <div class="flex-1 min-w-0">
-                            <p class="font-bold text-sm text-black truncate">{{ court.name }}</p>
-                            <p class="text-xs text-gray-400 truncate">{{ court.location || 'No location' }}</p>
-                            <p v-if="court.claim_status === 'pending'" class="text-[10px] font-bold text-amber-600 mt-0.5">
+                            <p class="font-bold text-sm text-on-surface truncate">{{ court.name }}</p>
+                            <p class="text-xs text-outline truncate">{{ court.location || 'No location' }}</p>
+                            <p v-if="court.claim_status === 'pending'" class="text-[10px] font-bold text-ending mt-0.5">
                                 Ownership claim pending — also see Claim Reviews
                             </p>
                         </div>
                         <div class="flex flex-col gap-1.5 shrink-0">
                             <button @click="toggleVerify(court)" :disabled="verifyingId === court.id"
                                 class="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition-all"
-                                :class="court.is_verified ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'">
+                                :class="court.is_verified ? 'bg-emerald-100 text-free' : 'bg-gray-100 text-on-surface-variant'">
                                 <Loader2 v-if="verifyingId === court.id" :size="12" class="animate-spin" />
                                 <CheckCircle2 v-else :size="12" />
                                 {{ court.is_verified ? 'Verified' : 'Verify' }}
                             </button>
                             <button @click="toggleFeatured(court)" :disabled="featuringId === court.id"
                                 class="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl transition-all"
-                                :class="court.is_featured ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-500'">
+                                :class="court.is_featured ? 'bg-amber-100 text-ending' : 'bg-gray-100 text-on-surface-variant'">
                                 <Loader2 v-if="featuringId === court.id" :size="12" class="animate-spin" />
                                 <Star v-else :size="12" />
                                 {{ court.is_featured ? 'Featured' : 'Feature' }}
@@ -763,23 +763,23 @@ onMounted(() => {
                     leave-active-class="transition duration-150 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
             <div v-if="payoutModal.show" class="absolute inset-0 bg-black/50 z-[200] flex items-end" @click.self="payoutModal.show = false">
                 <div class="w-full bg-white rounded-t-3xl p-6 space-y-4">
-                    <h3 class="font-extrabold text-black text-lg">Record Payout</h3>
-                    <p class="text-sm text-gray-500">Recording payout for <span class="font-bold text-black">{{ payoutModal.owner?.name }}</span></p>
+                    <h3 class="font-extrabold text-on-surface text-lg">Record Payout</h3>
+                    <p class="text-sm text-on-surface-variant">Recording payout for <span class="font-bold text-on-surface">{{ payoutModal.owner?.name }}</span></p>
                     <div>
-                        <label class="text-xs font-bold text-gray-500 block mb-1">Amount (₹) *</label>
+                        <label class="text-xs font-bold text-on-surface-variant block mb-1">Amount (₹) *</label>
                         <input v-model="payoutModal.amount" type="number" placeholder="5000"
                             class="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2" />
                     </div>
                     <div>
-                        <label class="text-xs font-bold text-gray-500 block mb-1">Note (optional)</label>
+                        <label class="text-xs font-bold text-on-surface-variant block mb-1">Note (optional)</label>
                         <input v-model="payoutModal.note" type="text" placeholder="e.g. April earnings"
                             class="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2" />
                     </div>
                     <div class="flex gap-2">
                         <button @click="payoutModal.show = false"
-                            class="flex-1 py-3 rounded-xl font-bold text-sm bg-gray-100 text-gray-600">Cancel</button>
+                            class="flex-1 py-3 rounded-xl font-bold text-sm bg-gray-100 text-on-surface-variant">Cancel</button>
                         <button @click="recordPayout" :disabled="payoutSaving"
-                            class="flex-1 py-3 rounded-xl font-bold text-sm bg-black text-white flex items-center justify-center gap-2 disabled:opacity-50">
+                            class="flex-1 py-3 rounded-xl font-bold text-sm bg-primary text-white flex items-center justify-center gap-2 disabled:opacity-50">
                             <Loader2 v-if="payoutSaving" :size="14" class="animate-spin" />
                             Record Payout
                         </button>

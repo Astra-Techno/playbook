@@ -59,9 +59,9 @@ const fmtTime = (d) => new Date(d).toLocaleTimeString('en-IN', { hour: '2-digit'
 const fmtAmt = (n) => Number(n).toLocaleString('en-IN')
 
 const kindMeta = {
-    booking:      { label: 'Booking',      bg: 'bg-gray-100',  text: 'text-black',    icon: CalendarDays },
+    booking:      { label: 'Booking',      bg: 'bg-gray-100',  text: 'text-on-surface',    icon: CalendarDays },
     subscription: { label: 'Membership',   bg: 'bg-violet-50',      text: 'text-violet-600', icon: Wallet },
-    payout:       { label: 'Payout',       bg: 'bg-amber-50',       text: 'text-amber-600',  icon: ArrowDownToLine },
+    payout:       { label: 'Payout',       bg: 'bg-amber-50',       text: 'text-ending',  icon: ArrowDownToLine },
 }
 
 const hasDateFilter = computed(() => fromDate.value || toDate.value)
@@ -75,15 +75,15 @@ const hasDateFilter = computed(() => fromDate.value || toDate.value)
             <div class="flex items-center gap-3 mb-3">
                 <button @click="router.back()"
                     class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                    <ArrowLeft :size="20" :stroke-width="2.5" class="text-gray-500" />
+                    <ArrowLeft :size="20" :stroke-width="2.5" class="text-on-surface-variant" />
                 </button>
                 <div class="flex-1">
-                    <h1 class="text-lg font-bold text-black">Ledger</h1>
-                    <p class="text-xs text-gray-400">All credits & payouts</p>
+                    <h1 class="text-lg font-bold text-on-surface">Ledger</h1>
+                    <p class="text-xs text-outline">All credits & payouts</p>
                 </div>
                 <button @click="showFilters = !showFilters"
                     class="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
-                    :class="(hasDateFilter || filter !== 'all') ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'">
+                    :class="(hasDateFilter || filter !== 'all') ? 'bg-primary text-white' : 'bg-gray-100 text-on-surface-variant'">
                     <Filter :size="16" />
                 </button>
             </div>
@@ -92,7 +92,7 @@ const hasDateFilter = computed(() => fromDate.value || toDate.value)
             <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
                 <button v-for="opt in filterOptions" :key="opt.id"
                     @click="filter = opt.id; fetchLedger()"
-                    :class="filter === opt.id ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'"
+                    :class="filter === opt.id ? 'bg-primary text-white' : 'bg-gray-100 text-on-surface-variant'"
                     class="px-3 py-1.5 rounded-full text-xs font-bold shrink-0 transition-colors">
                     {{ opt.label }}
                 </button>
@@ -110,11 +110,11 @@ const hasDateFilter = computed(() => fromDate.value || toDate.value)
             <div v-if="showFilters" class="bg-white px-5 py-4 border-b border-gray-100 space-y-3">
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-semibold text-gray-500 mb-1">From</label>
+                        <label class="block text-xs font-semibold text-on-surface-variant mb-1">From</label>
                         <input v-model="fromDate" type="date" class="input-field text-sm" />
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-500 mb-1">To</label>
+                        <label class="block text-xs font-semibold text-on-surface-variant mb-1">To</label>
                         <input v-model="toDate" type="date" class="input-field text-sm" />
                     </div>
                 </div>
@@ -148,19 +148,19 @@ const hasDateFilter = computed(() => fromDate.value || toDate.value)
             <div class="grid grid-cols-3 gap-3 px-5 pt-5 mb-5">
                 <div class="bg-white rounded-2xl p-3 text-center ring-1 ring-slate-100 shadow-sm">
                     <div class="flex items-center justify-center gap-1 mb-1">
-                        <TrendingUp :size="12" class="text-emerald-500" />
-                        <p class="text-[10px] font-semibold text-gray-400">Credits</p>
+                        <TrendingUp :size="12" class="text-free" />
+                        <p class="text-[10px] font-semibold text-outline">Credits</p>
                     </div>
-                    <p class="text-base font-extrabold text-emerald-600">₹{{ fmtAmt(data.totals.credits) }}</p>
+                    <p class="text-base font-extrabold text-free">₹{{ fmtAmt(data.totals.credits) }}</p>
                 </div>
                 <div class="bg-white rounded-2xl p-3 text-center ring-1 ring-slate-100 shadow-sm">
                     <div class="flex items-center justify-center gap-1 mb-1">
-                        <TrendingDown :size="12" class="text-amber-500" />
-                        <p class="text-[10px] font-semibold text-gray-400">Paid Out</p>
+                        <TrendingDown :size="12" class="text-ending" />
+                        <p class="text-[10px] font-semibold text-outline">Paid Out</p>
                     </div>
-                    <p class="text-base font-extrabold text-amber-600">₹{{ fmtAmt(data.totals.debits) }}</p>
+                    <p class="text-base font-extrabold text-ending">₹{{ fmtAmt(data.totals.debits) }}</p>
                 </div>
-                <div class="bg-black rounded-2xl p-3 text-center shadow-sm">
+                <div class="bg-primary rounded-2xl p-3 text-center shadow-sm">
                     <div class="flex items-center justify-center gap-1 mb-1">
                         <IndianRupee :size="12" class="text-white/70" />
                         <p class="text-[10px] font-semibold text-white/70">Balance</p>
@@ -170,7 +170,7 @@ const hasDateFilter = computed(() => fromDate.value || toDate.value)
             </div>
 
             <!-- Entry count -->
-            <p class="px-5 text-xs text-gray-400 font-medium mb-3">
+            <p class="px-5 text-xs text-outline font-medium mb-3">
                 {{ data.entries.length }} {{ data.entries.length === 1 ? 'entry' : 'entries' }}
                 <span v-if="hasDateFilter"> · filtered</span>
             </p>
@@ -179,8 +179,8 @@ const hasDateFilter = computed(() => fromDate.value || toDate.value)
             <div v-if="data.entries.length === 0"
                 class="mx-5 text-center py-16 bg-white rounded-2xl ring-1 ring-slate-100">
                 <IndianRupee :size="36" class="text-slate-200 mx-auto mb-3" />
-                <p class="font-semibold text-gray-500">No entries found</p>
-                <p class="text-xs text-gray-400 mt-1">Try changing the filter or date range</p>
+                <p class="font-semibold text-on-surface-variant">No entries found</p>
+                <p class="text-xs text-outline mt-1">Try changing the filter or date range</p>
             </div>
 
             <div v-else class="px-5 space-y-2">
@@ -192,29 +192,29 @@ const hasDateFilter = computed(() => fromDate.value || toDate.value)
                             :class="kindMeta[entry.kind]?.bg || 'bg-gray-100'">
                             <component :is="kindMeta[entry.kind]?.icon || IndianRupee"
                                 :size="16"
-                                :class="kindMeta[entry.kind]?.text || 'text-gray-500'" />
+                                :class="kindMeta[entry.kind]?.text || 'text-on-surface-variant'" />
                         </div>
 
                         <!-- Details -->
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2">
-                                <p class="font-semibold text-sm text-black truncate">{{ entry.party }}</p>
+                                <p class="font-semibold text-sm text-on-surface truncate">{{ entry.party }}</p>
                                 <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
-                                    :class="(kindMeta[entry.kind]?.bg || 'bg-gray-100') + ' ' + (kindMeta[entry.kind]?.text || 'text-gray-500')">
+                                    :class="(kindMeta[entry.kind]?.bg || 'bg-gray-100') + ' ' + (kindMeta[entry.kind]?.text || 'text-on-surface-variant')">
                                     {{ kindMeta[entry.kind]?.label }}
                                 </span>
                             </div>
-                            <p class="text-xs text-gray-400 truncate">{{ entry.label }}</p>
-                            <p class="text-[10px] text-gray-300 mt-0.5">{{ fmt(entry.dated) }} · {{ fmtTime(entry.dated) }}</p>
+                            <p class="text-xs text-outline truncate">{{ entry.label }}</p>
+                            <p class="text-[10px] text-outline mt-0.5">{{ fmt(entry.dated) }} · {{ fmtTime(entry.dated) }}</p>
                         </div>
 
                         <!-- Amount + balance -->
                         <div class="text-right shrink-0">
                             <p class="font-bold text-sm"
-                                :class="entry.direction === 'credit' ? 'text-emerald-600' : 'text-amber-600'">
+                                :class="entry.direction === 'credit' ? 'text-free' : 'text-ending'">
                                 {{ entry.direction === 'credit' ? '+' : '−' }}₹{{ fmtAmt(entry.amount) }}
                             </p>
-                            <p class="text-[10px] text-gray-400 mt-0.5">bal ₹{{ fmtAmt(entry.balance) }}</p>
+                            <p class="text-[10px] text-outline mt-0.5">bal ₹{{ fmtAmt(entry.balance) }}</p>
                         </div>
                     </div>
                 </div>
@@ -222,9 +222,9 @@ const hasDateFilter = computed(() => fromDate.value || toDate.value)
         </template>
 
         <!-- Error -->
-        <div v-else class="px-5 pt-10 text-center text-gray-400 text-sm">
+        <div v-else class="px-5 pt-10 text-center text-outline text-sm">
             Failed to load ledger.
-            <button @click="fetchLedger" class="block mx-auto mt-3 text-black font-bold">Retry</button>
+            <button @click="fetchLedger" class="block mx-auto mt-3 text-on-surface font-bold">Retry</button>
         </div>
 
     </div>

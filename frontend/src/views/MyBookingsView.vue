@@ -67,9 +67,9 @@ const displayedBookings = computed(() =>
 )
 
 const statusConfig = {
-    confirmed: { label: 'Confirmed', icon: CheckCircle2, cls: 'text-black bg-gray-100' },
-    pending:   { label: 'Pending',   icon: AlertCircle,  cls: 'text-amber-600 bg-amber-50' },
-    cancelled: { label: 'Cancelled', icon: XCircle,      cls: 'text-red-500 bg-red-50' },
+    confirmed: { label: 'Confirmed', icon: CheckCircle2, cls: 'text-free bg-free-container' },
+    pending:   { label: 'Pending',   icon: AlertCircle,  cls: 'text-ending bg-ending-container' },
+    cancelled: { label: 'Cancelled', icon: XCircle,      cls: 'text-due bg-due-container' },
 }
 const getStatus = (s) => statusConfig[s] || statusConfig.pending
 
@@ -189,15 +189,15 @@ const openChat = (booking) => {
             <div class="flex px-5 border-t border-slate-50 bg-white">
                 <button @click="activeFilter = 'upcoming'"
                     class="flex-1 py-3 text-xs font-bold border-b-2 transition-all"
-                    :class="activeFilter === 'upcoming' ? 'border-black text-black' : 'border-transparent text-gray-400'">
+                    :class="activeFilter === 'upcoming' ? 'border-black text-on-surface' : 'border-transparent text-outline'">
                     UPCOMING
-                    <span v-if="upcoming.length" class="ml-1 bg-black text-white text-[9px] px-1.5 py-0.5 rounded-full">
+                    <span v-if="upcoming.length" class="ml-1 bg-primary text-white text-[9px] px-1.5 py-0.5 rounded-full">
                         {{ upcoming.length }}
                     </span>
                 </button>
                 <button @click="activeFilter = 'past'"
                     class="flex-1 py-3 text-xs font-bold border-b-2 transition-all"
-                    :class="activeFilter === 'past' ? 'border-black text-black' : 'border-transparent text-gray-400'">
+                    :class="activeFilter === 'past' ? 'border-black text-on-surface' : 'border-transparent text-outline'">
                     PAST RECORDS
                 </button>
             </div>
@@ -207,7 +207,7 @@ const openChat = (booking) => {
             <h2 class="font-bold">Your refunds</h2>
             <button class="underline" @click="refreshRefunds">Refresh status</button>
             <p v-if="refundError" role="alert">{{ refundError }}</p>
-            <p v-for="refund in refunds" :key="refund.id" class="break-all">INR {{ Number(refund.amount).toFixed(2) }} · {{ refund.status.replaceAll('_',' ') }}<span class="block text-xs text-gray-500">{{ refund.reference }}</span></p>
+            <p v-for="refund in refunds" :key="refund.id" class="break-all">INR {{ Number(refund.amount).toFixed(2) }} · {{ refund.status.replaceAll('_',' ') }}<span class="block text-xs text-on-surface-variant">{{ refund.reference }}</span></p>
         </section>
         <!-- Content -->
         <div class="px-5 py-5 pb-4">
@@ -229,10 +229,10 @@ const openChat = (booking) => {
                 <div class="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100">
                     <Trophy :size="32" :stroke-width="2" class="text-gray-300" />
                 </div>
-                <p class="font-semibold text-gray-700">
+                <p class="font-semibold text-on-surface-variant">
                     {{ activeFilter === 'upcoming' ? 'No upcoming bookings' : 'No past bookings' }}
                 </p>
-                <p class="text-sm text-gray-400 mt-1 mb-5">
+                <p class="text-sm text-outline mt-1 mb-5">
                     {{ activeFilter === 'upcoming' ? 'Find a court and book your next game' : 'Your played sessions will appear here' }}
                 </p>
                 <button v-if="activeFilter === 'upcoming'" @click="router.push('/')" class="btn-primary text-sm px-6 py-2.5">
@@ -245,22 +245,22 @@ const openChat = (booking) => {
                 <div v-for="booking in displayedBookings" :key="booking.id" class="card p-4">
                     <div class="flex gap-3 items-start">
                         <!-- Date block -->
-                        <div class="shrink-0 w-12 h-12 rounded-xl flex flex-col items-center justify-center text-white"
-                            :class="booking.status === 'cancelled' ? 'bg-slate-400' : 'bg-black'">
+                        <div class="shrink-0 w-12 h-12 time-plate !min-w-0 !px-0"
+                            :class="booking.status === 'cancelled' ? 'bg-slate-400' : 'bg-primary'">
                             <span class="text-lg font-bold leading-none">{{ parseLocal(booking.start_time).getDate() }}</span>
                             <span class="text-[10px] font-semibold uppercase">{{ parseLocal(booking.start_time).toLocaleDateString('en-IN', { month: 'short' }) }}</span>
                         </div>
 
                         <div class="flex-1 min-w-0">
                             <div class="flex items-start justify-between gap-2">
-                                <h3 class="font-bold text-black text-[15px] truncate">{{ booking.court_name || 'Court Booking' }}</h3>
-                                <span :class="[getStatus(booking.status).cls, 'flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full shrink-0']">
+                                <h3 class="font-bold text-on-surface text-[15px] truncate">{{ booking.court_name || 'Court Booking' }}</h3>
+                                <span :class="[getStatus(booking.status).cls, 'tag shrink-0']">
                                     <component :is="getStatus(booking.status).icon" :size="10" />
                                     {{ getStatus(booking.status).label }}
                                 </span>
                             </div>
 
-                            <div class="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
+                            <div class="flex items-center gap-3 mt-1.5 text-xs text-on-surface-variant">
                                 <span class="flex items-center gap-1">
                                     <Clock :size="11" :stroke-width="2" />
                                     {{ formatTime(booking.start_time) }} – {{ formatTime(booking.end_time) }}
@@ -272,20 +272,20 @@ const openChat = (booking) => {
                             </div>
 
                             <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-50">
-                                <span class="text-xs text-gray-400 font-medium capitalize">
+                                <span class="text-xs text-outline font-medium capitalize">
                                     {{ booking.type === 'hourly' ? 'Hourly slot' : 'Membership' }}
                                 </span>
-                                <span class="font-bold text-black text-sm">₹{{ booking.total_price }}</span>
+                                <span class="font-bold text-on-surface text-sm">₹{{ booking.total_price }}</span>
                             </div>
 
-                            <p v-if="booking.refund_status" class="mt-3 text-xs text-gray-600" role="status">Refund: {{ booking.refund_status.replaceAll('_', ' ') }}<template v-if="Number(booking.refund_amount_paise) > 0"> · INR {{ (booking.refund_amount_paise / 100).toFixed(2) }}</template><span v-if="booking.refund_reference" class="block break-all">{{ booking.refund_reference }}</span></p>
+                            <p v-if="booking.refund_status" class="mt-3 text-xs text-on-surface-variant" role="status">Refund: {{ booking.refund_status.replaceAll('_', ' ') }}<template v-if="Number(booking.refund_amount_paise) > 0"> · INR {{ (booking.refund_amount_paise / 100).toFixed(2) }}</template><span v-if="booking.refund_reference" class="block break-all">{{ booking.refund_reference }}</span></p>
                             <!-- Action row -->
                             <div v-if="booking.status !== 'cancelled'" class="flex gap-2 mt-3 flex-wrap">
                                 <!-- Cancel upcoming -->
                                 <button v-if="activeFilter === 'upcoming'"
                                     @click="cancelBooking(booking)"
                                     :disabled="cancellingId === booking.id"
-                                    class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-red-50 text-red-500 hover:bg-red-100 transition-colors disabled:opacity-50">
+                                    class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-red-50 text-due hover:bg-red-100 transition-colors disabled:opacity-50">
                                     <Loader2 v-if="cancellingId === booking.id" :size="11" class="animate-spin" />
                                     <XCircle v-else :size="11" />
                                     Cancel Booking
@@ -294,16 +294,16 @@ const openChat = (booking) => {
                                 <template v-else>
                                     <button v-if="!reviewedIds.has(String(booking.id))"
                                         @click="openRatingModal(booking)"
-                                        class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 transition-colors">
+                                        class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-amber-50 text-ending hover:bg-amber-100 transition-colors">
                                         <Star :size="11" />
                                         Rate Court
                                     </button>
-                                    <span v-else class="text-[11px] font-semibold text-black flex items-center gap-1 px-1">
-                                        <Star :size="11" class="fill-amber-400 text-amber-400" /> Reviewed
+                                    <span v-else class="text-[11px] font-semibold text-on-surface flex items-center gap-1 px-1">
+                                        <Star :size="11" class="fill-amber-400 text-ending" /> Reviewed
                                     </span>
                                     <button
                                         @click="router.push(`/post/create?booking_id=${booking.id}&court_id=${booking.court_id}&court_name=${encodeURIComponent(booking.court_name)}`)"
-                                        class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-gray-50 text-black hover:bg-gray-100 transition-colors">
+                                        class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-gray-50 text-on-surface hover:bg-gray-100 transition-colors">
                                         <Share2 :size="11" />
                                         Share Experience
                                     </button>
@@ -311,7 +311,7 @@ const openChat = (booking) => {
                                 <!-- Message owner — shown on all non-cancelled bookings -->
                                 <button v-if="booking.owner_id"
                                     @click="openChat(booking)"
-                                    class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-gray-100 text-gray-500 hover:bg-slate-200 transition-colors">
+                                    class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-gray-100 text-on-surface-variant hover:bg-slate-200 transition-colors">
                                     <MessageCircle :size="11" />
                                     Message
                                 </button>
@@ -346,20 +346,20 @@ const openChat = (booking) => {
                 <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-10">
                     <div class="flex items-center justify-between mb-1">
                         <div>
-                            <p v-if="ratingModal.auto" class="text-[10px] font-bold text-black uppercase tracking-wider mb-0.5">How was your session?</p>
-                            <h3 class="font-bold text-black text-base">Rate Your Experience</h3>
+                            <p v-if="ratingModal.auto" class="text-[10px] font-bold text-on-surface uppercase tracking-wider mb-0.5">How was your session?</p>
+                            <h3 class="font-bold text-on-surface text-base">Rate Your Experience</h3>
                         </div>
                         <button @click="dismissModal" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                            <X :size="16" class="text-gray-500" />
+                            <X :size="16" class="text-on-surface-variant" />
                         </button>
                     </div>
-                    <p class="text-sm text-gray-500 mb-5">{{ ratingModal.booking?.court_name }}</p>
+                    <p class="text-sm text-on-surface-variant mb-5">{{ ratingModal.booking?.court_name }}</p>
 
                     <!-- Stars -->
                     <div class="flex gap-2 justify-center mb-5">
                         <button v-for="n in 5" :key="n" @click="ratingModal.rating = n" class="active:scale-90 transition-transform">
                             <Star :size="40"
-                                :class="n <= ratingModal.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-200 fill-slate-200'" />
+                                :class="n <= ratingModal.rating ? 'text-ending fill-amber-400' : 'text-slate-200 fill-slate-200'" />
                         </button>
                     </div>
 

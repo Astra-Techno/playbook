@@ -78,7 +78,7 @@ const menuGroups = computed(() => {
 
         <!-- Loading -->
         <div v-if="loading" class="flex items-center justify-center h-64">
-            <Loader2 :size="28" class="text-black animate-spin" />
+            <Loader2 :size="28" class="text-on-surface animate-spin" />
         </div>
 
         <template v-else-if="court">
@@ -92,9 +92,9 @@ const menuGroups = computed(() => {
                 </div>
                 <button @click="router.back()"
                     class="absolute top-5 left-4 w-9 h-9 rounded-full bg-white/90 backdrop-blur flex items-center justify-center shadow-sm">
-                    <ChevronRight :size="18" class="text-gray-700 rotate-180" />
+                    <ChevronRight :size="18" class="text-on-surface-variant rotate-180" />
                 </button>
-                <div class="absolute bottom-3 left-4 bg-black text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-lg shadow-sm tracking-wider">
+                <div class="absolute bottom-3 left-4 bg-primary text-white text-[10px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-lg shadow-sm tracking-wider">
                     <Flame :size="10" :stroke-width="3" />
                     POPULAR
                 </div>
@@ -103,38 +103,38 @@ const menuGroups = computed(() => {
             <!-- Venue info card -->
             <div class="mx-4 -mt-4 relative z-10 bg-white rounded-2xl p-4 shadow-sm ring-1 ring-slate-100 mb-5">
                 <div v-if="court.claim_status === 'pending'" class="mb-3 flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-                    <Loader2 :size="12" class="text-amber-500 animate-spin shrink-0" />
-                    <p class="text-xs font-bold text-amber-700">Pending admin verification · not visible to players yet</p>
+                    <Loader2 :size="12" class="text-ending animate-spin shrink-0" />
+                    <p class="text-xs font-bold text-ending">Pending admin verification · not visible to players yet</p>
                 </div>
                 <div v-else-if="court.claim_status === 'rejected'" class="mb-3 flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2">
-                    <X :size="12" class="text-red-500 shrink-0" />
-                    <p class="text-xs font-bold text-red-600">Claim rejected · please contact support</p>
+                    <X :size="12" class="text-due shrink-0" />
+                    <p class="text-xs font-bold text-due">Claim rejected · please contact support</p>
                 </div>
 
                 <div class="flex items-start justify-between mb-1">
-                    <h1 class="text-xl font-bold text-black">{{ court.name }}</h1>
-                    <div v-if="court.avg_rating" class="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg text-amber-700 font-bold text-[11px] border border-amber-100/50">
-                        <Star :size="11" :stroke-width="2.5" class="fill-amber-500 text-amber-500" />
+                    <h1 class="text-xl font-bold text-on-surface">{{ court.name }}</h1>
+                    <div v-if="court.avg_rating" class="flex items-center gap-1 bg-amber-50 px-2 py-1 rounded-lg text-ending font-bold text-[11px] border border-amber-100/50">
+                        <Star :size="11" :stroke-width="2.5" class="fill-amber-500 text-ending" />
                         {{ court.avg_rating }}
                         <span class="font-normal opacity-60">({{ court.review_count }})</span>
                     </div>
                 </div>
-                <div class="flex items-center gap-1.5 text-gray-500 text-sm mb-3">
-                    <MapPin :size="12" :stroke-width="2.5" class="text-gray-400" />
+                <div class="flex items-center gap-1.5 text-on-surface-variant text-sm mb-3">
+                    <MapPin :size="12" :stroke-width="2.5" class="text-outline" />
                     <span>{{ court.location || 'Location not set' }}</span>
                 </div>
                 <div class="flex items-end justify-between">
                     <div>
-                        <span class="text-xs text-gray-400 font-medium block">Starting at</span>
-                        <span class="text-black font-bold text-xl">₹{{ court.hourly_rate }}<span class="text-sm font-normal text-gray-500">/hr</span></span>
+                        <span class="text-xs text-outline font-medium block">Starting at</span>
+                        <span class="text-on-surface font-bold text-xl">₹{{ court.hourly_rate }}<span class="text-sm font-normal text-on-surface-variant">/hr</span></span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <div v-if="!isVenueOwner" class="flex items-center gap-1 bg-amber-50 border border-amber-100 text-amber-700 text-[10px] font-bold px-2.5 py-1.5 rounded-full">
+                        <div v-if="!isVenueOwner" class="flex items-center gap-1 bg-amber-50 border border-amber-100 text-ending text-[10px] font-bold px-2.5 py-1.5 rounded-full">
                             <ShieldCheck :size="11" />
                             Staff Access
                         </div>
                         <button v-if="isVenueOwner" @click="router.push(`/my-venues/${court.id}/edit`)"
-                            class="text-xs font-bold text-black bg-gray-100 px-3 py-1.5 rounded-full">
+                            class="text-xs font-bold text-on-surface bg-gray-100 px-3 py-1.5 rounded-full">
                             Edit
                         </button>
                     </div>
@@ -174,7 +174,7 @@ const menuGroups = computed(() => {
             <!-- Menu groups -->
             <div class="px-4 pb-8 space-y-5">
                 <div v-for="group in menuGroups" :key="group.group">
-                    <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">{{ group.group }}</p>
+                    <p class="text-[11px] font-bold text-outline uppercase tracking-widest mb-2 px-1">{{ group.group }}</p>
                     <div class="bg-white rounded-2xl overflow-hidden divide-y divide-slate-50" style="box-shadow:0 1px 6px rgba(0,0,0,0.06)">
                         <button
                             v-for="item in group.items"
@@ -182,11 +182,11 @@ const menuGroups = computed(() => {
                             @click="router.push(item.to)"
                             class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white active:bg-gray-100 transition-colors">
                             <div class="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
-                                <component :is="item.icon" :size="17" class="text-gray-500" />
+                                <component :is="item.icon" :size="17" class="text-on-surface-variant" />
                             </div>
                             <div class="flex-1 text-left">
-                                <p class="text-sm font-semibold text-black">{{ item.label }}</p>
-                                <p class="text-xs text-gray-400">{{ item.desc }}</p>
+                                <p class="text-sm font-semibold text-on-surface">{{ item.label }}</p>
+                                <p class="text-xs text-outline">{{ item.desc }}</p>
                             </div>
                             <ChevronRight :size="15" class="text-gray-300" />
                         </button>
@@ -198,10 +198,10 @@ const menuGroups = computed(() => {
                     <button @click="deleteCourt" :disabled="deleteLoading"
                         class="w-full flex items-center gap-3 px-4 py-4 hover:bg-red-50 active:bg-red-100 transition-colors disabled:opacity-50">
                         <div class="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
-                            <Trash2 v-if="!deleteLoading" :size="17" class="text-red-500" />
-                            <Loader2 v-else :size="17" class="text-red-400 animate-spin" />
+                            <Trash2 v-if="!deleteLoading" :size="17" class="text-due" />
+                            <Loader2 v-else :size="17" class="text-due animate-spin" />
                         </div>
-                        <span class="flex-1 text-sm font-bold text-red-600 text-left">Delete Venue</span>
+                        <span class="flex-1 text-sm font-bold text-due text-left">Delete Venue</span>
                     </button>
                 </div>
             </div>

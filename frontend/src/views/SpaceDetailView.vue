@@ -77,7 +77,7 @@ const menuItems = computed(() => [
     <div class="min-h-full bg-white">
 
         <div v-if="loading" class="flex items-center justify-center h-64">
-            <Loader2 :size="28" class="text-black animate-spin" />
+            <Loader2 :size="28" class="text-on-surface animate-spin" />
         </div>
 
         <template v-else-if="space">
@@ -103,18 +103,18 @@ const menuItems = computed(() => [
                 </div>
 
                 <div class="p-4">
-                    <h1 class="text-xl font-bold text-black">{{ space.name }}</h1>
-                    <p v-if="space.description" class="text-sm text-gray-500 mt-0.5">{{ space.description }}</p>
+                    <h1 class="text-xl font-bold text-on-surface">{{ space.name }}</h1>
+                    <p v-if="space.description" class="text-sm text-on-surface-variant mt-0.5">{{ space.description }}</p>
                     <div class="mt-3 flex items-end justify-between">
                         <div v-if="space.hourly_rate">
-                            <span class="text-xs text-gray-400 font-medium block">Rate</span>
-                            <span class="text-black font-bold text-lg">₹{{ space.hourly_rate }}<span class="text-sm font-normal text-gray-500">/hr</span></span>
+                            <span class="text-xs text-outline font-medium block">Rate</span>
+                            <span class="text-on-surface font-bold text-lg">₹{{ space.hourly_rate }}<span class="text-sm font-normal text-on-surface-variant">/hr</span></span>
                         </div>
                         <div v-else>
-                            <span class="text-xs text-gray-400">Uses venue base rate</span>
+                            <span class="text-xs text-outline">Uses venue base rate</span>
                         </div>
                         <button @click="router.push(`/my-venues/${venueId}/spaces`)"
-                            class="text-xs font-bold text-black bg-gray-100 px-3 py-1.5 rounded-full">
+                            class="text-xs font-bold text-on-surface bg-gray-100 px-3 py-1.5 rounded-full">
                             All Spaces
                         </button>
                     </div>
@@ -123,7 +123,7 @@ const menuItems = computed(() => [
 
             <!-- Menu -->
             <div class="px-4 pb-8">
-                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">Configure</p>
+                <p class="text-[11px] font-bold text-outline uppercase tracking-widest mb-2 px-1">Configure</p>
                 <div class="bg-white rounded-2xl overflow-hidden divide-y divide-slate-50" style="box-shadow:0 1px 6px rgba(0,0,0,0.06)">
                     <button
                         v-for="item in menuItems"
@@ -131,11 +131,11 @@ const menuItems = computed(() => [
                         @click="router.push(item.to)"
                         class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white active:bg-gray-100 transition-colors">
                         <div class="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
-                            <component :is="item.icon" :size="17" class="text-gray-500" />
+                            <component :is="item.icon" :size="17" class="text-on-surface-variant" />
                         </div>
                         <div class="flex-1 text-left">
-                            <p class="text-sm font-semibold text-black">{{ item.label }}</p>
-                            <p class="text-xs text-gray-400">{{ item.desc }}</p>
+                            <p class="text-sm font-semibold text-on-surface">{{ item.label }}</p>
+                            <p class="text-xs text-outline">{{ item.desc }}</p>
                         </div>
                         <ChevronRight :size="15" class="text-gray-300" />
                     </button>

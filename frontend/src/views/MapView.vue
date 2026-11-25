@@ -267,12 +267,12 @@ const refreshAvailability = () => {
             <div class="flex items-center gap-2 pointer-events-auto">
                 <button @click="router.back()"
                     class="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center shrink-0">
-                    <ChevronLeft :size="20" :stroke-width="2.5" class="text-gray-700" />
+                    <ChevronLeft :size="20" :stroke-width="2.5" class="text-on-surface-variant" />
                 </button>
                 <div class="flex-1 bg-white rounded-2xl shadow-md px-4 py-2.5 flex items-center gap-2 min-w-0">
-                    <MapPin :size="15" class="text-black shrink-0" />
-                    <span class="text-sm font-semibold text-gray-700 truncate">Services near you</span>
-                    <span v-if="!loading" class="ml-auto text-xs text-gray-400 font-medium shrink-0 text-right leading-tight">
+                    <MapPin :size="15" class="text-on-surface shrink-0" />
+                    <span class="text-sm font-semibold text-on-surface-variant truncate">Services near you</span>
+                    <span v-if="!loading" class="ml-auto text-xs text-outline font-medium shrink-0 text-right leading-tight">
                         <template v-if="showAvailability">{{ availabilityLabel }}</template>
                         <template v-else>{{ totalOnMap }} on map</template>
                     </span>
@@ -283,10 +283,10 @@ const refreshAvailability = () => {
             <!-- Availability overlay -->
             <div class="pointer-events-auto bg-white/95 backdrop-blur-md rounded-2xl shadow-md px-3 py-2.5 ring-1 ring-slate-100">
                 <label class="flex items-center gap-2 cursor-pointer select-none">
-                    <input v-model="showAvailability" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-black focus:border border-black" />
-                    <Clock :size="15" class="text-emerald-600 shrink-0" />
-                    <span class="text-xs font-bold text-black">Show courts free at…</span>
-                    <Loader2 v-if="availabilityLoading" :size="14" class="animate-spin text-black ml-auto" />
+                    <input v-model="showAvailability" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-on-surface focus:border border-black" />
+                    <Clock :size="15" class="text-free shrink-0" />
+                    <span class="text-xs font-bold text-on-surface">Show courts free at…</span>
+                    <Loader2 v-if="availabilityLoading" :size="14" class="animate-spin text-on-surface ml-auto" />
                 </label>
                 <div v-if="showAvailability" class="mt-2 pt-2 border-t border-gray-100 grid grid-cols-3 gap-2">
                     <input v-model="availDate" type="date" class="col-span-1 text-[11px] font-semibold border border-gray-200 rounded-lg px-1 py-1.5" />
@@ -314,7 +314,7 @@ const refreshAvailability = () => {
             :class="(selected || selectedPlace)
                 ? 'bottom-[calc(13rem+env(safe-area-inset-bottom,0px))]'
                 : 'bottom-[max(1.5rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))]'">
-            <Navigation :size="18" :class="locating ? 'text-black animate-pulse' : 'text-gray-500'" />
+            <Navigation :size="18" :class="locating ? 'text-on-surface animate-pulse' : 'text-on-surface-variant'" />
         </button>
 
         <!-- Legend -->
@@ -323,8 +323,8 @@ const refreshAvailability = () => {
                 ? 'bottom-[calc(13rem+env(safe-area-inset-bottom,0px))]'
                 : 'bottom-[max(1.5rem,calc(env(safe-area-inset-bottom,0px)+0.75rem))]'">
             <div class="flex items-center gap-1.5">
-                <div class="w-3 h-3 rounded-full bg-black shrink-0"></div>
-                <span class="text-gray-700">Listed venue</span>
+                <div class="w-3 h-3 rounded-full bg-primary shrink-0"></div>
+                <span class="text-on-surface-variant">Listed venue</span>
             </div>
             <div v-if="showAvailability" class="flex items-center gap-1.5">
                 <div class="w-3 h-3 rounded-full shrink-0 ring-2 ring-emerald-500 bg-violet-500"></div>
@@ -332,11 +332,11 @@ const refreshAvailability = () => {
             </div>
             <div v-if="showAvailability" class="flex items-center gap-1.5">
                 <div class="w-3 h-3 rounded-full bg-slate-300 opacity-60 shrink-0"></div>
-                <span class="text-gray-500">Booked / closed</span>
+                <span class="text-on-surface-variant">Booked / closed</span>
             </div>
             <div class="flex items-center gap-1.5">
                 <div class="w-3 h-3 rounded-full bg-slate-400 opacity-75 shrink-0"></div>
-                <span class="text-gray-500">Coming soon</span>
+                <span class="text-on-surface-variant">Coming soon</span>
             </div>
         </div>
 
@@ -356,7 +356,7 @@ const refreshAvailability = () => {
                 </div>
                 <button @click="selected = null"
                     class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                    <X :size="16" class="text-gray-500" />
+                    <X :size="16" class="text-on-surface-variant" />
                 </button>
                 <div class="px-5 pt-2">
                     <div class="w-full h-36 rounded-2xl overflow-hidden bg-gray-100 mb-4">
@@ -368,24 +368,24 @@ const refreshAvailability = () => {
                     </div>
                     <div class="flex items-start justify-between gap-3 mb-3">
                         <div class="flex-1 min-w-0">
-                            <h3 class="font-extrabold text-black text-lg leading-tight truncate">{{ selected.name }}</h3>
-                            <div class="flex items-center gap-1.5 mt-1 text-sm text-gray-500">
-                                <MapPin :size="13" class="text-gray-400 shrink-0" />
+                            <h3 class="font-extrabold text-on-surface text-lg leading-tight truncate">{{ selected.name }}</h3>
+                            <div class="flex items-center gap-1.5 mt-1 text-sm text-on-surface-variant">
+                                <MapPin :size="13" class="text-outline shrink-0" />
                                 <span class="truncate">{{ selected.location || 'Location not set' }}</span>
                             </div>
                         </div>
                         <div class="flex items-center gap-1 shrink-0 bg-amber-50 px-2 py-1 rounded-lg">
-                            <Star :size="13" class="text-amber-400 fill-amber-400" />
-                            <span class="text-xs font-bold text-amber-700">4.8</span>
+                            <Star :size="13" class="text-ending fill-amber-400" />
+                            <span class="text-xs font-bold text-ending">4.8</span>
                         </div>
                     </div>
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-xs text-gray-400 font-medium">Starting at</p>
+                            <p class="text-xs text-outline font-medium">Starting at</p>
                             <div class="flex items-center gap-0.5">
-                                <IndianRupee :size="16" class="text-black" :stroke-width="2.5" />
-                                <span class="text-xl font-extrabold text-black">{{ selected.hourly_rate }}</span>
-                                <span class="text-sm text-gray-400 font-medium">/hr</span>
+                                <IndianRupee :size="16" class="text-on-surface" :stroke-width="2.5" />
+                                <span class="text-xl font-extrabold text-on-surface">{{ selected.hourly_rate }}</span>
+                                <span class="text-sm text-outline font-medium">/hr</span>
                             </div>
                         </div>
                         <button @click="goToCourt(selected)" class="btn-primary px-6 py-3 text-sm">
@@ -412,7 +412,7 @@ const refreshAvailability = () => {
                 </div>
                 <button @click="selectedPlace = null"
                     class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                    <X :size="16" class="text-gray-500" />
+                    <X :size="16" class="text-on-surface-variant" />
                 </button>
                 <div class="px-5 pt-2">
                     <!-- Greyscale image with lock overlay -->
@@ -424,29 +424,29 @@ const refreshAvailability = () => {
                         </div>
                         <div class="absolute inset-0 flex items-center justify-center">
                             <div class="bg-white/80 backdrop-blur-sm rounded-full px-3 py-1.5 flex items-center gap-1.5">
-                                <Lock :size="13" class="text-gray-500" />
-                                <span class="text-xs font-bold text-gray-500">Not yet on KoCourt</span>
+                                <Lock :size="13" class="text-on-surface-variant" />
+                                <span class="text-xs font-bold text-on-surface-variant">Not yet on KoCourt</span>
                             </div>
                         </div>
                     </div>
 
-                    <h3 class="font-extrabold text-black text-lg leading-tight mb-1">{{ selectedPlace.name }}</h3>
-                    <div class="flex items-center gap-1.5 mb-1 text-sm text-gray-500">
-                        <MapPin :size="13" class="text-gray-400 shrink-0" />
+                    <h3 class="font-extrabold text-on-surface text-lg leading-tight mb-1">{{ selectedPlace.name }}</h3>
+                    <div class="flex items-center gap-1.5 mb-1 text-sm text-on-surface-variant">
+                        <MapPin :size="13" class="text-outline shrink-0" />
                         <span class="truncate">{{ selectedPlace.address }}</span>
                     </div>
-                    <p v-if="selectedPlace.request_count > 0" class="text-xs text-gray-400 mb-4">
+                    <p v-if="selectedPlace.request_count > 0" class="text-xs text-outline mb-4">
                         {{ selectedPlace.request_count }} {{ selectedPlace.request_count === 1 ? 'person' : 'people' }} interested
                     </p>
-                    <p v-else class="text-xs text-gray-400 mb-4">Be the first to request this venue</p>
+                    <p v-else class="text-xs text-outline mb-4">Be the first to request this venue</p>
 
                     <button
                         @click="requestService(selectedPlace)"
                         :disabled="selectedPlace.user_requested || requesting"
                         class="w-full py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all"
                         :class="selectedPlace.user_requested
-                            ? 'bg-gray-100 text-gray-400 cursor-default'
-                            : 'bg-black text-white active:scale-95'">
+                            ? 'bg-gray-100 text-outline cursor-default'
+                            : 'bg-primary text-white active:scale-95'">
                         <span v-if="requesting" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                         <Bell v-else-if="!selectedPlace.user_requested" :size="15" />
                         <span>{{ selectedPlace.user_requested ? 'Interest Registered ✓' : 'Request This Venue' }}</span>

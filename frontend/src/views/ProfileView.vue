@@ -251,8 +251,8 @@ const menuGroups = computed(() => [
             <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                 <User :size="36" class="text-gray-300" />
             </div>
-            <p class="font-bold text-black mb-1">Not signed in</p>
-            <p class="text-sm text-gray-500 mb-5">Sign in to manage your bookings and profile</p>
+            <p class="font-bold text-on-surface mb-1">Not signed in</p>
+            <p class="text-sm text-on-surface-variant mb-5">Sign in to manage your bookings and profile</p>
             <button @click="router.push('/login')" class="btn-primary">
                 Sign In
             </button>
@@ -262,7 +262,7 @@ const menuGroups = computed(() => [
             <header class="px-6 pt-[max(3rem,calc(env(safe-area-inset-top,0px)+1.5rem))] pb-2 flex items-start justify-between">
                 <h1 class="page-title">Profile</h1>
                 <button @click="router.push('/notifications')"
-                    class="relative w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-black active:scale-95 transition-transform mt-1">
+                    class="relative w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 text-on-surface active:scale-95 transition-transform mt-1">
                     <Bell :size="18" :stroke-width="2" />
                 </button>
             </header>
@@ -272,9 +272,9 @@ const menuGroups = computed(() => [
                 <div class="relative shrink-0">
                     <div class="w-20 h-20 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                         <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
-                        <span v-else class="text-2xl font-bold text-black">{{ initials }}</span>
+                        <span v-else class="text-2xl font-bold text-on-surface">{{ initials }}</span>
                     </div>
-                    <label class="absolute -bottom-0.5 -right-0.5 w-7 h-7 bg-black rounded-full flex items-center justify-center cursor-pointer border-2 border-white">
+                    <label class="absolute -bottom-0.5 -right-0.5 w-7 h-7 bg-primary rounded-full flex items-center justify-center cursor-pointer border-2 border-white">
                         <Camera v-if="!avatarLoading" :size="12" class="text-white" />
                         <span v-else class="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin block"></span>
                         <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="handleAvatarUpload" />
@@ -282,9 +282,9 @@ const menuGroups = computed(() => [
                 </div>
                 <div class="flex-1 min-w-0">
                     <div v-if="!editingName" class="flex items-center gap-2">
-                        <h2 class="text-[22px] font-bold text-black leading-tight truncate">{{ auth.user?.name }}</h2>
+                        <h2 class="text-[22px] font-bold text-on-surface leading-tight truncate">{{ auth.user?.name }}</h2>
                         <button @click="startEditName" class="shrink-0 w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">
-                            <Pencil :size="12" class="text-gray-500" />
+                            <Pencil :size="12" class="text-on-surface-variant" />
                         </button>
                     </div>
                     <div v-else class="flex items-center gap-1.5">
@@ -292,16 +292,16 @@ const menuGroups = computed(() => [
                             class="flex-1 min-w-0 text-sm font-bold border border-gray-200 rounded-xl px-3 py-2 focus:ring-2 focus:ring-black outline-none"
                             @keyup.enter="saveName" @keyup.escape="editingName = false" autofocus />
                         <button @click="saveName" :disabled="nameLoading"
-                            class="w-8 h-8 rounded-full bg-black flex items-center justify-center shrink-0">
+                            class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
                             <Check :size="14" class="text-white" />
                         </button>
                     </div>
                     <div v-if="auth.user?.phone" class="flex items-center gap-1.5 mt-1">
-                        <Phone :size="12" class="text-gray-400" />
-                        <span class="text-[14px] font-medium text-gray-500">+91 {{ auth.user?.phone }}</span>
+                        <Phone :size="12" class="text-outline" />
+                        <span class="text-[14px] font-medium text-on-surface-variant">+91 {{ auth.user?.phone }}</span>
                     </div>
                     <button @click="editingProfile ? (editingProfile = false) : startEditProfile()"
-                        class="text-[15px] text-gray-500 mt-1 font-medium hover:text-black transition-colors text-left">
+                        class="text-[15px] text-on-surface-variant mt-1 font-medium hover:text-on-surface transition-colors text-left">
                         {{ editingProfile ? 'Close profile editor' : 'Show profile' }}
                     </button>
                 </div>
@@ -311,14 +311,14 @@ const menuGroups = computed(() => [
             <div v-if="editingProfile || auth.user?.bio || auth.user?.skill_level || (auth.user?.sport_preferences || []).length"
                 class="px-6 pb-4">
                 <template v-if="!editingProfile">
-                    <div v-if="auth.user?.bio" class="text-[15px] text-gray-600 leading-relaxed mb-3">{{ auth.user.bio }}</div>
+                    <div v-if="auth.user?.bio" class="text-[15px] text-on-surface-variant leading-relaxed mb-3">{{ auth.user.bio }}</div>
                     <div class="flex flex-wrap gap-1.5 mb-2">
                         <span v-if="auth.user?.skill_level"
-                            class="text-[11px] font-bold px-2.5 py-1 rounded-full capitalize bg-gray-100 text-black">
+                            class="text-[11px] font-bold px-2.5 py-1 rounded-full capitalize bg-gray-100 text-on-surface">
                             {{ auth.user.skill_level }}
                         </span>
                         <span v-for="s in (auth.user?.sport_preferences || [])" :key="s"
-                            class="bg-gray-100 text-gray-600 text-[11px] font-semibold px-2.5 py-1 rounded-full">
+                            class="bg-gray-100 text-on-surface-variant text-[11px] font-semibold px-2.5 py-1 rounded-full">
                             {{ s }}
                         </span>
                     </div>
@@ -326,38 +326,38 @@ const menuGroups = computed(() => [
                 <template v-else>
                     <div class="space-y-3 rounded-2xl bg-gray-50 p-4">
                         <div>
-                            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-1">Bio</label>
+                            <label class="text-[10px] font-bold text-outline uppercase tracking-widest block mb-1">Bio</label>
                             <textarea v-model="bioInput" rows="2" placeholder="Tell others about yourself..."
                                 class="w-full text-sm rounded-xl bg-white border border-gray-200 px-3 py-2 resize-none focus:ring-2 focus:ring-black outline-none placeholder:text-gray-300">
                             </textarea>
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Skill Level</label>
+                            <label class="text-[10px] font-bold text-outline uppercase tracking-widest block mb-2">Skill Level</label>
                             <div class="flex gap-2">
                                 <button v-for="l in SKILL_LEVELS" :key="l" @click="skillInput = l"
                                     class="flex-1 py-2 rounded-full text-xs font-bold capitalize transition-all"
-                                    :class="skillInput === l ? 'bg-black text-white' : 'bg-white text-gray-500 border border-gray-200'">
+                                    :class="skillInput === l ? 'bg-primary text-white' : 'bg-white text-on-surface-variant border border-gray-200'">
                                     {{ l }}
                                 </button>
                             </div>
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2">Sports I Play</label>
+                            <label class="text-[10px] font-bold text-outline uppercase tracking-widest block mb-2">Sports I Play</label>
                             <div class="flex flex-wrap gap-1.5">
                                 <button v-for="s in SPORT_OPTIONS" :key="s" @click="toggleSport(s)"
                                     class="px-3 py-1.5 rounded-full text-xs font-bold transition-all"
-                                    :class="sportsInput.includes(s) ? 'bg-black text-white' : 'bg-white text-gray-500 border border-gray-200'">
+                                    :class="sportsInput.includes(s) ? 'bg-primary text-white' : 'bg-white text-on-surface-variant border border-gray-200'">
                                     {{ s }}
                                 </button>
                             </div>
                         </div>
                         <div class="flex gap-2 pt-1">
                             <button @click="editingProfile = false"
-                                class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-500">
+                                class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-on-surface-variant">
                                 Cancel
                             </button>
                             <button @click="saveProfile" :disabled="profileLoading"
-                                class="flex-1 py-2.5 rounded-xl bg-black text-white text-sm font-bold flex items-center justify-center gap-1.5 disabled:opacity-50">
+                                class="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-bold flex items-center justify-center gap-1.5 disabled:opacity-50">
                                 <Loader2 v-if="profileLoading" :size="14" class="animate-spin" />
                                 <span v-else>Save</span>
                             </button>
@@ -375,10 +375,10 @@ const menuGroups = computed(() => [
                     <template v-for="(item, ii) in group.items" :key="item.label">
                         <button @click="item.action" class="menu-row">
                             <div class="flex items-center gap-4">
-                                <component :is="item.icon" :size="24" :stroke-width="1.5" class="text-black shrink-0" />
-                                <span class="text-[17px] font-medium text-black">{{ item.label }}</span>
+                                <component :is="item.icon" :size="24" :stroke-width="1.5" class="text-on-surface shrink-0" />
+                                <span class="text-[17px] font-medium text-on-surface">{{ item.label }}</span>
                             </div>
-                            <ChevronRight :size="20" class="text-gray-400 shrink-0" />
+                            <ChevronRight :size="20" class="text-outline shrink-0" />
                         </button>
                         <div v-if="ii < group.items.length - 1" class="px-6"><hr class="border-gray-100"></div>
                     </template>
@@ -389,14 +389,14 @@ const menuGroups = computed(() => [
 
             <button @click="logout" class="menu-row">
                 <div class="flex items-center gap-4">
-                    <LogOut :size="24" :stroke-width="1.5" class="text-black shrink-0" />
-                    <span class="text-[17px] font-medium text-black">Log out</span>
+                    <LogOut :size="24" :stroke-width="1.5" class="text-on-surface shrink-0" />
+                    <span class="text-[17px] font-medium text-on-surface">Log out</span>
                 </div>
             </button>
 
-            <p @click="tapVersion" class="text-center text-xs text-gray-300 py-6 select-none cursor-default">
+            <p @click="tapVersion" class="text-center text-xs text-outline py-6 select-none cursor-default">
                 KoCourt v1.0 · Sports, Gym &amp; Club Booking
-                <span v-if="debugTaps > 0 && !showDebug" class="text-gray-400">({{ 5 - debugTaps }} more)</span>
+                <span v-if="debugTaps > 0 && !showDebug" class="text-outline">({{ 5 - debugTaps }} more)</span>
             </p>
 
             <div v-if="showDebug" class="mx-4 mb-6 rounded-2xl border-2 border-dashed border-orange-300 bg-orange-50 overflow-hidden">
@@ -416,21 +416,21 @@ const menuGroups = computed(() => [
                 <div class="px-4 py-3 grid grid-cols-2 gap-2 border-b border-orange-200">
                     <div class="rounded-xl p-2.5 text-center"
                         :class="debugInfo.saasAvailable ? 'bg-green-100' : 'bg-red-100'">
-                        <p class="text-xs font-bold" :class="debugInfo.saasAvailable ? 'text-green-700' : 'text-red-700'">
+                        <p class="text-xs font-bold" :class="debugInfo.saasAvailable ? 'text-free' : 'text-due'">
                             window.SaaS
                         </p>
                         <p class="text-lg">{{ debugInfo.saasAvailable ? '✅' : '❌' }}</p>
-                        <p class="text-xs" :class="debugInfo.saasAvailable ? 'text-green-600' : 'text-red-500'">
+                        <p class="text-xs" :class="debugInfo.saasAvailable ? 'text-free' : 'text-due'">
                             {{ debugInfo.saasAvailable ? 'In Android app' : 'Browser only' }}
                         </p>
                     </div>
                     <div class="rounded-xl p-2.5 text-center"
                         :class="debugInfo.identitySet ? 'bg-green-100' : 'bg-yellow-100'">
-                        <p class="text-xs font-bold" :class="debugInfo.identitySet ? 'text-green-700' : 'text-yellow-700'">
+                        <p class="text-xs font-bold" :class="debugInfo.identitySet ? 'text-free' : 'text-yellow-700'">
                             Identity
                         </p>
                         <p class="text-lg">{{ debugInfo.identitySet ? '✅' : '⚠️' }}</p>
-                        <p class="text-xs" :class="debugInfo.identitySet ? 'text-green-600' : 'text-yellow-600'">
+                        <p class="text-xs" :class="debugInfo.identitySet ? 'text-free' : 'text-yellow-600'">
                             {{ debugInfo.identitySet ? 'Linked' : 'Not linked' }}
                         </p>
                     </div>
@@ -441,12 +441,12 @@ const menuGroups = computed(() => [
                     <p class="text-xs font-bold text-orange-700 mb-1.5">Current User Data</p>
                     <div v-for="(val, key) in { ID: debugInfo.userId, Name: debugInfo.userName, Phone: debugInfo.userPhone, Role: debugInfo.userRole, City: debugInfo.userCity }"
                         :key="key" class="flex justify-between text-xs">
-                        <span class="text-gray-500 font-medium">{{ key }}</span>
-                        <span class="font-mono text-gray-700 truncate max-w-[60%] text-right">{{ val }}</span>
+                        <span class="text-on-surface-variant font-medium">{{ key }}</span>
+                        <span class="font-mono text-on-surface-variant truncate max-w-[60%] text-right">{{ val }}</span>
                     </div>
                     <div class="flex justify-between text-xs pt-1 border-t border-orange-100 mt-1">
-                        <span class="text-gray-500 font-medium">AppifyWeb24 Token</span>
-                        <span :class="APPIFY_TOKEN ? 'text-green-600' : 'text-red-500'" class="font-mono">
+                        <span class="text-on-surface-variant font-medium">AppifyWeb24 Token</span>
+                        <span :class="APPIFY_TOKEN ? 'text-free' : 'text-due'" class="font-mono">
                             {{ APPIFY_TOKEN ? APPIFY_TOKEN.slice(0,12) + '…' : 'NOT SET in .env.local' }}
                         </span>
                     </div>
@@ -456,7 +456,7 @@ const menuGroups = computed(() => [
                 <div v-if="fcmToken" class="px-4 py-3 border-b border-orange-200">
                     <p class="text-xs font-bold text-orange-700 mb-1.5">FCM Token</p>
                     <div class="flex items-start gap-2">
-                        <code class="flex-1 text-xs bg-white border border-orange-200 rounded-lg px-2.5 py-2 text-gray-500 font-mono break-all leading-relaxed">{{ fcmToken }}</code>
+                        <code class="flex-1 text-xs bg-white border border-orange-200 rounded-lg px-2.5 py-2 text-on-surface-variant font-mono break-all leading-relaxed">{{ fcmToken }}</code>
                         <button @click="() => { navigator.clipboard?.writeText(fcmToken); addLog('FCM token copied', 'success') }"
                             class="shrink-0 mt-1 p-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 transition-colors">
                             <svg class="w-3.5 h-3.5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
@@ -495,19 +495,19 @@ const menuGroups = computed(() => [
                         <p class="text-xs font-bold text-orange-700">Log</p>
                         <button @click="debugLog = []" class="text-xs text-orange-400 hover:text-orange-600">Clear</button>
                     </div>
-                    <div v-if="debugLog.length === 0" class="text-xs text-gray-400 text-center py-3">
+                    <div v-if="debugLog.length === 0" class="text-xs text-outline text-center py-3">
                         No log entries yet
                     </div>
                     <div v-else class="space-y-1 max-h-40 overflow-y-auto">
                         <div v-for="(entry, i) in debugLog" :key="i"
                             class="flex gap-2 text-xs rounded-lg px-2.5 py-1.5"
                             :class="{
-                                'bg-green-50 text-green-700': entry.type === 'success',
-                                'bg-red-50 text-red-700': entry.type === 'error',
+                                'bg-green-50 text-free': entry.type === 'success',
+                                'bg-red-50 text-due': entry.type === 'error',
                                 'bg-yellow-50 text-yellow-700': entry.type === 'warn',
-                                'bg-white text-gray-500': entry.type === 'info',
+                                'bg-white text-on-surface-variant': entry.type === 'info',
                             }">
-                            <span class="text-gray-400 shrink-0 font-mono">{{ entry.time }}</span>
+                            <span class="text-outline shrink-0 font-mono">{{ entry.time }}</span>
                             <span class="break-all">{{ entry.msg }}</span>
                         </div>
                     </div>

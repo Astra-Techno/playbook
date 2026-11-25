@@ -87,11 +87,11 @@ const removeSubCourt = async (sc) => {
                             <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-3"></div>
                             <div class="flex items-center justify-between px-5 pb-4 border-b border-gray-100">
                                 <div>
-                                    <p class="text-[10px] font-black text-black uppercase tracking-wider">{{ court.name }}</p>
-                                    <h3 class="text-base font-extrabold text-black">Spaces</h3>
+                                    <p class="text-[10px] font-black text-on-surface uppercase tracking-wider">{{ court.name }}</p>
+                                    <h3 class="text-base font-extrabold text-on-surface">Spaces</h3>
                                 </div>
                                 <button @click="close" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                                    <X :size="16" class="text-gray-500" />
+                                    <X :size="16" class="text-on-surface-variant" />
                                 </button>
                             </div>
                         </div>
@@ -110,26 +110,26 @@ const removeSubCourt = async (sc) => {
                             <div v-else-if="subCourts.length" class="space-y-2">
                                 <div v-for="sc in subCourts" :key="sc.id"
                                     class="flex items-center gap-3 bg-white rounded-xl px-4 py-3">
-                                    <LayoutGrid :size="14" class="text-black shrink-0" />
+                                    <LayoutGrid :size="14" class="text-on-surface shrink-0" />
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-bold text-black">{{ sc.name }}</p>
-                                        <p class="text-[11px] text-gray-400">
+                                        <p class="text-sm font-bold text-on-surface">{{ sc.name }}</p>
+                                        <p class="text-[11px] text-outline">
                                             {{ sc.hourly_rate ? `₹${sc.hourly_rate}/hr` : 'Inherits venue rate' }}
                                             <span v-if="sc.description"> · {{ sc.description }}</span>
                                         </p>
                                     </div>
                                     <button @click="removeSubCourt(sc)" :disabled="removingId === sc.id"
                                         class="w-7 h-7 rounded-full bg-white flex items-center justify-center active:scale-90 transition">
-                                        <Loader2 v-if="removingId === sc.id" :size="12" class="animate-spin text-red-400" />
-                                        <Trash2 v-else :size="12" class="text-red-400" />
+                                        <Loader2 v-if="removingId === sc.id" :size="12" class="animate-spin text-due" />
+                                        <Trash2 v-else :size="12" class="text-due" />
                                     </button>
                                 </div>
                             </div>
-                            <p v-else class="text-center text-gray-400 text-sm py-4">No spaces added yet</p>
+                            <p v-else class="text-center text-outline text-sm py-4">No spaces added yet</p>
 
                             <!-- Add form -->
                             <div v-if="adding" class="bg-white rounded-2xl p-4 space-y-3">
-                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider">New Space</p>
+                                <p class="text-[11px] font-black text-outline uppercase tracking-wider">New Space</p>
                                 <input v-model="newName" type="text" placeholder="Name (e.g. Court A, Lane 1, Table 2) *"
                                     class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border border-black focus:outline-none bg-white" />
                                 <input v-model="newRate" type="number" placeholder="Hourly rate (leave blank to use venue rate)"
@@ -138,11 +138,11 @@ const removeSubCourt = async (sc) => {
                                     class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-2.5 text-sm focus:border border-black focus:outline-none bg-white" />
                                 <div class="flex gap-2">
                                     <button @click="adding = false"
-                                        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-white ring-1 ring-slate-200 text-gray-500">
+                                        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-white ring-1 ring-slate-200 text-on-surface-variant">
                                         Cancel
                                     </button>
                                     <button @click="addSubCourt" :disabled="saving"
-                                        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-black text-white flex items-center justify-center gap-1.5 disabled:opacity-50">
+                                        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-primary text-white flex items-center justify-center gap-1.5 disabled:opacity-50">
                                         <Loader2 v-if="saving" :size="13" class="animate-spin" />
                                         <span>Add</span>
                                     </button>
@@ -150,7 +150,7 @@ const removeSubCourt = async (sc) => {
                             </div>
 
                             <button v-else @click="adding = true"
-                                class="w-full py-3 rounded-2xl text-sm font-bold border-2 border-dashed border-gray-200 text-gray-500 flex items-center justify-center gap-2 hover:border-black hover:text-black transition-all">
+                                class="w-full py-3 rounded-2xl text-sm font-bold border-2 border-dashed border-gray-200 text-on-surface-variant flex items-center justify-center gap-2 hover:border-black hover:text-on-surface transition-all">
                                 <Plus :size="14" />
                                 Add Space
                             </button>

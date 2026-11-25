@@ -1,15 +1,15 @@
 <template>
   <div class="page-gutter pb-24">
     <h2 class="section-title mt-2">App Builds</h2>
-    <p class="text-xs text-gray-500 mb-5">Trigger builds, track progress, and download APKs.</p>
+    <p class="text-xs text-on-surface-variant mb-5">Trigger builds, track progress, and download APKs.</p>
 
     <!-- Build Actions -->
     <div class="space-y-3 mb-6">
       <div class="card p-4">
         <div class="flex items-center justify-between mb-3">
           <div>
-            <h3 class="text-sm font-bold text-gray-900">Android Build</h3>
-            <p class="text-xs text-gray-500">Player + Owner release APKs</p>
+            <h3 class="text-sm font-bold text-on-surface">Android Build</h3>
+            <p class="text-xs text-on-surface-variant">Player + Owner release APKs</p>
           </div>
           <button @click="triggerBuild('build')" :disabled="triggering === 'build'"
             class="btn-primary text-xs px-4 py-2">
@@ -21,8 +21,8 @@
       <div class="card p-4">
         <div class="flex items-center justify-between mb-3">
           <div>
-            <h3 class="text-sm font-bold text-gray-900">iOS Build</h3>
-            <p class="text-xs text-gray-500">Compile check (no signing)</p>
+            <h3 class="text-sm font-bold text-on-surface">iOS Build</h3>
+            <p class="text-xs text-on-surface-variant">Compile check (no signing)</p>
           </div>
           <button @click="triggerBuild('ios')" :disabled="triggering === 'ios'"
             class="btn-primary text-xs px-4 py-2">
@@ -34,8 +34,8 @@
       <div class="card p-4">
         <div class="flex items-center justify-between mb-3">
           <div>
-            <h3 class="text-sm font-bold text-gray-900">iOS + TestFlight</h3>
-            <p class="text-xs text-gray-500">Sign, build & upload to TestFlight</p>
+            <h3 class="text-sm font-bold text-on-surface">iOS + TestFlight</h3>
+            <p class="text-xs text-on-surface-variant">Sign, build & upload to TestFlight</p>
           </div>
           <button @click="triggerBuild('ios', { upload_testflight: 'true' })" :disabled="triggering === 'ios-tf'"
             class="btn-secondary text-xs px-4 py-2">
@@ -49,8 +49,8 @@
     <div class="card p-4 mb-6">
       <div class="flex items-center justify-between">
         <div>
-          <h3 class="text-sm font-bold text-gray-900">Deploy to Live</h3>
-          <p class="text-xs text-gray-500">Pull latest from GitHub → update server</p>
+          <h3 class="text-sm font-bold text-on-surface">Deploy to Live</h3>
+          <p class="text-xs text-on-surface-variant">Pull latest from GitHub → update server</p>
         </div>
         <button @click="deploy" :disabled="deploying" class="btn-primary text-xs px-4 py-2 !bg-green-600">
           {{ deploying ? 'Deploying...' : 'Deploy Now' }}
@@ -68,22 +68,22 @@
         <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </div>
-        <div class="text-xs font-bold text-gray-900">Player APK</div>
-        <div class="text-[10px] text-gray-400">Android</div>
+        <div class="text-xs font-bold text-on-surface">Player APK</div>
+        <div class="text-[10px] text-outline">Android</div>
       </a>
       <a href="/downloads/kocourt-owner.apk" class="card p-4 text-center hover:shadow-md transition-shadow">
         <div class="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center mx-auto mb-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-secondary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </div>
-        <div class="text-xs font-bold text-gray-900">Owner APK</div>
-        <div class="text-[10px] text-gray-400">Android</div>
+        <div class="text-xs font-bold text-on-surface">Owner APK</div>
+        <div class="text-[10px] text-outline">Android</div>
       </a>
     </div>
 
     <!-- Recent Builds -->
     <h2 class="section-title">Recent Builds</h2>
-    <div v-if="loadingRuns" class="text-xs text-gray-400 text-center py-4">Loading...</div>
-    <div v-else-if="runs.length === 0" class="text-xs text-gray-400 text-center py-4">No recent builds</div>
+    <div v-if="loadingRuns" class="text-xs text-outline text-center py-4">Loading...</div>
+    <div v-else-if="runs.length === 0" class="text-xs text-outline text-center py-4">No recent builds</div>
     <div v-else class="space-y-2">
       <a v-for="run in runs" :key="run.id" :href="run.html_url" target="_blank"
         class="card p-3 flex items-center gap-3 hover:shadow-md transition-shadow">
@@ -94,14 +94,14 @@
             'bg-yellow-100': run.status === 'in_progress' || run.status === 'queued',
             'bg-gray-100': !run.conclusion && run.status !== 'in_progress'
           }">
-          <span v-if="run.conclusion === 'success'" class="text-green-600 text-sm">&#10003;</span>
-          <span v-else-if="run.conclusion === 'failure'" class="text-red-600 text-sm">&#10007;</span>
+          <span v-if="run.conclusion === 'success'" class="text-free text-sm">&#10003;</span>
+          <span v-else-if="run.conclusion === 'failure'" class="text-due text-sm">&#10007;</span>
           <span v-else-if="run.status === 'in_progress'" class="text-yellow-600 text-sm animate-spin">&#9696;</span>
-          <span v-else class="text-gray-400 text-sm">&#8226;</span>
+          <span v-else class="text-outline text-sm">&#8226;</span>
         </div>
         <div class="flex-1 min-w-0">
-          <div class="text-xs font-bold text-gray-900 truncate">{{ run.name }}</div>
-          <div class="text-[10px] text-gray-500">
+          <div class="text-xs font-bold text-on-surface truncate">{{ run.name }}</div>
+          <div class="text-[10px] text-on-surface-variant">
             {{ run.status === 'completed' ? run.conclusion : run.status }}
             &middot; {{ timeAgo(run.updated_at) }}
           </div>
@@ -112,13 +112,13 @@
 
     <!-- AI Agent Test Monitor -->
     <h2 class="section-title mt-2">AI Agent Tests</h2>
-    <p class="text-xs text-gray-500 mb-3">Automated tests run every 6 hours against live API.</p>
+    <p class="text-xs text-on-surface-variant mb-3">Automated tests run every 6 hours against live API.</p>
 
     <div class="card p-4 mb-3">
       <div class="flex items-center justify-between mb-3">
         <div>
-          <h3 class="text-sm font-bold text-gray-900">Run Tests Now</h3>
-          <p class="text-xs text-gray-500">Trigger all agent scenarios</p>
+          <h3 class="text-sm font-bold text-on-surface">Run Tests Now</h3>
+          <p class="text-xs text-on-surface-variant">Trigger all agent scenarios</p>
         </div>
         <button @click="triggerBuild('agents')" :disabled="triggering === 'agents'"
           class="btn-primary text-xs px-4 py-2 !bg-indigo-600">
@@ -127,23 +127,23 @@
       </div>
     </div>
 
-    <div v-if="loadingTests" class="text-xs text-gray-400 text-center py-4">Loading...</div>
-    <div v-else-if="testResults.length === 0" class="text-xs text-gray-400 text-center py-4">No test runs yet</div>
+    <div v-if="loadingTests" class="text-xs text-outline text-center py-4">Loading...</div>
+    <div v-else-if="testResults.length === 0" class="text-xs text-outline text-center py-4">No test runs yet</div>
     <div v-else class="space-y-2 mb-6">
       <a v-for="t in testResults" :key="t.id" :href="t.run_url" target="_blank"
         class="card p-3 flex items-center gap-3 hover:shadow-md transition-shadow">
         <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
           :class="t.failed > 0 ? 'bg-red-100' : 'bg-green-100'">
-          <span :class="t.failed > 0 ? 'text-red-600' : 'text-green-600'" class="text-sm font-bold">
+          <span :class="t.failed > 0 ? 'text-due' : 'text-free'" class="text-sm font-bold">
             {{ t.failed > 0 ? t.failed : '&#10003;' }}
           </span>
         </div>
         <div class="flex-1 min-w-0">
-          <div class="text-xs font-bold text-gray-900">
+          <div class="text-xs font-bold text-on-surface">
             {{ t.passed }}/{{ t.total }} passed
-            <span v-if="t.failed > 0" class="text-red-600 ml-1">{{ t.failed }} failed</span>
+            <span v-if="t.failed > 0" class="text-due ml-1">{{ t.failed }} failed</span>
           </div>
-          <div class="text-[10px] text-gray-500">
+          <div class="text-[10px] text-on-surface-variant">
             {{ t.trigger_type }} &middot; {{ timeAgo(t.created_at) }}
           </div>
         </div>
@@ -157,7 +157,7 @@
 
     <!-- Share link -->
     <div class="mt-6 text-center">
-      <p class="text-xs text-gray-400 mb-1">Public download page</p>
+      <p class="text-xs text-outline mb-1">Public download page</p>
       <button @click="copyLink" class="text-xs font-bold text-primary underline underline-offset-4">
         {{ copied ? 'Copied!' : 'Copy kocourt.com/download link' }}
       </button>

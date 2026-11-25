@@ -64,13 +64,14 @@
                hover:bg-surface-container active:scale-[0.97] transition-all duration-200;
     }
 
+    /* v4: thin border instead of a heavy shadow */
     .card {
         @apply bg-surface-container-lowest rounded-2xl overflow-hidden
-               shadow-card border border-surface-variant/30;
+               border border-outline-variant;
     }
 
     .input-field {
-        @apply w-full bg-surface-container-lowest border border-surface-variant/50
+        @apply w-full bg-surface-container-lowest border border-outline-variant
                rounded-xl px-4 py-3.5 text-on-surface font-medium
                focus:ring-4 focus:ring-primary/5 focus:border-primary
                transition-all placeholder:text-on-surface-variant/40
@@ -78,11 +79,11 @@
     }
 
     .section-title {
-        @apply text-[22px] font-black text-on-surface tracking-tight;
+        @apply font-display text-[22px] font-black text-on-surface tracking-tight;
     }
 
     .page-title {
-        @apply text-[32px] font-extrabold tracking-tight text-on-surface leading-none;
+        @apply font-display text-[32px] font-black tracking-tight text-on-surface leading-none;
     }
 
     .badge {
@@ -94,7 +95,7 @@
     }
 
     .chip-inactive {
-        @apply bg-surface-container-lowest text-on-surface border border-surface-variant/40 font-semibold;
+        @apply bg-surface-container-lowest text-on-surface border border-outline-variant font-semibold;
     }
 
     .menu-row {
@@ -108,8 +109,34 @@
 
     .premium-card {
         @apply bg-surface-container-lowest rounded-2xl overflow-hidden
-               shadow-card border border-surface-variant/30;
+               border border-outline-variant;
     }
+
+    /* ── v4 sports touches (match kocourt_shared/lib/widgets/sport_tags.dart) ── */
+    /* Leans an element like a jersey number plate. */
+    .slanted {
+        transform: skewX(-10deg);
+    }
+
+    /* Slanted status tag: In play, Free, Ending, Due, Cancelled… */
+    .tag {
+        @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-[5px] text-[11px] font-extrabold;
+        transform: skewX(-10deg);
+    }
+    .tag-brand  { @apply tag bg-primary/10 text-primary; }
+    .tag-free   { @apply tag bg-free-container text-free; }
+    .tag-ending { @apply tag bg-ending-container text-ending; }
+    .tag-due    { @apply tag bg-due-container text-due; }
+    .tag-muted  { @apply tag bg-surface-container-high text-on-surface-variant; }
+
+    /* Slanted kick-off plate: big time on top, small line under. */
+    .time-plate {
+        @apply inline-flex flex-col items-center justify-center rounded-[10px] bg-primary text-white
+               font-display font-black leading-none px-2 py-2 min-w-[62px];
+        transform: skewX(-10deg);
+    }
+    .time-plate > * { transform: skewX(10deg); }
+    .time-plate-soft { @apply time-plate bg-primary/10 text-primary; }
 
     .page-gutter {
         @apply px-5;
@@ -133,13 +160,13 @@
     -webkit-backdrop-filter: blur(20px);
 }
 
-/* Calendar blocked-slot hatch pattern */
+/* Taken / closed time: grey hatch (v4, same as the Flutter timeline) */
 .blocked-hatch {
     background: repeating-linear-gradient(
-        -45deg,
-        #fef2f2,
-        #fef2f2 4px,
-        #fee2e2 4px,
-        #fee2e2 8px
+        45deg,
+        #F1F2F6,
+        #F1F2F6 6px,
+        #E0E3EA 6px,
+        #E0E3EA 10px
     );
 }

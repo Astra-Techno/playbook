@@ -15,12 +15,12 @@ const close = () => emit('update:modelValue', false)
 const unblockLoading = ref(false)
 
 const BLOCK_KIND_META = {
-    maintenance:   { label: 'Maintenance',   cls: 'bg-amber-100 text-amber-700' },
+    maintenance:   { label: 'Maintenance',   cls: 'bg-amber-100 text-ending' },
     holiday:       { label: 'Holiday',        cls: 'bg-blue-100 text-blue-700' },
     private_event: { label: 'Private Event',  cls: 'bg-purple-100 text-purple-700' },
-    tournament:    { label: 'Tournament',     cls: 'bg-emerald-100 text-emerald-700' },
+    tournament:    { label: 'Tournament',     cls: 'bg-emerald-100 text-free' },
     coaching:      { label: 'Coaching',       cls: 'bg-cyan-100 text-cyan-700' },
-    other:         { label: 'Blocked',        cls: 'bg-gray-100 text-gray-500' },
+    other:         { label: 'Blocked',        cls: 'bg-gray-100 text-on-surface-variant' },
 }
 
 const kindMeta = computed(() => BLOCK_KIND_META[props.block?.block_kind] ?? BLOCK_KIND_META.other)
@@ -80,10 +80,10 @@ const unblock = async () => {
                         <div class="pt-3 pb-4 px-5 border-b border-gray-100">
                             <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4"></div>
                             <div class="flex items-center justify-between">
-                                <h3 class="text-base font-extrabold text-black">Blocked Slot</h3>
+                                <h3 class="text-base font-extrabold text-on-surface">Blocked Slot</h3>
                                 <button @click="close"
                                     class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 active:scale-90 transition-transform">
-                                    <X :size="16" class="text-gray-500" />
+                                    <X :size="16" class="text-on-surface-variant" />
                                 </button>
                             </div>
                         </div>
@@ -94,7 +94,7 @@ const unblock = async () => {
                             <!-- Kind badge -->
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-2xl bg-red-50 flex items-center justify-center shrink-0">
-                                    <ShieldAlert :size="18" class="text-red-500" />
+                                    <ShieldAlert :size="18" class="text-due" />
                                 </div>
                                 <div>
                                     <span class="text-xs font-bold px-3 py-1.5 rounded-full" :class="kindMeta.cls">
@@ -105,12 +105,12 @@ const unblock = async () => {
 
                             <!-- Date + Time -->
                             <div class="bg-white rounded-2xl px-4 py-3 flex items-center gap-3">
-                                <Clock :size="18" class="text-black shrink-0" />
+                                <Clock :size="18" class="text-on-surface shrink-0" />
                                 <div>
-                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">
+                                    <p class="text-[10px] font-bold text-outline uppercase tracking-wide mb-0.5">
                                         {{ formatDate(block.start_time) }}
                                     </p>
-                                    <p class="text-sm font-extrabold text-black">
+                                    <p class="text-sm font-extrabold text-on-surface">
                                         {{ formatTime(block.start_time) }} – {{ formatTime(block.end_time) }}
                                     </p>
                                 </div>
@@ -118,14 +118,14 @@ const unblock = async () => {
 
                             <!-- Reason -->
                             <div v-if="block.reason" class="bg-white rounded-2xl px-4 py-3 flex items-start gap-3">
-                                <FileText :size="16" class="text-gray-400 mt-0.5 shrink-0" />
-                                <p class="text-sm text-gray-500 leading-relaxed">{{ block.reason }}</p>
+                                <FileText :size="16" class="text-outline mt-0.5 shrink-0" />
+                                <p class="text-sm text-on-surface-variant leading-relaxed">{{ block.reason }}</p>
                             </div>
 
                             <!-- Unblock -->
                             <button @click="unblock" :disabled="unblockLoading"
                                 class="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl
-                                       bg-red-50 text-red-600 font-bold text-sm
+                                       bg-red-50 text-due font-bold text-sm
                                        active:bg-red-100 active:scale-[0.98] transition-all
                                        disabled:opacity-50">
                                 <Loader2 v-if="unblockLoading" :size="16" class="animate-spin" />

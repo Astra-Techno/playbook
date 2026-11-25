@@ -157,11 +157,11 @@ const spotsLeft = (req) => {
                             <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-3"></div>
                             <div class="flex items-center justify-between px-5 pb-4 border-b border-gray-100">
                                 <div>
-                                    <p class="text-[10px] font-black text-black uppercase tracking-wider">{{ court.name }}</p>
-                                    <h3 class="text-base font-extrabold text-black">Player Matching</h3>
+                                    <p class="text-[10px] font-black text-on-surface uppercase tracking-wider">{{ court.name }}</p>
+                                    <h3 class="text-base font-extrabold text-on-surface">Player Matching</h3>
                                 </div>
                                 <button @click="close" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                                    <X :size="16" class="text-gray-500" />
+                                    <X :size="16" class="text-on-surface-variant" />
                                 </button>
                             </div>
                         </div>
@@ -170,17 +170,17 @@ const spotsLeft = (req) => {
 
                             <!-- Create form -->
                             <div v-if="showForm" class="bg-white rounded-2xl p-4 space-y-4">
-                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider">New Match Request</p>
+                                <p class="text-[11px] font-black text-outline uppercase tracking-wider">New Match Request</p>
 
                                 <!-- Date -->
                                 <div>
-                                    <p class="text-[10px] font-bold text-gray-400 uppercase mb-1.5 flex items-center gap-1">
+                                    <p class="text-[10px] font-bold text-outline uppercase mb-1.5 flex items-center gap-1">
                                         <CalendarDays :size="11" />Date
                                     </p>
                                     <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
                                         <button v-for="d in dateOptions" :key="d" @click="playDate = d"
                                             class="shrink-0 flex flex-col items-center px-3 py-2 rounded-xl text-xs font-bold transition-all"
-                                            :class="playDate === d ? 'bg-black text-white' : 'bg-white ring-1 ring-slate-200 text-gray-500'">
+                                            :class="playDate === d ? 'bg-primary text-white' : 'bg-white ring-1 ring-slate-200 text-on-surface-variant'">
                                             <span class="text-[9px] uppercase">{{ new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'short'}) }}</span>
                                             <span class="text-sm font-extrabold">{{ new Date(d+'T00:00').getDate() }}</span>
                                         </button>
@@ -189,11 +189,11 @@ const spotsLeft = (req) => {
 
                                 <!-- Time -->
                                 <div>
-                                    <p class="text-[10px] font-bold text-gray-400 uppercase mb-1.5">Time</p>
+                                    <p class="text-[10px] font-bold text-outline uppercase mb-1.5">Time</p>
                                     <div class="grid grid-cols-4 gap-1.5">
                                         <button v-for="h in HOURS" :key="h.value" @click="playHour = h.value"
                                             class="py-2 rounded-xl text-[11px] font-bold border-2 transition-all"
-                                            :class="playHour === h.value ? 'bg-black border-black text-white' : 'bg-white border-gray-200 text-gray-500'">
+                                            :class="playHour === h.value ? 'bg-primary border-black text-white' : 'bg-white border-gray-200 text-on-surface-variant'">
                                             {{ h.label }}
                                         </button>
                                     </div>
@@ -201,11 +201,11 @@ const spotsLeft = (req) => {
 
                                 <!-- Slots needed -->
                                 <div>
-                                    <p class="text-[10px] font-bold text-gray-400 uppercase mb-1.5">Players needed (total including you)</p>
+                                    <p class="text-[10px] font-bold text-outline uppercase mb-1.5">Players needed (total including you)</p>
                                     <div class="flex gap-2">
                                         <button v-for="n in [2,3,4,6,8]" :key="n" @click="slots = n"
                                             class="flex-1 py-2 rounded-xl text-xs font-bold border-2 transition-all"
-                                            :class="slots === n ? 'bg-black border-black text-white' : 'bg-white border-gray-200 text-gray-500'">
+                                            :class="slots === n ? 'bg-primary border-black text-white' : 'bg-white border-gray-200 text-on-surface-variant'">
                                             {{ n }}
                                         </button>
                                     </div>
@@ -217,11 +217,11 @@ const spotsLeft = (req) => {
 
                                 <div class="flex gap-2">
                                     <button @click="showForm = false"
-                                        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-white ring-1 ring-slate-200 text-gray-500">
+                                        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-white ring-1 ring-slate-200 text-on-surface-variant">
                                         Cancel
                                     </button>
                                     <button @click="createRequest" :disabled="creating"
-                                        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-black text-white flex items-center justify-center gap-1.5 disabled:opacity-50">
+                                        class="flex-1 py-2.5 rounded-xl text-sm font-bold bg-primary text-white flex items-center justify-center gap-1.5 disabled:opacity-50">
                                         <Loader2 v-if="creating" :size="13" class="animate-spin" />
                                         <span>Post Request</span>
                                     </button>
@@ -229,7 +229,7 @@ const spotsLeft = (req) => {
                             </div>
 
                             <button v-else @click="showForm = true"
-                                class="w-full py-3 rounded-2xl text-sm font-bold border-2 border-dashed border-gray-200 text-gray-500 flex items-center justify-center gap-2 hover:border-black hover:text-black transition-all">
+                                class="w-full py-3 rounded-2xl text-sm font-bold border-2 border-dashed border-gray-200 text-on-surface-variant flex items-center justify-center gap-2 hover:border-black hover:text-on-surface transition-all">
                                 <Plus :size="14" />
                                 Looking for players? Post a request
                             </button>
@@ -244,31 +244,31 @@ const spotsLeft = (req) => {
                                     <div class="flex items-start justify-between">
                                         <div>
                                             <div class="flex items-center gap-2">
-                                                <span class="text-sm font-extrabold text-black">{{ req.creator_name || 'Player' }}</span>
+                                                <span class="text-sm font-extrabold text-on-surface">{{ req.creator_name || 'Player' }}</span>
                                                 <span v-if="req.status === 'full'"
-                                                    class="text-[10px] bg-green-100 text-green-600 px-2 py-0.5 rounded-full font-bold">Full</span>
+                                                    class="text-[10px] bg-green-100 text-free px-2 py-0.5 rounded-full font-bold">Full</span>
                                                 <span v-else
-                                                    class="text-[10px] bg-gray-100 text-black px-2 py-0.5 rounded-full font-bold">
+                                                    class="text-[10px] bg-gray-100 text-on-surface px-2 py-0.5 rounded-full font-bold">
                                                     {{ spotsLeft(req) }} spot{{ spotsLeft(req) !== 1 ? 's' : '' }} left
                                                 </span>
                                             </div>
-                                            <p class="text-xs text-gray-400 mt-0.5">{{ formatPlayTime(req) }}</p>
-                                            <p v-if="req.notes" class="text-xs text-gray-500 mt-1 italic">{{ req.notes }}</p>
+                                            <p class="text-xs text-outline mt-0.5">{{ formatPlayTime(req) }}</p>
+                                            <p v-if="req.notes" class="text-xs text-on-surface-variant mt-1 italic">{{ req.notes }}</p>
                                         </div>
                                         <!-- Cancel (owner) -->
                                         <button v-if="isOwner(req)" @click="cancelRequest(req)" :disabled="cancelId === req.id"
                                             class="w-7 h-7 rounded-full bg-white flex items-center justify-center active:scale-90">
-                                            <Loader2 v-if="cancelId === req.id" :size="12" class="animate-spin text-red-400" />
-                                            <Trash2 v-else :size="12" class="text-red-400" />
+                                            <Loader2 v-if="cancelId === req.id" :size="12" class="animate-spin text-due" />
+                                            <Trash2 v-else :size="12" class="text-due" />
                                         </button>
                                     </div>
 
                                     <!-- Participants -->
                                     <div v-if="req.participants?.length" class="flex items-center gap-1.5">
-                                        <Users :size="11" class="text-gray-400" />
+                                        <Users :size="11" class="text-outline" />
                                         <div class="flex gap-1 flex-wrap">
                                             <span v-for="p in req.participants" :key="p.user_id"
-                                                class="text-[10px] bg-white ring-1 ring-slate-200 rounded-full px-2 py-0.5 font-medium text-gray-500">
+                                                class="text-[10px] bg-white ring-1 ring-slate-200 rounded-full px-2 py-0.5 font-medium text-on-surface-variant">
                                                 {{ p.name || 'Player' }}
                                             </span>
                                         </div>
@@ -278,13 +278,13 @@ const spotsLeft = (req) => {
                                     <div v-if="!isOwner(req)">
                                         <button v-if="!isMember(req)" @click="joinRequest(req)"
                                             :disabled="spotsLeft(req) === 0 || joiningId === req.id"
-                                            class="w-full py-2.5 rounded-xl text-sm font-bold bg-black text-white flex items-center justify-center gap-1.5 disabled:opacity-40 transition">
+                                            class="w-full py-2.5 rounded-xl text-sm font-bold bg-primary text-white flex items-center justify-center gap-1.5 disabled:opacity-40 transition">
                                             <Loader2 v-if="joiningId === req.id" :size="13" class="animate-spin" />
                                             <UserPlus v-else :size="13" />
                                             {{ spotsLeft(req) === 0 ? 'Match Full' : 'Join Match' }}
                                         </button>
                                         <button v-else @click="leaveRequest(req)" :disabled="leavingId === req.id"
-                                            class="w-full py-2.5 rounded-xl text-sm font-bold bg-red-50 text-red-500 flex items-center justify-center gap-1.5 transition">
+                                            class="w-full py-2.5 rounded-xl text-sm font-bold bg-red-50 text-due flex items-center justify-center gap-1.5 transition">
                                             <Loader2 v-if="leavingId === req.id" :size="13" class="animate-spin" />
                                             <UserMinus v-else :size="13" />
                                             Leave Match
@@ -292,7 +292,7 @@ const spotsLeft = (req) => {
                                     </div>
                                 </div>
                             </div>
-                            <p v-else class="text-center text-gray-400 text-sm py-6">
+                            <p v-else class="text-center text-outline text-sm py-6">
                                 No open match requests at this venue yet.
                             </p>
 

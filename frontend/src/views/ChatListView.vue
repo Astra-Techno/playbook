@@ -74,8 +74,8 @@ const subtitle = (g) => {
     <!-- Empty -->
     <div v-else-if="groups.length === 0" class="text-center py-20">
       <MessageCircle :size="48" class="mx-auto text-gray-300 mb-4" />
-      <p class="font-bold text-gray-700">No conversations yet</p>
-      <p class="text-sm text-gray-400 mt-1">Tap "New Chat" to start messaging</p>
+      <p class="font-bold text-on-surface-variant">No conversations yet</p>
+      <p class="text-sm text-outline mt-1">Tap "New Chat" to start messaging</p>
     </div>
 
     <!-- Groups list -->
@@ -97,15 +97,15 @@ const subtitle = (g) => {
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-2 min-w-0">
               <span class="font-semibold truncate" :class="{ 'font-extrabold': g.unread_count > 0 }">{{ groupName(g) }}</span>
-              <span v-if="g.type !== 'dm'" class="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-md shrink-0">{{ g.member_count }}</span>
+              <span v-if="g.type !== 'dm'" class="text-[10px] text-outline bg-gray-100 px-1.5 py-0.5 rounded-md shrink-0">{{ g.member_count }}</span>
             </div>
-            <span class="text-xs shrink-0 ml-2" :class="g.unread_count > 0 ? 'text-primary font-bold' : 'text-gray-400'">
+            <span class="text-xs shrink-0 ml-2" :class="g.unread_count > 0 ? 'text-primary font-bold' : 'text-outline'">
               {{ timeAgo(g.last_message_at) }}
             </span>
           </div>
           <div class="flex items-center gap-2 mt-1">
-            <BellOff v-if="g.muted == 1" :size="12" class="text-gray-400 shrink-0" />
-            <p class="text-sm truncate" :class="g.unread_count > 0 ? 'text-gray-800 font-semibold' : 'text-gray-500'">
+            <BellOff v-if="g.muted == 1" :size="12" class="text-outline shrink-0" />
+            <p class="text-sm truncate" :class="g.unread_count > 0 ? 'text-on-surface font-semibold' : 'text-on-surface-variant'">
               {{ subtitle(g) }}
             </p>
             <span v-if="g.unread_count > 0"

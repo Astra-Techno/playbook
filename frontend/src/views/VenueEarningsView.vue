@@ -75,7 +75,7 @@ const maxMonthly = computed(() => {
     <div class="min-h-full bg-white">
 
         <div v-if="loading" class="flex items-center justify-center h-64">
-            <Loader2 :size="28" class="text-black animate-spin" />
+            <Loader2 :size="28" class="text-on-surface animate-spin" />
         </div>
 
         <template v-else-if="data">
@@ -107,16 +107,16 @@ const maxMonthly = computed(() => {
 
                 <!-- Monthly bar chart -->
                 <div class="bg-white rounded-2xl p-4 shadow-sm ring-1 ring-slate-100">
-                    <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">Monthly Breakdown</p>
+                    <p class="text-[11px] font-black text-outline uppercase tracking-widest mb-4">Monthly Breakdown</p>
                     <div class="flex items-end gap-2 h-28">
                         <div v-for="m in data.monthly" :key="m.month" class="flex-1 flex flex-col items-center gap-1">
-                            <p class="text-[9px] font-bold text-gray-500">₹{{ m.amount >= 1000 ? (m.amount/1000).toFixed(1)+'k' : m.amount }}</p>
+                            <p class="text-[9px] font-bold text-on-surface-variant">₹{{ m.amount >= 1000 ? (m.amount/1000).toFixed(1)+'k' : m.amount }}</p>
                             <div class="w-full rounded-t-md bg-gray-200 relative overflow-hidden"
                                 :style="{ height: Math.max(4, (m.amount / maxMonthly) * 80) + 'px' }">
-                                <div class="absolute inset-0 bg-black"
+                                <div class="absolute inset-0 bg-primary"
                                     :style="{ opacity: m.amount > 0 ? 0.8 : 0 }"></div>
                             </div>
-                            <p class="text-[9px] text-gray-400 text-center leading-tight">{{ m.month.slice(0, 3) }}</p>
+                            <p class="text-[9px] text-outline text-center leading-tight">{{ m.month.slice(0, 3) }}</p>
                         </div>
                     </div>
                 </div>
@@ -125,11 +125,11 @@ const maxMonthly = computed(() => {
                 <div class="bg-white rounded-2xl shadow-sm ring-1 ring-slate-100 overflow-hidden">
                     <div class="px-4 pt-4 pb-2 flex items-center justify-between">
                         <div>
-                            <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest">Transactions</p>
-                            <p class="text-xs text-gray-400 mt-0.5">Recent confirmed bookings</p>
+                            <p class="text-[11px] font-black text-outline uppercase tracking-widest">Transactions</p>
+                            <p class="text-xs text-outline mt-0.5">Recent confirmed bookings</p>
                         </div>
                         <button @click="exportCSV" :disabled="exporting"
-                            class="flex items-center gap-1.5 text-[11px] font-bold text-black bg-gray-100 px-3 py-1.5 rounded-xl active:scale-95 transition-all disabled:opacity-50">
+                            class="flex items-center gap-1.5 text-[11px] font-bold text-on-surface bg-gray-100 px-3 py-1.5 rounded-xl active:scale-95 transition-all disabled:opacity-50">
                             <Loader2 v-if="exporting" :size="12" class="animate-spin" />
                             <Download v-else :size="12" />
                             Export CSV
@@ -138,7 +138,7 @@ const maxMonthly = computed(() => {
 
                     <div v-if="!data.transactions.length" class="px-4 pb-6 text-center py-8">
                         <IndianRupee :size="24" class="text-slate-200 mx-auto mb-2" />
-                        <p class="text-sm text-gray-400">No transactions yet</p>
+                        <p class="text-sm text-outline">No transactions yet</p>
                     </div>
 
                     <div v-else class="divide-y divide-slate-50">
@@ -148,20 +148,20 @@ const maxMonthly = computed(() => {
                             <div class="w-9 h-9 rounded-xl shrink-0 flex items-center justify-center"
                                 :class="tx.space_name ? 'bg-blue-50' : 'bg-gray-100'">
                                 <LayoutGrid v-if="tx.space_name" :size="15" class="text-blue-500" />
-                                <CalendarDays v-else :size="15" class="text-black" />
+                                <CalendarDays v-else :size="15" class="text-on-surface" />
                             </div>
                             <!-- Info -->
                             <div class="flex-1 min-w-0">
-                                <p class="text-sm font-semibold text-black truncate">
+                                <p class="text-sm font-semibold text-on-surface truncate">
                                     {{ tx.guest_name || tx.user_name || 'Walk-in' }}
                                 </p>
-                                <p class="text-[11px] text-gray-400 truncate">
+                                <p class="text-[11px] text-outline truncate">
                                     {{ tx.space_name ? tx.space_name + ' · ' : '' }}{{ fmtDate(tx.start_time) }}
                                 </p>
                             </div>
                             <!-- Amount -->
                             <div class="shrink-0 text-right">
-                                <p class="text-sm font-extrabold text-emerald-600">+₹{{ Number(tx.total_price).toLocaleString('en-IN') }}</p>
+                                <p class="text-sm font-extrabold text-free">+₹{{ Number(tx.total_price).toLocaleString('en-IN') }}</p>
                             </div>
                         </div>
                     </div>
