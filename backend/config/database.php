@@ -7,7 +7,7 @@ class Database {
     private $pdo;
 
     // Bump this number whenever migrate() adds new tables/columns/indexes
-    private const SCHEMA_VERSION = 36;
+    private const SCHEMA_VERSION = 37;
 
     private function __construct() {
         $host    = getenv('DB_HOST') ?: 'localhost';
@@ -658,6 +658,10 @@ class Database {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         if (!$this->pdo->query("SHOW COLUMNS FROM user_notifications LIKE 'event_key'")->fetch()) {
             $this->pdo->exec('ALTER TABLE user_notifications ADD COLUMN event_key VARCHAR(80) NULL DEFAULT NULL, ADD UNIQUE KEY uq_user_event_key (user_id, event_key)');
+        }
+        // v37: QR door code for bookings (migrations/035_booking_check_in_code.sql).
+        if (!$this->pdo->query("SHOW COLUMNS FROM bookings LIKE 'check_in_code'")->fetch()) {
+            $this->pdo->exec('ALTER TABLE bookings ADD COLUMN check_in_code VARCHAR(8) NULL DEFAULT NULL, ADD UNIQUE KEY uq_booking_check_in_code (check_in_code)');
         }
 
         // Stamp schema version

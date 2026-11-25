@@ -293,9 +293,110 @@ class BookingController {
         }
         if (!$canView) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
 
-        unset($booking['owner_id']);
+        unset($booking['owner_id'], $booking['check_in_code']);
         http_response_code(200);
         echo json_encode(['booking' => $booking]);
+    }
+
+    /** Owner, admin, or a manager at the venue may mark arrival. */
+    private function canMarkArrival(PDO $db, array $booking, array $authUser): bool
+    {
+        if ((int)$booking['owner_id'] === (int)$authUser['id'] || ($authUser['role'] ?? '') === 'admin') {
+            return true;
+        }
+        $staff = $db->prepare("SELECT id FROM court_staff WHERE court_id = ? AND user_id = ? AND role = 'manager'");
+        $staff->execute([(int)$booking['court_id'], (int)$authUser['id']]);
+        return (bool)$staff->fetch();
+    }
+
+    // GET /bookings/:id/check-in-code — the pass QR for the booker or a squad player
+    public function checkInCode(int $id): void
+    {
+        require_once __DIR__ . '/../BookingCheckIn.php';
+        $authUser = Auth::require();
+        $uid = (int)$authUser['id'];
+        $db = Database::getConnection();
+        $stmt = $db->prepare('SELECT id, user_id, status, check_in_code FROM bookings WHERE id = ?');
+        $stmt->execute([$id]);
+        $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$booking) { http_response_code(404); echo json_encode(['message' => 'Booking not found']); return; }
+
+        $squad = $db->prepare('SELECT 1 FROM booking_players WHERE booking_id = ? AND user_id = ?');
+        try {
+            $squad->execute([$id, $uid]);
+            $isSquadPlayer = (bool)$squad->fetchColumn();
+        } catch (PDOException $e) {
+            $isSquadPlayer = false; // booking_players is created on first use
+        }
+        if (!BookingCheckIn::canShow((int)$booking['user_id'], $uid, $isSquadPlayer)) {
+            http_response_code(403); echo json_encode(['message' => 'Not your booking']); return;
+        }
+        if ($booking['status'] !== 'confirmed') {
+            http_response_code(409); echo json_encode(['message' => 'Only confirmed bookings have a check-in pass.']); return;
+        }
+
+        $code = BookingCheckIn::ensureCode($db, $id, $booking['check_in_code']);
+        echo json_encode(['code' => $code, 'payload' => BookingCheckIn::payload($id, $code)]);
+    }
+
+    // POST /bookings/check-in-scan { payload } — venue staff scan a player's pass
+    public function scanCheckIn(): void
+    {
+        require_once __DIR__ . '/../BookingCheckIn.php';
+        require_once __DIR__ . '/../Attendance.php';
+        $authUser = Auth::require();
+        $data = json_decode(file_get_contents('php://input'));
+        $scan = BookingCheckIn::parse((string)($data->payload ?? ''));
+        if (!$scan) {
+            http_response_code(422); echo json_encode(['message' => 'This is not a KoCourt booking pass.']); return;
+        }
+
+        $db = Database::getConnection();
+        $stmt = $db->prepare("
+            SELECT b.id, b.status, b.start_time, b.end_time, b.attendance, b.court_id, b.check_in_code,
+                   c.owner_id, c.name AS court_name, sc.name AS space_name, u.name AS player_name
+            FROM bookings b
+            JOIN courts c ON c.id = b.court_id
+            LEFT JOIN sub_courts sc ON sc.id = b.sub_court_id
+            LEFT JOIN users u ON u.id = b.user_id
+            WHERE b.id = ?
+        ");
+        $stmt->execute([$scan['id']]);
+        $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Permission first, so a scan at the wrong venue reveals nothing about the booking.
+        if (!$booking || !$this->canMarkArrival($db, $booking, $authUser)) {
+            http_response_code(404); echo json_encode(['message' => 'This pass is not for a venue you manage.']); return;
+        }
+        if (!BookingCheckIn::matches($booking['check_in_code'], $scan['code'])) {
+            http_response_code(422); echo json_encode(['message' => 'This pass code does not match the booking.']); return;
+        }
+
+        $summary = [
+            'id' => (int)$booking['id'],
+            'player' => $booking['player_name'] ?: 'Player',
+            'venue' => $booking['court_name'],
+            'space' => $booking['space_name'],
+            'start_time' => $booking['start_time'],
+            'end_time' => $booking['end_time'],
+        ];
+        $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
+        $decision = Attendance::decide(
+            'check_in',
+            $booking['attendance'] !== null && $booking['attendance'] !== '' ? (string)$booking['attendance'] : null,
+            (string)$booking['status'],
+            (string)$booking['start_time'],
+            (string)$booking['end_time'],
+            $now
+        );
+        if (!$decision['ok']) {
+            http_response_code(422); echo json_encode(['message' => $decision['message'], 'booking' => $summary]); return;
+        }
+        $update = $db->prepare("UPDATE bookings SET attendance = 'checked_in' WHERE id = ? AND status = 'confirmed' AND attendance IS NULL");
+        $update->execute([(int)$booking['id']]);
+        if (!$update->rowCount()) {
+            http_response_code(409); echo json_encode(['message' => 'This booking is already checked in.', 'booking' => $summary]); return;
+        }
+        echo json_encode(['message' => 'Checked in.', 'attendance' => 'checked_in', 'booking' => $summary]);
     }
 
     // POST /bookings/:id/attendance  { action: check_in|no_show }
@@ -321,11 +422,7 @@ class BookingController {
             return;
         }
 
-        $isOwner = (int)$booking['owner_id'] === $authId;
-        $isAdmin = ($authUser['role'] ?? '') === 'admin';
-        $staff = $db->prepare("SELECT id FROM court_staff WHERE court_id = ? AND user_id = ? AND role = 'manager'");
-        $staff->execute([(int)$booking['court_id'], $authId]);
-        if (!$isOwner && !$isAdmin && !$staff->fetch()) {
+        if (!$this->canMarkArrival($db, $booking, $authUser)) {
             http_response_code(403);
             echo json_encode(['message' => 'Only the venue owner or manager can mark arrival']);
             return;
@@ -431,6 +528,9 @@ class BookingController {
         }
 
         $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // QR door codes are served only by GET /bookings/:id/check-in-code.
+        foreach ($records as &$record) unset($record['check_in_code']);
+        unset($record);
         http_response_code(200);
         echo json_encode(["records" => $records]);
     }
