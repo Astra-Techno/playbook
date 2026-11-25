@@ -206,6 +206,20 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           _summaryCard(booking, status, start),
+          if (booking['addons'] is List && (booking['addons'] as List).isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text('Kit add-ons (paid online)', style: TextStyle(fontWeight: FontWeight.w800)),
+            for (final kit in (booking['addons'] as List).whereType<Map>())
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '${kit['quantity']} × ${kit['name']}'
+                  '${(int.tryParse('${kit['deposit_rupees']}') ?? 0) > 0 ? ' · collect Rs ${kit['deposit_rupees']} deposit' : ''}'
+                  ' · ${kit['state'] == 'reserved' ? 'hand over at check-in' : kit['state']}',
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
+          ],
           if ('${booking['notes'] ?? ''}'.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text('${booking['notes']}'),

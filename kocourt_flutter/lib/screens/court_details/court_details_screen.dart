@@ -4,6 +4,7 @@ import '../home/home_logic.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'slot_block.dart';
 import 'slot_timeline.dart';
+import 'addons_sheet.dart';
 import '../bookings/booking_ticket.dart';
 import '../reviews/past_booking.dart';
 import '../home/widgets/venue_card.dart' show venuePhotoHeroTag;
@@ -274,11 +275,30 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
       return;
     }
 
+    // Add-ons (bat, balls, bibs) — only asked when the venue rents kit.
+    var addonCounts = <int, int>{};
+    var addonsRupees = 0;
+    try {
+      final res = await Api().get('/courts/${widget.courtId}/addons');
+      final addons = List<Map<String, dynamic>>.from(
+        (res.data['addons'] ?? []).map((e) => Map<String, dynamic>.from(e as Map)),
+      );
+      if (addons.isNotEmpty && mounted) {
+        final picked = await AddonsSheet.open(context, addons);
+        if (picked == null) return;
+        addonCounts = picked;
+        addonsRupees = addonsTotal(addons, picked);
+      }
+    } catch (_) {
+      // No add-on list (older server or offline): book the slot without kit.
+    }
+    if (!mounted) return;
+
     setState(() => _bookingLoading = true);
 
     try {
       // Display estimate only: the server quote re-prices every slot.
-      final totalPrice = selectionTotal(_slots, _selectedSlots, _hourPrices, _fallbackRate);
+      final totalPrice = selectionTotal(_slots, _selectedSlots, _hourPrices, _fallbackRate) + addonsRupees;
 
       // Build slots array for multi-slot payment
       final slots = _selectedSlots.map((slotKey) {
@@ -295,6 +315,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
         'court_id': widget.courtId,
         if (_selectedSpaceId != null) 'sub_court_id': _selectedSpaceId,
         'slots': slots,
+        if (addonsPayload(addonCounts).isNotEmpty) 'addons': addonsPayload(addonCounts),
         'type': 'hourly',
         'total_price': totalPrice,
       };

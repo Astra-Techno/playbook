@@ -294,6 +294,8 @@ class BookingController {
         if (!$canView) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
 
         unset($booking['owner_id'], $booking['check_in_code']);
+        require_once __DIR__ . '/../BookingAddons.php';
+        $booking['addons'] = BookingAddons::forBooking($db, (int)$booking['id']);
         http_response_code(200);
         echo json_encode(['booking' => $booking]);
     }
@@ -396,6 +398,8 @@ class BookingController {
         if (!$update->rowCount()) {
             http_response_code(409); echo json_encode(['message' => 'This booking is already checked in.', 'booking' => $summary]); return;
         }
+        require_once __DIR__ . '/../BookingAddons.php';
+        BookingAddons::handOver($db, (int)$booking['id']);
         echo json_encode(['message' => 'Checked in.', 'attendance' => 'checked_in', 'booking' => $summary]);
     }
 
@@ -449,6 +453,10 @@ class BookingController {
             http_response_code(409);
             echo json_encode(['message' => 'This booking was already marked.']);
             return;
+        }
+        if ($decision['attendance'] === 'checked_in') {
+            require_once __DIR__ . '/../BookingAddons.php';
+            BookingAddons::handOver($db, $id);
         }
 
         http_response_code(200);

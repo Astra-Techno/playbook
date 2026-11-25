@@ -317,6 +317,15 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
         (new CoachingController())->create((int)$seg[1]);
         exit();
     }
+    // GET /courts/:id/addons — public: rentable kit a player can add at checkout
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'addons' && !isset($seg[3])) {
+        require_once __DIR__ . '/src/BookingAddons.php';
+        $rows = BookingAddons::catalog(Database::getConnection(), (int)$seg[1]);
+        echo json_encode(['addons' => array_map(fn ($r) => [
+            'id' => (int)$r['id'], 'name' => $r['name'], 'rental_rupees' => (int)$r['rental_rupees'], 'deposit_rupees' => (int)$r['deposit_rupees'],
+        ], $rows)]);
+        exit();
+    }
     // GET /courts/:id/equipment
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1]) && isset($seg[2]) && $seg[2] === 'equipment') {
         require_once __DIR__ . '/src/Controllers/EquipmentController.php';

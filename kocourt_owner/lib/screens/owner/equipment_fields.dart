@@ -11,6 +11,7 @@ List<Map<String, dynamic>> equipmentRows(Object? data) {
           'name': row['name'],
           'quantity_on_hand': row['quantity_on_hand'],
           'deposit_rupees': row['deposit_rupees'],
+          'rental_rupees': row['rental_rupees'],
           'status': row['status'],
           'out_quantity': row['out_quantity'],
           'rentals': [
@@ -32,17 +33,21 @@ Map<String, dynamic>? equipmentBody({
   required String name,
   required String quantity,
   required String deposit,
+  String rental = '0',
 }) {
   final item = name.trim();
   final stock = int.tryParse(quantity.trim());
   final rupees = int.tryParse(deposit.trim());
+  final rent = int.tryParse(rental.trim().isEmpty ? '0' : rental.trim());
   if (item.isEmpty || item.length > 80) return null;
   if (stock == null || stock < 1 || stock > 200) return null;
   if (rupees == null || rupees < 0 || rupees > 50000) return null;
+  if (rent == null || rent < 0 || rent > 50000) return null;
   return {
     'name': item,
     'quantity_on_hand': stock,
     'deposit_rupees': rupees,
+    'rental_rupees': rent,
   };
 }
 
@@ -63,5 +68,7 @@ String equipmentLine(Map<String, dynamic> row) {
   final stock = int.tryParse('${row['quantity_on_hand']}') ?? 0;
   final out = int.tryParse('${row['out_quantity']}') ?? 0;
   final deposit = int.tryParse('${row['deposit_rupees']}') ?? 0;
-  return 'Active · $out of $stock out · Deposit Rs $deposit';
+  final rent = int.tryParse('${row['rental_rupees']}') ?? 0;
+  // Priced items are offered to players as add-ons at checkout.
+  return 'Active · $out of $stock out · Deposit Rs $deposit${rent > 0 ? ' · Rent Rs $rent (player add-on)' : ''}';
 }

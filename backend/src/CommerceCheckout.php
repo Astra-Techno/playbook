@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/CommerceSettings.php';
+require_once __DIR__ . '/BookingAddons.php';
 
 class CommerceCheckout {
     public static function validateTime(string $start, string $end, array $policy): void {
@@ -31,6 +32,7 @@ class CommerceCheckout {
         }
         $amount = 0;
         $slotAmounts = [];
+        $addons = ['lines' => [], 'paise' => 0];
         if ($type === 'booking') {
             $slots = $payload['slots'] ?? [['start_time' => $payload['start_time'] ?? '', 'end_time' => $payload['end_time'] ?? '']];
             if (!is_array($slots) || !array_is_list($slots) || !$slots || count($slots) > 48) throw new InvalidArgumentException('Select between 1 and 48 time ranges');
@@ -43,6 +45,14 @@ class CommerceCheckout {
                 $price = (int)round($calculator->calculateBookingPrice($courtId, $subCourtId, $slot['start_time'], $slot['end_time']) * 100);
                 $slotAmounts[] = $price;
                 $amount += $price;
+            }
+            // Add-on rentals ride on the first slot: its refunds, earnings and tax then cover them.
+            $addons = BookingAddons::quote($db, $courtId, $payload['addons'] ?? null, min(array_column($slots, 'start_time')), max(array_column($slots, 'end_time')));
+            unset($payload['addons']);
+            if ($addons['lines']) {
+                $payload['addons'] = $addons['lines'];
+                $slotAmounts[0] += $addons['paise'];
+                $amount += $addons['paise'];
             }
         } elseif ($type === 'subscription') {
             $stmt = $db->prepare('SELECT price, duration_days, slot_type FROM plans WHERE id = ? AND court_id = ?');
@@ -78,6 +88,18 @@ class CommerceCheckout {
             $snapshots[] = ['version' => 1, 'policy' => $policy, 'price' => $parts];
         }
         $snapshot = ['version' => 1, 'policy' => $policy, 'price' => $price, 'slots' => $snapshots, 'processing_estimate' => CommerceSettings::estimateCost($price['total'], $policy)];
+        if ($addons['lines']) {
+            // The add-ons' share of the first slot, refunded if the kit is gone by the time payment lands.
+            $first = $snapshots[0]['price'];
+            $share = fn (int $total) => (int)floor($total * $addons['paise'] / $slotAmounts[0]);
+            $snapshot['addons'] = [
+                'lines' => $addons['lines'],
+                'paise' => $addons['paise'],
+                'refund' => ['venue' => $share($first['venue']['total']), 'fee' => $share($first['fee']['total'])],
+                'start' => min(array_column($payload['slots'], 'start_time')),
+                'end' => max(array_column($payload['slots'], 'end_time')),
+            ];
+        }
         $hash = hash('sha256', json_encode([$type, $payload, $snapshot]));
         return ['payload' => $payload, 'snapshot' => $snapshot, 'quote_hash' => $hash, 'amount' => $price['total'] / 100];
     }

@@ -19,6 +19,7 @@ class _VenueEquipmentScreenState extends State<VenueEquipmentScreen> {
   final _name = TextEditingController();
   final _quantity = TextEditingController(text: '1');
   final _deposit = TextEditingController(text: '0');
+  final _rental = TextEditingController(text: '0');
   final _player = TextEditingController();
   final _rentQuantity = TextEditingController(text: '1');
 
@@ -33,6 +34,7 @@ class _VenueEquipmentScreenState extends State<VenueEquipmentScreen> {
     _name.dispose();
     _quantity.dispose();
     _deposit.dispose();
+    _rental.dispose();
     _player.dispose();
     _rentQuantity.dispose();
     super.dispose();
@@ -56,7 +58,7 @@ class _VenueEquipmentScreenState extends State<VenueEquipmentScreen> {
   }
 
   Future<void> _create() async {
-    final body = equipmentBody(name: _name.text, quantity: _quantity.text, deposit: _deposit.text);
+    final body = equipmentBody(name: _name.text, quantity: _quantity.text, deposit: _deposit.text, rental: _rental.text);
     if (body == null) {
       context.toastError('Add a name, a quantity from 1 to 200, and a deposit.');
       return;
@@ -131,6 +133,11 @@ class _VenueEquipmentScreenState extends State<VenueEquipmentScreen> {
                       TextField(controller: _name, decoration: const InputDecoration(labelText: 'Item name')),
                       TextField(controller: _quantity, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Quantity on hand')),
                       TextField(controller: _deposit, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Deposit, rupees')),
+                      TextField(
+                        controller: _rental,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Rent per booking, rupees', helperText: 'Above 0: players can add it when booking'),
+                      ),
                       Align(
                         alignment: Alignment.centerLeft,
                         child: FilledButton(
