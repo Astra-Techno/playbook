@@ -14,6 +14,9 @@ import '../notifications/notifications_screen.dart';
 import 'widgets/venue_card.dart';
 import 'widgets/ghost_card.dart';
 import 'widgets/sport_chips.dart';
+import 'widgets/next_game_card.dart';
+import 'widgets/live_banner.dart';
+import 'home_logic.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -513,9 +516,11 @@ class _HomeScreenState extends State<HomeScreen> {
           cacheExtent: 500,
           slivers: [
             _buildHeader(),
+            const SliverToBoxAdapter(child: NextGameCard()),
             SliverToBoxAdapter(child: _buildSearchBar()),
-            SliverToBoxAdapter(child: _buildDiscovery()),
+            SliverToBoxAdapter(child: _buildLiveBanner()),
             SliverToBoxAdapter(child: SportChips()),
+            SliverToBoxAdapter(child: _buildDiscovery()),
             _buildVenueList(),
             _buildGhostSection(),
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -704,6 +709,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildLiveBanner() {
+    final venues = context.watch<VenueProvider>();
+    if (!venues.fetched || venues.venues.isEmpty) return const SizedBox.shrink();
+    final now = DateTime.now();
+    return LiveBanner(
+      venueCount: venues.venues.length,
+      openNow: venues.venues.where((v) => isOpenNow(v, now)).length,
+      onTap: () => context.push('/find-courts'),
+    );
+  }
+
   Widget _buildDiscovery() {
     final venues = context.watch<VenueProvider>();
     Widget chip(String label, String sort) {
@@ -769,9 +785,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       ),
                       onChanged: (val) {
-                        context.read<VenueProvider>()
-                          ..setSearchText(val)
-                          ..fetchVenues();
+                        context.read<VenueProvider>().setSearchText(val);
                       },
                     ),
                   ),
@@ -874,20 +888,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Column(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Venues near you',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                          ),
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textPrimary,
+                              ),
                         ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Handpicked for your game today',
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Pick a court and lock in your game',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,

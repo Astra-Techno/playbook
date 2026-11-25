@@ -3,80 +3,53 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 
+/// Sport filter pills with the sport's icon; the selected one fills with the brand colour.
 class SportChips extends StatelessWidget {
   const SportChips({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.brand.primary;
     return Consumer<VenueProvider>(
       builder: (context, venues, _) {
         return Padding(
           padding: const EdgeInsets.only(top: 14),
           child: SizedBox(
-            height: 88,
-            child: ListView.builder(
+            height: 44,
+            child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 20),
               itemCount: sportCategories.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (context, index) {
                 final cat = sportCategories[index];
-                final isSelected = venues.selectedSport == cat.id;
-
-                return GestureDetector(
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    venues.setSport(cat.id);
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: Column(
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 250),
-                          curve: Curves.easeOutCubic,
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? AppColors.primary.withValues(alpha: 0.1)
-                                : AppColors.surface,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.borderLight,
-                              width: isSelected ? 2 : 1.5,
-                            ),
-                            boxShadow: isSelected
-                                ? [
-                                    BoxShadow(
-                                      color: AppColors.primary.withValues(alpha: 0.15),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Center(
-                            child: Text(
-                              cat.emoji,
-                              style: TextStyle(
-                                fontSize: isSelected ? 26 : 24,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 200),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
-                            color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                          ),
-                          child: Text(cat.label),
-                        ),
-                      ],
+                final selected = venues.selectedSport == cat.id;
+                final fg = selected ? Colors.white : AppColors.textPrimary;
+                return Semantics(
+                  button: true,
+                  selected: selected,
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      venues.setSport(cat.id);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      padding: const EdgeInsets.fromLTRB(12, 0, 16, 0),
+                      decoration: BoxDecoration(
+                        color: selected ? brand : Colors.white,
+                        borderRadius: BorderRadius.circular(22),
+                        border: Border.all(color: selected ? brand : AppColors.border),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(cat.icon, size: 17, color: fg),
+                          const SizedBox(width: 6),
+                          Text(cat.label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: fg)),
+                        ],
+                      ),
                     ),
                   ),
                 );

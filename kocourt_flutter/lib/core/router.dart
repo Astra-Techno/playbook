@@ -36,6 +36,17 @@ CustomTransitionPage<void> _slideFadePage(Widget child, GoRouterState state) {
   );
 }
 
+/// Booking passes rise like a ticket instead of wiping across.
+CustomTransitionPage<void> _ticketPage(Widget child, GoRouterState state) {
+  return CustomTransitionPage(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 520),
+    reverseTransitionDuration: const Duration(milliseconds: 260),
+    transitionsBuilder: ticketPageTransition,
+  );
+}
+
 GoRouter createRouter(AuthProvider auth) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -95,7 +106,7 @@ GoRouter createRouter(AuthProvider auth) {
       ),
       GoRoute(
         path: '/booking-confirmation/:bookingId',
-        pageBuilder: (_, state) => _slideFadePage(
+        pageBuilder: (_, state) => _ticketPage(
           BookingConfirmationScreen(bookingId: int.tryParse(state.pathParameters['bookingId'] ?? '') ?? 0),
           state,
         ),

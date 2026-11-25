@@ -1,8 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'slot_block.dart';
+import 'slot_timeline.dart';
 import '../bookings/booking_ticket.dart';
 import '../reviews/past_booking.dart';
+import '../home/widgets/venue_card.dart' show venuePhotoHeroTag;
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -34,6 +36,11 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
   bool _slotsLoading = true;
   String? _slotsError;
   Set<String> _selectedSlots = {};
+  /// Effective price per hour for the selected day (pricing rules); empty = flat hourly rate.
+  Map<int, double> _hourPrices = {};
+  int _squad = 4;
+
+  double get _fallbackRate => double.tryParse('${_court?['hourly_rate'] ?? 0}') ?? 0;
   bool _bookingLoading = false;
   List<Map<String, dynamic>> _reviews = [];
   List<String> _photos = [];
@@ -174,6 +181,25 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
       }
     } catch (_) {}
 
+    // Same rules checkout uses; on failure the flat hourly rate is shown.
+    var hourPrices = <int, double>{};
+    try {
+      final pRes = await Api().get('/pricing-rules/calculate-day', params: {
+        'court_id': widget.courtId,
+        'date': _selectedDate,
+        if ((_selectedSpaceId ?? 0) > 0) 'sub_court_id': _selectedSpaceId,
+      });
+      final raw = pRes.data['prices'];
+      // PHP sends hours 0–23 as a JSON list (or an object if keys get gaps).
+      final Iterable<MapEntry<dynamic, dynamic>> entries =
+          raw is Map ? raw.entries : raw is List ? raw.asMap().entries : const [];
+      hourPrices = {
+        for (final e in entries)
+          if (int.tryParse('${e.key}') != null && double.tryParse('${e.value}') != null)
+            int.parse('${e.key}'): double.parse('${e.value}'),
+      };
+    } catch (_) {}
+
     final slots = <Map<String, dynamic>>[];
     final now = DateTime.now();
     final openHour = _clockHour(_court?['open_time'], 6);
@@ -215,6 +241,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     if (!mounted) return;
     setState(() {
       _slots = slots;
+      _hourPrices = hourPrices;
       _selectedSlots = {};
       _slotsLoading = false;
     });
@@ -248,16 +275,17 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     setState(() => _bookingLoading = true);
 
     try {
-      final rate = double.tryParse('${_court!['hourly_rate'] ?? 0}') ?? 0;
-      final totalPrice = rate * _selectedSlots.length;
+      // Display estimate only: the server quote re-prices every slot.
+      final totalPrice = selectionTotal(_slots, _selectedSlots, _hourPrices, _fallbackRate);
 
       // Build slots array for multi-slot payment
       final slots = _selectedSlots.map((slotKey) {
         final parts = slotKey.split('-');
+        final hour = int.tryParse(parts[0].split(':').first) ?? 0;
         return {
           'start_time': '$_selectedDate ${parts[0]}:00',
           'end_time': '$_selectedDate ${parts[1]}:00',
-          'total_price': rate,
+          'total_price': hourPrice(_hourPrices, hour, _fallbackRate),
         };
       }).toList();
 
@@ -315,7 +343,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     }
 
     final imageUrl = getVenueImage(_court!);
-    final totalPrice = (double.tryParse('${_court!['hourly_rate'] ?? 0}') ?? 0) * _selectedSlots.length;
+    final totalPrice = selectionTotal(_slots, _selectedSlots, _hourPrices, _fallbackRate);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -372,13 +400,16 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                 fit: StackFit.expand,
                 children: [
                   // Photo gallery or single image
-                  if (_photos.length > 1)
-                    PageView.builder(
-                      itemCount: _photos.length,
-                      itemBuilder: (_, i) => CachedNetworkImage(imageUrl: _photos[i], fit: BoxFit.cover),
-                    )
-                  else
-                    CachedNetworkImage(imageUrl: _photos.isNotEmpty ? _photos.first : imageUrl, fit: BoxFit.cover),
+                  // Receives the photo flying in from the Home venue card.
+                  Hero(
+                    tag: venuePhotoHeroTag(widget.courtId),
+                    child: _photos.length > 1
+                        ? PageView.builder(
+                            itemCount: _photos.length,
+                            itemBuilder: (_, i) => CachedNetworkImage(imageUrl: _photos[i], fit: BoxFit.cover),
+                          )
+                        : CachedNetworkImage(imageUrl: _photos.isNotEmpty ? _photos.first : imageUrl, fit: BoxFit.cover),
+                  ),
                   const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -634,7 +665,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                       children: [
                         _buildDatePicker(),
                         const SizedBox(height: 16),
-                        _buildSlotsGrid(),
+                        _buildTimeline(),
                       ],
                     ),
                   );
@@ -686,7 +717,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${_selectedSlots.length} slot${_selectedSlots.length > 1 ? 's' : ''} selected',
+                          selectionLabel(_slots, _selectedSlots),
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -695,7 +726,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '₹${totalPrice == totalPrice.toInt() ? totalPrice.toInt() : totalPrice.toStringAsFixed(2)}',
+                          rupees(totalPrice),
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
@@ -727,7 +758,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                           : const FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
-                                'Book Now',
+                                'Continue to pay',
                                 maxLines: 1,
                                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
                               ),
@@ -846,7 +877,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     );
   }
 
-  Widget _buildSlotsGrid() {
+  Widget _buildTimeline() {
     if (_slotsLoading && _slots.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 40),
@@ -866,117 +897,21 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'SELECT TIME SLOTS',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textMuted,
-            letterSpacing: 1.5,
-          ),
+        SlotTimeline(
+          slots: _slots,
+          selected: _selectedSlots,
+          prices: _hourPrices,
+          fallbackRate: _fallbackRate,
+          onChanged: (next) => setState(() => _selectedSlots = next),
+          onTakenTap: _suggestNextOpenSlot,
         ),
-        const SizedBox(height: 10),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            childAspectRatio: 2.2,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
+        if (_selectedSlots.isNotEmpty)
+          SquadSplit(
+            total: selectionTotal(_slots, _selectedSlots, _hourPrices, _fallbackRate),
+            players: _squad,
+            onPlayers: (n) => setState(() => _squad = n),
           ),
-          itemCount: _slots.length,
-          itemBuilder: (_, i) {
-            final slot = _slots[i];
-            final key = slot['key'] as String;
-            final booked = slot['booked'] as bool;
-            final blocked = slot['blocked'] as bool;
-            final hour = int.tryParse('${slot['start']}'.split(':').first) ?? 0;
-            final past = slotStartHasPassed(_selectedDate, hour, DateTime.now());
-            final selected = _selectedSlots.contains(key);
-            final disabled = booked || blocked || past;
-
-            return GestureDetector(
-              onTap: () {
-                if (disabled) {
-                  if (booked) _suggestNextOpenSlot(i);
-                  return;
-                }
-                HapticFeedback.selectionClick();
-                setState(() {
-                  if (selected) {
-                    _selectedSlots.remove(key);
-                  } else {
-                    _selectedSlots.add(key);
-                  }
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                decoration: BoxDecoration(
-                  color: disabled
-                      ? AppColors.surfaceDim
-                      : selected
-                          ? AppColors.primary
-                          : Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: disabled
-                        ? AppColors.borderLight
-                        : selected
-                            ? AppColors.primary
-                            : AppColors.border,
-                    width: selected ? 2 : 1,
-                  ),
-                  boxShadow: selected
-                      ? [
-                          BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.2),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ]
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      slot['start'] as String,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: disabled
-                            ? AppColors.textDisabled
-                            : selected
-                                ? Colors.white
-                                : AppColors.textPrimary,
-                      ),
-                    ),
-                    if (disabled)
-                      Text(
-                        past ? 'Past' : booked ? 'Booked' : 'Blocked',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textDisabled,
-                        ),
-                      ),
-                    if (selected)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 1),
-                        child: Icon(Icons.check_rounded, size: 12, color: Colors.white.withValues(alpha: 0.8)),
-                      ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
       ],
     );
   }
