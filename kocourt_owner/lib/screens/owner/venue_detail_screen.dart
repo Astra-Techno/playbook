@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -94,13 +95,13 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
     final verified = venueIsVerified(_court!['is_verified']);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
             expandedHeight: 200,
             pinned: true,
-            backgroundColor: Colors.black,
+            backgroundColor: context.brand.primary,
             flexibleSpace: FlexibleSpaceBar(
               background: CachedNetworkImage(imageUrl: img, fit: BoxFit.cover),
             ),
@@ -113,7 +114,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                 children: [
                   Row(
                     children: [
-                      Flexible(child: Text(_court!['name'] ?? '', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800))),
+                      Flexible(child: Text(_court!['name'] ?? '', style: GoogleFonts.archivo(fontSize: 24, fontWeight: FontWeight.w900))),
                       if (verified) ...[
                         const SizedBox(width: 8),
                         const Icon(Icons.verified_rounded, size: 20, color: AppColors.primary),
@@ -130,7 +131,14 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                   ),
                   if (_court!['hourly_rate'] != null) ...[
                     const SizedBox(height: 8),
-                    Text('\u20B9${_court!['hourly_rate']}/slot', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.primary)),
+                    Slanted(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(color: context.brand.primary, borderRadius: BorderRadius.circular(8)),
+                        child: Text('\u20B9${_court!['hourly_rate']} / slot',
+                            style: GoogleFonts.archivo(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white)),
+                      ),
+                    ),
                   ],
                   const SizedBox(height: 16),
                   _statusCard(
@@ -246,8 +254,9 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,7 +300,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
           if (!selected) _setListed(available);
         },
         style: FilledButton.styleFrom(
-          backgroundColor: selected ? AppColors.primary : const Color(0xFFF3F4F6),
+          backgroundColor: selected ? context.brand.primary : AppColors.surfaceDim,
           foregroundColor: selected ? Colors.white : AppColors.textPrimary,
           padding: const EdgeInsets.symmetric(horizontal: 8),
           elevation: 0,
@@ -318,13 +327,13 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: AppColors.textSecondary),
+            MenuIcon(icon),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                   Text(desc, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                 ],
               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 
@@ -107,27 +108,40 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: isExpiring ? AppColors.error.withValues(alpha: 0.3) : AppColors.surfaceDim),
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                          border: Border.all(color: isExpiring && isActive ? AppColors.warning : AppColors.border),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                Expanded(child: Text(s['court_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: isActive ? AppColors.secondary.withValues(alpha: 0.1) : AppColors.error.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    isActive ? 'ACTIVE' : 'EXPIRED',
-                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: isActive ? AppColors.secondary : AppColors.error),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(s['court_name'] ?? '', style: GoogleFonts.archivo(fontWeight: FontWeight.w900, fontSize: 18)),
+                                      const SizedBox(height: 4),
+                                      isActive ? const StatusTag('Active', tone: TagTone.free) : const StatusTag('Expired', tone: TagTone.due),
+                                    ],
                                   ),
                                 ),
+                                // Season-pass countdown over the last 30 days.
+                                if (isActive && s['days_remaining'] != null)
+                                  SizedBox(
+                                    width: 54,
+                                    height: 54,
+                                    child: CustomPaint(
+                                      painter: StopwatchRingPainter(
+                                        progress: (daysRemaining / 30).clamp(0.0, 1.0),
+                                        color: isExpiring ? AppColors.warning : context.brand.primary,
+                                      ),
+                                      child: Center(
+                                        child: Text('${daysRemaining}d',
+                                            style: GoogleFonts.archivo(fontSize: 13, fontWeight: FontWeight.w900)),
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
                             const SizedBox(height: 8),

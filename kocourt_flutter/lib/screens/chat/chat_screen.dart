@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
@@ -154,7 +155,7 @@ class _ChatScreenState extends State<ChatScreen> {
       return '$hour:$m $period';
     }
     if (diff.inDays == 1) return 'Yesterday';
-    return '${date.day}/${date.month}';
+    return DateFormat('d MMM').format(date);
   }
 
   @override
@@ -294,7 +295,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final diff = now.difference(date);
     if (diff.inDays == 0) return 'Today';
     if (diff.inDays == 1) return 'Yesterday';
-    return '${date.day}/${date.month}/${date.year}';
+    return DateFormat('d MMM yyyy').format(date);
   }
 }
 

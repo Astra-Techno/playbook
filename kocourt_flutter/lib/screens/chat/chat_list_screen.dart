@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'group_chat_screen.dart';
@@ -54,7 +55,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m';
     if (diff.inHours < 24) return '${diff.inHours}h';
     if (diff.inDays < 7) return '${diff.inDays}d';
-    return '${date.day}/${date.month}';
+    return DateFormat('d MMM').format(date);
   }
 
   @override
@@ -181,14 +182,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             ),
                             if (!isDm) ...[
                               const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: AppColors.surfaceDim,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text('$memberCount', style: TextStyle(fontSize: 10, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
-                              ),
+                              StatusTag('Squad $memberCount', tone: TagTone.muted),
                             ],
                           ],
                         ),

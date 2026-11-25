@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
@@ -244,7 +245,7 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
                         Icon(AppIcons.calendarDays, size: 16, color: AppColors.textSecondary),
                         const SizedBox(width: 8),
                         Text(
-                          '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                          DateFormat('d MMM yyyy').format(_selectedDate),
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ],

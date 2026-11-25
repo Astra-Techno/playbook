@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 
@@ -63,7 +64,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return '${date.day}/${date.month}/${date.year}';
+    return DateFormat('d MMM yyyy').format(date);
   }
 
   @override

@@ -160,15 +160,15 @@ class _VenueMembersScreenState extends State<VenueMembersScreen> {
                       final isActive = m['status'] == 'active';
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: AppColors.border),
+                        ),
                         child: Row(
                           children: [
-                            CircleAvatar(
-                              radius: 20,
-                              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                              child: Text((m['user_name'] ?? 'M')[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary)),
-                            ),
+                            TimePlate(top: '${m['user_name'] ?? 'M'}'.characters.first.toUpperCase(), filled: isActive, width: 44),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
@@ -180,17 +180,7 @@ class _VenueMembersScreenState extends State<VenueMembersScreen> {
                                 ],
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: isActive ? AppColors.secondary.withValues(alpha: 0.1) : AppColors.error.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                isActive ? 'ACTIVE' : 'EXPIRED',
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: isActive ? AppColors.secondary : AppColors.error),
-                              ),
-                            ),
+                            isActive ? const StatusTag('Active', tone: TagTone.free) : const StatusTag('Expired', tone: TagTone.due),
                           ],
                         ),
                       );
