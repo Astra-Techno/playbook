@@ -357,6 +357,11 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
         exit();
     }
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1]) && !isset($seg[2])) { $courtController->show((int)$seg[1]); exit(); }
+    // GET /courts/free-soon — first free hour per venue for the player home
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'free-soon') {
+        $courtController->freeSoon();
+        exit();
+    }
     // GET /courts/available-at — before generic GET /courts
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'available-at') {
         $courtController->availableAt();

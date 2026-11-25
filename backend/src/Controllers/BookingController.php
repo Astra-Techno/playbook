@@ -481,6 +481,7 @@ class BookingController {
             // Slot availability — no user filter needed
             $sub_court_id = isset($_GET['sub_court_id']) ? (int)$_GET['sub_court_id'] : null;
             $stmt = $booking->readByCourtAndDate((int)$_GET['court_id'], $_GET['date'], $sub_court_id);
+            $publicSlots = true;
         } elseif (isset($_GET['owner_id'])) {
             // Owner views their own courts' bookings — use token's user
             $sub_court_id = isset($_GET['sub_court_id']) ? (int)$_GET['sub_court_id'] : null;
@@ -531,6 +532,11 @@ class BookingController {
         // QR door codes are served only by GET /bookings/:id/check-in-code.
         foreach ($records as &$record) unset($record['check_in_code']);
         unset($record);
+        // The public availability grid needs times only — not who booked or what they paid.
+        if (!empty($publicSlots)) {
+            require_once __DIR__ . '/../SlotPrivacy.php';
+            $records = array_map([SlotPrivacy::class, 'publicRow'], $records);
+        }
         http_response_code(200);
         echo json_encode(["records" => $records]);
     }
@@ -775,6 +781,11 @@ class BookingController {
         if (!$court_id || !$start_time || !$end_time || empty($rec_days) || !$end_date_str) {
             http_response_code(400); echo json_encode(['message' => 'Missing required fields']); return;
         }
+        // A weekly walk-in regular: the owner or a manager books for a guest, like a single walk-in.
+        $isWalkIn   = !empty($data->guest_name);
+        $guestName  = $isWalkIn ? trim($data->guest_name) : null;
+        $guestPhone = $isWalkIn && !empty($data->guest_phone) ? trim($data->guest_phone) : null;
+        $collectionMethod = null;
 
         $startTs  = strtotime($start_time);
         $endTs    = strtotime($end_time);
@@ -794,6 +805,17 @@ class BookingController {
         $courtRow = $dbPeak->prepare('SELECT * FROM courts WHERE id = ?');
         $courtRow->execute([$court_id]);
         $court = $courtRow->fetch(PDO::FETCH_ASSOC) ?: [];
+        if ($isWalkIn) {
+            $staff = $dbPeak->prepare("SELECT id FROM court_staff WHERE court_id = ? AND user_id = ? AND role = 'manager'");
+            $staff->execute([$court_id, $user_id]);
+            if (!$court || ((int)$court['owner_id'] !== $user_id && ($authUser['role'] ?? '') !== 'admin' && !$staff->fetchColumn())) {
+                http_response_code(403); echo json_encode(['message' => 'Only the venue owner or manager can record walk-ins']); return;
+            }
+            $collectionMethod = CollectionMethod::forWalkIn($data->collection_method ?? null);
+            if ($collectionMethod === false) {
+                http_response_code(400); echo json_encode(['message' => 'collection_method must be pay_at_venue, cash, or external_upi']); return;
+            }
+        }
         $subCourt = null;
         if ($sub_court_id) {
             $scStmt = $dbPeak->prepare('SELECT * FROM sub_courts WHERE id = ? AND court_id = ?');
@@ -817,7 +839,7 @@ class BookingController {
 
                 if (!$booking_model->isSlotAvailable($court_id, $slotStart, $slotEnd, $sub_court_id)) {
                     $skipped[] = $dateStr;
-                } elseif ($this->peakSubscriptionViolation($court, $subCourt, $slotStart, $user_id, false)) {
+                } elseif ($this->peakSubscriptionViolation($court, $subCourt, $slotStart, $user_id, $isWalkIn)) {
                     $skipped[] = $dateStr;
                 } else {
                     $price = $this->calculateBookingPrice($court_id, $sub_court_id, $slotStart, $slotEnd);
@@ -828,9 +850,10 @@ class BookingController {
                     $booking_model->end_time     = $slotEnd;
                     $booking_model->type         = 'hourly';
                     $booking_model->total_price  = $price > 0 ? $price : 0;
-                    $booking_model->guest_name   = null;
-                    $booking_model->guest_phone  = null;
-                    $booking_model->notes        = 'Recurring booking';
+                    $booking_model->guest_name   = $guestName;
+                    $booking_model->guest_phone  = $guestPhone;
+                    $booking_model->collection_method = $collectionMethod;
+                    $booking_model->notes        = $isWalkIn ? 'Weekly walk-in' : 'Recurring booking';
                     if ($booking_model->create()) {
                         $booked[] = (int)$booking_model->conn->lastInsertId();
                     }

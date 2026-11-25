@@ -164,4 +164,16 @@ void main() {
       throwsA(isA<WalkInFieldError>()),
     );
   });
+
+  test('weekly walk-in repeats the same weekday', () {
+    // 2026-11-02 is a Monday.
+    final body = walkInBody(courtId: 4, date: '2026-11-02', startHour: 18, guestName: 'Asha');
+    final weekly = weeklyWalkInBody(body, weeks: 4);
+    expect(weekly['recurrence_days'], [1]);
+    expect(weekly['recurrence_end_date'], '2026-11-23');
+    expect(weekly['guest_name'], 'Asha');
+    expect(() => weeklyWalkInBody(body, weeks: 1), throwsA(isA<WalkInFieldError>()));
+    final lastHour = walkInBody(courtId: 4, date: '2026-11-02', startHour: 23, guestName: 'Asha');
+    expect(() => weeklyWalkInBody(lastHour, weeks: 4), throwsA(isA<WalkInFieldError>()));
+  });
 }

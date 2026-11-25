@@ -141,3 +141,22 @@ String? recordedAfterPlayLabel(Map<String, dynamic> booking, [DateTime? now]) {
   if (end.isAfter(now ?? DateTime.now())) return null;
   return 'Recorded after play';
 }
+
+/// Turns a single walk-in body into a weekly series for POST /bookings/recurring:
+/// the same hour on the same weekday for [weeks] weeks (the server caps at 12).
+Map<String, dynamic> weeklyWalkInBody(Map<String, dynamic> body, {required int weeks}) {
+  final start = DateTime.parse('${body['start_time']}'.replaceFirst(' ', 'T'));
+  final end = DateTime.parse('${body['end_time']}'.replaceFirst(' ', 'T'));
+  if (end.day != start.day) {
+    throw const WalkInFieldError('A weekly booking must end on the same day. Choose an earlier hour.');
+  }
+  if (weeks < 2 || weeks > 12) {
+    throw const WalkInFieldError('Repeat for 2 to 12 weeks.');
+  }
+  final last = start.add(Duration(days: 7 * (weeks - 1)));
+  return {
+    ...body,
+    'recurrence_days': [start.weekday % 7], // server: 0 = Sunday
+    'recurrence_end_date': '${last.year}-${last.month.toString().padLeft(2, '0')}-${last.day.toString().padLeft(2, '0')}',
+  };
+}

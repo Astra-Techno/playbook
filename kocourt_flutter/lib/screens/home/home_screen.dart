@@ -32,6 +32,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _locating = false;
 
   int _unreadNotifications = 0;
+  // "Free right now": first free hour per venue id, for the venues in [_freeKey].
+  Map<String, String>? _freeFrom;
+  String _freeKey = '';
 
   @override
   void initState() {
@@ -660,15 +663,38 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _loadFreeSoon(String key, List<Map<String, dynamic>> open) async {
+    try {
+      final res = await Api().get('/courts/free-soon', params: {
+        'ids': open.map((v) => v['id']).join(','),
+        'from': nextFullHourSql(DateTime.now()),
+        'hours': 3,
+      });
+      final raw = res.data['free_from'];
+      final map = raw is Map ? {for (final e in raw.entries) '${e.key}': '${e.value}'} : <String, String>{};
+      if (mounted && key == _freeKey) setState(() => _freeFrom = map);
+    } catch (_) {
+      // Keep showing open venues if the lookup fails; it is a hint, not a booking.
+    }
+  }
+
   Widget _buildOpenNow() {
     final venues = context.watch<VenueProvider>();
     if (!venues.fetched || venues.venues.isEmpty) return const SizedBox.shrink();
     final now = DateTime.now();
-    final open = venues.venues.where((v) => isOpenNow(v, now)).take(5).toList();
+    final open = venues.venues.where((v) => isOpenNow(v, now)).take(8).toList();
+    final key = '${nextFullHourSql(now)}|${open.map((v) => v['id']).join(',')}';
+    if (key != _freeKey) {
+      _freeKey = key;
+      _freeFrom = null;
+      if (open.isNotEmpty) _loadFreeSoon(key, open);
+    }
+    final free = withFreeFrom(open, _freeFrom).take(5).toList();
+    if (free.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
       child: FreeNowStack(
-        venues: open,
+        venues: free,
         onOpen: (venue) => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => CourtDetailsScreen(courtId: courtIdFrom(venue['id']))),

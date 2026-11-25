@@ -37,4 +37,19 @@ void main() {
     ]), 2);
     expect(gamesNeedingPlayers(const []), 0);
   });
+
+  test('free right now uses the next full hour and real free slots', () {
+    expect(nextFullHourSql(DateTime(2026, 11, 25, 19, 20)), '2026-11-25 20:00:00');
+    expect(nextFullHourSql(DateTime(2026, 11, 25, 19)), '2026-11-25 19:00:00');
+    expect(nextFullHourSql(DateTime(2026, 11, 25, 23, 5)), '2026-11-26 00:00:00');
+    final open = [
+      {'id': 1, 'name': 'A'},
+      {'id': 2, 'name': 'B'},
+    ];
+    expect(withFreeFrom(open, null), open);
+    final free = withFreeFrom(open, {'2': '2026-11-25 19:00:00'});
+    expect(free.map((v) => v['name']), ['B']);
+    expect(freeLabel(free.single), 'Free 7 PM');
+    expect(freeLabel(open.first), 'Open now');
+  });
 }

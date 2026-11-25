@@ -195,7 +195,7 @@ class _VenueCard extends StatelessWidget {
                             children: [
                               const CircleAvatar(radius: 3.5, backgroundColor: Color(0xFF10B981)),
                               const SizedBox(width: 6),
-                              Text('Open now · $position',
+                              Text('${freeLabel(venue)} · $position',
                                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF047857))),
                             ],
                           ),

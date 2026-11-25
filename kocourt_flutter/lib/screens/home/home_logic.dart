@@ -62,3 +62,28 @@ int gamesNeedingPlayers(List<Map<String, dynamic>> requests) {
   }
   return count;
 }
+
+/// The first full hour a player could still start, as the server's `from`
+/// ("YYYY-MM-DD HH:00:00"). 7:20 PM gives 8 PM; 7:00 PM sharp gives 7 PM.
+String nextFullHourSql(DateTime now) {
+  final t = DateTime(now.year, now.month, now.day, now.hour + (now.minute > 0 || now.second > 0 ? 1 : 0));
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${t.year}-${two(t.month)}-${two(t.day)} ${two(t.hour)}:00:00';
+}
+
+/// "Free right now": once GET /courts/free-soon has answered ([freeFrom] not
+/// null), keep only venues with a free hour and tag each with it. Before that,
+/// the open venues show as they are.
+List<Map<String, dynamic>> withFreeFrom(List<Map<String, dynamic>> open, Map<String, String>? freeFrom) {
+  if (freeFrom == null) return open;
+  return [
+    for (final v in open)
+      if (freeFrom['${v['id']}'] != null) {...v, 'free_from': freeFrom['${v['id']}']},
+  ];
+}
+
+/// Badge text for a venue in the stack: "Free 7 PM" when known, else "Open now".
+String freeLabel(Map<String, dynamic> venue) {
+  final from = '${venue['free_from'] ?? ''}';
+  return from.length >= 19 ? 'Free ${clockLabel(from.substring(11))}' : 'Open now';
+}

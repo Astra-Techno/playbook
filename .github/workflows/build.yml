@@ -97,6 +97,8 @@ jobs:
           php backend/tests/refund_service_test.php
           php backend/tests/booking_squad_test.php
           php backend/tests/booking_check_in_test.php
+          php backend/tests/slot_privacy_test.php
+          php backend/tests/free_soon_test.php
 
   maestro:
     name: Maestro E2E tests
