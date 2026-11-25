@@ -201,7 +201,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
         children: [
           Row(
             children: [
-              if (sport.isNotEmpty) StatusTag(sport[0].toUpperCase() + sport.substring(1), tone: TagTone.brand),
+              if (sport.isNotEmpty) StatusTag.sport(sport),
               const Spacer(),
               isFull
                   ? const StatusTag('Full', tone: TagTone.ending)

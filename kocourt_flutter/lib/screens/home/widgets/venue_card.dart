@@ -189,8 +189,8 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                               slanted(_AnimatedBadge(
                                 text: category.label.toUpperCase(),
                                 icon: category.icon,
-                                color: context.brand.primary,
-                                textColor: Colors.white,
+                                color: sportTint(sportType).bg,
+                                textColor: sportTint(sportType).fg,
                               )),
                             const Spacer(),
                             // Favorite button

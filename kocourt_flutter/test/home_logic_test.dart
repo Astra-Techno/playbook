@@ -28,4 +28,13 @@ void main() {
     expect(clockLabel('22:00:00'), '10 PM');
     expect(clockLabel('06:30:00'), '6:30 AM');
   });
+
+  test('games needing players counts only open spots', () {
+    expect(gamesNeedingPlayers([
+      {'slots_needed': 2, 'participants': [{}, {}]},
+      {'slots_needed': 1, 'participants': [{}, {}]},
+      {'players_needed': 3, 'joined_count': 1},
+    ]), 2);
+    expect(gamesNeedingPlayers(const []), 0);
+  });
 }

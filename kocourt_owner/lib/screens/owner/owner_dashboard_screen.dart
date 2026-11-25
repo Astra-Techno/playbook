@@ -461,7 +461,14 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 children: [
                   Text(c['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                   const SizedBox(height: 4),
-                  StatusTag(venue.accessLabel, tone: venue.isOwner ? TagTone.brand : TagTone.free),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      StatusTag(venue.accessLabel, tone: venue.isOwner ? TagTone.brand : TagTone.free),
+                      StatusTag.sport(c['type']),
+                    ],
+                  ),
                   const SizedBox(height: 2),
                   Text(c['location'] ?? '', style: TextStyle(fontSize: 12, color: AppColors.textSecondary), overflow: TextOverflow.ellipsis),
                   if (courtId != null && _occupancy[courtId] != null) ...[

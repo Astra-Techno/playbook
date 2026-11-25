@@ -270,7 +270,7 @@ class BookingController {
         $authId   = (int)$authUser['id'];
         $db       = Database::getConnection();
         $stmt     = $db->prepare(
-            "SELECT b.*, c.name AS court_name, c.location AS court_location,
+            "SELECT b.*, c.name AS court_name, c.type AS court_type, c.location AS court_location,
                     c.owner_id, sc.name AS space_name, u.name AS user_name
              FROM bookings b
              JOIN courts c ON b.court_id = c.id
@@ -485,7 +485,7 @@ class BookingController {
             // Owner views their own courts' bookings — use token's user
             $sub_court_id = isset($_GET['sub_court_id']) ? (int)$_GET['sub_court_id'] : null;
             if ($sub_court_id !== null) {
-                $query = "SELECT b.*, c.name as court_name, c.owner_id, u.name as user_name
+                $query = "SELECT b.*, c.name as court_name, c.type AS court_type, c.owner_id, u.name as user_name
                           FROM bookings b
                           JOIN courts c ON b.court_id = c.id
                           LEFT JOIN users u ON b.user_id = u.id
@@ -494,7 +494,7 @@ class BookingController {
                 $stmt = $booking->conn->prepare($query);
                 $stmt->execute([$authId, $sub_court_id]);
             } else {
-                $query = "SELECT b.*, c.name as court_name, c.owner_id, u.name as user_name
+                $query = "SELECT b.*, c.name as court_name, c.type AS court_type, c.owner_id, u.name as user_name
                           FROM bookings b
                           JOIN courts c ON b.court_id = c.id
                           LEFT JOIN users u ON b.user_id = u.id
@@ -513,7 +513,7 @@ class BookingController {
                 echo json_encode(["records" => []]); return;
             }
             $in    = implode(',', array_map('intval', $courtIds));
-            $query = "SELECT b.*, c.name as court_name, c.owner_id, u.name as user_name
+            $query = "SELECT b.*, c.name as court_name, c.type AS court_type, c.owner_id, u.name as user_name
                       FROM bookings b
                       JOIN courts c ON b.court_id = c.id
                       LEFT JOIN users u ON b.user_id = u.id

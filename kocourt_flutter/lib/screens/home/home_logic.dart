@@ -1,4 +1,5 @@
-/// Pure helpers behind the Home "next game" card and open-now labels.
+// Pure helpers behind the Home "next game" card and open-now labels.
+import '../matches/match_roster.dart' show matchSpotsLeft;
 
 /// Earliest confirmed booking that has not started yet, or null.
 Map<String, dynamic>? nextUpcomingBooking(List<Map<String, dynamic>> rows, DateTime now) {
@@ -48,4 +49,16 @@ String clockLabel(Object? hhmmss) {
   final m = mins % 60;
   final h12 = h % 12 == 0 ? 12 : h % 12;
   return '$h12${m == 0 ? '' : ':${m.toString().padLeft(2, '0')}'} ${h < 12 ? 'AM' : 'PM'}';
+}
+
+/// Open games that still need players (same spot rule as the Matches tab).
+int gamesNeedingPlayers(List<Map<String, dynamic>> requests) {
+  var count = 0;
+  for (final m in requests) {
+    final needed = int.tryParse('${m['slots_needed'] ?? m['players_needed'] ?? 1}') ?? 1;
+    final participants = m['participants'] is List ? (m['participants'] as List).length : 0;
+    final joined = int.tryParse('${m['joined_count'] ?? participants}') ?? participants;
+    if (matchSpotsLeft(needed, joined > participants ? joined : participants) > 0) count++;
+  }
+  return count;
 }

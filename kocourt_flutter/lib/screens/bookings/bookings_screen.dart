@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
@@ -96,9 +97,26 @@ class _BookingsScreenState extends State<BookingsScreen> {
     }
   }
 
+  bool _showPast = false;
+
+  bool _ended(Map<String, dynamic> b) {
+    final end = parseSqlDateTime('${b['end_time'] ?? ''}');
+    return end != null && end.isBefore(DateTime.now());
+  }
+
+  /// Upcoming = confirmed and not finished, soonest first. Past = everything else, newest first.
+  List<Map<String, dynamic>> get _upcoming => _bookings.where((b) => b['status'] == 'confirmed' && !_ended(b)).toList()
+    ..sort((a, b) => '${a['start_time']}'.compareTo('${b['start_time']}'));
+
+  List<Map<String, dynamic>> get _past {
+    final upcoming = _upcoming.toSet();
+    return _bookings.where((b) => !upcoming.contains(b)).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final shown = _showPast ? _past : _upcoming;
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -140,10 +158,10 @@ class _BookingsScreenState extends State<BookingsScreen> {
                           padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                           child: Row(
                             children: [
-                              const Expanded(
+                              Expanded(
                                 child: Text(
-                                  'Bookings',
-                                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900),
+                                  'Your games',
+                                  style: GoogleFonts.archivo(fontSize: 30, fontWeight: FontWeight.w900),
                                 ),
                               ),
                               GestureDetector(
@@ -171,36 +189,40 @@ class _BookingsScreenState extends State<BookingsScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Text(
-                          _bookings.isEmpty
-                              ? 'No bookings yet'
-                              : '${_bookings.length} booking${_bookings.length > 1 ? 's' : ''}',
-                          style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-                        ),
-                      ),
                     ],
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: _segmented(),
+                    ),
                     const SizedBox(height: 12),
                     Expanded(
                       child: _error != null && _bookings.isEmpty
                           ? _buildLoadError()
-                          : _bookings.isEmpty
-                          ? _buildEmpty()
+                          : shown.isEmpty
+                          ? (_bookings.isEmpty
+                              ? _buildEmpty()
+                              : Center(
+                                  child: Text(
+                                    _showPast ? 'No past games yet' : 'Nothing coming up. Book a court!',
+                                    style: const TextStyle(color: AppColors.textSecondary),
+                                  ),
+                                ))
                           : RefreshIndicator(
                               onRefresh: _loadBookings,
                               color: AppColors.primary,
                               child: ListView.builder(
                                 physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 100),
-                                itemCount: _bookings.length + (_reviewableBooking != null ? 1 : 0),
+                                itemCount: shown.length + (_reviewableBooking != null ? 1 : 0),
                                 itemBuilder: (_, i) {
                                   if (_reviewableBooking != null) {
                                     if (i == 0) return _buildReviewPrompt(_reviewableBooking!);
-                                    return _buildBookingCard(_bookings[i - 1]);
+                                    i -= 1;
                                   }
-                                  return _buildBookingCard(_bookings[i]);
+                                  // v5: the soonest game gets the "Next up" card.
+                                  if (!_showPast && i == 0) return _buildNextUp(shown.first);
+                                  return _buildBookingCard(shown[i]);
                                 },
                               ),
                             ),
@@ -556,7 +578,8 @@ class _BookingsScreenState extends State<BookingsScreen> {
                     TimePlate(
                       top: startDt == null ? '—' : DateFormat('h a').format(startDt),
                       bottom: dayLabel.isNotEmpty ? dayLabel : formattedDate,
-                      filled: isConfirmed && !isPast,
+                      filled: false,
+                      tint: isConfirmed && !isPast ? sportTint(booking['court_type']) : null,
                       width: 78,
                     ),
                     const SizedBox(width: 14),
@@ -621,6 +644,134 @@ class _BookingsScreenState extends State<BookingsScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _segmented() {
+    Widget tab(String label, bool past) {
+      final on = _showPast == past;
+      return Expanded(
+        child: Semantics(
+          button: true,
+          selected: on,
+          child: GestureDetector(
+            onTap: () => setState(() => _showPast = past),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: on ? Colors.white : Colors.transparent,
+                borderRadius: BorderRadius.circular(19),
+                boxShadow: on ? const [BoxShadow(color: Color(0x1A111827), blurRadius: 3, offset: Offset(0, 1))] : null,
+              ),
+              child: Text(label,
+                  style: TextStyle(fontSize: 14, fontWeight: on ? FontWeight.w800 : FontWeight.w600, color: on ? AppColors.textPrimary : AppColors.textSecondary)),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final count = _upcoming.length;
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(color: const Color(0xFFECEEF4), borderRadius: BorderRadius.circular(22)),
+      child: Row(children: [tab(count > 0 ? 'Upcoming · $count' : 'Upcoming', false), const SizedBox(width: 4), tab('Past', true)]),
+    );
+  }
+
+  /// v5 "Next up": light sport-tinted card for the soonest game.
+  Widget _buildNextUp(Map<String, dynamic> booking) {
+    final brand = context.brand.primary;
+    final tint = sportTint(booking['court_type']);
+    final start = parseSqlDateTime('${booking['start_time'] ?? ''}');
+    final end = parseSqlDateTime('${booking['end_time'] ?? ''}');
+    final countdown = passCountdown(start, end, DateTime.now());
+    final sport = sportLabel(booking['court_type']).toUpperCase();
+    final courtId = booking['court_id'];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [tint.bg, Colors.white], begin: Alignment.topLeft, end: Alignment.bottomRight, stops: const [0, 0.7]),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: tint.fg.withValues(alpha: 0.2)),
+          boxShadow: [BoxShadow(color: tint.fg.withValues(alpha: 0.12), blurRadius: 28, offset: const Offset(0, 12))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(sport.isEmpty ? 'NEXT UP' : 'NEXT UP · $sport',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1, color: tint.fg)),
+                ),
+                if (countdown.isNotEmpty)
+                  Slanted(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(color: brand, borderRadius: BorderRadius.circular(6)),
+                      child: Text(countdown.replaceFirst('Kick-off in ', 'in '),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                TimePlate(
+                  top: start == null ? '—' : DateFormat('h a').format(start),
+                  bottom: start == null ? '' : DateFormat('EEE d').format(start).toUpperCase(),
+                  tint: tint,
+                  width: 74,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('${booking['court_name'] ?? 'Your game'}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.archivo(fontSize: 22, fontWeight: FontWeight.w900)),
+                      Text(
+                        start == null || end == null ? '' : '${DateFormat('h:mm').format(start)} – ${DateFormat('h:mm a').format(end)}',
+                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => context.push('/booking-confirmation/${booking['id']}'),
+                    style: FilledButton.styleFrom(shape: const StadiumBorder(), minimumSize: const Size(0, 44)),
+                    child: const Text('Show pass'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: courtId == null
+                        ? null
+                        : () => Navigator.push(context, MaterialPageRoute(builder: (_) => CourtDetailsScreen(courtId: courtIdFrom(courtId)))),
+                    style: OutlinedButton.styleFrom(shape: const StadiumBorder(), minimumSize: const Size(0, 44), backgroundColor: Colors.white),
+                    child: const Text('Venue'),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

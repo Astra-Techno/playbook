@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../home/home_logic.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'slot_block.dart';
 import 'slot_timeline.dart';
 import '../bookings/booking_ticket.dart';
@@ -354,20 +356,21 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
           SliverAppBar(
             expandedHeight: 300,
             pinned: true,
-            backgroundColor: AppColors.textPrimary,
+            backgroundColor: AppColors.surface,
+            surfaceTintColor: Colors.transparent,
             leading: Padding(
               padding: const EdgeInsets.all(8),
               child: GestureDetector(
                 onTap: () => Navigator.pop(context),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.3),
+                    color: Colors.white,
                     shape: BoxShape.circle,
                   ),
                   child: ClipOval(
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+                      child: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 18),
                     ),
                   ),
                 ),
@@ -382,13 +385,13 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.3),
+                      color: Colors.white,
                       shape: BoxShape.circle,
                     ),
                     child: ClipOval(
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: const Icon(Icons.share_outlined, color: Colors.white, size: 18),
+                        child: const Icon(Icons.share_outlined, color: AppColors.textPrimary, size: 18),
                       ),
                     ),
                   ),
@@ -415,7 +418,8 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                       gradient: LinearGradient(
                         begin: Alignment.bottomCenter,
                         end: Alignment.center,
-                        colors: [Color(0xCC000000), Colors.transparent],
+                        // v5: the photo melts into the page instead of darkening.
+                        colors: [AppColors.surface, Color(0x00F6F7FB)],
                       ),
                     ),
                   ),
@@ -427,17 +431,17 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
+                          color: Colors.white.withValues(alpha: 0.92),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.photo_library_rounded, size: 13, color: Colors.white),
+                            const Icon(Icons.photo_library_rounded, size: 13, color: AppColors.textPrimary),
                             const SizedBox(width: 5),
                             Text(
                               '${_photos.length} photos',
-                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                              style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w700),
                             ),
                           ],
                         ),
@@ -478,7 +482,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                           Text(
                             '$_reviewCount reviews',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.8),
+                              color: AppColors.textSecondary,
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
@@ -494,16 +498,33 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
           // Court info card
           SliverToBoxAdapter(
             child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.border),
+                boxShadow: const [BoxShadow(color: Color(0x14111827), blurRadius: 28, offset: Offset(0, 10))],
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      StatusTag.sport(_court!['type']),
+                      if (isOpenNow(_court!, DateTime.now()))
+                        StatusTag('Open till ${clockLabel(_court!['close_time'] ?? '22:00:00')}', tone: TagTone.free),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       Flexible(
                         child: Text(
                           _court!['name'] ?? '',
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, height: 1.2),
+                          style: GoogleFonts.archivo(fontSize: 28, fontWeight: FontWeight.w900, height: 1.05),
                         ),
                       ),
                       if (_court!['is_verified'] == true || _court!['is_verified'] == 1) ...[
@@ -626,19 +647,21 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 20),
               decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(AppRadius.md),
+                color: const Color(0xFFECEEF4),
+                borderRadius: BorderRadius.circular(22),
               ),
+              padding: const EdgeInsets.all(4),
               child: TabBar(
                 controller: _tabController,
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
                 indicatorSize: TabBarIndicatorSize.tab,
                 indicator: BoxDecoration(
-                  color: AppColors.textPrimary,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: const [BoxShadow(color: Color(0x1A111827), blurRadius: 3, offset: Offset(0, 1))],
                 ),
-                labelColor: Colors.white,
+                labelColor: AppColors.textPrimary,
                 unselectedLabelColor: AppColors.textSecondary,
                 labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                 unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
@@ -695,16 +718,17 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                 left: 20,
                 right: 20,
                 top: 16,
-                bottom: MediaQuery.of(context).padding.bottom + 16,
+                bottom: 12,
               ),
+              margin: EdgeInsets.fromLTRB(12, 0, 12, MediaQuery.of(context).padding.bottom + 12),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                color: context.brand.primary,
+                borderRadius: BorderRadius.circular(34),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 24,
-                    offset: const Offset(0, -8),
+                    color: context.brand.primary.withValues(alpha: 0.35),
+                    blurRadius: 30,
+                    offset: const Offset(0, 14),
                   ),
                 ],
               ),
@@ -721,7 +745,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textMuted,
+                            color: Color(0xFFE5DAFF),
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -730,7 +754,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
+                            color: Colors.white,
                           ),
                         ),
                       ],
@@ -743,9 +767,10 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                       child: ElevatedButton(
                         onPressed: _bookingLoading ? null : _book,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.primary,
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: const StadiumBorder(),
                           elevation: 0,
                           shadowColor: AppColors.primary.withValues(alpha: 0.3),
                         ),
@@ -753,14 +778,14 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                              child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
                             )
                           : const FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
                                 'Continue to pay',
                                 maxLines: 1,
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.primary),
                               ),
                             ),
                     ),

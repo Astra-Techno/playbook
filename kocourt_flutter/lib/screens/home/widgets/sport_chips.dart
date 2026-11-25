@@ -3,19 +3,18 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 
-/// Sport filter pills with the sport's icon; the selected one fills with the brand colour.
+/// v5 sport tiles: each sport in its own tint; the selected one fills with its ink.
 class SportChips extends StatelessWidget {
   const SportChips({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final brand = context.brand.primary;
     return Consumer<VenueProvider>(
       builder: (context, venues, _) {
         return Padding(
-          padding: const EdgeInsets.only(top: 14),
+          padding: const EdgeInsets.only(top: 16),
           child: SizedBox(
-            height: 44,
+            height: 76,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -24,10 +23,14 @@ class SportChips extends StatelessWidget {
               itemBuilder: (context, index) {
                 final cat = sportCategories[index];
                 final selected = venues.selectedSport == cat.id;
-                final fg = selected ? Colors.white : AppColors.textPrimary;
+                final tint = cat.id == 'All'
+                    ? SportTint(context.brand.primary.withValues(alpha: 0.1), context.brand.primary)
+                    : sportTint(cat.id);
+                final fg = selected ? Colors.white : tint.fg;
                 return Semantics(
                   button: true,
                   selected: selected,
+                  label: cat.label,
                   child: GestureDetector(
                     onTap: () {
                       HapticFeedback.selectionClick();
@@ -36,18 +39,21 @@ class SportChips extends StatelessWidget {
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 220),
                       curve: Curves.easeOutCubic,
-                      padding: const EdgeInsets.fromLTRB(12, 0, 16, 0),
+                      width: 84,
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: selected ? brand : Colors.white,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: selected ? brand : AppColors.border),
+                        color: selected ? tint.fg : tint.bg,
+                        borderRadius: BorderRadius.circular(18),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(cat.icon, size: 17, color: fg),
-                          const SizedBox(width: 6),
-                          Text(cat.label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: fg)),
+                          Icon(cat.icon, size: 20, color: fg),
+                          Text(cat.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: fg)),
                         ],
                       ),
                     ),

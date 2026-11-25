@@ -25,11 +25,11 @@ tags:
     direction: UP
     duration: 2000
 - scrollUntilVisible:
-    element: "Book Now"
+    element: "Book"
     direction: DOWN
     timeout: 10000
   optional: true
-- tapOn: "Book Now"
+- tapOn: "Book"
   optional: true
 - waitForAnimationToEnd:
     timeout: 5000

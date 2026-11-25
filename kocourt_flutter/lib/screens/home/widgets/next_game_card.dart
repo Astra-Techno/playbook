@@ -1,14 +1,17 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:provider/provider.dart';
 
+import '../../matches/matches_screen.dart';
 import '../home_logic.dart';
 
-/// "Your next game" strip with a stopwatch ring counting down the last 24 hours.
-/// Hidden when signed out or when nothing is booked ahead.
+const _tileHeight = 118.0;
+
+/// v5 bento tile: your next booking with a countdown ring, or a nudge to book.
 class NextGameCard extends StatefulWidget {
   const NextGameCard({super.key});
 
@@ -45,7 +48,7 @@ class _NextGameCardState extends State<NextGameCard> {
       );
       if (mounted) setState(() => _next = nextUpcomingBooking(rows, DateTime.now()));
     } catch (_) {
-      // The card is optional; Home still works without it.
+      // Optional tile; Home still works without it.
     }
   }
 
@@ -53,75 +56,119 @@ class _NextGameCardState extends State<NextGameCard> {
   Widget build(BuildContext context) {
     final next = _next;
     final start = next == null ? null : DateTime.tryParse('${next['start_time']}');
-    if (next == null || start == null) return const SizedBox.shrink();
-    final left = start.difference(DateTime.now());
-    if (left.isNegative) return const SizedBox.shrink();
+    final left = start?.difference(DateTime.now());
+    final has = next != null && start != null && left != null && !left.isNegative;
+    final tint = sportTint(next?['court_type'] ?? 'cricket');
+    final weekday = const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    final brand = context.brand.primary;
-    final within24h = 1 - (left.inMinutes / (24 * 60)).clamp(0.0, 1.0);
-    final where = [next['court_name'], next['space_name']]
-        .where((v) => '${v ?? ''}'.trim().isNotEmpty)
-        .join(' · ');
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-      child: Material(
-        color: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: AppColors.border),
+    return _BentoTile(
+      color: tint.bg,
+      onTap: has ? () => context.push('/booking-confirmation/${next['id']}') : null,
+      children: [
+        Row(
+          children: [
+            Expanded(child: Text('NEXT GAME', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.8, color: tint.fg))),
+            if (has)
+              SizedBox(
+                width: 30,
+                height: 30,
+                child: CustomPaint(
+                  painter: StopwatchRingPainter(
+                    progress: 1 - (left.inMinutes / (24 * 60)).clamp(0.0, 1.0),
+                    color: tint.fg,
+                    track: Colors.white,
+                  ),
+                ),
+              ),
+          ],
         ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: () => context.push('/booking-confirmation/${next['id']}'),
+        const Spacer(),
+        Text(
+          has ? '${weekday[start.weekday - 1]} · ${clockLabel('${start.hour}:${start.minute}')}' : 'Nothing booked',
+          style: GoogleFonts.archivo(fontSize: 19, fontWeight: FontWeight.w900, height: 1.05),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 4),
+        Text(
+          has ? '${next['court_name'] ?? 'Your game'} · in ${kickoffIn(left)}' : 'Pick a court below',
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+}
+
+/// v5 bento tile: how many open games still need players.
+class PlayersWantedTile extends StatefulWidget {
+  const PlayersWantedTile({super.key});
+
+  @override
+  State<PlayersWantedTile> createState() => _PlayersWantedTileState();
+}
+
+class _PlayersWantedTileState extends State<PlayersWantedTile> {
+  int? _count;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final res = await Api().get('/match-requests');
+      final rows = List<Map<String, dynamic>>.from(
+        (res.data['requests'] ?? []).map((e) => Map<String, dynamic>.from(e)),
+      );
+      if (mounted) setState(() => _count = gamesNeedingPlayers(rows));
+    } catch (_) {
+      // Shows a dash when matches cannot be loaded.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const amber = Color(0xFFB45309);
+    return _BentoTile(
+      color: const Color(0xFFFFF4E5),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MatchesScreen())),
+      children: [
+        const Text('PLAYERS WANTED', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 0.8, color: amber)),
+        const Spacer(),
+        Text(_count == null ? '—' : '$_count', style: GoogleFonts.archivo(fontSize: 30, fontWeight: FontWeight.w900, height: 1)),
+        const SizedBox(height: 4),
+        Text(
+          _count == 1 ? 'game needs players' : 'games need players',
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+}
+
+class _BentoTile extends StatelessWidget {
+  const _BentoTile({required this.color, required this.children, this.onTap});
+  final Color color;
+  final List<Widget> children;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: onTap,
+        child: SizedBox(
+          height: _tileHeight,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 10, 8),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 46,
-                  height: 46,
-                  child: CustomPaint(
-                    painter: StopwatchRingPainter(progress: within24h, color: brand),
-                    child: Center(
-                      child: Icon(Icons.timer_outlined, size: 18, color: brand),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'YOUR NEXT GAME · KICK-OFF IN ${kickoffIn(left).toUpperCase()}',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.5, color: AppColors.textSecondary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        where.isEmpty ? 'Your booking' : where,
-                        style: GoogleFonts.archivo(fontSize: 15, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  height: 32,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: brand.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text('Pass', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: brand)),
-                ),
-              ],
-            ),
+            padding: const EdgeInsets.all(14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
           ),
         ),
       ),

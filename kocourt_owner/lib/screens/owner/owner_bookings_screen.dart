@@ -193,7 +193,9 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
                 TimePlate(
                   top: start == null ? '\u2014' : DateFormat('h a').format(start),
                   bottom: start == null ? '' : DateFormat('EEE d MMM').format(start),
-                  filled: status != 'cancelled',
+                  filled: false,
+                  // v5: the plate wears the venue's sport colour.
+                  tint: status == 'cancelled' ? null : sportTint(b['court_type']),
                   width: 76,
                 ),
                 const SizedBox(width: 14),

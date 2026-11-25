@@ -224,6 +224,9 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
     final booking = _booking!;
     final ticket = ticketFromBooking(booking);
     final brand = context.brand.primary;
+    // v5: the pass wears the venue's sport colour.
+    final tint = sportTint(booking['court_type']);
+    final first = context.read<AuthProvider>().userName.split(' ').first;
     final cancelled = ticket.status == 'cancelled';
     final countdown = cancelled
         ? 'Cancelled'
@@ -235,15 +238,24 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
     final times = ticket.time.split(' – ');
 
     return Scaffold(
-      backgroundColor: AppColors.surface,
+      backgroundColor: tint.bg,
       appBar: AppBar(
-        backgroundColor: AppColors.surface,
+        backgroundColor: Colors.transparent,
         leading: IconButton(tooltip: 'Close', icon: const Icon(Icons.close_rounded), onPressed: () => context.go('/')),
         actions: [
           IconButton(tooltip: 'Share game', icon: const Icon(Icons.ios_share_rounded), onPressed: () => _shareGame(ticket)),
         ],
       ),
-      body: SafeArea(
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [tint.bg, AppColors.surface],
+            stops: const [0, 0.3],
+          ),
+        ),
+        child: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           children: [
@@ -258,8 +270,9 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                   width: 60,
                   height: 60,
                   decoration: BoxDecoration(
-                    color: (cancelled ? AppColors.error : AppColors.secondary).withValues(alpha: 0.12),
+                    color: Colors.white,
                     shape: BoxShape.circle,
+                    boxShadow: [BoxShadow(color: tint.fg.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 8))],
                   ),
                   child: Icon(cancelled ? Icons.close_rounded : Icons.check_rounded,
                       size: 32, color: cancelled ? AppColors.error : AppColors.secondary),
@@ -268,7 +281,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
             ),
             const SizedBox(height: 10),
             Text(
-              cancelled ? 'Booking cancelled' : "You're booked in",
+              cancelled ? 'Booking cancelled' : (first.isEmpty ? "You're in" : "You're in, $first"),
               textAlign: TextAlign.center,
               style: GoogleFonts.archivo(fontSize: 26, fontWeight: FontWeight.w900),
             ),
@@ -284,13 +297,13 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                 child: _Slanted(
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(color: brand.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                    decoration: BoxDecoration(color: brand, borderRadius: BorderRadius.circular(8)),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.timer_outlined, size: 16, color: brand),
+                        const Icon(Icons.timer_outlined, size: 16, color: Colors.white),
                         const SizedBox(width: 6),
-                        Text(countdown, style: GoogleFonts.archivo(fontSize: 15, fontWeight: FontWeight.w900, color: brand)),
+                        Text(countdown, style: GoogleFonts.archivo(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
                       ],
                     ),
                   ),
@@ -298,7 +311,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
               ),
             ],
             const SizedBox(height: 18),
-            _pass(ticket, booking, brand, times),
+            _pass(ticket, booking, tint.fg, times),
             const SizedBox(height: 16),
             _squadCard(ticket, brand),
             const SizedBox(height: 16),
@@ -324,6 +337,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -342,7 +356,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.border),
-        boxShadow: const [BoxShadow(color: Color(0x14111827), blurRadius: 32, offset: Offset(0, 12))],
+        boxShadow: [BoxShadow(color: brand.withValues(alpha: 0.2), blurRadius: 40, offset: const Offset(0, 16))],
       ),
       child: Column(
         children: [
