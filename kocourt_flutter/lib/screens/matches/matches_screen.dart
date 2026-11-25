@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
@@ -186,64 +187,31 @@ class _MatchesScreenState extends State<MatchesScreen> {
     final spotsLeft = matchSpotsLeft(slotsNeeded, joinedCount > participants.length ? joinedCount : participants.length);
     final isFull = spotsLeft == 0;
 
+    final sport = (match['sport'] ?? match['sport_type'] ?? '').toString();
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.surfaceDim),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              if (match['sport'] != null || match['sport_type'] != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    (match['sport'] ?? match['sport_type'] ?? '').toString().toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
+              if (sport.isNotEmpty) StatusTag(sport[0].toUpperCase() + sport.substring(1), tone: TagTone.brand),
               const Spacer(),
-              if (isFull)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppColors.warningLight,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text('FULL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.warningDark)),
-                )
-              else
-                Text(
-                  match['date'] ?? '',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                ),
+              isFull
+                  ? const StatusTag('Full', tone: TagTone.ending)
+                  : StatusTag('Need $spotsLeft', tone: TagTone.free),
             ],
           ),
           const SizedBox(height: 10),
           Text(
             match['title'] ?? match['court_name'] ?? 'Looking for players',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            style: GoogleFonts.archivo(fontSize: 17, fontWeight: FontWeight.w800),
           ),
           if (match['court_name'] != null && match['title'] != null) ...[
             const SizedBox(height: 2),

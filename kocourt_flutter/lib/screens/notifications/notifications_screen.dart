@@ -70,7 +70,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text('Notifications', style: TextStyle(fontWeight: FontWeight.w800))),
+      appBar: AppBar(title: const Text('Notifications')),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _notifications.isEmpty
@@ -109,21 +109,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: isRead ? AppColors.surface : AppColors.primary.withValues(alpha: 0.04),
-                            borderRadius: BorderRadius.circular(12),
-                            border: isRead ? null : Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+                            color: isRead ? Colors.white : AppColors.primary.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                            border: Border.all(color: isRead ? AppColors.border : AppColors.primary.withValues(alpha: 0.2)),
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: 36, height: 36,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Icon(_getIcon(n['type']), size: 18, color: AppColors.primary),
-                              ),
+                              MenuIcon(_getIcon(n['type'])),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
@@ -153,11 +146,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                   ],
                                 ),
                               ),
-                              if (!isRead)
-                                Container(
-                                  width: 8, height: 8, margin: const EdgeInsets.only(top: 4),
-                                  decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                                ),
+                              if (!isRead) const StatusTag('New'),
                             ],
                           ),
                         ),
