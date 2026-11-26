@@ -190,11 +190,11 @@ const save = async () => {
             style="box-shadow: 0 1px 6px rgba(0,0,0,0.06)">
             <button @click="router.back()"
                 class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center active:scale-90 transition-transform shrink-0">
-                <ArrowLeft :size="20" class="text-gray-500" />
+                <ArrowLeft :size="20" class="text-on-surface-variant" />
             </button>
-            <h1 class="flex-1 font-extrabold text-black text-base truncate">{{ pageTitle }}</h1>
+            <h1 class="flex-1 font-extrabold text-on-surface text-base truncate">{{ pageTitle }}</h1>
             <button @click="save" :disabled="saving || uploadLoading"
-                class="flex items-center gap-1.5 bg-black text-white font-bold text-sm px-4 py-2 rounded-xl disabled:opacity-50 active:scale-95 transition-all">
+                class="flex items-center gap-1.5 bg-primary text-white font-bold text-sm px-4 py-2 rounded-xl disabled:opacity-50 active:scale-95 transition-all">
                 <Loader2 v-if="saving" :size="14" class="animate-spin" />
                 <Check v-else :size="14" />
                 Save
@@ -203,7 +203,7 @@ const save = async () => {
 
         <!-- Loading -->
         <div v-if="loading" class="flex items-center justify-center py-24">
-            <Loader2 :size="32" class="animate-spin text-black" />
+            <Loader2 :size="32" class="animate-spin text-on-surface" />
         </div>
 
         <div v-else class="px-4 py-5 space-y-4 pb-8">
@@ -211,22 +211,22 @@ const save = async () => {
             <!-- ── Photo ── -->
             <div class="bg-white rounded-2xl overflow-hidden ring-1 ring-slate-100 shadow-sm">
                 <div class="px-4 pt-4 pb-2">
-                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Photo</p>
+                    <p class="text-[10px] font-black text-outline uppercase tracking-widest">Photo</p>
                 </div>
                 <div class="relative h-48 bg-gray-100 cursor-pointer">
                     <img v-if="imagePreview || form.image_url"
                         :src="imagePreview || form.image_url"
                         class="w-full h-full object-cover" />
-                    <div v-else class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-300">
+                    <div v-else class="absolute inset-0 flex flex-col items-center justify-center gap-2 text-outline">
                         <Camera :size="36" />
-                        <p class="text-sm font-medium text-gray-400">Tap to add a photo</p>
+                        <p class="text-sm font-medium text-outline">Tap to add a photo</p>
                     </div>
                     <label class="absolute inset-0 cursor-pointer">
                         <input type="file" accept="image/jpeg,image/png,image/webp"
                             class="hidden" @change="handleImageSelect" />
                     </label>
                     <div v-if="uploadLoading" class="absolute inset-0 bg-white/80 flex items-center justify-center">
-                        <Loader2 :size="28" class="animate-spin text-black" />
+                        <Loader2 :size="28" class="animate-spin text-on-surface" />
                     </div>
                     <!-- Edit overlay -->
                     <div v-if="!uploadLoading && (imagePreview || form.image_url)"
@@ -243,20 +243,20 @@ const save = async () => {
             <!-- ── Basic Info ── -->
             <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm divide-y divide-slate-50">
                 <div class="px-4 py-3">
-                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2.5">Basic Info</p>
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">Venue Name *</label>
+                    <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-2.5">Basic Info</p>
+                    <label class="block text-xs font-semibold text-on-surface-variant mb-1">Venue Name *</label>
                     <input v-model="form.name" type="text" placeholder="e.g. GS Sports Arena"
                         class="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border border-gray-200 bg-white" />
                 </div>
                 <div class="px-4 py-3">
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">Description</label>
+                    <label class="block text-xs font-semibold text-on-surface-variant mb-1">Description</label>
                     <textarea v-model="form.description" rows="3" placeholder="Describe your venue, facilities, etc."
                         class="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:border border-gray-200 bg-white">
                     </textarea>
                 </div>
                 <div class="px-4 py-3">
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">Base Rate per Hour (₹) *</label>
-                    <p class="text-[11px] text-gray-400 mt-1.5">You can set per-court rates from the Services section</p>
+                    <label class="block text-xs font-semibold text-on-surface-variant mb-1">Base Rate per Hour (₹) *</label>
+                    <p class="text-[11px] text-outline mt-1.5">You can set per-court rates from the Services section</p>
                     <input v-model="form.hourly_rate" type="number" placeholder="500"
                         class="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border border-gray-200 bg-white" />
                 </div>
@@ -264,14 +264,14 @@ const save = async () => {
 
             <!-- ── Sport Type ── -->
             <div class="bg-white rounded-2xl px-4 py-4 ring-1 ring-slate-100 shadow-sm">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Primary Sport</p>
+                <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-3">Primary Sport</p>
                 <div class="grid grid-cols-3 gap-2">
                     <button v-for="sport in sportOptions" :key="sport.id"
                         @click="form.type = sport.id"
                         class="flex flex-col items-center gap-1.5 py-3 rounded-xl border-2 transition-all text-xs font-semibold"
                         :class="form.type === sport.id
-                            ? 'border-black bg-gray-100 text-black'
-                            : 'border-gray-100 bg-white text-gray-500'">
+                            ? 'border-black bg-gray-100 text-on-surface'
+                            : 'border-gray-100 bg-white text-on-surface-variant'">
                         <component :is="sport.icon" :size="20" />
                         {{ sport.label }}
                     </button>
@@ -280,32 +280,32 @@ const save = async () => {
 
             <!-- ── Location ── -->
             <div class="bg-white rounded-2xl px-4 py-4 ring-1 ring-slate-100 shadow-sm">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Location</p>
+                <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-3">Location</p>
                 <div class="flex gap-2">
                     <input v-model="form.location" type="text" placeholder="City or area name"
                         class="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border border-gray-200 bg-white" />
                     <button @click="detectLocation" :disabled="geoLoading"
                         class="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 active:scale-95 transition-transform disabled:opacity-50">
-                        <Loader2 v-if="geoLoading" :size="18" class="animate-spin text-black" />
-                        <LocateFixed v-else :size="18" class="text-black" />
+                        <Loader2 v-if="geoLoading" :size="18" class="animate-spin text-on-surface" />
+                        <LocateFixed v-else :size="18" class="text-on-surface" />
                     </button>
                 </div>
-                <p v-if="form.lat && form.lng" class="text-[11px] text-emerald-600 font-semibold mt-2">
+                <p v-if="form.lat && form.lng" class="text-[11px] text-free font-semibold mt-2">
                     📍 GPS: {{ Number(form.lat).toFixed(4) }}, {{ Number(form.lng).toFixed(4) }}
                 </p>
             </div>
 
             <!-- ── Operating Hours ── -->
             <div class="bg-white rounded-2xl px-4 py-4 ring-1 ring-slate-100 shadow-sm">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Operating Hours</p>
+                <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-3">Operating Hours</p>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="text-[11px] font-semibold text-gray-400 block mb-1.5">Opens</label>
+                        <label class="text-[11px] font-semibold text-outline block mb-1.5">Opens</label>
                         <input v-model="form.open_time" type="time"
                             class="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border border-gray-200 bg-white" />
                     </div>
                     <div>
-                        <label class="text-[11px] font-semibold text-gray-400 block mb-1.5">Closes</label>
+                        <label class="text-[11px] font-semibold text-outline block mb-1.5">Closes</label>
                         <input v-model="form.close_time" type="time"
                             class="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:border border-gray-200 bg-white" />
                     </div>
@@ -316,17 +316,17 @@ const save = async () => {
             <div class="bg-white rounded-2xl ring-1 ring-slate-100 shadow-sm overflow-hidden">
                 <button @click="showPeakHours = !showPeakHours"
                     class="w-full flex items-center justify-between px-4 py-4">
-                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Peak Hours</p>
-                    <ChevronDown :size="16" class="text-gray-400 transition-transform"
+                    <p class="text-[10px] font-black text-outline uppercase tracking-widest">Peak Hours</p>
+                    <ChevronDown :size="16" class="text-outline transition-transform"
                         :class="showPeakHours ? 'rotate-180' : ''" />
                 </button>
 
                 <div v-if="showPeakHours" class="px-4 pb-4 space-y-3">
                 <div class="flex items-center justify-between mb-1">
-                    <p class="text-xs text-gray-500">Restrict peak slots to members only</p>
+                    <p class="text-xs text-on-surface-variant">Restrict peak slots to members only</p>
                     <label class="relative flex items-center cursor-pointer">
                         <input type="checkbox" v-model="form.peak_members_only" class="sr-only peer" />
-                        <div class="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:bg-black transition-colors"></div>
+                        <div class="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:bg-primary transition-colors"></div>
                         <div class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform peer-checked:translate-x-5"></div>
                     </label>
                 </div>
@@ -335,17 +335,17 @@ const save = async () => {
                     <!-- Morning peak -->
                     <div class="bg-amber-50 rounded-xl p-3">
                         <div class="flex items-center gap-1.5 mb-2.5">
-                            <Sun :size="13" class="text-amber-500" />
-                            <span class="text-xs font-bold text-amber-700">Morning Peak</span>
+                            <Sun :size="13" class="text-ending" />
+                            <span class="text-xs font-bold text-ending">Morning Peak</span>
                         </div>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
-                                <label class="text-[10px] font-semibold text-amber-600 block mb-1">From</label>
+                                <label class="text-[10px] font-semibold text-ending block mb-1">From</label>
                                 <input v-model="form.morning_peak_start" type="time"
                                     class="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300" />
                             </div>
                             <div>
-                                <label class="text-[10px] font-semibold text-amber-600 block mb-1">To</label>
+                                <label class="text-[10px] font-semibold text-ending block mb-1">To</label>
                                 <input v-model="form.morning_peak_end" type="time"
                                     class="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300" />
                             </div>
@@ -374,23 +374,23 @@ const save = async () => {
                 </div>
 
                 <div v-if="form.peak_members_only" class="mt-3 flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
-                    <Lock :size="13" class="text-amber-600 shrink-0" />
-                    <p class="text-[11px] text-amber-700 font-medium">Walk-in bookings will be blocked during these windows</p>
+                    <Lock :size="13" class="text-ending shrink-0" />
+                    <p class="text-[11px] text-ending font-medium">Walk-in bookings will be blocked during these windows</p>
                 </div>
                 </div>
             </div>
 
             <!-- ── Amenities ── -->
             <div class="bg-white rounded-2xl px-4 py-4 ring-1 ring-slate-100 shadow-sm">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Amenities</p>
+                <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-3">Amenities</p>
                 <div class="flex flex-wrap gap-2">
                     <button v-for="tag in AMENITIES_LIST" :key="tag"
                         type="button"
                         @click="toggleAmenity(tag)"
                         class="px-3.5 py-2 rounded-full text-xs font-semibold border-2 transition-all"
                         :class="form.amenities.includes(tag)
-                            ? 'bg-black border-black text-white'
-                            : 'bg-white border-gray-200 text-gray-500'">
+                            ? 'bg-primary border-black text-white'
+                            : 'bg-white border-gray-200 text-on-surface-variant'">
                         {{ tag }}
                     </button>
                 </div>
@@ -398,7 +398,7 @@ const save = async () => {
 
             <!-- ── Gallery Photos (edit only) ── -->
             <div v-if="!isCreate" class="bg-white rounded-2xl px-4 py-4 ring-1 ring-slate-100 shadow-sm">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Gallery Photos</p>
+                <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-3">Gallery Photos</p>
                 <div class="grid grid-cols-3 gap-2">
                     <!-- Existing photos -->
                     <div v-for="photo in galleryPhotos" :key="photo.id"
@@ -413,20 +413,20 @@ const save = async () => {
                     <!-- Upload button -->
                     <label class="aspect-square rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-1 cursor-pointer hover:border-black transition-colors"
                         :class="galleryUploading ? 'pointer-events-none opacity-60' : ''">
-                        <Loader2 v-if="galleryUploading" :size="20" class="animate-spin text-gray-400" />
+                        <Loader2 v-if="galleryUploading" :size="20" class="animate-spin text-outline" />
                         <template v-else>
-                            <Plus :size="18" class="text-gray-400" />
-                            <span class="text-[10px] font-semibold text-gray-400">Add</span>
+                            <Plus :size="18" class="text-outline" />
+                            <span class="text-[10px] font-semibold text-outline">Add</span>
                         </template>
                         <input type="file" accept="image/jpeg,image/png,image/webp" class="hidden" @change="uploadGalleryPhoto" />
                     </label>
                 </div>
-                <p class="text-[11px] text-gray-400 mt-2">These appear in the court's photo gallery for players.</p>
+                <p class="text-[11px] text-outline mt-2">These appear in the court's photo gallery for players.</p>
             </div>
 
             <!-- ── Save button ── -->
             <button @click="save" :disabled="saving || uploadLoading"
-                class="w-full bg-black text-white font-extrabold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all disabled:opacity-50">
+                class="w-full bg-primary text-white font-extrabold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all disabled:opacity-50">
                 <Loader2 v-if="saving" :size="18" class="animate-spin" />
                 <Check v-else :size="18" />
                 {{ saveLabel }}

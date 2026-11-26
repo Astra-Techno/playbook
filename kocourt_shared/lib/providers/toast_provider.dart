@@ -17,6 +17,8 @@ class ToastProvider extends ChangeNotifier {
   List<ToastItem> get toasts => List.unmodifiable(_toasts);
 
   void show(String message, {ToastType type = ToastType.info}) {
+    // The API interceptor and the calling screen often report the same failure.
+    if (_toasts.any((t) => t.message == message && t.type == type)) return;
     final toast = ToastItem(message: message, type: type);
     _toasts.add(toast);
     notifyListeners();

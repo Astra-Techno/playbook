@@ -216,30 +216,30 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                       if (_group?['description'] != null && _group!['description'].toString().isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 6),
-                          child: Text(_group!['description'], style: TextStyle(color: Colors.grey[600], fontSize: 14), textAlign: TextAlign.center),
+                          child: Text(_group!['description'], style: TextStyle(color: AppColors.textSecondary, fontSize: 14), textAlign: TextAlign.center),
                         ),
                       const SizedBox(height: 4),
-                      Text('${_members.length} members', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                      Text('${_members.length} members', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                     ],
                   ),
                 ),
 
                 // Actions
-                Divider(color: Colors.grey[100], height: 1),
+                Divider(color: AppColors.surfaceDim, height: 1),
                 ListTile(
-                  leading: Icon(_isMuted ? Icons.notifications_off_rounded : Icons.notifications_rounded, color: Colors.grey[600]),
+                  leading: Icon(_isMuted ? Icons.notifications_off_rounded : Icons.notifications_rounded, color: AppColors.textSecondary),
                   title: Text(_isMuted ? 'Unmute notifications' : 'Mute notifications'),
                   onTap: _toggleMute,
                 ),
                 if (!isDm) ...[
-                  Divider(color: Colors.grey[100], height: 1),
+                  Divider(color: AppColors.surfaceDim, height: 1),
 
                   // Members header
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
                     child: Row(
                       children: [
-                        Text('Members', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.grey[700])),
+                        Text('Members', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
                         const Spacer(),
                         if (isAdmin)
                           GestureDetector(
@@ -262,7 +262,7 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                     final memberIsAdmin = m['role'] == 'admin';
                     return ListTile(
                       leading: CircleAvatar(
-                        backgroundColor: Colors.grey[200],
+                        backgroundColor: AppColors.border,
                         backgroundImage: m['avatar_url'] != null ? NetworkImage(m['avatar_url']) : null,
                         child: m['avatar_url'] == null
                             ? Text(
@@ -284,10 +284,10 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
                           ],
                         ],
                       ),
-                      subtitle: m['phone'] != null ? Text(m['phone'], style: TextStyle(fontSize: 12, color: Colors.grey[500])) : null,
+                      subtitle: m['phone'] != null ? Text(m['phone'], style: TextStyle(fontSize: 12, color: AppColors.textSecondary)) : null,
                       trailing: isAdmin && !isMe
                           ? IconButton(
-                              icon: Icon(Icons.remove_circle_outline_rounded, color: Colors.red[300], size: 20),
+                              icon: Icon(Icons.remove_circle_outline_rounded, color: AppColors.error, size: 20),
                               onPressed: () => _removeMember(m['id'], m['name'] ?? 'User'),
                             )
                           : null,
@@ -297,17 +297,17 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
 
                 // Leave / Delete
                 const SizedBox(height: 24),
-                Divider(color: Colors.grey[100], height: 1),
+                Divider(color: AppColors.surfaceDim, height: 1),
                 if (!isDm)
                   ListTile(
-                    leading: const Icon(Icons.exit_to_app_rounded, color: Colors.red),
-                    title: const Text('Leave group', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+                    leading: const Icon(Icons.exit_to_app_rounded, color: AppColors.error),
+                    title: const Text('Leave group', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
                     onTap: _leaveGroup,
                   ),
                 if (isAdmin && !isDm)
                   ListTile(
-                    leading: const Icon(Icons.delete_rounded, color: Colors.red),
-                    title: const Text('Delete group', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+                    leading: const Icon(Icons.delete_rounded, color: AppColors.error),
+                    title: const Text('Delete group', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600)),
                     onTap: _deleteGroup,
                   ),
                 const SizedBox(height: 32),

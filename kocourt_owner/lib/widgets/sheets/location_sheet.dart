@@ -150,7 +150,7 @@ class _LocationSheetState extends State<LocationSheet> {
               child: Container(
                 width: 40,
                 height: 4,
-                decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                decoration: BoxDecoration(color: AppColors.textDisabled, borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 16),
@@ -169,7 +169,7 @@ class _LocationSheetState extends State<LocationSheet> {
                       )
                     : null,
                 filled: true,
-                fillColor: Colors.grey[100],
+                fillColor: AppColors.surfaceDim,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
               ),
               onChanged: _search,

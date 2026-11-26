@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:intl/intl.dart';
@@ -95,7 +96,7 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      appBar: AppBar(title: const Text('Earnings', style: TextStyle(fontWeight: FontWeight.w800))),
+      appBar: AppBar(title: const Text('Earnings')),
       body: _earningsBody(),
     );
   }
@@ -139,40 +140,34 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
                 style: TextStyle(fontSize: 13, height: 1.4, color: AppColors.textMuted),
               ),
               const SizedBox(height: 12),
+              _headline(summary),
+              const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: _statCard('Collected', _formatCurrency(moneySplit(summary)?.collected), AppColors.primary, Icons.account_balance_wallet_outlined)),
-                  const SizedBox(width: 12),
                   Expanded(child: _statCard('Today', _formatCurrency(summary['today']), AppColors.secondary, Icons.calendar_today_outlined)),
+                  const SizedBox(width: 12),
+                  Expanded(child: _statCard('This week', _formatCurrency(summary['this_week']), context.brand.primary, Icons.trending_up)),
                 ],
               ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: _statCard('This week', _formatCurrency(summary['this_week']), Colors.blue, Icons.trending_up)),
+                  Expanded(child: _statCard('This month', _formatCurrency(summary['this_month']), context.brand.primary, Icons.calendar_month_outlined)),
                   const SizedBox(width: 12),
-                  Expanded(child: _statCard('This month', _formatCurrency(summary['this_month']), Colors.teal, Icons.calendar_month_outlined)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: _statCard('Paid out', _formatCurrency(moneySplit(summary)?.paidOut), Colors.orange, Icons.payments_outlined)),
-                  const SizedBox(width: 12),
-                  Expanded(child: _statCard('Not yet paid out', _formatCurrency(moneySplit(summary)?.notYetPaidOut), AppColors.textPrimary, Icons.hourglass_empty)),
+                  Expanded(child: _statCard('Paid out', _formatCurrency(moneySplit(summary)?.paidOut), const Color(0xFFB45309), Icons.payments_outlined)),
                 ],
               ),
               const SizedBox(height: 16),
               _requestPayout(summary),
               const SizedBox(height: 24),
-              const Text('Payouts', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              Text('Payouts', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18)),
               const SizedBox(height: 12),
               if (_payouts.isEmpty)
                 Text('No payout has been recorded.', style: TextStyle(color: AppColors.textMuted))
               else
                 ..._payouts.map(_payoutTile),
               const SizedBox(height: 24),
-              const Text('Payments', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              Text('Payments', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 18)),
               const SizedBox(height: 12),
               if (_transactions.isEmpty)
                 Container(
@@ -205,7 +200,7 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: AppShadows.card,
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -219,9 +214,52 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
             child: Icon(icon, size: 14, color: color),
           ),
           const SizedBox(height: 12),
-          Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+          Text(value, style: GoogleFonts.archivo(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
           const SizedBox(height: 4),
           Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textMuted)),
+        ],
+      ),
+    );
+  }
+
+  /// v4 headline: total collected and what is still to be paid out.
+  Widget _headline(Map<String, dynamic> summary) {
+    final split = moneySplit(summary);
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(color: context.brand.primary, borderRadius: BorderRadius.circular(22)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Collected', style: TextStyle(color: Color(0xFFE5DAFF), fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(_formatCurrency(split?.collected),
+                      style: GoogleFonts.archivo(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900, height: 1)),
+                ),
+              ],
+            ),
+          ),
+          Slanted(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('Not yet paid out', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.brand.primaryDark)),
+                  Text(_formatCurrency(split?.notYetPaidOut),
+                      style: GoogleFonts.archivo(fontSize: 16, fontWeight: FontWeight.w900, color: context.brand.primaryDark)),
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -336,10 +374,10 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: AppColors.border)),
       child: Row(
         children: [
-          const Icon(Icons.payments_outlined, size: 18, color: Colors.orange),
+          const Icon(Icons.payments_outlined, size: 18, color: AppColors.warningDark),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -365,19 +403,20 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
           Container(
             width: 40, height: 40,
             decoration: BoxDecoration(
-              color: (isSubscription ? Colors.purple : AppColors.secondary).withValues(alpha: 0.1),
+              color: (isSubscription ? context.brand.primary : AppColors.secondary).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               isSubscription ? AppIcons.award : Icons.receipt_long,
               size: 18,
-              color: isSubscription ? Colors.purple : AppColors.secondary,
+              color: isSubscription ? context.brand.primary : AppColors.secondary,
             ),
           ),
           const SizedBox(width: 12),
@@ -395,9 +434,16 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
               ],
             ),
           ),
-          Text(
-            _formatCurrency(t['amount']),
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.secondary),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                _formatCurrency(t['amount']),
+                style: GoogleFonts.archivo(fontWeight: FontWeight.w900, fontSize: 16, color: AppColors.secondary),
+              ),
+              const SizedBox(height: 4),
+              StatusTag(isSubscription ? 'Membership' : 'Booking', tone: isSubscription ? TagTone.brand : TagTone.free),
+            ],
           ),
         ],
       ),

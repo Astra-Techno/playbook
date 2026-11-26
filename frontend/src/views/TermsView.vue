@@ -11,45 +11,45 @@ const router = useRouter()
         <div class="sticky top-0 z-10 bg-white border-b border-gray-100 px-5 pt-5 pb-4 flex items-center gap-3">
             <button @click="router.back()"
                 class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                <ArrowLeft :size="20" :stroke-width="2.5" class="text-gray-500" />
+                <ArrowLeft :size="20" :stroke-width="2.5" class="text-on-surface-variant" />
             </button>
             <div>
-                <h1 class="text-lg font-bold text-black">Terms & Conditions</h1>
-                <p class="text-xs text-gray-400">Last updated: 15 October 2026</p>
+                <h1 class="text-lg font-bold text-on-surface">Terms & Conditions</h1>
+                <p class="text-xs text-outline">Last updated: 15 October 2026</p>
             </div>
         </div>
 
         <!-- Content -->
         <div class="px-5 py-6 space-y-7 pb-8 max-w-2xl mx-auto">
 
-            <p class="text-sm text-gray-500 leading-relaxed">
-                Welcome to <strong class="text-black">KoCourt</strong>. By using our app or website, you agree to the following terms. Please read them carefully.
+            <p class="text-sm text-on-surface-variant leading-relaxed">
+                Welcome to <strong class="text-on-surface">KoCourt</strong>. By using our app or website, you agree to the following terms. Please read them carefully.
             </p>
 
             <section>
-                <h2 class="text-base font-bold text-black mb-2">1. About KoCourt</h2>
-                <p class="text-sm text-gray-500 leading-relaxed">
+                <h2 class="text-base font-bold text-on-surface mb-2">1. About KoCourt</h2>
+                <p class="text-sm text-on-surface-variant leading-relaxed">
                     KoCourt is a platform that connects players with sports venues, gyms, and coaches. We act as an intermediary — we do not own or operate the facilities listed on our platform. All bookings are between the user and the service provider.
                 </p>
             </section>
 
             <section>
-                <h2 class="text-base font-bold text-black mb-2">2. Eligibility</h2>
-                <p class="text-sm text-gray-500 leading-relaxed">
+                <h2 class="text-base font-bold text-on-surface mb-2">2. Eligibility</h2>
+                <p class="text-sm text-on-surface-variant leading-relaxed">
                     You must be at least 18 years old to create an account. By registering, you confirm that the information you provide — including your name and phone number — is accurate and current.
                 </p>
             </section>
 
             <section>
-                <h2 class="text-base font-bold text-black mb-2">3. Account & OTP Login</h2>
-                <p class="text-sm text-gray-500 leading-relaxed">
+                <h2 class="text-base font-bold text-on-surface mb-2">3. Account & OTP Login</h2>
+                <p class="text-sm text-on-surface-variant leading-relaxed">
                     Your account is tied to your mobile number. We use OTP (one-time password) verification via SMS for login. You are responsible for keeping your phone secure. Do not share OTPs with anyone. KoCourt will never ask for your OTP.
                 </p>
             </section>
 
             <section>
-                <h2 class="text-base font-bold text-black mb-2">4. Bookings</h2>
-                <ul class="text-sm text-gray-500 leading-relaxed space-y-2 list-disc list-inside">
+                <h2 class="text-base font-bold text-on-surface mb-2">4. Bookings</h2>
+                <ul class="text-sm text-on-surface-variant leading-relaxed space-y-2 list-disc list-inside">
                     <li>Bookings are confirmed only after successful payment.</li>
                     <li>Slot availability is shown in real time and is not guaranteed until payment is complete.</li>
                     <li>You may not transfer or resell a booking to another person.</li>
@@ -58,11 +58,11 @@ const router = useRouter()
             </section>
 
             <section>
-                <h2 class="text-base font-bold text-black mb-2">5. Payments & Refunds</h2>
-                <p class="text-sm text-gray-500 leading-relaxed mb-2">
+                <h2 class="text-base font-bold text-on-surface mb-2">5. Payments & Refunds</h2>
+                <p class="text-sm text-on-surface-variant leading-relaxed mb-2">
                     All payments are processed securely via Cashfree. KoCourt does not store your card or bank details.
                 </p>
-                <ul class="text-sm text-gray-500 leading-relaxed space-y-2 list-disc list-inside">
+                <ul class="text-sm text-on-surface-variant leading-relaxed space-y-2 list-disc list-inside">
                     <li>Cancellation windows and platform-fee refund treatment are shown before payment. The accepted terms remain attached to your booking.</li>
                     <li>Late cancellation may be non-refundable under the accepted policy.</li>
                     <li>Venue cancellations and paid bookings that cannot be fulfilled are eligible for a full refund. Support review is required; the credit-time estimate is shown at checkout.</li>
@@ -71,51 +71,51 @@ const router = useRouter()
             </section>
 
             <section>
-                <h2 class="text-base font-bold text-black mb-2">6. Service Providers (Venue Owners)</h2>
-                <p class="text-sm text-gray-500 leading-relaxed">
+                <h2 class="text-base font-bold text-on-surface mb-2">6. Service Providers (Venue Owners)</h2>
+                <p class="text-sm text-on-surface-variant leading-relaxed">
                     If you list a service on KoCourt, you agree to honour all bookings made through the platform. You are responsible for ensuring your listing is accurate — including operating hours, pricing, and availability. KoCourt reserves the right to remove listings that violate these terms or receive repeated complaints.
                 </p>
             </section>
 
             <section>
-                <h2 class="text-base font-bold text-black mb-2">7. Prohibited Conduct</h2>
-                <ul class="text-sm text-gray-500 leading-relaxed space-y-2 list-disc list-inside">
+                <h2 class="text-base font-bold text-on-surface mb-2">7. Prohibited Conduct</h2>
+                <ul class="text-sm text-on-surface-variant leading-relaxed space-y-2 list-disc list-inside">
                     <li>Creating fake bookings or listings.</li>
                     <li>Using the platform to harass, threaten, or defraud others.</li>
                     <li>Attempting to bypass payment or circumvent the platform.</li>
                     <li>Posting false reviews or ratings.</li>
                 </ul>
-                <p class="text-sm text-gray-500 leading-relaxed mt-2">
+                <p class="text-sm text-on-surface-variant leading-relaxed mt-2">
                     Violation of these rules may result in immediate account suspension.
                 </p>
             </section>
 
             <section>
-                <h2 class="text-base font-bold text-black mb-2">8. Limitation of Liability</h2>
-                <p class="text-sm text-gray-500 leading-relaxed">
+                <h2 class="text-base font-bold text-on-surface mb-2">8. Limitation of Liability</h2>
+                <p class="text-sm text-on-surface-variant leading-relaxed">
                     KoCourt is not liable for injuries, accidents, or property damage that occur at venues booked through our platform. We are also not responsible for venue-side cancellations beyond our control. Our total liability to you shall not exceed the amount paid for the specific booking in dispute.
                 </p>
             </section>
 
             <section>
-                <h2 class="text-base font-bold text-black mb-2">9. Changes to These Terms</h2>
-                <p class="text-sm text-gray-500 leading-relaxed">
+                <h2 class="text-base font-bold text-on-surface mb-2">9. Changes to These Terms</h2>
+                <p class="text-sm text-on-surface-variant leading-relaxed">
                     We may update these terms from time to time. Significant changes will be communicated via SMS or in-app notification. Continued use of the app after changes constitutes acceptance.
                 </p>
             </section>
 
             <section>
-                <h2 class="text-base font-bold text-black mb-2">10. Governing Law</h2>
-                <p class="text-sm text-gray-500 leading-relaxed">
+                <h2 class="text-base font-bold text-on-surface mb-2">10. Governing Law</h2>
+                <p class="text-sm text-on-surface-variant leading-relaxed">
                     These terms are governed by the laws of India. Any disputes shall be subject to the exclusive jurisdiction of courts in Chennai, Tamil Nadu.
                 </p>
             </section>
 
             <section>
-                <h2 class="text-base font-bold text-black mb-2">Contact Us</h2>
-                <p class="text-sm text-gray-500 leading-relaxed">
-                    For questions or concerns, call <a href="tel:+919994439081" class="text-black font-semibold">+91 99944 39081</a>
-                    or email <a href="mailto:support@kocourt.com" class="text-black font-semibold">support@kocourt.com</a>.
+                <h2 class="text-base font-bold text-on-surface mb-2">Contact Us</h2>
+                <p class="text-sm text-on-surface-variant leading-relaxed">
+                    For questions or concerns, call <a href="tel:+919994439081" class="text-on-surface font-semibold">+91 99944 39081</a>
+                    or email <a href="mailto:support@kocourt.com" class="text-on-surface font-semibold">support@kocourt.com</a>.
                 </p>
             </section>
 

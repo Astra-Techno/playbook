@@ -118,9 +118,9 @@ class _ManagePlansScreenState extends State<ManagePlansScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(AppIcons.award, size: 48, color: Colors.grey[300]),
+                      Icon(AppIcons.award, size: 48, color: AppColors.textDisabled),
                       const SizedBox(height: 16),
-                      Text('No plans yet', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
+                      Text('No plans yet', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
                       const SizedBox(height: 16),
                       ElevatedButton.icon(onPressed: _addPlan, icon: const Icon(AppIcons.plus, size: 16), label: const Text('Create Plan')),
                     ],
@@ -140,8 +140,7 @@ class _ManagePlansScreenState extends State<ManagePlansScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey[100]!),
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                          border: Border.all(color: AppColors.border),
                         ),
                         child: Row(
                           children: [
@@ -157,8 +156,8 @@ class _ManagePlansScreenState extends State<ManagePlansScreen> {
                                 children: [
                                   Text(p['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                                   const SizedBox(height: 4),
-                                  Text('\u20B9${p['price'] ?? 0} \u2022 ${p['duration_days'] ?? 30} days', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
-                                  Text('${p['is_active']}' == '0' ? 'Inactive' : 'Active', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                                  Text('\u20B9${p['price'] ?? 0} \u2022 ${p['duration_days'] ?? 30} days', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                                  Text('${p['is_active']}' == '0' ? 'Inactive' : 'Active', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                                 ],
                               ),
                             ),
@@ -168,9 +167,9 @@ class _ManagePlansScreenState extends State<ManagePlansScreen> {
                                 await Api().post('/plans/${p['id']}/active', data: {'active': next});
                                 _load();
                               },
-                              icon: Icon('${p['is_active']}' == '0' ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20, color: Colors.grey[600]),
+                              icon: Icon('${p['is_active']}' == '0' ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20, color: AppColors.textSecondary),
                             ),
-                            IconButton(onPressed: () => _deletePlan(int.tryParse('${p['id']}') ?? 0), icon: Icon(Icons.delete_outline, size: 20, color: Colors.grey[400])),
+                            IconButton(onPressed: () => _deletePlan(int.tryParse('${p['id']}') ?? 0), icon: Icon(Icons.delete_outline, size: 20, color: AppColors.textMuted)),
                           ],
                         ),
                       );

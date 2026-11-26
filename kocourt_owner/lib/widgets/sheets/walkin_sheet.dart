@@ -82,6 +82,8 @@ class _WalkInSheetState extends State<WalkInSheet> {
   int? _spaceId;
   String _collectionMethod = 'pay_at_venue';
   bool _submitting = false;
+  bool _weekly = false;
+  int _weeks = 4;
   String? _error;
 
   @override
@@ -119,7 +121,12 @@ class _WalkInSheetState extends State<WalkInSheet> {
         spaceRequired: widget.spaces.isNotEmpty,
         collectionMethod: _collectionMethod,
       );
-      await Api().post('/bookings', data: body);
+      if (_weekly) {
+        final res = await Api().post('/bookings/recurring', data: weeklyWalkInBody(body, weeks: _weeks));
+        if (mounted) context.toastInfo('${res.data['message'] ?? 'Weekly booking saved.'}');
+      } else {
+        await Api().post('/bookings', data: body);
+      }
       if (mounted) Navigator.pop(context, true);
     } catch (caught) {
       if (!mounted) return;
@@ -210,6 +217,24 @@ class _WalkInSheetState extends State<WalkInSheet> {
                 label: 'Guest mobile',
                 helperText: 'Optional · 10 digits if entered',
               ),
+              if (!walkInStartHasPassed(widget.date, _hour)) ...[
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _weekly,
+                  onChanged: (value) => setState(() => _weekly = value),
+                  title: const Text('Repeat weekly', style: TextStyle(fontWeight: FontWeight.w700)),
+                  subtitle: const Text('Same hour every week. Taken dates are skipped.'),
+                ),
+                if (_weekly)
+                  DropdownButtonFormField<int>(
+                    initialValue: _weeks,
+                    decoration: const InputDecoration(labelText: 'For how many weeks'),
+                    items: [for (var w = 2; w <= 12; w++) DropdownMenuItem(value: w, child: Text('$w weeks'))],
+                    onChanged: (value) {
+                      if (value != null) setState(() => _weeks = value);
+                    },
+                  ),
+              ],
               if (_error != null) Text(_error!, style: const TextStyle(color: AppColors.error)),
               SizedBox(
                 height: 52,

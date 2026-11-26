@@ -317,6 +317,15 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
         (new CoachingController())->create((int)$seg[1]);
         exit();
     }
+    // GET /courts/:id/addons — public: rentable kit a player can add at checkout
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'addons' && !isset($seg[3])) {
+        require_once __DIR__ . '/src/BookingAddons.php';
+        $rows = BookingAddons::catalog(Database::getConnection(), (int)$seg[1]);
+        echo json_encode(['addons' => array_map(fn ($r) => [
+            'id' => (int)$r['id'], 'name' => $r['name'], 'rental_rupees' => (int)$r['rental_rupees'], 'deposit_rupees' => (int)$r['deposit_rupees'],
+        ], $rows)]);
+        exit();
+    }
     // GET /courts/:id/equipment
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1]) && isset($seg[2]) && $seg[2] === 'equipment') {
         require_once __DIR__ . '/src/Controllers/EquipmentController.php';
@@ -357,6 +366,11 @@ if (isset($seg[0]) && $seg[0] === 'courts') {
         exit();
     }
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1]) && !isset($seg[2])) { $courtController->show((int)$seg[1]); exit(); }
+    // GET /courts/free-soon — first free hour per venue for the player home
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'free-soon') {
+        $courtController->freeSoon();
+        exit();
+    }
     // GET /courts/available-at — before generic GET /courts
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'available-at') {
         $courtController->availableAt();
@@ -568,6 +582,13 @@ if (isset($seg[0]) && $seg[0] === 'bookings') {
     // POST /bookings/recurring
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'recurring') {
         Auth::require(); $bookingController->createRecurring(); exit();
+    }
+    // QR check-in: pass code for the player, scan for venue staff (before generic routes)
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1]) && ($seg[2] ?? '') === 'check-in-code' && !isset($seg[3])) {
+        $bookingController->checkInCode((int)$seg[1]); exit();
+    }
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($seg[1] ?? '') === 'check-in-scan' && !isset($seg[2])) {
+        $bookingController->scanCheckIn(); exit();
     }
     // GET /bookings/:id  — single booking detail (before generic index)
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && is_numeric($seg[1])) {
@@ -1134,12 +1155,12 @@ if (isset($seg[0]) && $seg[0] === 'courts' && isset($seg[1]) && isset($seg[2]) &
 
 // ── User search by phone  GET /users/search?phone=X ──────────────────────────
 if (isset($seg[0]) && $seg[0] === 'users' && isset($seg[1]) && $seg[1] === 'search' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    // Signed-in only, and tolerant of +91 / spaces / leading 0 like the staff lookup.
+    Auth::require();
+    require_once __DIR__ . '/src/AccountLookup.php';
     $phone = trim($_GET['phone'] ?? '');
     if (!$phone) { echo json_encode(['user' => null]); exit(); }
-    $db   = Database::getConnection();
-    $stmt = $db->prepare("SELECT id, name, phone, avatar_url FROM users WHERE phone = ? LIMIT 1");
-    $stmt->execute([$phone]);
-    $user = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    $user = AccountLookup::byPhone(Database::getConnection(), $phone);
     echo json_encode(['user' => $user]);
     exit();
 }
@@ -1161,11 +1182,23 @@ if (isset($seg[0]) && $seg[0] === 'booking-players') {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
     // GET /booking-players?booking_id=X
+    require_once __DIR__ . '/src/BookingSquad.php';
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-        Auth::require();
+        $authUser = Auth::require();
+        $uid  = (int)$authUser['id'];
         $bid  = (int)($_GET['booking_id'] ?? 0);
+        $squadBooking = BookingSquad::booking($db, $bid);
+        if (!$squadBooking) { http_response_code(404); echo json_encode(['message' => 'Booking not found']); exit(); }
+        $isPlayer = $db->prepare('SELECT 1 FROM booking_players WHERE booking_id = ? AND user_id = ?');
+        $isPlayer->execute([$bid, $uid]);
+        $isStaff = $db->prepare('SELECT 1 FROM court_staff WHERE court_id = ? AND user_id = ?');
+        $isStaff->execute([(int)$squadBooking['court_id'], $uid]);
+        if (!BookingSquad::canView($squadBooking, $uid, (string)$authUser['role'], (bool)$isPlayer->fetchColumn(), (bool)$isStaff->fetchColumn())) {
+            http_response_code(403); echo json_encode(['message' => 'Not your booking']); exit();
+        }
+        // No phone numbers: squad mates see names only.
         $stmt = $db->prepare(
-            "SELECT u.id, u.name, u.phone, u.avatar_url
+            "SELECT u.id, u.name, u.avatar_url
              FROM booking_players bp JOIN users u ON u.id = bp.user_id
              WHERE bp.booking_id = ?"
         );
@@ -1184,6 +1217,11 @@ if (isset($seg[0]) && $seg[0] === 'booking-players') {
 
         if (!$booking_id || empty($user_ids)) {
             http_response_code(400); echo json_encode(['message' => 'booking_id and user_ids required']); exit();
+        }
+        $squadBooking = BookingSquad::booking($db, $booking_id);
+        if (!$squadBooking) { http_response_code(404); echo json_encode(['message' => 'Booking not found']); exit(); }
+        if (!BookingSquad::canInvite($squadBooking, $invited_by, (string)$authUser['role'])) {
+            http_response_code(403); echo json_encode(['message' => 'Only the person who booked can add players']); exit();
         }
 
         // Fetch booking + court info for notification body

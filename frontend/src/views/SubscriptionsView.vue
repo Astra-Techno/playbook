@@ -68,19 +68,19 @@ onMounted(fetchSubs)
 
         <!-- Error -->
         <div v-else-if="error" class="flex flex-col items-center justify-center py-24 px-8 text-center">
-            <p class="font-bold text-gray-500 mb-4">Could not load memberships</p>
-            <button @click="fetchSubs" class="text-sm font-bold text-black">Retry</button>
+            <p class="font-bold text-on-surface-variant mb-4">Could not load memberships</p>
+            <button @click="fetchSubs" class="text-sm font-bold text-on-surface">Retry</button>
         </div>
 
         <!-- Empty -->
         <div v-else-if="subs.length === 0" class="flex flex-col items-center justify-center py-28 px-8 text-center">
             <div class="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-5">
-                <Award :size="36" class="text-black" />
+                <Award :size="36" class="text-on-surface" />
             </div>
-            <p class="font-black text-black text-lg mb-2">No memberships yet</p>
-            <p class="text-sm text-gray-400 mb-6">Subscribe to a court plan to unlock member benefits.</p>
+            <p class="font-black text-on-surface text-lg mb-2">No memberships yet</p>
+            <p class="text-sm text-outline mb-6">Subscribe to a court plan to unlock member benefits.</p>
             <button @click="router.push('/')"
-                class="bg-black text-white font-bold text-sm px-6 py-3 rounded-full active:scale-95 transition-transform">
+                class="bg-primary text-white font-bold text-sm px-6 py-3 rounded-full active:scale-95 transition-transform">
                 Browse Courts
             </button>
         </div>
@@ -91,15 +91,15 @@ onMounted(fetchSubs)
             <div v-if="active.some(s => isExpiringSoon(s.end_date))" class="mx-4 mt-5">
                 <div v-for="s in active.filter(s => isExpiringSoon(s.end_date))" :key="'banner-' + s.id"
                     class="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 flex items-start gap-3 mb-2">
-                    <AlertTriangle :size="18" class="text-amber-500 shrink-0 mt-0.5" />
+                    <AlertTriangle :size="18" class="text-ending shrink-0 mt-0.5" />
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-black text-amber-800">
                             {{ s.plan_name }} expires in {{ daysLeft(s.end_date) }} day{{ daysLeft(s.end_date) === 1 ? '' : 's' }}
                         </p>
-                        <p class="text-xs text-amber-600 mt-0.5">{{ s.court_name }} · {{ fmt(s.end_date) }}</p>
+                        <p class="text-xs text-ending mt-0.5">{{ s.court_name }} · {{ fmt(s.end_date) }}</p>
                     </div>
                     <button @click="router.push(`/courts/${s.court_id}`)"
-                        class="shrink-0 flex items-center gap-1 text-[11px] font-black text-amber-700 bg-amber-100 px-3 py-1.5 rounded-full active:scale-95 transition-transform">
+                        class="shrink-0 flex items-center gap-1 text-[11px] font-black text-ending bg-amber-100 px-3 py-1.5 rounded-full active:scale-95 transition-transform">
                         <RefreshCw :size="11" />
                         Renew
                     </button>
@@ -108,7 +108,7 @@ onMounted(fetchSubs)
 
             <!-- ── Active ── -->
             <div v-if="active.length" class="px-4 pt-5">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Active</p>
+                <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-3">Active</p>
                 <div class="space-y-3">
                     <div v-for="s in active" :key="s.id"
                         class="bg-white rounded-2xl p-4 shadow-sm"
@@ -118,37 +118,37 @@ onMounted(fetchSubs)
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                                     :class="isExpiringSoon(s.end_date) ? 'bg-amber-100' : 'bg-gray-100'">
-                                    <Award :size="20" :class="isExpiringSoon(s.end_date) ? 'text-amber-500' : 'text-black'" />
+                                    <Award :size="20" :class="isExpiringSoon(s.end_date) ? 'text-ending' : 'text-on-surface'" />
                                 </div>
                                 <div>
-                                    <p class="font-black text-black text-sm leading-tight">{{ s.plan_name }}</p>
+                                    <p class="font-black text-on-surface text-sm leading-tight">{{ s.plan_name }}</p>
                                     <div class="flex items-center gap-1 mt-0.5">
-                                        <MapPin :size="10" class="text-gray-400" />
-                                        <p class="text-[11px] font-bold text-gray-500">{{ s.court_name }}</p>
+                                        <MapPin :size="10" class="text-outline" />
+                                        <p class="text-[11px] font-bold text-on-surface-variant">{{ s.court_name }}</p>
                                     </div>
                                 </div>
                             </div>
                             <span class="text-[10px] font-black px-2.5 py-1 rounded-full shrink-0"
-                                :class="isExpiringSoon(s.end_date) ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'">
+                                :class="isExpiringSoon(s.end_date) ? 'bg-amber-100 text-ending' : 'bg-emerald-100 text-free'">
                                 {{ isExpiringSoon(s.end_date) ? 'Expiring soon' : 'Active' }}
                             </span>
                         </div>
 
                         <div class="mt-4 grid grid-cols-3 gap-2 text-center">
                             <div class="bg-white rounded-xl py-2.5">
-                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Slot</p>
-                                <p class="text-xs font-black text-black">{{ slotLabel(s.slot_type) }}</p>
+                                <p class="text-[10px] font-bold text-outline uppercase tracking-wider mb-0.5">Slot</p>
+                                <p class="text-xs font-black text-on-surface">{{ slotLabel(s.slot_type) }}</p>
                             </div>
                             <div class="bg-white rounded-xl py-2.5">
-                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Expires</p>
-                                <p class="text-xs font-black text-black">{{ fmt(s.end_date) }}</p>
+                                <p class="text-[10px] font-bold text-outline uppercase tracking-wider mb-0.5">Expires</p>
+                                <p class="text-xs font-black text-on-surface">{{ fmt(s.end_date) }}</p>
                             </div>
                             <div class="rounded-xl py-2.5"
                                 :class="isExpiringSoon(s.end_date) ? 'bg-amber-50' : 'bg-gray-100'">
                                 <p class="text-[10px] font-bold uppercase tracking-wider mb-0.5"
-                                    :class="isExpiringSoon(s.end_date) ? 'text-amber-500' : 'text-gray-400'">Days left</p>
+                                    :class="isExpiringSoon(s.end_date) ? 'text-ending' : 'text-outline'">Days left</p>
                                 <p class="text-xs font-black"
-                                    :class="isExpiringSoon(s.end_date) ? 'text-amber-600' : 'text-black'">
+                                    :class="isExpiringSoon(s.end_date) ? 'text-ending' : 'text-on-surface'">
                                     {{ daysLeft(s.end_date) }}
                                 </p>
                             </div>
@@ -156,13 +156,13 @@ onMounted(fetchSubs)
 
                         <div class="mt-3 flex gap-2">
                             <button @click="router.push(`/courts/${s.court_id}`)"
-                                class="flex-1 flex items-center justify-between text-xs font-bold text-black bg-gray-50 rounded-xl px-4 py-2.5 active:scale-[0.98] transition-transform">
+                                class="flex-1 flex items-center justify-between text-xs font-bold text-on-surface bg-gray-50 rounded-xl px-4 py-2.5 active:scale-[0.98] transition-transform">
                                 <span>{{ isExpiringSoon(s.end_date) ? 'Renew Now' : 'View Court' }}</span>
                                 <ChevronRight :size="14" />
                             </button>
                             <button @click="cancelSub(s)"
                                 :disabled="cancellingId === s.id"
-                                class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-400 hover:text-red-600 active:scale-95 transition-all disabled:opacity-40">
+                                class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-due hover:text-due active:scale-95 transition-all disabled:opacity-40">
                                 <X :size="16" />
                             </button>
                         </div>
@@ -172,23 +172,23 @@ onMounted(fetchSubs)
 
             <!-- ── Cancelled (still within access period) ── -->
             <div v-if="cancelled.length" class="px-4 mt-6">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Cancelled</p>
+                <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-3">Cancelled</p>
                 <div class="space-y-2">
                     <div v-for="s in cancelled" :key="s.id"
                         class="bg-white rounded-2xl p-4 ring-1 ring-slate-100">
                         <div class="flex items-center justify-between gap-3">
                             <div class="flex items-center gap-3">
                                 <div class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-                                    <Award :size="16" class="text-gray-400" />
+                                    <Award :size="16" class="text-outline" />
                                 </div>
                                 <div>
-                                    <p class="font-bold text-gray-700 text-sm">{{ s.plan_name }}</p>
-                                    <p class="text-[11px] text-gray-400">{{ s.court_name }}</p>
+                                    <p class="font-bold text-on-surface-variant text-sm">{{ s.plan_name }}</p>
+                                    <p class="text-[11px] text-outline">{{ s.court_name }}</p>
                                 </div>
                             </div>
                             <div class="text-right shrink-0">
-                                <span class="text-[10px] font-black bg-gray-100 text-gray-500 px-2 py-1 rounded-full">Cancelled</span>
-                                <p class="text-[11px] text-gray-400 mt-1">Access until {{ fmt(s.end_date) }}</p>
+                                <span class="text-[10px] font-black bg-gray-100 text-on-surface-variant px-2 py-1 rounded-full">Cancelled</span>
+                                <p class="text-[11px] text-outline mt-1">Access until {{ fmt(s.end_date) }}</p>
                             </div>
                         </div>
                     </div>
@@ -197,23 +197,23 @@ onMounted(fetchSubs)
 
             <!-- ── Past / Expired ── -->
             <div v-if="past.length" class="px-4 mt-6">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Expired</p>
+                <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-3">Expired</p>
                 <div class="space-y-2">
                     <div v-for="s in past" :key="s.id"
                         class="bg-white rounded-2xl p-4 ring-1 ring-slate-100 opacity-60">
                         <div class="flex items-center justify-between gap-3">
                             <div class="flex items-center gap-3">
                                 <div class="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
-                                    <Award :size="16" class="text-gray-400" />
+                                    <Award :size="16" class="text-outline" />
                                 </div>
                                 <div>
-                                    <p class="font-bold text-gray-700 text-sm">{{ s.plan_name }}</p>
-                                    <p class="text-[11px] text-gray-400">{{ s.court_name }}</p>
+                                    <p class="font-bold text-on-surface-variant text-sm">{{ s.plan_name }}</p>
+                                    <p class="text-[11px] text-outline">{{ s.court_name }}</p>
                                 </div>
                             </div>
                             <div class="text-right shrink-0">
-                                <p class="text-[10px] font-bold text-gray-400">Expired</p>
-                                <p class="text-[11px] font-bold text-gray-500">{{ fmt(s.end_date) }}</p>
+                                <p class="text-[10px] font-bold text-outline">Expired</p>
+                                <p class="text-[11px] font-bold text-on-surface-variant">{{ fmt(s.end_date) }}</p>
                             </div>
                         </div>
                     </div>

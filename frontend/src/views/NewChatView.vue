@@ -72,7 +72,7 @@ const create = async () => {
   <div class="min-h-screen bg-white">
     <!-- Header -->
     <div class="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
-      <button @click="router.back()" class="text-gray-600"><ChevronLeft :size="24" /></button>
+      <button @click="router.back()" class="text-on-surface-variant"><ChevronLeft :size="24" /></button>
       <p class="font-bold flex-1">{{ isGroup ? 'New Group' : 'New Chat' }}</p>
       <button v-if="selected.size > 0" @click="create" :disabled="creating"
         class="text-primary font-bold text-sm disabled:opacity-50">
@@ -97,7 +97,7 @@ const create = async () => {
 
       <!-- Search filter -->
       <div class="relative mb-4">
-        <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Search :size="16" class="absolute left-3 top-1/2 -translate-y-1/2 text-outline" />
         <input v-model="searchQuery" type="text"
           placeholder="Filter by name or phone..." class="input-field !pl-10" />
       </div>
@@ -109,19 +109,19 @@ const create = async () => {
       </label>
 
       <!-- Loading -->
-      <p v-if="loading" class="text-center text-gray-400 text-sm py-8">Loading connections...</p>
+      <p v-if="loading" class="text-center text-outline text-sm py-8">Loading connections...</p>
 
       <!-- Empty state -->
       <div v-else-if="allConnected.length === 0" class="text-center py-16">
         <Users :size="48" class="mx-auto text-gray-200 mb-4" />
-        <p class="font-bold text-gray-500 mb-2">No connections yet</p>
-        <p class="text-gray-400 text-sm leading-relaxed max-w-xs mx-auto">
+        <p class="font-bold text-on-surface-variant mb-2">No connections yet</p>
+        <p class="text-outline text-sm leading-relaxed max-w-xs mx-auto">
           You can chat with people you've played with, share a venue membership, or interacted with on posts.
         </p>
       </div>
 
       <!-- No filter results -->
-      <p v-else-if="filtered.length === 0" class="text-center text-gray-400 text-sm py-8">No matches</p>
+      <p v-else-if="filtered.length === 0" class="text-center text-outline text-sm py-8">No matches</p>
 
       <!-- User list -->
       <div v-else class="space-y-1">
@@ -133,7 +133,7 @@ const create = async () => {
           </div>
           <div class="flex-1 min-w-0">
             <span class="font-semibold">{{ u.name }}</span>
-            <p v-if="u.phone" class="text-xs text-gray-400">{{ u.phone }}</p>
+            <p v-if="u.phone" class="text-xs text-outline">{{ u.phone }}</p>
           </div>
           <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center"
             :class="selected.has(u.id) ? 'bg-primary border-primary' : 'border-gray-300'">

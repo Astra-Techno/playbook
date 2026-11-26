@@ -148,11 +148,11 @@ const formatBlockTime = (b) => {
                             <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-3"></div>
                             <div class="flex items-center justify-between px-5 pb-4 border-b border-gray-100">
                                 <div>
-                                    <p class="text-[10px] font-black text-black uppercase tracking-wider">{{ court.name }}</p>
-                                    <h3 class="text-base font-extrabold text-black">Block Slots</h3>
+                                    <p class="text-[10px] font-black text-on-surface uppercase tracking-wider">{{ court.name }}</p>
+                                    <h3 class="text-base font-extrabold text-on-surface">Block Slots</h3>
                                 </div>
                                 <button @click="close" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                                    <X :size="16" class="text-gray-500" />
+                                    <X :size="16" class="text-on-surface-variant" />
                                 </button>
                             </div>
                         </div>
@@ -161,11 +161,11 @@ const formatBlockTime = (b) => {
 
                             <!-- Date picker -->
                             <div>
-                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2">Select Date</p>
+                                <p class="text-[11px] font-black text-outline uppercase tracking-wider mb-2">Select Date</p>
                                 <div class="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
                                     <button v-for="d in dateOptions" :key="d" @click="selectedDate = d"
                                         class="shrink-0 flex flex-col items-center px-3 py-2 rounded-xl text-xs font-bold transition-all"
-                                        :class="selectedDate === d ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'">
+                                        :class="selectedDate === d ? 'bg-primary text-white' : 'bg-gray-100 text-on-surface-variant'">
                                         <span class="text-[9px] uppercase">{{ new Date(d+'T00:00').toLocaleDateString('en-IN',{weekday:'short'}) }}</span>
                                         <span class="text-sm font-extrabold">{{ new Date(d+'T00:00').getDate() }}</span>
                                     </button>
@@ -174,9 +174,9 @@ const formatBlockTime = (b) => {
 
                             <!-- Hour grid -->
                             <div>
-                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2">
+                                <p class="text-[11px] font-black text-outline uppercase tracking-wider mb-2">
                                     Select Hours to Block
-                                    <span v-if="selectedHours.length" class="ml-1 bg-red-100 text-red-600 px-1.5 rounded-full text-[10px]">
+                                    <span v-if="selectedHours.length" class="ml-1 bg-red-100 text-due px-1.5 rounded-full text-[10px]">
                                         {{ selectedHours.length }} selected
                                     </span>
                                 </p>
@@ -184,18 +184,18 @@ const formatBlockTime = (b) => {
                                     <button v-for="s in HOURS" :key="s.hour" @click="toggleHour(s.hour)"
                                         :disabled="isBlockedHour(s.hour)"
                                         class="py-2.5 rounded-xl text-xs font-bold border-2 transition-all"
-                                        :class="isBlockedHour(s.hour) ? 'bg-red-50 border-red-200 text-red-300 cursor-not-allowed' :
+                                        :class="isBlockedHour(s.hour) ? 'bg-red-50 border-red-200 text-due cursor-not-allowed' :
                                                 selectedHours.includes(s.hour) ? 'bg-red-500 border-red-500 text-white' :
-                                                'bg-white border-gray-200 text-gray-700 hover:border-red-300'">
+                                                'bg-white border-gray-200 text-on-surface-variant hover:border-red-300'">
                                         {{ s.label }}
                                     </button>
                                 </div>
                             </div>
 
                             <div>
-                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2">Category</p>
+                                <p class="text-[11px] font-black text-outline uppercase tracking-wider mb-2">Category</p>
                                 <select v-model="blockKind"
-                                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-gray-700 focus:border border-black focus:outline-none bg-white">
+                                    class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm font-semibold text-on-surface-variant focus:border border-black focus:outline-none bg-white">
                                     <option value="maintenance">Maintenance</option>
                                     <option value="holiday">Holiday</option>
                                     <option value="private_event">Private event</option>
@@ -214,8 +214,8 @@ const formatBlockTime = (b) => {
 
                             <!-- Reason -->
                             <div>
-                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-2">
-                                    Note <span class="font-normal normal-case text-gray-300">(optional)</span>
+                                <p class="text-[11px] font-black text-outline uppercase tracking-wider mb-2">
+                                    Note <span class="font-normal normal-case text-outline">(optional)</span>
                                 </p>
                                 <input v-model="reason" type="text" placeholder="Short note for your team…"
                                     class="w-full ring-1 ring-slate-200 rounded-xl px-4 py-3 text-sm focus:border border-black focus:outline-none" />
@@ -231,9 +231,9 @@ const formatBlockTime = (b) => {
 
                             <!-- Existing blocks -->
                             <div v-if="blocksVenueWide.length">
-                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-3">
+                                <p class="text-[11px] font-black text-outline uppercase tracking-wider mb-3">
                                     Venue-wide blocks
-                                    <span class="ml-1 bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-[10px]">{{ blocksVenueWide.length }}</span>
+                                    <span class="ml-1 bg-gray-100 text-on-surface-variant px-1.5 py-0.5 rounded-full text-[10px]">{{ blocksVenueWide.length }}</span>
                                 </p>
                                 <div v-if="loadingBlocks" class="space-y-2">
                                     <div v-for="i in 3" :key="i" class="h-12 bg-gray-100 rounded-xl animate-pulse"></div>
@@ -241,18 +241,18 @@ const formatBlockTime = (b) => {
                                 <div v-else class="space-y-2">
                                     <div v-for="block in blocksVenueWide" :key="block.id"
                                         class="flex items-center gap-3 bg-red-50 rounded-xl px-4 py-3">
-                                        <CalendarOff :size="14" class="text-red-400 shrink-0" />
+                                        <CalendarOff :size="14" class="text-due shrink-0" />
                                         <div class="flex-1 min-w-0">
                                             <div class="flex flex-wrap gap-1 mb-0.5">
                                                 <span v-if="Number(block.repeat_annually) === 1" class="text-[9px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">Annual</span>
                                             </div>
-                                            <p class="text-xs font-bold text-gray-700 truncate">{{ formatBlockTime(block) }}</p>
-                                            <p v-if="block.reason" class="text-[11px] text-gray-400 truncate">{{ block.reason }}</p>
+                                            <p class="text-xs font-bold text-on-surface-variant truncate">{{ formatBlockTime(block) }}</p>
+                                            <p v-if="block.reason" class="text-[11px] text-outline truncate">{{ block.reason }}</p>
                                         </div>
                                         <button @click="removeBlock(block)" :disabled="removingId === block.id"
                                             class="w-7 h-7 rounded-full bg-white flex items-center justify-center active:scale-90 transition">
-                                            <Loader2 v-if="removingId === block.id" :size="12" class="animate-spin text-red-400" />
-                                            <Trash2 v-else :size="12" class="text-red-400" />
+                                            <Loader2 v-if="removingId === block.id" :size="12" class="animate-spin text-due" />
+                                            <Trash2 v-else :size="12" class="text-due" />
                                         </button>
                                     </div>
                                 </div>

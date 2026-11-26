@@ -104,12 +104,12 @@ class _FeedScreenState extends State<FeedScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(AppIcons.rss, size: 48, color: Colors.grey[300]),
+                      Icon(AppIcons.rss, size: 48, color: AppColors.textDisabled),
                       const SizedBox(height: 16),
                       Text(
                         _error ?? 'No posts yet',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey[500], fontWeight: FontWeight.w600),
+                        style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                       ),
                       if (_error != null)
                         TextButton(onPressed: () => _loadPosts(), child: const Text('Try again')),
@@ -145,14 +145,8 @@ class _FeedScreenState extends State<FeedScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

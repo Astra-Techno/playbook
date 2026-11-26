@@ -385,14 +385,14 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
             <!-- No location yet -->
             <div v-if="!fetched && !hasLocation && !locating" class="flex flex-col items-center py-20 text-center px-6">
                 <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-5">
-                    <MapPin :size="36" class="text-gray-400" :stroke-width="1.5" />
+                    <MapPin :size="36" class="text-outline" :stroke-width="1.5" />
                 </div>
-                <p class="font-extrabold text-black text-[20px] mb-2">Where are you playing?</p>
-                <p class="text-[14px] text-gray-400 max-w-[240px] leading-relaxed">
+                <p class="font-extrabold text-on-surface text-[20px] mb-2">Where are you playing?</p>
+                <p class="text-[14px] text-outline max-w-[240px] leading-relaxed">
                     Search for a city or allow location access to discover venues near you.
                 </p>
                 <button @click="detectLocation"
-                    class="mt-6 flex items-center gap-2 bg-black text-white text-[14px] font-bold px-7 py-3.5 rounded-full active:scale-95 transition-transform">
+                    class="mt-6 flex items-center gap-2 bg-primary text-white text-[14px] font-bold px-7 py-3.5 rounded-full active:scale-95 transition-transform">
                     <MapPin :size="16" />
                     Use My Location
                 </button>
@@ -421,11 +421,11 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
 
             <!-- Empty state -->
             <div v-else-if="courts.length === 0" class="flex flex-col items-center py-20 text-center">
-                <div class="w-16 h-16 bg-gray-100 text-black rounded-full flex items-center justify-center mb-4">
+                <div class="w-16 h-16 bg-gray-100 text-on-surface rounded-full flex items-center justify-center mb-4">
                     <Map :size="32" :stroke-width="2.5" />
                 </div>
-                <p class="font-extrabold text-gray-700 text-base">No venues found</p>
-                <p class="text-sm text-gray-400 mt-1.5 max-w-[220px]">
+                <p class="font-extrabold text-on-surface-variant text-base">No venues found</p>
+                <p class="text-sm text-outline mt-1.5 max-w-[220px]">
                     Try searching a different city or selecting another category
                 </p>
             </div>
@@ -528,10 +528,10 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                 <!-- Section header -->
                 <div class="flex items-center justify-between mb-3">
                     <div>
-                        <h2 class="text-[17px] font-extrabold text-black">Also Nearby</h2>
-                        <p class="text-[11px] text-gray-400 font-medium mt-0.5">Not on KoCourt yet — show your interest</p>
+                        <h2 class="text-[17px] font-extrabold text-on-surface">Also Nearby</h2>
+                        <p class="text-[11px] text-outline font-medium mt-0.5">Not on KoCourt yet — show your interest</p>
                     </div>
-                    <span class="text-[10px] font-black bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full uppercase tracking-wide">
+                    <span class="text-[10px] font-black bg-amber-100 text-ending px-2.5 py-1 rounded-full uppercase tracking-wide">
                         Coming Soon
                     </span>
                 </div>
@@ -571,15 +571,15 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
 
                             <!-- Rating badge -->
                             <div v-if="place.rating" class="absolute top-4 right-4 z-10">
-                                <span class="bg-white/90 backdrop-blur text-amber-700 text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
-                                    <Star :size="10" class="fill-amber-400 text-amber-400" />
+                                <span class="bg-white/90 backdrop-blur text-ending text-[10px] font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
+                                    <Star :size="10" class="fill-amber-400 text-ending" />
                                     {{ place.rating }}
                                 </span>
                             </div>
 
                             <!-- Type badge -->
                             <div class="absolute bottom-4 left-4 z-10">
-                                <span class="bg-white/90 backdrop-blur text-black text-[10px] font-extrabold px-3.5 py-1.5 rounded-full tracking-wide uppercase flex items-center gap-1.5 shadow-sm">
+                                <span class="bg-white/90 backdrop-blur text-on-surface text-[10px] font-extrabold px-3.5 py-1.5 rounded-full tracking-wide uppercase flex items-center gap-1.5 shadow-sm">
                                     <component :is="categories.find(c => c.id === place.type)?.icon" :size="11" :stroke-width="3" />
                                     {{ categories.find(c => c.id === place.type)?.label || place.type }}
                                 </span>
@@ -588,8 +588,8 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
 
                         <!-- Card body -->
                         <div>
-                            <h3 class="font-extrabold text-black text-[18px] leading-tight mb-1">{{ place.name }}</h3>
-                            <div class="flex items-center gap-1 text-gray-500 text-[14px] mb-3">
+                            <h3 class="font-extrabold text-on-surface text-[18px] leading-tight mb-1">{{ place.name }}</h3>
+                            <div class="flex items-center gap-1 text-on-surface-variant text-[14px] mb-3">
                                 <span class="truncate">{{ place.address }}</span>
                             </div>
 
@@ -598,10 +598,10 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                                 <div class="flex -space-x-1.5">
                                     <div v-for="n in Math.min(place.request_count, 3)" :key="n"
                                         class="w-5 h-5 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center">
-                                        <span class="text-[7px] font-extrabold text-black">{{ n }}</span>
+                                        <span class="text-[7px] font-extrabold text-on-surface">{{ n }}</span>
                                     </div>
                                 </div>
-                                <span class="text-[12px] font-semibold text-gray-500">
+                                <span class="text-[12px] font-semibold text-on-surface-variant">
                                     {{ place.request_count }} {{ place.request_count === 1 ? 'person' : 'people' }} interested
                                 </span>
                             </div>
@@ -610,7 +610,7 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                             <div class="flex gap-2">
                                 <!-- Claim this Venue (primary) -->
                                 <button @click="openClaim(place)"
-                                    class="flex-1 flex items-center justify-center gap-2 bg-black text-white text-[13px] font-bold px-4 py-3 rounded-full active:scale-95 transition-all shadow-sm">
+                                    class="flex-1 flex items-center justify-center gap-2 bg-primary text-white text-[13px] font-bold px-4 py-3 rounded-full active:scale-95 transition-all shadow-sm">
                                     <KeyRound :size="13" :stroke-width="2.5" />
                                     Claim Venue
                                 </button>
@@ -618,14 +618,14 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                                 <button v-if="!place.user_requested"
                                     @click="requestService(place)"
                                     :disabled="requestingId === place.id"
-                                    class="flex items-center gap-1.5 bg-gray-100 text-gray-700 text-[13px] font-bold px-5 py-3 rounded-full active:scale-95 disabled:opacity-60 transition-all shrink-0">
+                                    class="flex items-center gap-1.5 bg-gray-100 text-on-surface-variant text-[13px] font-bold px-5 py-3 rounded-full active:scale-95 disabled:opacity-60 transition-all shrink-0">
                                     <Loader2 v-if="requestingId === place.id" :size="12" class="animate-spin" />
                                     <Bell v-else :size="12" :stroke-width="2.5" />
                                     Send Interest
                                 </button>
                                 <div v-else
-                                    class="flex items-center gap-1.5 bg-gray-100 text-black text-[13px] font-bold px-5 py-3 rounded-full shrink-0">
-                                    <svg viewBox="0 0 12 12" fill="none" class="w-3 h-3 text-black">
+                                    class="flex items-center gap-1.5 bg-gray-100 text-on-surface text-[13px] font-bold px-5 py-3 rounded-full shrink-0">
+                                    <svg viewBox="0 0 12 12" fill="none" class="w-3 h-3 text-on-surface">
                                         <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                                     </svg>
                                     Interest Sent
@@ -668,16 +668,16 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                         <div class="sticky top-0 bg-white pt-3 pb-4 px-5 border-b border-gray-100 z-10">
                             <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4"></div>
                             <div class="flex items-center justify-between">
-                                <h3 class="text-base font-extrabold text-black">Filters</h3>
+                                <h3 class="text-base font-extrabold text-on-surface">Filters</h3>
                                 <div class="flex items-center gap-2">
                                     <button @click="resetFilters"
-                                        class="flex items-center gap-1.5 text-xs font-bold text-gray-400 px-3 py-1.5 rounded-full bg-gray-100">
+                                        class="flex items-center gap-1.5 text-xs font-bold text-outline px-3 py-1.5 rounded-full bg-gray-100">
                                         <RotateCcw :size="12" />
                                         Reset
                                     </button>
                                     <button @click="filterSheet = false"
                                         class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100">
-                                        <X :size="16" class="text-gray-500" />
+                                        <X :size="16" class="text-on-surface-variant" />
                                     </button>
                                 </div>
                             </div>
@@ -687,12 +687,12 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
 
                             <!-- Sport Type -->
                             <div>
-                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-3">Sport Type</p>
+                                <p class="text-[11px] font-black text-outline uppercase tracking-wider mb-3">Sport Type</p>
                                 <div class="flex flex-wrap gap-2">
                                     <button v-for="c in categories" :key="c.id"
                                         @click="draftSport = c.id"
                                         class="flex items-center gap-2 h-9 px-4 rounded-full text-xs font-bold transition-all"
-                                        :class="draftSport === c.id ? 'bg-black text-white shadow-md shadow-sm' : 'bg-gray-100 text-gray-500'">
+                                        :class="draftSport === c.id ? 'bg-primary text-white shadow-md shadow-sm' : 'bg-gray-100 text-on-surface-variant'">
                                         <component :is="c.icon" :size="13" :stroke-width="2.5" />
                                         {{ c.label }}
                                     </button>
@@ -701,12 +701,12 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
 
                             <!-- Distance -->
                             <div>
-                                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider mb-3">Search Radius</p>
+                                <p class="text-[11px] font-black text-outline uppercase tracking-wider mb-3">Search Radius</p>
                                 <div class="flex gap-2 flex-wrap">
                                     <button v-for="r in RADIUS_OPTIONS" :key="r"
                                         @click="draftRadius = r"
                                         class="h-9 px-5 rounded-full text-xs font-bold transition-all"
-                                        :class="draftRadius === r ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'">
+                                        :class="draftRadius === r ? 'bg-primary text-white' : 'bg-gray-100 text-on-surface-variant'">
                                         {{ r }} km
                                     </button>
                                 </div>
@@ -714,7 +714,7 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
 
                             <!-- Apply -->
                             <button @click="applyFilters"
-                                class="w-full bg-black text-white font-extrabold py-3.5 rounded-2xl text-sm active:scale-[0.98] transition-transform">
+                                class="w-full bg-primary text-white font-extrabold py-3.5 rounded-2xl text-sm active:scale-[0.98] transition-transform">
                                 Apply Filters
                                 <span v-if="draftSport !== 'All' || draftRadius !== 25" class="ml-1 opacity-70">
                                     ({{ (draftSport !== 'All' ? 1 : 0) + (draftRadius !== 25 ? 1 : 0) }} active)
@@ -747,15 +747,15 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                     <div v-if="locPicker" class="absolute bottom-0 inset-x-0 bg-white rounded-t-3xl px-5 pt-4 pb-10">
                         <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-5"></div>
                         <div class="flex items-center justify-between mb-5">
-                            <h3 class="text-base font-extrabold text-black">Change Location</h3>
+                            <h3 class="text-base font-extrabold text-on-surface">Change Location</h3>
                             <button @click="locPicker = false"
                                 class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100">
-                                <X :size="16" class="text-gray-500" />
+                                <X :size="16" class="text-on-surface-variant" />
                             </button>
                         </div>
                         <!-- City input -->
                         <div class="relative mb-3">
-                            <MapPin :size="16" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 z-10" />
+                            <MapPin :size="16" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-outline z-10" />
                             <input
                                 v-model="locInput"
                                 @input="onLocInputChange"
@@ -763,8 +763,8 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                                 type="text"
                                 placeholder="Enter city or area…"
                                 autofocus
-                                class="w-full pl-10 pr-10 py-3 rounded-2xl bg-white border border-gray-200 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:border border-gray-200" />
-                            <Loader2 v-if="locLoading" :size="15" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-black animate-spin" />
+                                class="w-full pl-10 pr-10 py-3 rounded-2xl bg-white border border-gray-200 text-sm placeholder:text-outline focus:outline-none focus:ring-2 focus:border border-gray-200" />
+                            <Loader2 v-if="locLoading" :size="15" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-on-surface animate-spin" />
                         </div>
 
                         <!-- Autocomplete suggestions -->
@@ -773,19 +773,19 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                                 v-for="(s, i) in locSuggestions" :key="i"
                                 @click="applyLocInput(s.label, s.lat, s.lng)"
                                 class="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white active:bg-gray-100 transition-colors border-b border-slate-50 last:border-0">
-                                <MapPin :size="14" class="text-gray-400 shrink-0" />
-                                <span class="text-sm text-gray-700 truncate">{{ s.label }}</span>
+                                <MapPin :size="14" class="text-outline shrink-0" />
+                                <span class="text-sm text-on-surface-variant truncate">{{ s.label }}</span>
                             </button>
                         </div>
 
                         <button @click="applyLocInput(null, null, null)" :disabled="!locInput.trim()"
-                            class="w-full bg-black text-white font-bold py-3 rounded-2xl text-sm mb-3 disabled:opacity-40 active:scale-[0.98] transition-transform">
+                            class="w-full bg-primary text-white font-bold py-3 rounded-2xl text-sm mb-3 disabled:opacity-40 active:scale-[0.98] transition-transform">
                             Search This Location
                         </button>
                         <!-- GPS option -->
                         <button @click="useGpsFromPicker"
-                            class="w-full flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-700 font-bold py-3 rounded-2xl text-sm active:bg-gray-100 transition-colors">
-                            <MapPin :size="15" class="text-black" />
+                            class="w-full flex items-center justify-center gap-2 bg-white border border-gray-200 text-on-surface-variant font-bold py-3 rounded-2xl text-sm active:bg-gray-100 transition-colors">
+                            <MapPin :size="15" class="text-on-surface" />
                             Use My GPS Location
                         </button>
                     </div>

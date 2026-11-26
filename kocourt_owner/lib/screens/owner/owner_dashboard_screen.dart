@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
@@ -168,6 +170,11 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       appBar: AppBar(
         title: const Text('My Venues', style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
+          IconButton(
+            tooltip: 'Scan a booking pass',
+            onPressed: () => context.push('/scan'),
+            icon: Icon(Icons.qr_code_scanner_rounded, color: context.brand.primary),
+          ),
           GestureDetector(
             onTap: () => Navigator.push(context, MaterialPageRoute(
               builder: (_) => const EditVenueScreen(),
@@ -216,9 +223,9 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           Center(
             child: Column(
               children: [
-                Icon(AppIcons.layoutGrid, size: 48, color: Colors.grey[300]),
+                Icon(AppIcons.layoutGrid, size: 48, color: AppColors.textDisabled),
                 const SizedBox(height: 16),
-                Text('No venues yet', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
+                Text('No venues yet', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
                 const SizedBox(height: 8),
                 ElevatedButton.icon(
                   onPressed: () => Navigator.push(context, MaterialPageRoute(
@@ -262,29 +269,13 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           const SizedBox(height: 18),
         ],
         if (owned.isNotEmpty) ...[
-          const Text(
-            'YOUR VENUES',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textMuted,
-              letterSpacing: 1.4,
-            ),
-          ),
+          Text('Your venues', style: GoogleFonts.archivo(fontSize: 18, fontWeight: FontWeight.w900)),
           const SizedBox(height: 10),
           ...owned.map(_venueCard),
         ],
         if (assigned.isNotEmpty) ...[
           if (owned.isNotEmpty) const SizedBox(height: 12),
-          const Text(
-            'ASSIGNED TO YOU',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textMuted,
-              letterSpacing: 1.4,
-            ),
-          ),
+          Text('Assigned to you', style: GoogleFonts.archivo(fontSize: 18, fontWeight: FontWeight.w900)),
           const SizedBox(height: 10),
           ...assigned.map(_venueCard),
         ],
@@ -295,14 +286,14 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w800,
-              color: Colors.grey[400],
+              color: AppColors.textMuted,
               letterSpacing: 1.5,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             'Nearby venues not yet on KoCourt',
-            style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
           ..._ghostPlaces.map((place) => _ghostPlaceCard(place)),
@@ -320,7 +311,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF4F2),
+        color: const Color(0xFFFEECEC),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
       ),
@@ -332,7 +323,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
           ),
           const SizedBox(height: 6),
-          Text(messages.join('\n'), style: TextStyle(fontSize: 13, color: Colors.grey[700], height: 1.4)),
+          Text(messages.join('\n'), style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4)),
           const SizedBox(height: 12),
           TextButton(
             onPressed: _loading ? null : () {
@@ -360,7 +351,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
+        color: context.brand.primary,
         child: Row(
           children: [
             Container(
@@ -380,7 +371,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 children: [
                   Text(
                     '$total $venueLabel',
-                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900),
+                    style: GoogleFonts.archivo(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -402,9 +393,9 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF8F7),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -438,7 +429,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       children: [
         Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textMuted)),
         const SizedBox(height: 4),
-        Text(_formatCurrency(amount), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+        Text(_formatCurrency(amount), style: GoogleFonts.archivo(fontSize: 22, fontWeight: FontWeight.w900)),
       ],
     );
   }
@@ -468,11 +459,18 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(c['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                  Text(c['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                   const SizedBox(height: 4),
-                  Text(venue.accessLabel, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      StatusTag(venue.accessLabel, tone: venue.isOwner ? TagTone.brand : TagTone.free),
+                      StatusTag.sport(c['type']),
+                    ],
+                  ),
                   const SizedBox(height: 2),
-                  Text(c['location'] ?? '', style: TextStyle(fontSize: 12, color: Colors.grey[500]), overflow: TextOverflow.ellipsis),
+                  Text(c['location'] ?? '', style: TextStyle(fontSize: 12, color: AppColors.textSecondary), overflow: TextOverflow.ellipsis),
                   if (courtId != null && _occupancy[courtId] != null) ...[
                     const SizedBox(height: 4),
                     Text(
@@ -530,7 +528,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                   const SizedBox(height: 3),
                   Text(
                     place['address'] ?? '',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

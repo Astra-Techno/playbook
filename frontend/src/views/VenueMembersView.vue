@@ -63,18 +63,18 @@ const cancelSub = async (sub) => {
         <div class="bg-white px-5 pt-5 pb-4 border-b border-gray-100">
             <div class="flex items-center justify-between mb-3">
                 <div>
-                    <h1 class="text-lg font-bold text-black">All Members</h1>
-                    <p class="text-xs text-gray-500">Active subscribers across all spaces</p>
+                    <h1 class="text-lg font-bold text-on-surface">All Members</h1>
+                    <p class="text-xs text-on-surface-variant">Active subscribers across all spaces</p>
                 </div>
                 <div v-if="!loading" class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-                    <span class="text-black font-extrabold text-sm">{{ members.length }}</span>
+                    <span class="text-on-surface font-extrabold text-sm">{{ members.length }}</span>
                 </div>
             </div>
             <!-- Search -->
             <div class="relative">
-                <Search :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Search :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-outline" />
                 <input v-model="search" type="text" placeholder="Search by name, plan or phone…"
-                    class="w-full bg-white border border-gray-200 rounded-xl pl-8 pr-3 py-2.5 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:border border-gray-200" />
+                    class="w-full bg-white border border-gray-200 rounded-xl pl-8 pr-3 py-2.5 text-sm placeholder:text-outline focus:outline-none focus:ring-2 focus:border border-gray-200" />
             </div>
         </div>
 
@@ -87,34 +87,34 @@ const cancelSub = async (sub) => {
                 <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
                     <UserCheck :size="26" class="text-gray-300" />
                 </div>
-                <p class="font-semibold text-gray-700">{{ search ? 'No matching members' : 'No active members' }}</p>
-                <p class="text-xs text-gray-400 mt-1">{{ search ? 'Try a different search' : 'Members who subscribe to space plans will appear here' }}</p>
+                <p class="font-semibold text-on-surface-variant">{{ search ? 'No matching members' : 'No active members' }}</p>
+                <p class="text-xs text-outline mt-1">{{ search ? 'Try a different search' : 'Members who subscribe to space plans will appear here' }}</p>
             </div>
 
             <div v-else class="space-y-2">
                 <div v-for="m in filtered" :key="m.id"
                     class="bg-white rounded-2xl px-4 py-3.5 shadow-sm ring-1 ring-slate-100">
                     <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 font-extrabold text-black text-sm">
+                        <div class="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center shrink-0 font-extrabold text-on-surface text-sm">
                             {{ (m.user_name || '?').charAt(0).toUpperCase() }}
                         </div>
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm font-bold text-black truncate">{{ m.user_name }}</p>
-                            <div class="flex items-center gap-1 text-[11px] text-gray-400 mt-0.5">
+                            <p class="text-sm font-bold text-on-surface truncate">{{ m.user_name }}</p>
+                            <div class="flex items-center gap-1 text-[11px] text-outline mt-0.5">
                                 <Award :size="10" />
                                 <span>{{ m.plan_name }}</span>
-                                <span class="text-gray-300">·</span>
-                                <span class="font-semibold text-black">₹{{ m.plan_price }}</span>
+                                <span class="text-outline">·</span>
+                                <span class="font-semibold text-on-surface">₹{{ m.plan_price }}</span>
                             </div>
                             <div class="flex items-center gap-3 mt-1.5 flex-wrap">
-                                <div class="flex items-center gap-1 text-[10px] text-gray-400">
+                                <div class="flex items-center gap-1 text-[10px] text-outline">
                                     <Calendar :size="10" />
                                     <span>Expires {{ fmtDate(m.end_date) }}</span>
                                 </div>
                                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                                    :class="daysLeft(m.end_date) <= 7  ? 'bg-red-50 text-red-500' :
-                                            daysLeft(m.end_date) <= 30 ? 'bg-amber-50 text-amber-600' :
-                                            'bg-emerald-50 text-emerald-600'">
+                                    :class="daysLeft(m.end_date) <= 7  ? 'bg-red-50 text-due' :
+                                            daysLeft(m.end_date) <= 30 ? 'bg-amber-50 text-ending' :
+                                            'bg-emerald-50 text-free'">
                                     {{ daysLeft(m.end_date) > 0 ? daysLeft(m.end_date) + 'd left' : 'Expired' }}
                                 </span>
                             </div>
@@ -122,12 +122,12 @@ const cancelSub = async (sub) => {
                         <div class="shrink-0 flex flex-col items-end gap-2">
                             <a v-if="m.user_phone" :href="`tel:${m.user_phone}`"
                                 class="w-8 h-8 rounded-xl bg-white flex items-center justify-center">
-                                <Phone :size="13" class="text-gray-400" />
+                                <Phone :size="13" class="text-outline" />
                             </a>
                             <button @click="cancelSub(m)" :disabled="cancellingId === m.id"
                                 class="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center active:scale-90 transition">
-                                <Loader2 v-if="cancellingId === m.id" :size="13" class="animate-spin text-red-400" />
-                                <X v-else :size="13" class="text-red-400" />
+                                <Loader2 v-if="cancellingId === m.id" :size="13" class="animate-spin text-due" />
+                                <X v-else :size="13" class="text-due" />
                             </button>
                         </div>
                     </div>

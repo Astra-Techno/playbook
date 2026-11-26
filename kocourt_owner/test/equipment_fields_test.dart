@@ -28,4 +28,11 @@ void main() {
     expect(returnBody('returned'), {'deposit_status': 'returned'});
     expect(returnBody('held'), isNull);
   });
+
+  test('rental price makes an item a player add-on', () {
+    expect(equipmentBody(name: 'Bat', quantity: '4', deposit: '500', rental: '50')?['rental_rupees'], 50);
+    expect(equipmentBody(name: 'Bat', quantity: '4', deposit: '500')?['rental_rupees'], 0);
+    expect(equipmentBody(name: 'Bat', quantity: '4', deposit: '500', rental: '-5'), isNull);
+    expect(equipmentLine({'quantity_on_hand': 4, 'out_quantity': 1, 'deposit_rupees': 500, 'rental_rupees': 50}), contains('Rent Rs 50'));
+  });
 }

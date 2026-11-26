@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kocourt_shared/kocourt_shared.dart';
 
 class PrivacyScreen extends StatelessWidget {
   const PrivacyScreen({super.key});
@@ -44,7 +45,7 @@ We may update this policy. We will notify you of significant changes.
 
 9. Contact
 For privacy concerns, contact us at privacy@kocourt.com.''',
-          style: TextStyle(fontSize: 14, color: Colors.grey[700], height: 1.6),
+          style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.6),
         ),
       ),
     );

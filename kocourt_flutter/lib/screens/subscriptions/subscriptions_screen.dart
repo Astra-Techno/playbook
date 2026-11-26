@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 
@@ -83,11 +84,11 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(AppIcons.award, size: 48, color: Colors.grey[300]),
+                      Icon(AppIcons.award, size: 48, color: AppColors.textDisabled),
                       const SizedBox(height: 16),
-                      Text('No memberships', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
+                      Text('No memberships', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
                       const SizedBox(height: 8),
-                      Text('Subscribe to a venue plan to get started', style: TextStyle(fontSize: 13, color: Colors.grey[400])),
+                      Text('Subscribe to a venue plan to get started', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
                     ],
                   ),
                 )
@@ -107,40 +108,53 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: isExpiring ? AppColors.error.withValues(alpha: 0.3) : Colors.grey[100]!),
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                          border: Border.all(color: isExpiring && isActive ? AppColors.warning : AppColors.border),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                Expanded(child: Text(s['court_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: isActive ? AppColors.secondary.withValues(alpha: 0.1) : AppColors.error.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    isActive ? 'ACTIVE' : 'EXPIRED',
-                                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: isActive ? AppColors.secondary : AppColors.error),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(s['court_name'] ?? '', style: GoogleFonts.archivo(fontWeight: FontWeight.w900, fontSize: 18)),
+                                      const SizedBox(height: 4),
+                                      isActive ? const StatusTag('Active', tone: TagTone.free) : const StatusTag('Expired', tone: TagTone.due),
+                                    ],
                                   ),
                                 ),
+                                // Season-pass countdown over the last 30 days.
+                                if (isActive && s['days_remaining'] != null)
+                                  SizedBox(
+                                    width: 54,
+                                    height: 54,
+                                    child: CustomPaint(
+                                      painter: StopwatchRingPainter(
+                                        progress: (daysRemaining / 30).clamp(0.0, 1.0),
+                                        color: isExpiring ? AppColors.warning : context.brand.primary,
+                                      ),
+                                      child: Center(
+                                        child: Text('${daysRemaining}d',
+                                            style: GoogleFonts.archivo(fontSize: 13, fontWeight: FontWeight.w900)),
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
                             const SizedBox(height: 8),
-                            Text(s['plan_name'] ?? '', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[600])),
+                            Text(s['plan_name'] ?? '', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
                             const SizedBox(height: 4),
-                            Text('${s['start_date'] ?? ''} → ${s['end_date'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                            Text('${s['start_date'] ?? ''} → ${s['end_date'] ?? ''}', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                             if (isExpiring && isActive) ...[
                               const SizedBox(height: 12),
                               Row(
                                 children: [
-                                  Icon(Icons.warning_amber_rounded, size: 14, color: Colors.orange[700]),
+                                  Icon(Icons.warning_amber_rounded, size: 14, color: AppColors.warningDark),
                                   const SizedBox(width: 4),
-                                  Text('Expiring in $daysRemaining days', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.orange[700])),
+                                  Text('Expiring in $daysRemaining days', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.warningDark)),
                                 ],
                               ),
                             ],

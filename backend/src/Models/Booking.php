@@ -102,7 +102,7 @@ class Booking {
     }
 
     public function readByUser($user_id) {
-        $query = "SELECT b.*, c.name as court_name, c.owner_id," .
+        $query = "SELECT b.*, c.name as court_name, c.type AS court_type, c.owner_id," .
                  " u.name as owner_name, COALESCE(r.status,br.status) AS refund_status, COALESCE(r.amount_paise,br.amount_paise) AS refund_amount_paise, r.refund_id AS refund_reference" .
                  " FROM " . $this->table_name . " b" .
                  " JOIN courts c ON b.court_id = c.id" .
@@ -115,7 +115,7 @@ class Booking {
             $stmt->execute([$user_id]);
             return $stmt;
         } catch (\PDOException $e) {
-            $fallback = "SELECT b.*, c.name as court_name, c.owner_id, u.name as owner_name" .
+            $fallback = "SELECT b.*, c.name as court_name, c.type AS court_type, c.owner_id, u.name as owner_name" .
                         " FROM " . $this->table_name . " b" .
                         " JOIN courts c ON b.court_id = c.id" .
                         " LEFT JOIN users u ON c.owner_id = u.id" .

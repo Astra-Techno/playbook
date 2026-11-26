@@ -18,6 +18,7 @@ import '../screens/owner/block_slots_screen.dart';
 import '../screens/chat/chat_screen.dart';
 import '../screens/chat/chat_threads_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
+import '../screens/owner/scan_check_in_screen.dart';
 import '../screens/admin/admin_screen.dart';
 import '../screens/admin/ledger_screen.dart';
 import '../screens/owner/payout_settings_screen.dart';
@@ -158,6 +159,7 @@ GoRouter createOwnerRouter(AuthProvider auth) {
 
       // Notifications
       GoRoute(path: '/notifications', builder: (context, state) => const NotificationsScreen()),
+      GoRoute(path: '/scan', pageBuilder: (_, state) => _slideFadePage(const ScanCheckInScreen(), state)),
 
       // Admin
       GoRoute(path: '/admin', builder: (context, state) => const AdminScreen()),

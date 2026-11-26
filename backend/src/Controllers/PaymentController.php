@@ -434,6 +434,19 @@ class PaymentController {
                     $fulfilled[] = $slotIndex;
                 }
             }
+            // Add-ons ride on the first slot; if it failed they are refunded with it.
+            if (!empty($commerce['addons']) && ($fulfilled[0] ?? null) === 0) {
+                require_once __DIR__ . '/../BookingAddons.php';
+                $kit = $commerce['addons'];
+                if (!BookingAddons::reserve($db, $courtId, $bookingIds[0], $kit['lines'], $kit['start'], $kit['end'])) {
+                    // shortcut: the booking's commerce_snapshot still includes the add-ons; a later cancellation refund could repay them twice. Rare race (two players paying for the last kit); fix if refunds report it.
+                    $missedVenue += (int)$kit['refund']['venue'];
+                    $missedFee += (int)$kit['refund']['fee'];
+                    $db->prepare('UPDATE bookings SET total_price = GREATEST(0, total_price - ?) WHERE id = ?')
+                        ->execute([$kit['refund']['venue'] / 100, $bookingIds[0]]);
+                    $takenSlots[] = 'add-ons (sold out, refunded)';
+                }
+            }
             }
             } finally {
                 if ($locked) SlotLock::release($db, $courtId);

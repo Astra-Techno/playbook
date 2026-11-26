@@ -29,17 +29,17 @@ const newPlan = ref({
 })
 
 const slotOptions = [
-    { id: 'morning',   label: 'Morning Batch', desc: 'Access during morning peak', icon: Sun,      cls: 'text-amber-600',  bg: 'bg-amber-50 border-amber-300' },
+    { id: 'morning',   label: 'Morning Batch', desc: 'Access during morning peak', icon: Sun,      cls: 'text-ending',  bg: 'bg-amber-50 border-amber-300' },
     { id: 'evening',   label: 'Evening Batch', desc: 'Access during evening peak', icon: Moon,     cls: 'text-indigo-600', bg: 'bg-indigo-50 border-indigo-300' },
-    { id: 'full_day',  label: 'Full Day',      desc: 'Both morning & evening',     icon: Layers3,  cls: 'text-black',bg: 'bg-gray-100 border-black/30' },
-    { id: 'unlimited', label: 'Unlimited',     desc: 'Any time, any slot',         icon: Infinity, cls: 'text-gray-500',  bg: 'bg-white border-slate-300' },
+    { id: 'full_day',  label: 'Full Day',      desc: 'Both morning & evening',     icon: Layers3,  cls: 'text-on-surface',bg: 'bg-gray-100 border-black/30' },
+    { id: 'unlimited', label: 'Unlimited',     desc: 'Any time, any slot',         icon: Infinity, cls: 'text-on-surface-variant',  bg: 'bg-white border-slate-300' },
 ]
 
 const slotMeta = {
-    morning:   { label: 'Morning',   cls: 'bg-amber-100 text-amber-700' },
+    morning:   { label: 'Morning',   cls: 'bg-amber-100 text-ending' },
     evening:   { label: 'Evening',   cls: 'bg-indigo-100 text-indigo-700' },
-    full_day:  { label: 'Full Day',  cls: 'bg-gray-100 text-black' },
-    unlimited: { label: 'Unlimited', cls: 'bg-gray-100 text-gray-500' },
+    full_day:  { label: 'Full Day',  cls: 'bg-gray-100 text-on-surface' },
+    unlimited: { label: 'Unlimited', cls: 'bg-gray-100 text-on-surface-variant' },
 }
 
 const durationPresets = [
@@ -120,8 +120,8 @@ const addPlan = async () => {
 
         <!-- Header -->
         <div class="bg-white px-5 pt-5 pb-5 border-b border-gray-100">
-            <h1 class="text-lg font-bold text-black">Membership Plans</h1>
-            <p class="text-xs text-gray-500">{{ spaceId ? `Plans for ${spaceName || 'this space'}` : 'Create & manage subscription plans for your court' }}</p>
+            <h1 class="text-lg font-bold text-on-surface">Membership Plans</h1>
+            <p class="text-xs text-on-surface-variant">{{ spaceId ? `Plans for ${spaceName || 'this space'}` : 'Create & manage subscription plans for your court' }}</p>
         </div>
 
         <!-- Content -->
@@ -131,21 +131,21 @@ const addPlan = async () => {
             <button
                 v-if="!showForm"
                 @click="showForm = true"
-                class="w-full flex items-center justify-center gap-2 bg-white border-2 border-dashed border-black/30 text-black font-semibold py-4 rounded-2xl mb-5 hover:bg-gray-100 transition-colors">
+                class="w-full flex items-center justify-center gap-2 bg-white border-2 border-dashed border-black/30 text-on-surface font-semibold py-4 rounded-2xl mb-5 hover:bg-gray-100 transition-colors">
                 <Plus :size="18" :stroke-width="2.5" />
                 Create New Plan
             </button>
 
             <!-- Add Plan Form -->
             <div v-if="showForm" class="card p-5 mb-5">
-                <h3 class="font-bold text-black mb-4">New Membership Plan</h3>
+                <h3 class="font-bold text-on-surface mb-4">New Membership Plan</h3>
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Plan Name *</label>
+                        <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Plan Name *</label>
                         <input v-model="newPlan.name" type="text" placeholder="e.g. Monthly Gold, Weekend Pass" class="input-field" />
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Access Type</label>
+                        <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Access Type</label>
                         <div class="grid grid-cols-2 gap-2">
                             <button
                                 v-for="opt in slotOptions"
@@ -157,22 +157,22 @@ const addPlan = async () => {
                                 class="flex items-center gap-2 p-3 rounded-xl transition-all text-left">
                                 <component :is="opt.icon" :size="16" :class="opt.cls" />
                                 <div>
-                                    <p class="text-xs font-bold text-black">{{ opt.label }}</p>
-                                    <p class="text-[10px] text-gray-400">{{ opt.desc }}</p>
+                                    <p class="text-xs font-bold text-on-surface">{{ opt.label }}</p>
+                                    <p class="text-[10px] text-outline">{{ opt.desc }}</p>
                                 </div>
                             </button>
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Duration</label>
+                        <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Duration</label>
                         <div class="grid grid-cols-4 gap-2 mb-2">
                             <button
                                 v-for="p in durationPresets"
                                 :key="p.days"
                                 @click="newPlan.duration_days = p.days"
                                 :class="newPlan.duration_days === p.days
-                                    ? 'bg-black text-white border-black'
-                                    : 'bg-white text-gray-500 border-gray-200'"
+                                    ? 'bg-primary text-white border-black'
+                                    : 'bg-white text-on-surface-variant border-gray-200'"
                                 class="py-2 rounded-xl border-2 text-xs font-semibold transition-all">
                                 {{ p.label }}
                             </button>
@@ -183,15 +183,15 @@ const addPlan = async () => {
                                 type="number"
                                 placeholder="Or enter custom days"
                                 class="input-field text-sm" />
-                            <span class="text-sm text-gray-500 shrink-0 font-medium">days</span>
+                            <span class="text-sm text-on-surface-variant shrink-0 font-medium">days</span>
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Price (₹) *</label>
+                        <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Price (₹) *</label>
                         <input v-model="newPlan.price" type="number" placeholder="e.g. 1500" class="input-field" />
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Description</label>
+                        <label class="block text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2">Description</label>
                         <textarea v-model="newPlan.description" rows="2" placeholder="What's included in this plan..." class="input-field resize-none text-sm"></textarea>
                     </div>
 
@@ -225,8 +225,8 @@ const addPlan = async () => {
                 <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Tag :size="28" class="text-gray-300" />
                 </div>
-                <p class="font-semibold text-gray-700">No plans yet</p>
-                <p class="text-sm text-gray-400 mt-1">Create membership plans to offer subscriptions to players.</p>
+                <p class="font-semibold text-on-surface-variant">No plans yet</p>
+                <p class="text-sm text-outline mt-1">Create membership plans to offer subscriptions to players.</p>
             </div>
 
             <div v-else class="space-y-4">
@@ -235,26 +235,26 @@ const addPlan = async () => {
                     :key="plan.id"
                     class="card p-5 relative overflow-hidden">
                     <!-- Popular badge -->
-                    <div v-if="index === 0" class="absolute top-0 right-0 bg-black text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl">
+                    <div v-if="index === 0" class="absolute top-0 right-0 bg-primary text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl">
                         POPULAR
                     </div>
 
                     <div class="flex items-start justify-between gap-3 mb-3">
                         <div>
-                            <h3 class="font-bold text-black text-base">{{ plan.name }}</h3>
-                            <p v-if="plan.description" class="text-sm text-gray-500 mt-0.5">{{ plan.description }}</p>
+                            <h3 class="font-bold text-on-surface text-base">{{ plan.name }}</h3>
+                            <p v-if="plan.description" class="text-sm text-on-surface-variant mt-0.5">{{ plan.description }}</p>
                         </div>
                         <div class="text-right shrink-0">
-                            <p class="text-2xl font-bold text-black">₹{{ plan.price }}</p>
+                            <p class="text-2xl font-bold text-on-surface">₹{{ plan.price }}</p>
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-3 flex-wrap text-sm text-gray-500">
+                    <div class="flex items-center gap-3 flex-wrap text-sm text-on-surface-variant">
                         <span class="flex items-center gap-1.5">
-                            <Calendar :size="14" class="text-gray-400" />
+                            <Calendar :size="14" class="text-outline" />
                             {{ plan.duration_days }} days validity
                         </span>
-                        <span class="flex items-center gap-1.5 text-black font-medium">
+                        <span class="flex items-center gap-1.5 text-on-surface font-medium">
                             <IndianRupee :size="13" />
                             {{ Math.round(plan.price / plan.duration_days) }}/day
                         </span>
@@ -268,7 +268,7 @@ const addPlan = async () => {
                         <button
                             @click="deletePlan(plan.id)"
                             :disabled="deletingId === plan.id"
-                            class="flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-700 disabled:opacity-50 transition-colors">
+                            class="flex items-center gap-1.5 text-xs font-semibold text-due hover:text-due disabled:opacity-50 transition-colors">
                             <span v-if="deletingId === plan.id" class="w-3 h-3 border-2 border-red-300 border-t-red-500 rounded-full animate-spin"></span>
                             <Trash2 v-else :size="14" />
                             Delete Plan

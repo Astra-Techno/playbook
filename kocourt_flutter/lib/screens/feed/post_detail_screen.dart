@@ -77,7 +77,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     children: [
                       CircleAvatar(
                         radius: 20,
-                        backgroundColor: Colors.grey[200],
+                        backgroundColor: AppColors.border,
                         child: Text((_post!['user_name'] ?? 'U')[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800)),
                       ),
                       const SizedBox(width: 12),
@@ -86,7 +86,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(_post!['user_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                            Text(_post!['created_at'] ?? '', style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                            Text(_post!['created_at'] ?? '', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                           ],
                         ),
                       ),
@@ -111,16 +111,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                         child: Row(
                           children: [
                             Icon(_post!['user_liked'] == true ? AppIcons.heartFilled : AppIcons.heart,
-                                size: 20, color: _post!['user_liked'] == true ? AppColors.error : Colors.grey[400]),
+                                size: 20, color: _post!['user_liked'] == true ? AppColors.error : AppColors.textMuted),
                             const SizedBox(width: 6),
-                            Text('${_post!['likes_count'] ?? 0}', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
+                            Text('${_post!['likes_count'] ?? 0}', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
                           ],
                         ),
                       ),
                       const SizedBox(width: 24),
-                      Icon(AppIcons.messageCircle, size: 20, color: Colors.grey[400]),
+                      Icon(AppIcons.messageCircle, size: 20, color: AppColors.textMuted),
                       const SizedBox(width: 6),
-                      Text('${_comments.length}', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
+                      Text('${_comments.length}', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
                     ],
                   ),
                   const Divider(height: 32),
@@ -132,7 +132,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                       children: [
                         CircleAvatar(
                           radius: 14,
-                          backgroundColor: Colors.grey[200],
+                          backgroundColor: AppColors.border,
                           child: Text((c['user_name'] ?? 'U')[0].toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
                         ),
                         const SizedBox(width: 10),
@@ -142,7 +142,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                             children: [
                               Text(c['user_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                               const SizedBox(height: 2),
-                              Text(c['content'] ?? '', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                              Text(c['content'] ?? '', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                             ],
                           ),
                         ),
@@ -158,7 +158,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
             padding: EdgeInsets.only(left: 20, right: 8, top: 8, bottom: MediaQuery.of(context).padding.bottom + 8),
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border(top: BorderSide(color: Colors.grey[100]!)),
+              border: Border(top: BorderSide(color: AppColors.surfaceDim)),
             ),
             child: Row(
               children: [
@@ -168,7 +168,7 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
                     decoration: InputDecoration(
                       hintText: 'Add a comment...',
                       filled: true,
-                      fillColor: Colors.grey[100],
+                      fillColor: AppColors.surfaceDim,
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     ),

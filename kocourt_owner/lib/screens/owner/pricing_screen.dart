@@ -235,11 +235,21 @@ class _PricingScreenState extends State<PricingScreen> {
   Widget _previewCard() {
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Preview one hour', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Row(
+            children: [
+              Icon(Icons.bolt_rounded, size: 18, color: AppColors.warningDark),
+              SizedBox(width: 4),
+              Text('Preview one hour', style: TextStyle(fontWeight: FontWeight.w800)),
+            ],
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -282,28 +292,35 @@ class _PricingScreenState extends State<PricingScreen> {
     final day = pricingDayLabel('${rule['day_type'] ?? 'all'}');
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
+      ),
       child: Row(
         children: [
-          const Icon(Icons.price_change, size: 18, color: AppColors.primary),
+          TimePlate(top: '₹${num.tryParse('${rule['price']}')?.round() ?? rule['price']}', bottom: '/hr', width: 70),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${rule['name'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                Text('${rule['name'] ?? ''}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                const SizedBox(height: 2),
                 Text(
-                  '$day · ${rule['start_hour']}:00–${rule['end_hour']}:00 · ₹${rule['price']}/hr · priority ${rule['priority'] ?? 0}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  '${rule['start_hour']}:00 – ${rule['end_hour']}:00 · priority ${rule['priority'] ?? 0}',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
+                const SizedBox(height: 4),
+                StatusTag(day, tone: TagTone.ending),
               ],
             ),
           ),
           if (id != null)
             IconButton(
               onPressed: () => _deleteRule(id),
-              icon: Icon(Icons.delete_outline, size: 18, color: Colors.grey[400]),
+              icon: Icon(Icons.delete_outline, size: 18, color: AppColors.textMuted),
             ),
         ],
       ),

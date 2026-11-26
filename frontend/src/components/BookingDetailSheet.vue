@@ -37,10 +37,10 @@ const formatDate = (dt) => {
 }
 
 const statusMeta = computed(() => ({
-    confirmed: { label: 'Confirmed',  cls: 'bg-emerald-100 text-emerald-700' },
-    pending:   { label: 'Pending',    cls: 'bg-amber-100 text-amber-700' },
-    cancelled: { label: 'Cancelled',  cls: 'bg-gray-100 text-gray-500' },
-}[props.booking?.status] ?? { label: props.booking?.status, cls: 'bg-gray-100 text-gray-500' }))
+    confirmed: { label: 'Confirmed',  cls: 'bg-emerald-100 text-free' },
+    pending:   { label: 'Pending',    cls: 'bg-amber-100 text-ending' },
+    cancelled: { label: 'Cancelled',  cls: 'bg-gray-100 text-on-surface-variant' },
+}[props.booking?.status] ?? { label: props.booking?.status, cls: 'bg-gray-100 text-on-surface-variant' }))
 
 const canCancel = computed(() => {
     if (!props.booking) return false
@@ -90,10 +90,10 @@ const cancelBooking = async () => {
                         <div class="pt-3 pb-4 px-5 border-b border-gray-100">
                             <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4"></div>
                             <div class="flex items-center justify-between">
-                                <h3 class="text-base font-extrabold text-black">Booking Details</h3>
+                                <h3 class="text-base font-extrabold text-on-surface">Booking Details</h3>
                                 <button @click="close"
                                     class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 active:scale-90 transition-transform">
-                                    <X :size="16" class="text-gray-500" />
+                                    <X :size="16" class="text-on-surface-variant" />
                                 </button>
                             </div>
                         </div>
@@ -107,7 +107,7 @@ const cancelBooking = async () => {
                                     {{ statusMeta.label }}
                                 </span>
                                 <span v-if="booking.total_price"
-                                    class="text-lg font-extrabold text-black flex items-center gap-0.5">
+                                    class="text-lg font-extrabold text-on-surface flex items-center gap-0.5">
                                     <IndianRupee :size="14" :stroke-width="2.5" />{{ booking.total_price }}
                                 </span>
                             </div>
@@ -115,14 +115,14 @@ const cancelBooking = async () => {
                             <!-- Player -->
                             <div class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3">
                                 <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                                    <User :size="18" class="text-black" />
+                                    <User :size="18" class="text-on-surface" />
                                 </div>
                                 <div class="flex-1 min-w-0">
-                                    <p class="font-bold text-black text-sm truncate">{{ playerName }}</p>
-                                    <p v-if="playerPhone" class="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                                    <p class="font-bold text-on-surface text-sm truncate">{{ playerName }}</p>
+                                    <p v-if="playerPhone" class="text-xs text-on-surface-variant flex items-center gap-1 mt-0.5">
                                         <Phone :size="10" /> {{ playerPhone }}
                                     </p>
-                                    <p v-else class="text-xs text-gray-400">Member</p>
+                                    <p v-else class="text-xs text-outline">Member</p>
                                 </div>
                             </div>
 
@@ -130,26 +130,26 @@ const cancelBooking = async () => {
                             <div class="grid grid-cols-2 gap-3">
                                 <div v-if="spaceName" class="bg-white rounded-2xl px-4 py-3">
                                     <div class="flex items-center gap-1.5 mb-1">
-                                        <MapPin :size="12" class="text-gray-400" />
-                                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Space</span>
+                                        <MapPin :size="12" class="text-outline" />
+                                        <span class="text-[10px] font-bold text-outline uppercase tracking-wide">Space</span>
                                     </div>
-                                    <p class="text-sm font-bold text-black truncate">{{ spaceName }}</p>
+                                    <p class="text-sm font-bold text-on-surface truncate">{{ spaceName }}</p>
                                 </div>
                                 <div class="bg-white rounded-2xl px-4 py-3" :class="spaceName ? '' : 'col-span-2'">
                                     <div class="flex items-center gap-1.5 mb-1">
-                                        <CalendarDays :size="12" class="text-gray-400" />
-                                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Date</span>
+                                        <CalendarDays :size="12" class="text-outline" />
+                                        <span class="text-[10px] font-bold text-outline uppercase tracking-wide">Date</span>
                                     </div>
-                                    <p class="text-sm font-bold text-black">{{ formatDate(booking.start_time) }}</p>
+                                    <p class="text-sm font-bold text-on-surface">{{ formatDate(booking.start_time) }}</p>
                                 </div>
                             </div>
 
                             <!-- Time -->
                             <div class="bg-white rounded-2xl px-4 py-3 flex items-center gap-3">
-                                <Clock :size="18" class="text-black shrink-0" />
+                                <Clock :size="18" class="text-on-surface shrink-0" />
                                 <div>
-                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">Time</p>
-                                    <p class="text-sm font-extrabold text-black">
+                                    <p class="text-[10px] font-bold text-outline uppercase tracking-wide mb-0.5">Time</p>
+                                    <p class="text-sm font-extrabold text-on-surface">
                                         {{ formatTime(booking.start_time) }} – {{ formatTime(booking.end_time) }}
                                     </p>
                                 </div>
@@ -157,8 +157,8 @@ const cancelBooking = async () => {
 
                             <!-- Notes -->
                             <div v-if="booking.notes" class="bg-white rounded-2xl px-4 py-3 flex items-start gap-3">
-                                <FileText :size="16" class="text-gray-400 mt-0.5 shrink-0" />
-                                <p class="text-sm text-gray-500 leading-relaxed">{{ booking.notes }}</p>
+                                <FileText :size="16" class="text-outline mt-0.5 shrink-0" />
+                                <p class="text-sm text-on-surface-variant leading-relaxed">{{ booking.notes }}</p>
                             </div>
 
                             <!-- Cancel button -->
@@ -166,7 +166,7 @@ const cancelBooking = async () => {
                                 @click="cancelBooking"
                                 :disabled="cancelLoading"
                                 class="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl
-                                       bg-red-50 text-red-600 font-bold text-sm
+                                       bg-red-50 text-due font-bold text-sm
                                        active:bg-red-100 active:scale-[0.98] transition-all
                                        disabled:opacity-50">
                                 <Loader2 v-if="cancelLoading" :size="16" class="animate-spin" />

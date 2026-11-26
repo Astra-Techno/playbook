@@ -23,8 +23,8 @@ const renderContent = (text) => {
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/\n/g, '<br>')
     return escaped
-        .replace(/@(\w+)/g, '<span class="text-black font-semibold">@$1</span>')
-        .replace(/#(\w+)/g, '<span class="text-black font-semibold">#$1</span>')
+        .replace(/@(\w+)/g, '<span class="text-on-surface font-semibold">@$1</span>')
+        .replace(/#(\w+)/g, '<span class="text-on-surface font-semibold">#$1</span>')
 }
 
 const timeAgo = (dt) => {
@@ -169,13 +169,13 @@ watch(() => route.fullPath, () => {
                     <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center border-2 border-dashed border-slate-300 relative group">
                         <div class="w-13 h-13 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                             <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover opacity-60" />
-                            <span v-else class="text-xs font-bold text-black opacity-60">{{ initials(auth.user?.name) }}</span>
+                            <span v-else class="text-xs font-bold text-on-surface opacity-60">{{ initials(auth.user?.name) }}</span>
                         </div>
-                        <div class="absolute bottom-0 right-0 w-6 h-6 bg-black rounded-full flex items-center justify-center border-2 border-white ring-2 border border-gray-200 shadow-sm group-active:scale-90 transition-transform">
+                        <div class="absolute bottom-0 right-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center border-2 border-white ring-2 border border-gray-200 shadow-sm group-active:scale-90 transition-transform">
                             <AtSign :size="12" class="text-white" />
                         </div>
                     </div>
-                    <span class="text-[10px] font-bold text-gray-400">My Story</span>
+                    <span class="text-[10px] font-bold text-outline">My Story</span>
                 </div>
 
                 <!-- Trending Stories -->
@@ -195,7 +195,7 @@ watch(() => route.fullPath, () => {
                                 onerror="this.src='https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=120&q=80'" />
                         </div>
                     </div>
-                    <span class="text-[10px] font-bold text-black truncate max-w-[64px]">{{ item.name }}</span>
+                    <span class="text-[10px] font-bold text-on-surface truncate max-w-[64px]">{{ item.name }}</span>
                 </div>
             </div>
         </div>
@@ -206,10 +206,10 @@ watch(() => route.fullPath, () => {
                 class="w-full bg-white rounded-2xl shadow-soft ring-1 ring-slate-100 px-4 py-3 flex items-center gap-3 active:scale-[0.98] transition-transform">
                 <div class="w-9 h-9 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center shrink-0">
                     <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
-                    <span v-else class="text-xs font-extrabold text-black">{{ initials(auth.user?.name) }}</span>
+                    <span v-else class="text-xs font-extrabold text-on-surface">{{ initials(auth.user?.name) }}</span>
                 </div>
-                <span class="flex-1 text-sm text-gray-300 font-bold text-left">Share your match experience…</span>
-                <div class="w-8 h-8 rounded-full bg-black flex items-center justify-center shrink-0">
+                <span class="flex-1 text-sm text-outline font-bold text-left">Share your match experience…</span>
+                <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
                     <Send :size="14" class="text-white" />
                 </div>
             </button>
@@ -232,8 +232,8 @@ watch(() => route.fullPath, () => {
 
             <div v-else-if="posts.length === 0" class="text-center py-20 px-8">
                 <div class="text-5xl mb-4">🏆</div>
-                <p class="font-bold text-gray-700 text-base">No posts yet</p>
-                <p class="text-sm text-gray-400 mt-1">Be the first to share something with the community!</p>
+                <p class="font-bold text-on-surface-variant text-base">No posts yet</p>
+                <p class="text-sm text-outline mt-1">Be the first to share something with the community!</p>
             </div>
 
             <div v-else class="space-y-4">
@@ -246,21 +246,21 @@ watch(() => route.fullPath, () => {
                                     <img v-if="post.avatar_url || (post.user_id === auth.user?.id && auth.user?.avatar_url)"
                                         :src="post.avatar_url || auth.user?.avatar_url"
                                         class="w-full h-full object-cover" />
-                                    <span v-else class="text-[10px] font-extrabold text-black">{{ initials(post.user_name) }}</span>
+                                    <span v-else class="text-[10px] font-extrabold text-on-surface">{{ initials(post.user_name) }}</span>
                                 </div>
                             </div>
                             <div class="min-w-0">
-                                <p class="text-sm font-bold text-black leading-none mb-1">{{ post.user_name }}</p>
-                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{{ timeAgo(post.created_at) }}</p>
+                                <p class="text-sm font-bold text-on-surface leading-none mb-1">{{ post.user_name }}</p>
+                                <p class="text-[10px] font-bold text-outline uppercase tracking-wider">{{ timeAgo(post.created_at) }}</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
                             <button v-if="auth.user?.id === post.user_id"
                                 @click="deletePost(post)"
-                                class="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all active:scale-90">
+                                class="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-due hover:bg-red-50 transition-all active:scale-90">
                                 <Trash2 :size="15" />
                             </button>
-                            <button class="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-black hover:bg-white transition-all">
+                            <button class="w-8 h-8 rounded-full flex items-center justify-center text-outline hover:text-on-surface hover:bg-white transition-all">
                                 <MoreHorizontal :size="18" />
                             </button>
                         </div>
@@ -268,7 +268,7 @@ watch(() => route.fullPath, () => {
 
                     <!-- Post Content -->
                     <p v-if="post.content?.trim()"
-                        class="text-sm text-black mb-4 leading-relaxed cursor-pointer"
+                        class="text-sm text-on-surface mb-4 leading-relaxed cursor-pointer"
                         v-html="renderContent(post.content)"
                         @click="router.push(`/feed/${post.id}`)"></p>
 
@@ -325,24 +325,24 @@ watch(() => route.fullPath, () => {
                         <div class="flex items-center gap-6">
                             <button @click="toggleLike(post)"
                                 class="flex items-center gap-2 text-xs font-bold transition-all active:scale-95 group"
-                                :class="post.is_liked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'">
+                                :class="post.is_liked ? 'text-due' : 'text-on-surface-variant hover:text-due'">
                                 <div class="w-9 h-9 rounded-full flex items-center justify-center transition-colors"
                                     :class="post.is_liked ? 'bg-red-50' : 'group-hover:bg-red-50'">
                                     <Heart :size="20"
-                                        :class="post.is_liked ? 'fill-red-500 text-red-500' : ''"
+                                        :class="post.is_liked ? 'fill-red-500 text-due' : ''"
                                         :stroke-width="post.is_liked ? 0 : 2.5" />
                                 </div>
                                 <span class="tabular-nums">{{ post.likes_count || 'Like' }}</span>
                             </button>
                             <button @click="router.push(`/feed/${post.id}`)"
-                                class="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-black active:scale-95 group">
+                                class="flex items-center gap-2 text-xs font-bold text-on-surface-variant hover:text-on-surface active:scale-95 group">
                                 <div class="w-9 h-9 rounded-full flex items-center justify-center group-hover:bg-gray-50 transition-colors">
                                     <MessageCircle :size="20" :stroke-width="2.5" />
                                 </div>
                                 <span>Comment</span>
                             </button>
                             <button @click="sharePost(post)"
-                                class="flex items-center gap-2 text-xs font-bold text-gray-500 hover:text-black active:scale-95 group">
+                                class="flex items-center gap-2 text-xs font-bold text-on-surface-variant hover:text-on-surface active:scale-95 group">
                                 <div class="w-9 h-9 rounded-full flex items-center justify-center group-hover:bg-gray-100 transition-colors">
                                     <Share2 :size="18" :stroke-width="2.5" />
                                 </div>
@@ -352,7 +352,7 @@ watch(() => route.fullPath, () => {
 
                         <!-- Tiny summary -->
                         <div v-if="post.likes_count > 0" class="flex -space-x-2">
-                             <div class="w-6 h-6 rounded-full border-2 border-white bg-black flex items-center justify-center shadow-sm">
+                             <div class="w-6 h-6 rounded-full border-2 border-white bg-primary flex items-center justify-center shadow-sm">
                                  <Heart :size="10" class="text-white fill-white" />
                              </div>
                         </div>
@@ -371,7 +371,7 @@ watch(() => route.fullPath, () => {
                     leave-from-class="opacity-100"
                     leave-to-class="opacity-0">
                     <div v-if="lightbox"
-                        class="fixed inset-0 z-[9999] bg-black flex flex-col"
+                        class="fixed inset-0 z-[9999] bg-primary flex flex-col"
                         @touchstart="onTouchStart" @touchend="onTouchEnd">
                         <div class="flex items-center justify-between px-4 pt-14 pb-3 shrink-0">
                             <button @click="closeLightbox"

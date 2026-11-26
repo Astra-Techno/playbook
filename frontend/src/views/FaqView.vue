@@ -85,7 +85,7 @@ const toggle = (key) => {
 
         <!-- Intro -->
         <div class="bg-white px-5 py-6 border-b border-gray-100">
-            <p class="text-sm text-gray-500 leading-relaxed">
+            <p class="text-sm text-on-surface-variant leading-relaxed">
                 Find answers to common questions about booking courts, memberships, and managing your account.
             </p>
         </div>
@@ -93,14 +93,14 @@ const toggle = (key) => {
         <!-- FAQ sections -->
         <div class="px-4 pt-5 space-y-6">
             <div v-for="section in faqs" :key="section.section">
-                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">{{ section.section }}</p>
+                <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-3">{{ section.section }}</p>
                 <div class="bg-white rounded-2xl ring-1 ring-slate-100 overflow-hidden divide-y divide-slate-50">
                     <div v-for="(item, i) in section.items" :key="i">
                         <button
                             @click="toggle(section.section + i)"
                             class="w-full flex items-center justify-between gap-3 px-5 py-4 text-left active:bg-white transition-colors">
-                            <span class="text-sm font-bold text-black leading-snug">{{ item.q }}</span>
-                            <ChevronDown :size="16" class="text-gray-400 shrink-0 transition-transform duration-200"
+                            <span class="text-sm font-bold text-on-surface leading-snug">{{ item.q }}</span>
+                            <ChevronDown :size="16" class="text-outline shrink-0 transition-transform duration-200"
                                 :class="openIndex === section.section + i ? 'rotate-180' : ''" />
                         </button>
                         <Transition
@@ -111,7 +111,7 @@ const toggle = (key) => {
                             leave-from-class="max-h-40 opacity-100"
                             leave-to-class="max-h-0 opacity-0">
                             <div v-if="openIndex === section.section + i"
-                                class="px-5 pb-4 text-sm text-gray-500 leading-relaxed border-t border-slate-50 pt-3">
+                                class="px-5 pb-4 text-sm text-on-surface-variant leading-relaxed border-t border-slate-50 pt-3">
                                 {{ item.a }}
                             </div>
                         </Transition>
@@ -122,8 +122,8 @@ const toggle = (key) => {
 
         <!-- Contact -->
         <div class="mx-4 mt-6 mb-4 bg-gray-50 rounded-2xl px-5 py-5 text-center">
-            <p class="text-sm font-black text-black mb-1">Still have questions?</p>
-            <p class="text-xs text-gray-500">Reach us at <span class="text-black font-bold">support@kocourt.com</span></p>
+            <p class="text-sm font-black text-on-surface mb-1">Still have questions?</p>
+            <p class="text-xs text-on-surface-variant">Reach us at <span class="text-on-surface font-bold">support@kocourt.com</span></p>
         </div>
 
     </div>

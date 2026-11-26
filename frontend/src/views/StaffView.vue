@@ -69,17 +69,17 @@ const initials = (name) => (name || '?').split(' ').map(p => p[0]).join('').toUp
     <div class="min-h-full bg-white">
         <!-- Header -->
         <div class="bg-white px-5 pt-5 pb-5 border-b border-gray-100">
-            <h1 class="text-lg font-bold text-black">Staff</h1>
-            <p class="text-xs text-gray-500">Manage staff and their permissions</p>
+            <h1 class="text-lg font-bold text-on-surface">Staff</h1>
+            <p class="text-xs text-on-surface-variant">Manage staff and their permissions</p>
         </div>
 
         <div class="px-5 py-5 pb-8 space-y-6">
 
             <!-- Add Staff -->
             <div class="bg-white rounded-2xl p-4 shadow-sm ring-1 ring-slate-100 space-y-3">
-                <p class="text-[11px] font-black text-gray-400 uppercase tracking-wider">Add Staff Member</p>
+                <p class="text-[11px] font-black text-outline uppercase tracking-wider">Add Staff Member</p>
                 <div class="flex items-center gap-2 ring-1 ring-slate-200 rounded-xl px-4 h-12 focus-within:border border-black transition-all bg-white">
-                    <Phone :size="15" class="text-gray-400 shrink-0" />
+                    <Phone :size="15" class="text-outline shrink-0" />
                     <input v-model="phone" type="tel" placeholder="Staff phone number"
                         class="flex-1 text-sm bg-transparent border-none focus:ring-0 placeholder:text-gray-300"
                         @keyup.enter="addStaff" />
@@ -87,21 +87,21 @@ const initials = (name) => (name || '?').split(' ').map(p => p[0]).join('').toUp
                 <div class="flex gap-2">
                     <button @click="role = 'manager'"
                         class="flex-1 flex items-center justify-center gap-2 h-10 rounded-xl text-xs font-bold transition-all"
-                        :class="role === 'manager' ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'">
+                        :class="role === 'manager' ? 'bg-primary text-white' : 'bg-gray-100 text-on-surface-variant'">
                         <Shield :size="13" /> Manager
                     </button>
                     <button @click="role = 'viewer'"
                         class="flex-1 flex items-center justify-center gap-2 h-10 rounded-xl text-xs font-bold transition-all"
-                        :class="role === 'viewer' ? 'bg-black text-white' : 'bg-gray-100 text-gray-500'">
+                        :class="role === 'viewer' ? 'bg-primary text-white' : 'bg-gray-100 text-on-surface-variant'">
                         <Eye :size="13" /> Viewer
                     </button>
                 </div>
-                <p class="text-[11px] text-gray-400 px-1">
+                <p class="text-[11px] text-outline px-1">
                     <template v-if="role === 'manager'">Can view, create &amp; cancel bookings</template>
                     <template v-else>Can view bookings only</template>
                 </p>
                 <button @click="addStaff" :disabled="addLoading"
-                    class="w-full bg-black text-white text-sm font-extrabold py-3 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-60">
+                    class="w-full bg-primary text-white text-sm font-extrabold py-3 rounded-xl flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-60">
                     <Loader2 v-if="addLoading" :size="15" class="animate-spin" />
                     <UserPlus v-else :size="15" />
                     Add Staff
@@ -110,9 +110,9 @@ const initials = (name) => (name || '?').split(' ').map(p => p[0]).join('').toUp
 
             <!-- Staff List -->
             <div>
-                <p class="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2 px-1">
+                <p class="text-[11px] font-black text-outline uppercase tracking-widest mb-2 px-1">
                     Current Staff
-                    <span v-if="staff.length" class="ml-1 bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-[10px]">{{ staff.length }}</span>
+                    <span v-if="staff.length" class="ml-1 bg-gray-100 text-on-surface-variant px-1.5 py-0.5 rounded-full text-[10px]">{{ staff.length }}</span>
                 </p>
 
                 <div v-if="loading" class="space-y-3">
@@ -121,10 +121,10 @@ const initials = (name) => (name || '?').split(' ').map(p => p[0]).join('').toUp
 
                 <div v-else-if="staff.length === 0" class="bg-white rounded-2xl flex flex-col items-center py-10 text-center shadow-sm ring-1 ring-slate-100">
                     <div class="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center mb-3">
-                        <Users :size="22" class="text-gray-400" />
+                        <Users :size="22" class="text-outline" />
                     </div>
-                    <p class="text-sm font-bold text-gray-500">No staff added yet</p>
-                    <p class="text-xs text-gray-400 mt-1">Add staff by phone number above</p>
+                    <p class="text-sm font-bold text-on-surface-variant">No staff added yet</p>
+                    <p class="text-xs text-outline mt-1">Add staff by phone number above</p>
                 </div>
 
                 <div v-else class="space-y-2">
@@ -132,20 +132,20 @@ const initials = (name) => (name || '?').split(' ').map(p => p[0]).join('').toUp
                         class="flex items-center gap-3 bg-white rounded-2xl px-4 py-3 shadow-sm ring-1 ring-slate-100">
                         <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
                             <img v-if="member.avatar_url" :src="member.avatar_url" class="w-full h-full object-cover" />
-                            <span v-else class="text-xs font-extrabold text-black">{{ initials(member.name) }}</span>
+                            <span v-else class="text-xs font-extrabold text-on-surface">{{ initials(member.name) }}</span>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <p class="text-sm font-bold text-black truncate">{{ member.name }}</p>
-                            <p class="text-xs text-gray-400">{{ member.phone }}</p>
+                            <p class="text-sm font-bold text-on-surface truncate">{{ member.name }}</p>
+                            <p class="text-xs text-outline">{{ member.phone }}</p>
                         </div>
                         <span class="text-[10px] font-black px-2.5 py-1 rounded-full shrink-0"
-                            :class="member.role === 'manager' ? 'bg-gray-100 text-black' : 'bg-slate-200 text-gray-500'">
+                            :class="member.role === 'manager' ? 'bg-gray-100 text-on-surface' : 'bg-slate-200 text-on-surface-variant'">
                             {{ member.role }}
                         </span>
                         <button @click="removeStaff(member)" :disabled="removeId === member.id"
                             class="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center shrink-0 active:scale-90 transition disabled:opacity-50">
-                            <Loader2 v-if="removeId === member.id" :size="13" class="animate-spin text-red-400" />
-                            <Trash2 v-else :size="13" class="text-red-400" />
+                            <Loader2 v-if="removeId === member.id" :size="13" class="animate-spin text-due" />
+                            <Trash2 v-else :size="13" class="text-due" />
                         </button>
                     </div>
                 </div>

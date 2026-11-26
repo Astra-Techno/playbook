@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
@@ -136,16 +137,16 @@ class _MatchesScreenState extends State<MatchesScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(AppIcons.users, size: 48, color: Colors.grey[300]),
+                      Icon(AppIcons.users, size: 48, color: AppColors.textDisabled),
                       const SizedBox(height: 16),
                       Text(
                         'No open matches',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.grey[700]),
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         'Create one and find players',
-                        style: TextStyle(color: Colors.grey[400]),
+                        style: TextStyle(color: AppColors.textMuted),
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
@@ -186,100 +187,67 @@ class _MatchesScreenState extends State<MatchesScreen> {
     final spotsLeft = matchSpotsLeft(slotsNeeded, joinedCount > participants.length ? joinedCount : participants.length);
     final isFull = spotsLeft == 0;
 
+    final sport = (match['sport'] ?? match['sport_type'] ?? '').toString();
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[100]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              if (match['sport'] != null || match['sport_type'] != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    (match['sport'] ?? match['sport_type'] ?? '').toString().toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
+              if (sport.isNotEmpty) StatusTag.sport(sport),
               const Spacer(),
-              if (isFull)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text('FULL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.orange)),
-                )
-              else
-                Text(
-                  match['date'] ?? '',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                ),
+              isFull
+                  ? const StatusTag('Full', tone: TagTone.ending)
+                  : StatusTag('Need $spotsLeft', tone: TagTone.free),
             ],
           ),
           const SizedBox(height: 10),
           Text(
             match['title'] ?? match['court_name'] ?? 'Looking for players',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            style: GoogleFonts.archivo(fontSize: 17, fontWeight: FontWeight.w800),
           ),
           if (match['court_name'] != null && match['title'] != null) ...[
             const SizedBox(height: 2),
             Text(
               match['court_name'],
-              style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
           ],
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(AppIcons.calendarDays, size: 13, color: Colors.grey[400]),
+              Icon(AppIcons.calendarDays, size: 13, color: AppColors.textMuted),
               const SizedBox(width: 4),
               Text(
                 match['date'] ?? '',
-                style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
               const SizedBox(width: 16),
-              Icon(AppIcons.clock, size: 13, color: Colors.grey[400]),
+              Icon(AppIcons.clock, size: 13, color: AppColors.textMuted),
               const SizedBox(width: 4),
               Text(
                 '${_formatTime(match['start_time'])} - ${_formatTime(match['end_time'])}',
-                style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Row(
             children: [
-              Icon(AppIcons.users, size: 13, color: Colors.grey[400]),
+              Icon(AppIcons.users, size: 13, color: AppColors.textMuted),
               const SizedBox(width: 4),
               Text(
                 isFull ? 'Match is full' : '$spotsLeft spot${spotsLeft == 1 ? '' : 's'} left',
                 style: TextStyle(
                   fontSize: 13,
-                  color: isFull ? Colors.orange : Colors.grey[500],
+                  color: isFull ? AppColors.warningDark : AppColors.textSecondary,
                   fontWeight: isFull ? FontWeight.w600 : FontWeight.w400,
                 ),
               ),
@@ -295,7 +263,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                     margin: const EdgeInsets.only(right: 4),
                     child: CircleAvatar(
                       radius: 14,
-                      backgroundColor: Colors.grey[200],
+                      backgroundColor: AppColors.border,
                       backgroundImage: p['avatar_url'] != null ? NetworkImage(p['avatar_url']) : null,
                       child: p['avatar_url'] == null
                           ? Text(
@@ -308,7 +276,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
                   if (participants.length > 5)
                     Text(
                       '+${participants.length - 5}',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w600),
+                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                     ),
                 ],
               ),
@@ -318,7 +286,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
             const SizedBox(height: 8),
             Text(
               match['notes'],
-              style: TextStyle(fontSize: 13, color: Colors.grey[500], fontStyle: FontStyle.italic),
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -328,7 +296,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
             children: [
               CircleAvatar(
                 radius: 14,
-                backgroundColor: Colors.grey[200],
+                backgroundColor: AppColors.border,
                 backgroundImage: match['creator_avatar'] != null ? NetworkImage(match['creator_avatar']) : null,
                 child: match['creator_avatar'] == null
                     ? Text(
@@ -340,7 +308,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
               const SizedBox(width: 8),
               Text(
                 isCreator ? 'You' : (match['creator_name'] ?? 'Player'),
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[600]),
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
               ),
               const Spacer(),
               if (isCreator)
@@ -352,8 +320,8 @@ class _MatchesScreenState extends State<MatchesScreen> {
                       if (id != null) _cancelMatch(id);
                     },
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red, width: 1.5),
+                      foregroundColor: AppColors.error,
+                      side: const BorderSide(color: AppColors.error, width: 1.5),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                     ),
@@ -369,8 +337,8 @@ class _MatchesScreenState extends State<MatchesScreen> {
                       if (id != null) _leaveMatch(id);
                     },
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.grey[600],
-                      side: BorderSide(color: Colors.grey[300]!),
+                      foregroundColor: AppColors.textSecondary,
+                      side: BorderSide(color: AppColors.textDisabled),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                     ),

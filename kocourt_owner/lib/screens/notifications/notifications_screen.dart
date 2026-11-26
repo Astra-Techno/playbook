@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import '../owner/alert_fields.dart';
@@ -68,7 +69,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return '${date.day}/${date.month}/${date.year}';
+    return DateFormat('d MMM yyyy').format(date);
   }
 
   @override
@@ -90,11 +91,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(AppIcons.bell, size: 48, color: Colors.grey[300]),
+                        Icon(AppIcons.bell, size: 48, color: AppColors.textDisabled),
                         const SizedBox(height: 16),
-                        Text(ownerPhrase(language, 'no_notifications'), style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
+                        Text(ownerPhrase(language, 'no_notifications'), style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
                         const SizedBox(height: 6),
-                        Text(ownerPhrase(language, 'caught_up'), style: TextStyle(fontSize: 13, color: Colors.grey[400])),
+                        Text(ownerPhrase(language, 'caught_up'), style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
                       ],
                     ),
                   ),
@@ -131,7 +132,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: isRead ? Colors.grey[50] : AppColors.primary.withValues(alpha: 0.04),
+                            color: isRead ? AppColors.surface : AppColors.primary.withValues(alpha: 0.04),
                             borderRadius: BorderRadius.circular(12),
                             border: isRead ? null : Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
                           ),
@@ -158,19 +159,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       n['body'] ?? '',
-                                      style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                                     ),
                                     if (n['court_name'] != null) ...[
                                       const SizedBox(height: 4),
                                       Text(
                                         n['court_name'],
-                                        style: TextStyle(fontSize: 12, color: Colors.grey[400], fontWeight: FontWeight.w600),
+                                        style: TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w600),
                                       ),
                                     ],
                                     const SizedBox(height: 4),
                                     Text(
                                       _timeAgo(n['created_at']),
-                                      style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                                      style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                                     ),
                                   ],
                                 ),

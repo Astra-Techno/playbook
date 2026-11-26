@@ -1,6 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import '../home_logic.dart';
+
+/// Shared with CourtDetailsScreen so the photo flies from card to header.
+String venuePhotoHeroTag(Object? courtId) => 'venue-photo-$courtId';
+
+/// Slanted like a jersey number plate.
+Widget slanted(Widget child) => Transform(
+      transform: Matrix4.skewX(-0.17),
+      alignment: Alignment.center,
+      child: child,
+    );
 
 class VenueCard extends StatefulWidget {
   final Map<String, dynamic> venue;
@@ -76,9 +87,13 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
     final imageUrl = getVenueImage(widget.venue);
     final rate = widget.venue['hourly_rate'];
     final rating = widget.venue['avg_rating'];
-    final bookingCount = int.tryParse('${widget.venue['booking_count'] ?? 0}') ?? 0;
     final reviewCount = int.tryParse('${widget.venue['review_count'] ?? 0}') ?? 0;
-    final sportType = widget.venue['sport_type'] ?? '';
+    // The API sends `type`; `sport_type` is kept for older payloads.
+    final sportType = '${widget.venue['type'] ?? widget.venue['sport_type'] ?? ''}';
+    final openNow = isOpenNow(widget.venue, DateTime.now());
+    final statusText = openNow
+        ? 'Open now · till ${clockLabel(widget.venue['close_time'] ?? '22:00:00')}'
+        : 'Closed · opens ${clockLabel(widget.venue['open_time'] ?? '06:00:00')}';
     final category = sportCategories.firstWhere(
       (c) => c.id == sportType,
       orElse: () => sportCategories.first,
@@ -124,7 +139,9 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                       // Main image
                       AspectRatio(
                         aspectRatio: 16 / 10,
-                        child: CachedNetworkImage(
+                        child: Hero(
+                          tag: venuePhotoHeroTag(widget.venue['id']),
+                          child: CachedNetworkImage(
                           imageUrl: imageUrl,
                           fit: BoxFit.cover,
                           placeholder: (_, __) => Container(
@@ -139,6 +156,7 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                               child: Icon(Icons.image_not_supported_outlined, size: 40, color: AppColors.textDisabled),
                             ),
                           ),
+                        ),
                         ),
                       ),
 
@@ -167,20 +185,13 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                         right: 12,
                         child: Row(
                           children: [
-                            if (widget.index == 0)
-                              _AnimatedBadge(
-                                text: 'POPULAR',
-                                color: AppColors.primary,
-                                textColor: Colors.white,
-                                icon: Icons.local_fire_department_rounded,
-                              )
-                            else if (sportType.isNotEmpty)
-                              _AnimatedBadge(
+                            if (sportType.isNotEmpty)
+                              slanted(_AnimatedBadge(
                                 text: category.label.toUpperCase(),
-                                emoji: category.emoji,
-                                color: Colors.black.withValues(alpha: 0.5),
-                                textColor: Colors.white,
-                              ),
+                                icon: category.icon,
+                                color: sportTint(sportType).bg,
+                                textColor: sportTint(sportType).fg,
+                              )),
                             const Spacer(),
                             // Favorite button
                             GestureDetector(
@@ -223,7 +234,7 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                         Positioned(
                           bottom: 12,
                           left: 12,
-                          child: Container(
+                          child: slanted(Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                             decoration: BoxDecoration(
                               color: Colors.white,
@@ -257,7 +268,7 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                                 ],
                               ),
                             ),
-                          ),
+                          )),
                         ),
 
                       // Bottom right: Rating
@@ -357,9 +368,9 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                               child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                               decoration: BoxDecoration(
-                                color: bookingCount > 0
-                                    ? AppColors.warningLight
-                                    : AppColors.secondary.withValues(alpha: 0.08),
+                                color: openNow
+                                    ? AppColors.secondary.withValues(alpha: 0.08)
+                                    : AppColors.surfaceDim,
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
@@ -370,25 +381,19 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                                     height: 6,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: bookingCount > 0
-                                          ? AppColors.warning
-                                          : AppColors.secondary,
+                                      color: openNow ? AppColors.secondary : AppColors.textMuted,
                                     ),
                                   ),
                                   const SizedBox(width: 6),
                                   Flexible(
                                     child: Text(
-                                      bookingCount > 0
-                                          ? '$bookingCount booked today'
-                                          : 'Available now',
+                                      statusText,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontSize: 11,
                                         fontWeight: FontWeight.w700,
-                                        color: bookingCount > 0
-                                            ? AppColors.accentDark
-                                            : AppColors.secondary,
+                                        color: openNow ? AppColors.secondary : AppColors.textSecondary,
                                       ),
                                     ),
                                   ),
@@ -433,14 +438,12 @@ class _AnimatedBadge extends StatelessWidget {
   final Color color;
   final Color textColor;
   final IconData? icon;
-  final String? emoji;
 
   const _AnimatedBadge({
     required this.text,
     required this.color,
     required this.textColor,
     this.icon,
-    this.emoji,
   });
 
   @override
@@ -456,10 +459,6 @@ class _AnimatedBadge extends StatelessWidget {
         children: [
           if (icon != null) ...[
             Icon(icon, size: 11, color: textColor),
-            const SizedBox(width: 4),
-          ],
-          if (emoji != null) ...[
-            Text(emoji!, style: const TextStyle(fontSize: 10)),
             const SizedBox(width: 4),
           ],
           Text(

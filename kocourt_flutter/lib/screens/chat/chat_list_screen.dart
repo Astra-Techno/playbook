@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'group_chat_screen.dart';
@@ -54,7 +55,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m';
     if (diff.inHours < 24) return '${diff.inHours}h';
     if (diff.inDays < 7) return '${diff.inDays}d';
-    return '${date.day}/${date.month}';
+    return DateFormat('d MMM').format(date);
   }
 
   @override
@@ -82,7 +83,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   child: ListView.separated(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: _groups.length,
-                    separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[100], indent: 76),
+                    separatorBuilder: (_, __) => Divider(height: 1, color: AppColors.surfaceDim, indent: 76),
                     itemBuilder: (_, i) => _buildGroupTile(_groups[i]),
                   ),
                 ),
@@ -94,11 +95,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.chat_bubble_outline_rounded, size: 48, color: Colors.grey[300]),
+          Icon(Icons.chat_bubble_outline_rounded, size: 48, color: AppColors.textDisabled),
           const SizedBox(height: 16),
-          Text('No conversations yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.grey[700])),
+          Text('No conversations yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
           const SizedBox(height: 6),
-          Text('Tap + to start a new chat', style: TextStyle(color: Colors.grey[400], fontSize: 13)),
+          Text('Tap + to start a new chat', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
         ],
       ),
     );
@@ -150,7 +151,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
             // Avatar
             CircleAvatar(
               radius: 26,
-              backgroundColor: isDm ? Colors.grey[200] : AppColors.primary.withValues(alpha: 0.12),
+              backgroundColor: isDm ? AppColors.border : AppColors.primary.withValues(alpha: 0.12),
               backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
               child: avatarUrl == null
                   ? isDm
@@ -181,14 +182,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             ),
                             if (!isDm) ...[
                               const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text('$memberCount', style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w600)),
-                              ),
+                              StatusTag('Squad $memberCount', tone: TagTone.muted),
                             ],
                           ],
                         ),
@@ -198,7 +192,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           _timeAgo(lastAt),
                           style: TextStyle(
                             fontSize: 12,
-                            color: hasUnread ? AppColors.primary : Colors.grey[400],
+                            color: hasUnread ? AppColors.primary : AppColors.textMuted,
                             fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w400,
                           ),
                         ),
@@ -208,7 +202,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   Row(
                     children: [
                       if (group['muted'] == 1) ...[
-                        Icon(Icons.notifications_off_rounded, size: 14, color: Colors.grey[400]),
+                        Icon(Icons.notifications_off_rounded, size: 14, color: AppColors.textMuted),
                         const SizedBox(width: 4),
                       ],
                       Expanded(
@@ -216,7 +210,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           subtitle,
                           style: TextStyle(
                             fontSize: 13,
-                            color: hasUnread ? AppColors.textPrimary : Colors.grey[500],
+                            color: hasUnread ? AppColors.textPrimary : AppColors.textSecondary,
                             fontWeight: hasUnread ? FontWeight.w600 : FontWeight.w400,
                           ),
                           maxLines: 1,

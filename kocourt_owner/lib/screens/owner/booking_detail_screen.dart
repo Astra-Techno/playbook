@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import '../chat/chat_screen.dart';
@@ -194,34 +195,31 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       );
     }
     final status = '${booking['status'] ?? ''}';
-    final canChange = status == 'confirmed' && !_busy;
+    // Server refuses changes once play has started (BookingController "Cannot cancel past bookings").
+    final start = DateTime.tryParse('${booking['start_time']}');
+    final started = start != null && !start.isAfter(DateTime.now());
+    final canChange = status == 'confirmed' && !_busy && !started;
     return Scaffold(
-      appBar: AppBar(title: const Text('Booking', style: TextStyle(fontWeight: FontWeight.w800))),
+      backgroundColor: AppColors.surface,
+      appBar: AppBar(title: const Text('Booking'), backgroundColor: AppColors.surface),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text(bookingPerson(booking), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 8),
-          Text('${booking['court_name'] ?? ''}', style: TextStyle(color: Colors.grey[700])),
-          if ('${booking['space_name'] ?? ''}'.isNotEmpty) Text('${booking['space_name']}'),
-          const SizedBox(height: 16),
-          Text('${booking['start_time']} – ${booking['end_time']}'),
-          const SizedBox(height: 8),
-          Text('Status $status'),
-          Text('Payment ${booking['payment_status'] ?? ''}'),
-          if (collectionLabel(booking['collection_method']) != null) ...[
-            const SizedBox(height: 8),
-            Text(collectionLabel(booking['collection_method'])!, style: const TextStyle(fontWeight: FontWeight.w700)),
+          _summaryCard(booking, status, start),
+          if (booking['addons'] is List && (booking['addons'] as List).isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text('Kit add-ons (paid online)', style: TextStyle(fontWeight: FontWeight.w800)),
+            for (final kit in (booking['addons'] as List).whereType<Map>())
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '${kit['quantity']} × ${kit['name']}'
+                  '${(int.tryParse('${kit['deposit_rupees']}') ?? 0) > 0 ? ' · collect Rs ${kit['deposit_rupees']} deposit' : ''}'
+                  ' · ${kit['state'] == 'reserved' ? 'hand over at check-in' : kit['state']}',
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
+              ),
           ],
-          if (recordedAfterPlayLabel(booking) != null) ...[
-            const SizedBox(height: 8),
-            Text(recordedAfterPlayLabel(booking)!, style: const TextStyle(fontWeight: FontWeight.w700)),
-          ] else if (attendanceLabel(booking['attendance']) != null) ...[
-            const SizedBox(height: 8),
-            Text(attendanceLabel(booking['attendance'])!, style: const TextStyle(fontWeight: FontWeight.w700)),
-          ],
-          const SizedBox(height: 8),
-          Text('₹${booking['total_price'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary, fontSize: 18)),
           if ('${booking['notes'] ?? ''}'.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text('${booking['notes']}'),
@@ -234,7 +232,6 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           if (_playerUserId(booking) != null) ...[
             FilledButton.icon(
               onPressed: _busy ? null : _messagePlayer,
-              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
               icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
               label: const Text('Message player'),
             ),
@@ -254,6 +251,75 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             const SizedBox(height: 8),
             OutlinedButton(onPressed: () => _mark('no_show'), child: const Text('No-show')),
           ],
+        ],
+      ),
+    );
+  }
+
+  /// v4 ticket-style summary: who, where, when, and slanted status tags.
+  Widget _summaryCard(Map<String, dynamic> booking, String status, DateTime? start) {
+    final end = DateTime.tryParse('${booking['end_time']}');
+    final space = '${booking['space_name'] ?? ''}';
+    final when = start == null
+        ? '${booking['start_time'] ?? ''}'
+        : '${DateFormat('EEE d MMM').format(start)} · ${DateFormat('h:mm a').format(start)}'
+            '${end == null ? '' : ' – ${DateFormat('h:mm a').format(end)}'}';
+    final collection = collectionLabel(booking['collection_method']);
+    final arrival = recordedAfterPlayLabel(booking) ?? attendanceLabel(booking['attendance']);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              TimePlate(
+                top: start == null ? '—' : DateFormat(start.minute == 0 ? 'h a' : 'h:mm').format(start),
+                bottom: start == null ? '' : DateFormat('d MMM').format(start),
+                filled: status != 'cancelled',
+                width: 74,
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(bookingPerson(booking), style: GoogleFonts.archivo(fontSize: 22, fontWeight: FontWeight.w900)),
+                    Text(
+                      [booking['court_name'] ?? '', space].where((v) => '$v'.isNotEmpty).join(' · '),
+                      style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(when, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              StatusTag.forBooking(status),
+              StatusTag.forBooking('${booking['payment_status'] ?? ''}'),
+              if (collection != null) StatusTag(collection, tone: TagTone.muted),
+              if (arrival != null) StatusTag(arrival, tone: TagTone.brand),
+            ],
+          ),
+          const Divider(height: 24),
+          Row(
+            children: [
+              const Text('Amount', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+              const Spacer(),
+              Text('₹${booking['total_price'] ?? 0}', style: GoogleFonts.archivo(fontSize: 22, fontWeight: FontWeight.w900)),
+            ],
+          ),
         ],
       ),
     );

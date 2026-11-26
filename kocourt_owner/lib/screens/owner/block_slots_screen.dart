@@ -213,35 +213,46 @@ class _BlockSlotsScreenState extends State<BlockSlotsScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.1)),
+        color: AppColors.surfaceDim,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
-          const Icon(Icons.block, size: 18, color: AppColors.error),
+          const StatusTag('Closed', tone: TagTone.muted),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('${block['start_time']} → ${block['end_time']}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                Text(_blockRange(block), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                 Text(
                   '$scope · $kind${repeat ? ' · every year' : ''}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
                 if ('${block['reason'] ?? ''}'.isNotEmpty)
-                  Text('${block['reason']}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                  Text('${block['reason']}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               ],
             ),
           ),
           if (id != null)
             IconButton(
               onPressed: () => _removeBlock(id),
-              icon: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+              icon: Icon(Icons.close, size: 18, color: AppColors.textMuted),
             ),
         ],
       ),
     );
+  }
+
+  /// "Tue 25 Nov · 2:00 PM – 4:00 PM" (falls back to the raw values).
+  String _blockRange(Map<String, dynamic> block) {
+    final start = DateTime.tryParse('${block['start_time'] ?? ''}');
+    final end = DateTime.tryParse('${block['end_time'] ?? ''}');
+    if (start == null || end == null) return '${block['start_time']} → ${block['end_time']}';
+    final sameDay = start.year == end.year && start.month == end.month && start.day == end.day;
+    return sameDay
+        ? '${DateFormat('EEE d MMM').format(start)} · ${DateFormat('h:mm a').format(start)} – ${DateFormat('h:mm a').format(end)}'
+        : '${DateFormat('d MMM, h:mm a').format(start)} – ${DateFormat('d MMM, h:mm a').format(end)}';
   }
 }

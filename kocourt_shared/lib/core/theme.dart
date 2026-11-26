@@ -1,8 +1,10 @@
+import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../widgets/page_transition.dart';
 
-/// Per-app brand. Player = sports red; Owner = forest ops green.
+/// Per-app brand. Both apps share the logo violet (design v4 "Pro Light").
 class BrandTokens extends ThemeExtension<BrandTokens> {
   final Color primary;
   final Color primaryDark;
@@ -23,28 +25,28 @@ class BrandTokens extends ThemeExtension<BrandTokens> {
   });
 
   static const player = BrandTokens(
-    primary: Color(0xFFE23D28),
-    primaryDark: Color(0xFFB82D1A),
-    primaryLight: Color(0xFFFF6B52),
+    primary: Color(0xFF6D28D9),
+    primaryDark: Color(0xFF5521B5),
+    primaryLight: Color(0xFF8B5CF6),
     onPrimary: Color(0xFFFFFFFF),
-    surface: Color(0xFFF7F8FA),
-    ink: Color(0xFF1C1C1E),
+    surface: Color(0xFFF6F7FB),
+    ink: Color(0xFF111827),
     gradient: LinearGradient(
-      colors: [Color(0xFFE23D28), Color(0xFFFF6B52)],
+      colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
   );
 
   static const owner = BrandTokens(
-    primary: Color(0xFF0B5F3A),
-    primaryDark: Color(0xFF08472C),
-    primaryLight: Color(0xFF1A7A4C),
+    primary: Color(0xFF6D28D9),
+    primaryDark: Color(0xFF5521B5),
+    primaryLight: Color(0xFF8B5CF6),
     onPrimary: Color(0xFFFFFFFF),
-    surface: Color(0xFFF3F6F4),
-    ink: Color(0xFF122018),
+    surface: Color(0xFFF6F7FB),
+    ink: Color(0xFF111827),
     gradient: LinearGradient(
-      colors: [Color(0xFF0B5F3A), Color(0xFF1A7A4C)],
+      colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
@@ -100,21 +102,21 @@ extension BrandContext on BuildContext {
 
 class AppColors {
   // Default / player brand constants (legacy call sites without context)
-  static const primary = Color(0xFFE23D28);
-  static const primaryDark = Color(0xFFB82D1A);
-  static const primaryLight = Color(0xFFFF6B52);
+  static const primary = Color(0xFF6D28D9);
+  static const primaryDark = Color(0xFF5521B5);
+  static const primaryLight = Color(0xFF8B5CF6);
   static const onPrimary = Color(0xFFFFFFFF);
 
   // Owner brand constants (for owner-only hardcodes when context is awkward)
-  static const ownerPrimary = Color(0xFF0B5F3A);
-  static const ownerPrimaryDark = Color(0xFF08472C);
-  static const ownerPrimaryLight = Color(0xFF1A7A4C);
-  static const ownerSurface = Color(0xFFF3F6F4);
-  static const ownerInk = Color(0xFF122018);
+  static const ownerPrimary = Color(0xFF6D28D9);
+  static const ownerPrimaryDark = Color(0xFF5521B5);
+  static const ownerPrimaryLight = Color(0xFF8B5CF6);
+  static const ownerSurface = Color(0xFFF6F7FB);
+  static const ownerInk = Color(0xFF111827);
 
   // Secondary - forest green for success/confirmed states
-  static const secondary = Color(0xFF1B8C3D);
-  static const secondaryLight = Color(0xFF2DB552);
+  static const secondary = Color(0xFF047857);
+  static const secondaryLight = Color(0xFF10B981);
   static const onSecondary = Color(0xFFFFFFFF);
 
   // Accent - gold for ratings/premium
@@ -122,19 +124,19 @@ class AppColors {
   static const accentDark = Color(0xFFE5A600);
 
   // Neutrals
-  static const surface = Color(0xFFF7F8FA);
+  static const surface = Color(0xFFF6F7FB);
   static const surfaceWhite = Color(0xFFFFFFFF);
   static const surfaceDim = Color(0xFFF0F1F3);
   static const surfaceMuted = Color(0xFFE8EAED);
 
   // Text
-  static const textPrimary = Color(0xFF1C1C1E);
-  static const textSecondary = Color(0xFF6B7280);
-  static const textMuted = Color(0xFF9CA3AF);
+  static const textPrimary = Color(0xFF111827);
+  static const textSecondary = Color(0xFF5B6475);
+  static const textMuted = Color(0xFF6B7280); // v4: small text must pass 4.5:1
   static const textDisabled = Color(0xFFD1D5DB);
 
   // Borders
-  static const border = Color(0xFFE5E7EB);
+  static const border = Color(0xFFE6E8F0);
   static const borderLight = Color(0xFFF3F4F6);
 
   // States
@@ -142,6 +144,8 @@ class AppColors {
   static const errorLight = Color(0xFFFEE2E2);
   static const warning = Color(0xFFF59E0B);
   static const warningLight = Color(0xFFFEF3C7);
+  /// Amber readable as text on white (4.8:1); `warning` is for fills and icons.
+  static const warningDark = Color(0xFFB45309);
   static const info = Color(0xFF3B82F6);
   static const infoLight = Color(0xFFDBEAFE);
 
@@ -155,19 +159,19 @@ class AppColors {
 
   // Gradients
   static const primaryGradient = LinearGradient(
-    colors: [Color(0xFFE23D28), Color(0xFFFF6B52)],
+    colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const ownerGradient = LinearGradient(
-    colors: [Color(0xFF0B5F3A), Color(0xFF1A7A4C)],
+    colors: [Color(0xFF6D28D9), Color(0xFF8B5CF6)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const darkGradient = LinearGradient(
-    colors: [Color(0xFF1C1C1E), Color(0xFF2D2D30)],
+    colors: [Color(0xFF111827), Color(0xFF2D2D30)],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );
@@ -252,7 +256,18 @@ class AppTheme {
   static ThemeData get owner => _build(BrandTokens.owner);
 
   static ThemeData _build(BrandTokens brand) {
-    final textTheme = GoogleFonts.plusJakartaSansTextTheme();
+    // Inter for reading, Archivo for sporty headings and big numbers.
+    final body = GoogleFonts.interTextTheme();
+    TextStyle head(TextStyle? s) => GoogleFonts.archivo(textStyle: s, fontWeight: FontWeight.w800);
+    final textTheme = body.copyWith(
+      displayLarge: head(body.displayLarge),
+      displayMedium: head(body.displayMedium),
+      displaySmall: head(body.displaySmall),
+      headlineLarge: head(body.headlineLarge),
+      headlineMedium: head(body.headlineMedium),
+      headlineSmall: head(body.headlineSmall),
+      titleLarge: head(body.titleLarge),
+    );
     final radius = BorderRadius.circular(AppRadius.md);
 
     OutlineInputBorder border(Color color, {double width = 1}) => OutlineInputBorder(
@@ -265,6 +280,11 @@ class AppTheme {
       brightness: Brightness.light,
       scaffoldBackgroundColor: brand.surface,
       extensions: [brand],
+      // iOS keeps the native page so swipe-back still works.
+      pageTransitionsTheme: const PageTransitionsTheme(builders: {
+        TargetPlatform.android: SportsPageTransitionsBuilder(),
+        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+      }),
       textTheme: textTheme.apply(
         bodyColor: AppColors.textPrimary,
         displayColor: brand.ink,
@@ -289,25 +309,26 @@ class AppTheme {
         scrolledUnderElevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
         iconTheme: IconThemeData(color: brand.ink),
-        titleTextStyle: GoogleFonts.plusJakartaSans(
+        titleTextStyle: GoogleFonts.archivo(
           color: brand.ink,
-          fontSize: 18,
+          fontSize: 19,
           fontWeight: FontWeight.w800,
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: Colors.white,
-        indicatorColor: Colors.transparent,
+        // v4: the active tab sits on a soft brand pill.
+        indicatorColor: brand.primary.withValues(alpha: 0.1),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return GoogleFonts.plusJakartaSans(
+            return GoogleFonts.inter(
               fontSize: 10,
               fontWeight: FontWeight.w800,
               color: brand.primary,
               letterSpacing: 0.5,
             );
           }
-          return GoogleFonts.plusJakartaSans(
+          return GoogleFonts.inter(
             fontSize: 10,
             fontWeight: FontWeight.w600,
             color: AppColors.textMuted,
@@ -328,7 +349,7 @@ class AppTheme {
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: radius),
-          textStyle: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700),
+          textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -338,13 +359,13 @@ class AppTheme {
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: radius),
-          textStyle: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700),
+          textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: brand.primary,
-          textStyle: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700),
+          textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -353,7 +374,7 @@ class AppTheme {
           side: const BorderSide(color: AppColors.border),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: radius),
-          textStyle: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700),
+          textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -365,26 +386,26 @@ class AppTheme {
         errorBorder: border(AppColors.error),
         focusedErrorBorder: border(AppColors.error, width: 2),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        labelStyle: GoogleFonts.plusJakartaSans(
+        labelStyle: GoogleFonts.inter(
           color: AppColors.textSecondary,
           fontWeight: FontWeight.w600,
           fontSize: 14,
         ),
-        floatingLabelStyle: GoogleFonts.plusJakartaSans(
+        floatingLabelStyle: GoogleFonts.inter(
           color: brand.primary,
           fontWeight: FontWeight.w700,
           fontSize: 14,
         ),
-        hintStyle: GoogleFonts.plusJakartaSans(
+        hintStyle: GoogleFonts.inter(
           color: AppColors.textDisabled,
           fontWeight: FontWeight.w500,
         ),
-        helperStyle: GoogleFonts.plusJakartaSans(
+        helperStyle: GoogleFonts.inter(
           color: AppColors.textMuted,
           fontSize: 12,
           fontWeight: FontWeight.w500,
         ),
-        errorStyle: GoogleFonts.plusJakartaSans(
+        errorStyle: GoogleFonts.inter(
           color: AppColors.error,
           fontSize: 12,
           fontWeight: FontWeight.w600,
@@ -394,12 +415,12 @@ class AppTheme {
         backgroundColor: AppColors.surfaceWhite,
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
-        titleTextStyle: GoogleFonts.plusJakartaSans(
+        titleTextStyle: GoogleFonts.archivo(
           color: brand.ink,
-          fontSize: 18,
+          fontSize: 19,
           fontWeight: FontWeight.w800,
         ),
-        contentTextStyle: GoogleFonts.plusJakartaSans(
+        contentTextStyle: GoogleFonts.inter(
           color: AppColors.textSecondary,
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -418,7 +439,7 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: brand.ink,
-        contentTextStyle: GoogleFonts.plusJakartaSans(
+        contentTextStyle: GoogleFonts.inter(
           color: Colors.white,
           fontWeight: FontWeight.w600,
           fontSize: 14,
@@ -429,18 +450,40 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: Colors.white,
         elevation: 0,
+        margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppRadius.lg),
-          side: const BorderSide(color: AppColors.borderLight),
+          side: const BorderSide(color: AppColors.border),
         ),
       ),
+      chipTheme: ChipThemeData(
+        backgroundColor: Colors.white,
+        selectedColor: brand.primary,
+        disabledColor: AppColors.surfaceDim,
+        side: const BorderSide(color: AppColors.border),
+        shape: const StadiumBorder(),
+        showCheckmark: false,
+        labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: brand.ink),
+        secondaryLabelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: brand.primary,
+        foregroundColor: brand.onPrimary,
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        extendedTextStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
+      ),
+      listTileTheme: ListTileThemeData(
+        iconColor: brand.ink,
+        titleTextStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: brand.ink),
+        subtitleTextStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(color: brand.primary),
       dividerTheme: const DividerThemeData(
         color: AppColors.borderLight,
         thickness: 1,
         space: 1,
-      ),
-      pageTransitionsTheme: const PageTransitionsTheme(
-        builders: <TargetPlatform, PageTransitionsBuilder>{},
       ),
     );
   }

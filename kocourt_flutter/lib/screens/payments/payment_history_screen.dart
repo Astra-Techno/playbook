@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:intl/intl.dart';
@@ -45,34 +46,26 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
       case 'paid':
         return AppColors.secondary;
       case 'demo':
-        return Colors.blue;
+        return AppColors.info;
       case 'created':
-        return Colors.orange;
+        return AppColors.warningDark;
       case 'refund_pending':
-        return Colors.deepOrange;
+        return AppColors.warningDark;
       case 'failed':
         return AppColors.error;
       default:
-        return Colors.grey;
+        return AppColors.textMuted;
     }
   }
 
-  String _labelForStatus(String status) {
-    switch (status) {
-      case 'paid':
-        return 'PAID';
-      case 'demo':
-        return 'DEMO';
-      case 'created':
-        return 'PENDING';
-      case 'refund_pending':
-        return 'REFUND';
-      case 'failed':
-        return 'FAILED';
-      default:
-        return status.toUpperCase();
-    }
-  }
+  StatusTag _tagForStatus(String status) => switch (status) {
+        'paid' => const StatusTag('Paid', tone: TagTone.free),
+        'demo' => const StatusTag('Demo', tone: TagTone.brand),
+        'created' => const StatusTag('Pending', tone: TagTone.ending),
+        'refund_pending' => const StatusTag('Refund', tone: TagTone.ending),
+        'failed' => const StatusTag('Failed', tone: TagTone.due),
+        _ => StatusTag.forBooking(status),
+      };
 
   String _formatDate(String? dateStr) {
     if (dateStr == null) return '';
@@ -87,9 +80,9 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('Payment History', style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text('Payment History'),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -98,11 +91,11 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(AppIcons.wallet, size: 48, color: Colors.grey[300]),
+                      Icon(AppIcons.wallet, size: 48, color: AppColors.textDisabled),
                       const SizedBox(height: 16),
-                      Text('No payments yet', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
+                      Text('No payments yet', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
                       const SizedBox(height: 8),
-                      Text('Your payment history will appear here', style: TextStyle(fontSize: 13, color: Colors.grey[400])),
+                      Text('Your payment history will appear here', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
                     ],
                   ),
                 )
@@ -127,9 +120,8 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.grey[100]!),
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                          borderRadius: BorderRadius.circular(AppRadius.lg),
+                          border: Border.all(color: AppColors.border),
                         ),
                         child: Row(
                           children: [
@@ -157,7 +149,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                                       ),
                                       Text(
                                         '\u20B9${amount.toStringAsFixed(amount == amount.roundToDouble() ? 0 : 2)}',
-                                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                                        style: GoogleFonts.archivo(fontWeight: FontWeight.w900, fontSize: 17),
                                       ),
                                     ],
                                   ),
@@ -171,22 +163,12 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                                   const SizedBox(height: 4),
                                   Row(
                                     children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: statusColor.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: Text(
-                                          _labelForStatus(status),
-                                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: statusColor),
-                                        ),
-                                      ),
+                                      _tagForStatus('$status'),
                                       const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
                                           _formatDate(p['created_at']),
-                                          style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                                          style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
@@ -196,7 +178,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       'Order: ${p['cf_order_id']}',
-                                      style: TextStyle(fontSize: 10, color: Colors.grey[350]),
+                                      style: TextStyle(fontSize: 10, color: AppColors.textMuted),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ],

@@ -270,7 +270,7 @@ class BookingController {
         $authId   = (int)$authUser['id'];
         $db       = Database::getConnection();
         $stmt     = $db->prepare(
-            "SELECT b.*, c.name AS court_name, c.location AS court_location,
+            "SELECT b.*, c.name AS court_name, c.type AS court_type, c.location AS court_location,
                     c.owner_id, sc.name AS space_name, u.name AS user_name
              FROM bookings b
              JOIN courts c ON b.court_id = c.id
@@ -293,9 +293,114 @@ class BookingController {
         }
         if (!$canView) { http_response_code(403); echo json_encode(['message' => 'Forbidden']); return; }
 
-        unset($booking['owner_id']);
+        unset($booking['owner_id'], $booking['check_in_code']);
+        require_once __DIR__ . '/../BookingAddons.php';
+        $booking['addons'] = BookingAddons::forBooking($db, (int)$booking['id']);
         http_response_code(200);
         echo json_encode(['booking' => $booking]);
+    }
+
+    /** Owner, admin, or a manager at the venue may mark arrival. */
+    private function canMarkArrival(PDO $db, array $booking, array $authUser): bool
+    {
+        if ((int)$booking['owner_id'] === (int)$authUser['id'] || ($authUser['role'] ?? '') === 'admin') {
+            return true;
+        }
+        $staff = $db->prepare("SELECT id FROM court_staff WHERE court_id = ? AND user_id = ? AND role = 'manager'");
+        $staff->execute([(int)$booking['court_id'], (int)$authUser['id']]);
+        return (bool)$staff->fetch();
+    }
+
+    // GET /bookings/:id/check-in-code — the pass QR for the booker or a squad player
+    public function checkInCode(int $id): void
+    {
+        require_once __DIR__ . '/../BookingCheckIn.php';
+        $authUser = Auth::require();
+        $uid = (int)$authUser['id'];
+        $db = Database::getConnection();
+        $stmt = $db->prepare('SELECT id, user_id, status, check_in_code FROM bookings WHERE id = ?');
+        $stmt->execute([$id]);
+        $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$booking) { http_response_code(404); echo json_encode(['message' => 'Booking not found']); return; }
+
+        $squad = $db->prepare('SELECT 1 FROM booking_players WHERE booking_id = ? AND user_id = ?');
+        try {
+            $squad->execute([$id, $uid]);
+            $isSquadPlayer = (bool)$squad->fetchColumn();
+        } catch (PDOException $e) {
+            $isSquadPlayer = false; // booking_players is created on first use
+        }
+        if (!BookingCheckIn::canShow((int)$booking['user_id'], $uid, $isSquadPlayer)) {
+            http_response_code(403); echo json_encode(['message' => 'Not your booking']); return;
+        }
+        if ($booking['status'] !== 'confirmed') {
+            http_response_code(409); echo json_encode(['message' => 'Only confirmed bookings have a check-in pass.']); return;
+        }
+
+        $code = BookingCheckIn::ensureCode($db, $id, $booking['check_in_code']);
+        echo json_encode(['code' => $code, 'payload' => BookingCheckIn::payload($id, $code)]);
+    }
+
+    // POST /bookings/check-in-scan { payload } — venue staff scan a player's pass
+    public function scanCheckIn(): void
+    {
+        require_once __DIR__ . '/../BookingCheckIn.php';
+        require_once __DIR__ . '/../Attendance.php';
+        $authUser = Auth::require();
+        $data = json_decode(file_get_contents('php://input'));
+        $scan = BookingCheckIn::parse((string)($data->payload ?? ''));
+        if (!$scan) {
+            http_response_code(422); echo json_encode(['message' => 'This is not a KoCourt booking pass.']); return;
+        }
+
+        $db = Database::getConnection();
+        $stmt = $db->prepare("
+            SELECT b.id, b.status, b.start_time, b.end_time, b.attendance, b.court_id, b.check_in_code,
+                   c.owner_id, c.name AS court_name, sc.name AS space_name, u.name AS player_name
+            FROM bookings b
+            JOIN courts c ON c.id = b.court_id
+            LEFT JOIN sub_courts sc ON sc.id = b.sub_court_id
+            LEFT JOIN users u ON u.id = b.user_id
+            WHERE b.id = ?
+        ");
+        $stmt->execute([$scan['id']]);
+        $booking = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Permission first, so a scan at the wrong venue reveals nothing about the booking.
+        if (!$booking || !$this->canMarkArrival($db, $booking, $authUser)) {
+            http_response_code(404); echo json_encode(['message' => 'This pass is not for a venue you manage.']); return;
+        }
+        if (!BookingCheckIn::matches($booking['check_in_code'], $scan['code'])) {
+            http_response_code(422); echo json_encode(['message' => 'This pass code does not match the booking.']); return;
+        }
+
+        $summary = [
+            'id' => (int)$booking['id'],
+            'player' => $booking['player_name'] ?: 'Player',
+            'venue' => $booking['court_name'],
+            'space' => $booking['space_name'],
+            'start_time' => $booking['start_time'],
+            'end_time' => $booking['end_time'],
+        ];
+        $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
+        $decision = Attendance::decide(
+            'check_in',
+            $booking['attendance'] !== null && $booking['attendance'] !== '' ? (string)$booking['attendance'] : null,
+            (string)$booking['status'],
+            (string)$booking['start_time'],
+            (string)$booking['end_time'],
+            $now
+        );
+        if (!$decision['ok']) {
+            http_response_code(422); echo json_encode(['message' => $decision['message'], 'booking' => $summary]); return;
+        }
+        $update = $db->prepare("UPDATE bookings SET attendance = 'checked_in' WHERE id = ? AND status = 'confirmed' AND attendance IS NULL");
+        $update->execute([(int)$booking['id']]);
+        if (!$update->rowCount()) {
+            http_response_code(409); echo json_encode(['message' => 'This booking is already checked in.', 'booking' => $summary]); return;
+        }
+        require_once __DIR__ . '/../BookingAddons.php';
+        BookingAddons::handOver($db, (int)$booking['id']);
+        echo json_encode(['message' => 'Checked in.', 'attendance' => 'checked_in', 'booking' => $summary]);
     }
 
     // POST /bookings/:id/attendance  { action: check_in|no_show }
@@ -321,11 +426,7 @@ class BookingController {
             return;
         }
 
-        $isOwner = (int)$booking['owner_id'] === $authId;
-        $isAdmin = ($authUser['role'] ?? '') === 'admin';
-        $staff = $db->prepare("SELECT id FROM court_staff WHERE court_id = ? AND user_id = ? AND role = 'manager'");
-        $staff->execute([(int)$booking['court_id'], $authId]);
-        if (!$isOwner && !$isAdmin && !$staff->fetch()) {
+        if (!$this->canMarkArrival($db, $booking, $authUser)) {
             http_response_code(403);
             echo json_encode(['message' => 'Only the venue owner or manager can mark arrival']);
             return;
@@ -352,6 +453,10 @@ class BookingController {
             http_response_code(409);
             echo json_encode(['message' => 'This booking was already marked.']);
             return;
+        }
+        if ($decision['attendance'] === 'checked_in') {
+            require_once __DIR__ . '/../BookingAddons.php';
+            BookingAddons::handOver($db, $id);
         }
 
         http_response_code(200);
@@ -384,11 +489,12 @@ class BookingController {
             // Slot availability — no user filter needed
             $sub_court_id = isset($_GET['sub_court_id']) ? (int)$_GET['sub_court_id'] : null;
             $stmt = $booking->readByCourtAndDate((int)$_GET['court_id'], $_GET['date'], $sub_court_id);
+            $publicSlots = true;
         } elseif (isset($_GET['owner_id'])) {
             // Owner views their own courts' bookings — use token's user
             $sub_court_id = isset($_GET['sub_court_id']) ? (int)$_GET['sub_court_id'] : null;
             if ($sub_court_id !== null) {
-                $query = "SELECT b.*, c.name as court_name, c.owner_id, u.name as user_name
+                $query = "SELECT b.*, c.name as court_name, c.type AS court_type, c.owner_id, u.name as user_name
                           FROM bookings b
                           JOIN courts c ON b.court_id = c.id
                           LEFT JOIN users u ON b.user_id = u.id
@@ -397,7 +503,7 @@ class BookingController {
                 $stmt = $booking->conn->prepare($query);
                 $stmt->execute([$authId, $sub_court_id]);
             } else {
-                $query = "SELECT b.*, c.name as court_name, c.owner_id, u.name as user_name
+                $query = "SELECT b.*, c.name as court_name, c.type AS court_type, c.owner_id, u.name as user_name
                           FROM bookings b
                           JOIN courts c ON b.court_id = c.id
                           LEFT JOIN users u ON b.user_id = u.id
@@ -416,7 +522,7 @@ class BookingController {
                 echo json_encode(["records" => []]); return;
             }
             $in    = implode(',', array_map('intval', $courtIds));
-            $query = "SELECT b.*, c.name as court_name, c.owner_id, u.name as user_name
+            $query = "SELECT b.*, c.name as court_name, c.type AS court_type, c.owner_id, u.name as user_name
                       FROM bookings b
                       JOIN courts c ON b.court_id = c.id
                       LEFT JOIN users u ON b.user_id = u.id
@@ -431,6 +537,14 @@ class BookingController {
         }
 
         $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // QR door codes are served only by GET /bookings/:id/check-in-code.
+        foreach ($records as &$record) unset($record['check_in_code']);
+        unset($record);
+        // The public availability grid needs times only — not who booked or what they paid.
+        if (!empty($publicSlots)) {
+            require_once __DIR__ . '/../SlotPrivacy.php';
+            $records = array_map([SlotPrivacy::class, 'publicRow'], $records);
+        }
         http_response_code(200);
         echo json_encode(["records" => $records]);
     }
@@ -675,6 +789,11 @@ class BookingController {
         if (!$court_id || !$start_time || !$end_time || empty($rec_days) || !$end_date_str) {
             http_response_code(400); echo json_encode(['message' => 'Missing required fields']); return;
         }
+        // A weekly walk-in regular: the owner or a manager books for a guest, like a single walk-in.
+        $isWalkIn   = !empty($data->guest_name);
+        $guestName  = $isWalkIn ? trim($data->guest_name) : null;
+        $guestPhone = $isWalkIn && !empty($data->guest_phone) ? trim($data->guest_phone) : null;
+        $collectionMethod = null;
 
         $startTs  = strtotime($start_time);
         $endTs    = strtotime($end_time);
@@ -694,6 +813,17 @@ class BookingController {
         $courtRow = $dbPeak->prepare('SELECT * FROM courts WHERE id = ?');
         $courtRow->execute([$court_id]);
         $court = $courtRow->fetch(PDO::FETCH_ASSOC) ?: [];
+        if ($isWalkIn) {
+            $staff = $dbPeak->prepare("SELECT id FROM court_staff WHERE court_id = ? AND user_id = ? AND role = 'manager'");
+            $staff->execute([$court_id, $user_id]);
+            if (!$court || ((int)$court['owner_id'] !== $user_id && ($authUser['role'] ?? '') !== 'admin' && !$staff->fetchColumn())) {
+                http_response_code(403); echo json_encode(['message' => 'Only the venue owner or manager can record walk-ins']); return;
+            }
+            $collectionMethod = CollectionMethod::forWalkIn($data->collection_method ?? null);
+            if ($collectionMethod === false) {
+                http_response_code(400); echo json_encode(['message' => 'collection_method must be pay_at_venue, cash, or external_upi']); return;
+            }
+        }
         $subCourt = null;
         if ($sub_court_id) {
             $scStmt = $dbPeak->prepare('SELECT * FROM sub_courts WHERE id = ? AND court_id = ?');
@@ -717,7 +847,7 @@ class BookingController {
 
                 if (!$booking_model->isSlotAvailable($court_id, $slotStart, $slotEnd, $sub_court_id)) {
                     $skipped[] = $dateStr;
-                } elseif ($this->peakSubscriptionViolation($court, $subCourt, $slotStart, $user_id, false)) {
+                } elseif ($this->peakSubscriptionViolation($court, $subCourt, $slotStart, $user_id, $isWalkIn)) {
                     $skipped[] = $dateStr;
                 } else {
                     $price = $this->calculateBookingPrice($court_id, $sub_court_id, $slotStart, $slotEnd);
@@ -728,9 +858,10 @@ class BookingController {
                     $booking_model->end_time     = $slotEnd;
                     $booking_model->type         = 'hourly';
                     $booking_model->total_price  = $price > 0 ? $price : 0;
-                    $booking_model->guest_name   = null;
-                    $booking_model->guest_phone  = null;
-                    $booking_model->notes        = 'Recurring booking';
+                    $booking_model->guest_name   = $guestName;
+                    $booking_model->guest_phone  = $guestPhone;
+                    $booking_model->collection_method = $collectionMethod;
+                    $booking_model->notes        = $isWalkIn ? 'Weekly walk-in' : 'Recurring booking';
                     if ($booking_model->create()) {
                         $booked[] = (int)$booking_model->conn->lastInsertId();
                     }

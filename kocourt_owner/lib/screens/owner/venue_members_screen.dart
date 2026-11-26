@@ -143,9 +143,9 @@ class _VenueMembersScreenState extends State<VenueMembersScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(AppIcons.award, size: 48, color: Colors.grey[300]),
+                      Icon(AppIcons.award, size: 48, color: AppColors.textDisabled),
                       const SizedBox(height: 16),
-                      Text('No active members', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.grey[600])),
+                      Text('No active members', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
                     ],
                   ),
                 )
@@ -160,37 +160,27 @@ class _VenueMembersScreenState extends State<VenueMembersScreen> {
                       final isActive = m['status'] == 'active';
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(AppRadius.md),
+                          border: Border.all(color: AppColors.border),
+                        ),
                         child: Row(
                           children: [
-                            CircleAvatar(
-                              radius: 20,
-                              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                              child: Text((m['user_name'] ?? 'M')[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary)),
-                            ),
+                            TimePlate(top: '${m['user_name'] ?? 'M'}'.characters.first.toUpperCase(), filled: isActive, width: 44),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(m['user_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                                  Text('${m['plan_name'] ?? ''} · ${membershipSlotLabel(m['slot_type'])}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                                  Text('Expires: ${m['end_date'] ?? ''}', style: TextStyle(fontSize: 11, color: Colors.grey[400])),
+                                  Text('${m['plan_name'] ?? ''} · ${membershipSlotLabel(m['slot_type'])}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                  Text('Expires: ${m['end_date'] ?? ''}', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                                 ],
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: isActive ? AppColors.secondary.withValues(alpha: 0.1) : AppColors.error.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                isActive ? 'ACTIVE' : 'EXPIRED',
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: isActive ? AppColors.secondary : AppColors.error),
-                              ),
-                            ),
+                            isActive ? const StatusTag('Active', tone: TagTone.free) : const StatusTag('Expired', tone: TagTone.due),
                           ],
                         ),
                       );

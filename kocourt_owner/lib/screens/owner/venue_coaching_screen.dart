@@ -57,6 +57,24 @@ class _VenueCoachingScreenState extends State<VenueCoachingScreen> {
     });
   }
 
+  /// Date then time picker; writes the `YYYY-MM-DD HH:MM:00` form the API expects.
+  Future<void> _pickWhen(TextEditingController field) async {
+    final now = DateTime.now();
+    final current = DateTime.tryParse(field.text) ?? DateTime.tryParse(_start.text) ?? now;
+    final date = await showDatePicker(
+      context: context,
+      firstDate: now,
+      lastDate: now.add(const Duration(days: 365)),
+      initialDate: current.isBefore(now) ? now : current,
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(current));
+    if (time == null) return;
+    String two(int n) => n.toString().padLeft(2, '0');
+    setState(() => field.text =
+        '${date.year}-${two(date.month)}-${two(date.day)} ${two(time.hour)}:${two(time.minute)}:00');
+  }
+
   Future<void> _create() async {
     final body = coachingBody(
       title: _title.text,
@@ -152,8 +170,8 @@ class _VenueCoachingScreenState extends State<VenueCoachingScreen> {
                   TextField(controller: _title, decoration: const InputDecoration(labelText: 'Class name')),
                   TextField(controller: _instructor, decoration: const InputDecoration(labelText: 'Instructor')),
                   TextField(controller: _capacity, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Capacity')),
-                  TextField(controller: _start, decoration: const InputDecoration(labelText: 'Start, 2026-12-01 06:00:00')),
-                  TextField(controller: _end, decoration: const InputDecoration(labelText: 'End, 2026-12-01 07:00:00')),
+                  TextField(controller: _start, readOnly: true, onTap: () => _pickWhen(_start), decoration: const InputDecoration(labelText: 'Start date and time', suffixIcon: Icon(Icons.event))),
+                  TextField(controller: _end, readOnly: true, onTap: () => _pickWhen(_end), decoration: const InputDecoration(labelText: 'End date and time', suffixIcon: Icon(Icons.event))),
                   Align(
                     alignment: Alignment.centerLeft,
                     child: FilledButton(
@@ -163,7 +181,7 @@ class _VenueCoachingScreenState extends State<VenueCoachingScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text('Saving a class closes that court time.', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+                  Text('Saving a class closes that court time.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   const SizedBox(height: 20),
                   if (_error == null && _sessions.isEmpty)
                     const Padding(

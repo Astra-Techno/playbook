@@ -220,15 +220,15 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
                       height: 180,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Colors.grey[100],
+                        color: AppColors.surfaceDim,
                         borderRadius: BorderRadius.circular(16),
                         image: _imageUrl != null ? DecorationImage(image: NetworkImage(_imageUrl!), fit: BoxFit.cover) : null,
                       ),
                       child: _imageUrl == null
                           ? Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                              Icon(AppIcons.camera, size: 32, color: Colors.grey[400]),
+                              Icon(AppIcons.camera, size: 32, color: AppColors.textMuted),
                               const SizedBox(height: 8),
-                              Text('Tap to add photo', style: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.w600)),
+                              Text('Tap to add photo', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600)),
                             ])
                           : null,
                     ),
@@ -285,7 +285,7 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
                   _label('LOCATION'),
                   const SizedBox(height: 8),
                   Material(
-                    color: Colors.grey[100],
+                    color: AppColors.surfaceDim,
                     borderRadius: BorderRadius.circular(14),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(14),
@@ -314,13 +314,13 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
                                         : _locationCtrl.text.trim(),
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      color: locationReady(_locationCtrl.text, _lat, _lng) ? Colors.black : Colors.grey[700],
+                                      color: locationReady(_locationCtrl.text, _lat, _lng) ? AppColors.textPrimary : AppColors.textSecondary,
                                     ),
                                   ),
                                   if (!locationReady(_locationCtrl.text, _lat, _lng))
                                     Text(
                                       'Select a search result or current location',
-                                      style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                                     ),
                                 ],
                               ),
@@ -343,15 +343,15 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: sel ? Colors.black : Colors.grey[100],
+                            color: sel ? AppColors.primary : AppColors.surfaceDim,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(c.icon, size: 14, color: sel ? Colors.white : Colors.grey[600]),
+                              Icon(c.icon, size: 14, color: sel ? Colors.white : AppColors.textSecondary),
                               const SizedBox(width: 6),
-                              Text(c.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: sel ? Colors.white : Colors.grey[600])),
+                              Text(c.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: sel ? Colors.white : AppColors.textSecondary)),
                             ],
                           ),
                         ),
@@ -376,11 +376,11 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: sel ? AppColors.primary.withValues(alpha: 0.1) : Colors.grey[100],
+                            color: sel ? AppColors.primary.withValues(alpha: 0.1) : AppColors.surfaceDim,
                             borderRadius: BorderRadius.circular(20),
                             border: sel ? Border.all(color: AppColors.primary.withValues(alpha: 0.3)) : null,
                           ),
-                          child: Text(a, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: sel ? AppColors.primary : Colors.grey[600])),
+                          child: Text(a, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: sel ? AppColors.primary : AppColors.textSecondary)),
                         ),
                       );
                     }).toList(),
@@ -394,6 +394,6 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
 
   Widget _label(String text) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey[400], letterSpacing: 1.5)),
+    child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textMuted, letterSpacing: 1.5)),
   );
 }

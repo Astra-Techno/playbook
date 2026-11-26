@@ -146,9 +146,9 @@ class _VenueEarningsScreenState extends State<VenueEarningsScreen> {
                         const SizedBox(height: 12),
                         Row(
                           children: [
-                            Expanded(child: _statCard('This week', _formatCurrency(_summary!['this_week']), Colors.blue, Icons.trending_up)),
+                            Expanded(child: _statCard('This week', _formatCurrency(_summary!['this_week']), AppColors.info, Icons.trending_up)),
                             const SizedBox(width: 12),
-                            Expanded(child: _statCard('This month', _formatCurrency(_summary!['this_month']), Colors.teal, Icons.calendar_month_outlined)),
+                            Expanded(child: _statCard('This month', _formatCurrency(_summary!['this_month']), AppColors.primary, Icons.calendar_month_outlined)),
                           ],
                         ),
                         const SizedBox(height: 24),
@@ -227,13 +227,13 @@ class _VenueEarningsScreenState extends State<VenueEarningsScreen> {
           Container(
             width: 40, height: 40,
             decoration: BoxDecoration(
-              color: (isSubscription ? Colors.purple : AppColors.secondary).withValues(alpha: 0.1),
+              color: (isSubscription ? AppColors.primary : AppColors.secondary).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               isSubscription ? AppIcons.award : Icons.receipt_long,
               size: 18,
-              color: isSubscription ? Colors.purple : AppColors.secondary,
+              color: isSubscription ? AppColors.primary : AppColors.secondary,
             ),
           ),
           const SizedBox(width: 12),

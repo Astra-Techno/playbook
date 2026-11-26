@@ -1,8 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../home/home_logic.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'slot_block.dart';
+import 'slot_timeline.dart';
+import 'addons_sheet.dart';
 import '../bookings/booking_ticket.dart';
 import '../reviews/past_booking.dart';
+import '../home/widgets/venue_card.dart' show venuePhotoHeroTag;
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -34,6 +39,11 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
   bool _slotsLoading = true;
   String? _slotsError;
   Set<String> _selectedSlots = {};
+  /// Effective price per hour for the selected day (pricing rules); empty = flat hourly rate.
+  Map<int, double> _hourPrices = {};
+  int _squad = 4;
+
+  double get _fallbackRate => double.tryParse('${_court?['hourly_rate'] ?? 0}') ?? 0;
   bool _bookingLoading = false;
   List<Map<String, dynamic>> _reviews = [];
   List<String> _photos = [];
@@ -174,6 +184,25 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
       }
     } catch (_) {}
 
+    // Same rules checkout uses; on failure the flat hourly rate is shown.
+    var hourPrices = <int, double>{};
+    try {
+      final pRes = await Api().get('/pricing-rules/calculate-day', params: {
+        'court_id': widget.courtId,
+        'date': _selectedDate,
+        if ((_selectedSpaceId ?? 0) > 0) 'sub_court_id': _selectedSpaceId,
+      });
+      final raw = pRes.data['prices'];
+      // PHP sends hours 0–23 as a JSON list (or an object if keys get gaps).
+      final Iterable<MapEntry<dynamic, dynamic>> entries =
+          raw is Map ? raw.entries : raw is List ? raw.asMap().entries : const [];
+      hourPrices = {
+        for (final e in entries)
+          if (int.tryParse('${e.key}') != null && double.tryParse('${e.value}') != null)
+            int.parse('${e.key}'): double.parse('${e.value}'),
+      };
+    } catch (_) {}
+
     final slots = <Map<String, dynamic>>[];
     final now = DateTime.now();
     final openHour = _clockHour(_court?['open_time'], 6);
@@ -215,6 +244,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     if (!mounted) return;
     setState(() {
       _slots = slots;
+      _hourPrices = hourPrices;
       _selectedSlots = {};
       _slotsLoading = false;
     });
@@ -245,19 +275,39 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
       return;
     }
 
+    // Add-ons (bat, balls, bibs) — only asked when the venue rents kit.
+    var addonCounts = <int, int>{};
+    var addonsRupees = 0;
+    try {
+      final res = await Api().get('/courts/${widget.courtId}/addons');
+      final addons = List<Map<String, dynamic>>.from(
+        (res.data['addons'] ?? []).map((e) => Map<String, dynamic>.from(e as Map)),
+      );
+      if (addons.isNotEmpty && mounted) {
+        final picked = await AddonsSheet.open(context, addons);
+        if (picked == null) return;
+        addonCounts = picked;
+        addonsRupees = addonsTotal(addons, picked);
+      }
+    } catch (_) {
+      // No add-on list (older server or offline): book the slot without kit.
+    }
+    if (!mounted) return;
+
     setState(() => _bookingLoading = true);
 
     try {
-      final rate = double.tryParse('${_court!['hourly_rate'] ?? 0}') ?? 0;
-      final totalPrice = rate * _selectedSlots.length;
+      // Display estimate only: the server quote re-prices every slot.
+      final totalPrice = selectionTotal(_slots, _selectedSlots, _hourPrices, _fallbackRate) + addonsRupees;
 
       // Build slots array for multi-slot payment
       final slots = _selectedSlots.map((slotKey) {
         final parts = slotKey.split('-');
+        final hour = int.tryParse(parts[0].split(':').first) ?? 0;
         return {
           'start_time': '$_selectedDate ${parts[0]}:00',
           'end_time': '$_selectedDate ${parts[1]}:00',
-          'total_price': rate,
+          'total_price': hourPrice(_hourPrices, hour, _fallbackRate),
         };
       }).toList();
 
@@ -265,6 +315,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
         'court_id': widget.courtId,
         if (_selectedSpaceId != null) 'sub_court_id': _selectedSpaceId,
         'slots': slots,
+        if (addonsPayload(addonCounts).isNotEmpty) 'addons': addonsPayload(addonCounts),
         'type': 'hourly',
         'total_price': totalPrice,
       };
@@ -315,7 +366,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     }
 
     final imageUrl = getVenueImage(_court!);
-    final totalPrice = (double.tryParse('${_court!['hourly_rate'] ?? 0}') ?? 0) * _selectedSlots.length;
+    final totalPrice = selectionTotal(_slots, _selectedSlots, _hourPrices, _fallbackRate);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -326,20 +377,21 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
           SliverAppBar(
             expandedHeight: 300,
             pinned: true,
-            backgroundColor: AppColors.textPrimary,
+            backgroundColor: AppColors.surface,
+            surfaceTintColor: Colors.transparent,
             leading: Padding(
               padding: const EdgeInsets.all(8),
               child: GestureDetector(
                 onTap: () => Navigator.pop(context),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.3),
+                    color: Colors.white,
                     shape: BoxShape.circle,
                   ),
                   child: ClipOval(
                     child: BackdropFilter(
                       filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+                      child: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 18),
                     ),
                   ),
                 ),
@@ -354,13 +406,13 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.3),
+                      color: Colors.white,
                       shape: BoxShape.circle,
                     ),
                     child: ClipOval(
                       child: BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: const Icon(Icons.share_outlined, color: Colors.white, size: 18),
+                        child: const Icon(Icons.share_outlined, color: AppColors.textPrimary, size: 18),
                       ),
                     ),
                   ),
@@ -372,19 +424,23 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                 fit: StackFit.expand,
                 children: [
                   // Photo gallery or single image
-                  if (_photos.length > 1)
-                    PageView.builder(
-                      itemCount: _photos.length,
-                      itemBuilder: (_, i) => CachedNetworkImage(imageUrl: _photos[i], fit: BoxFit.cover),
-                    )
-                  else
-                    CachedNetworkImage(imageUrl: _photos.isNotEmpty ? _photos.first : imageUrl, fit: BoxFit.cover),
+                  // Receives the photo flying in from the Home venue card.
+                  Hero(
+                    tag: venuePhotoHeroTag(widget.courtId),
+                    child: _photos.length > 1
+                        ? PageView.builder(
+                            itemCount: _photos.length,
+                            itemBuilder: (_, i) => CachedNetworkImage(imageUrl: _photos[i], fit: BoxFit.cover),
+                          )
+                        : CachedNetworkImage(imageUrl: _photos.isNotEmpty ? _photos.first : imageUrl, fit: BoxFit.cover),
+                  ),
                   const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.bottomCenter,
                         end: Alignment.center,
-                        colors: [Color(0xCC000000), Colors.transparent],
+                        // v5: the photo melts into the page instead of darkening.
+                        colors: [AppColors.surface, Color(0x00F6F7FB)],
                       ),
                     ),
                   ),
@@ -396,17 +452,17 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
+                          color: Colors.white.withValues(alpha: 0.92),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.photo_library_rounded, size: 13, color: Colors.white),
+                            const Icon(Icons.photo_library_rounded, size: 13, color: AppColors.textPrimary),
                             const SizedBox(width: 5),
                             Text(
                               '${_photos.length} photos',
-                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                              style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, fontWeight: FontWeight.w700),
                             ),
                           ],
                         ),
@@ -447,7 +503,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                           Text(
                             '$_reviewCount reviews',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.8),
+                              color: AppColors.textSecondary,
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
@@ -463,16 +519,33 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
           // Court info card
           SliverToBoxAdapter(
             child: Container(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+              margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.border),
+                boxShadow: const [BoxShadow(color: Color(0x14111827), blurRadius: 28, offset: Offset(0, 10))],
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      StatusTag.sport(_court!['type']),
+                      if (isOpenNow(_court!, DateTime.now()))
+                        StatusTag('Open till ${clockLabel(_court!['close_time'] ?? '22:00:00')}', tone: TagTone.free),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
                       Flexible(
                         child: Text(
                           _court!['name'] ?? '',
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, height: 1.2),
+                          style: GoogleFonts.archivo(fontSize: 28, fontWeight: FontWeight.w900, height: 1.05),
                         ),
                       ),
                       if (_court!['is_verified'] == true || _court!['is_verified'] == 1) ...[
@@ -595,19 +668,21 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 20),
               decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(AppRadius.md),
+                color: const Color(0xFFECEEF4),
+                borderRadius: BorderRadius.circular(22),
               ),
+              padding: const EdgeInsets.all(4),
               child: TabBar(
                 controller: _tabController,
                 isScrollable: true,
                 tabAlignment: TabAlignment.start,
                 indicatorSize: TabBarIndicatorSize.tab,
                 indicator: BoxDecoration(
-                  color: AppColors.textPrimary,
-                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: const [BoxShadow(color: Color(0x1A111827), blurRadius: 3, offset: Offset(0, 1))],
                 ),
-                labelColor: Colors.white,
+                labelColor: AppColors.textPrimary,
                 unselectedLabelColor: AppColors.textSecondary,
                 labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                 unselectedLabelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
@@ -634,7 +709,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                       children: [
                         _buildDatePicker(),
                         const SizedBox(height: 16),
-                        _buildSlotsGrid(),
+                        _buildTimeline(),
                       ],
                     ),
                   );
@@ -664,16 +739,17 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                 left: 20,
                 right: 20,
                 top: 16,
-                bottom: MediaQuery.of(context).padding.bottom + 16,
+                bottom: 12,
               ),
+              margin: EdgeInsets.fromLTRB(12, 0, 12, MediaQuery.of(context).padding.bottom + 12),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                color: context.brand.primary,
+                borderRadius: BorderRadius.circular(34),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 24,
-                    offset: const Offset(0, -8),
+                    color: context.brand.primary.withValues(alpha: 0.35),
+                    blurRadius: 30,
+                    offset: const Offset(0, 14),
                   ),
                 ],
               ),
@@ -686,20 +762,20 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${_selectedSlots.length} slot${_selectedSlots.length > 1 ? 's' : ''} selected',
+                          selectionLabel(_slots, _selectedSlots),
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: AppColors.textMuted,
+                            color: Color(0xFFE5DAFF),
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '₹${totalPrice == totalPrice.toInt() ? totalPrice.toInt() : totalPrice.toStringAsFixed(2)}',
+                          rupees(totalPrice),
                           style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
+                            color: Colors.white,
                           ),
                         ),
                       ],
@@ -712,9 +788,10 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                       child: ElevatedButton(
                         onPressed: _bookingLoading ? null : _book,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.primary,
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          shape: const StadiumBorder(),
                           elevation: 0,
                           shadowColor: AppColors.primary.withValues(alpha: 0.3),
                         ),
@@ -722,14 +799,14 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                              child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2.5),
                             )
                           : const FittedBox(
                               fit: BoxFit.scaleDown,
                               child: Text(
-                                'Book Now',
+                                'Continue to pay',
                                 maxLines: 1,
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.primary),
                               ),
                             ),
                     ),
@@ -846,7 +923,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     );
   }
 
-  Widget _buildSlotsGrid() {
+  Widget _buildTimeline() {
     if (_slotsLoading && _slots.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 40),
@@ -866,117 +943,21 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     }
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'SELECT TIME SLOTS',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textMuted,
-            letterSpacing: 1.5,
-          ),
+        SlotTimeline(
+          slots: _slots,
+          selected: _selectedSlots,
+          prices: _hourPrices,
+          fallbackRate: _fallbackRate,
+          onChanged: (next) => setState(() => _selectedSlots = next),
+          onTakenTap: _suggestNextOpenSlot,
         ),
-        const SizedBox(height: 10),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            childAspectRatio: 2.2,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
+        if (_selectedSlots.isNotEmpty)
+          SquadSplit(
+            total: selectionTotal(_slots, _selectedSlots, _hourPrices, _fallbackRate),
+            players: _squad,
+            onPlayers: (n) => setState(() => _squad = n),
           ),
-          itemCount: _slots.length,
-          itemBuilder: (_, i) {
-            final slot = _slots[i];
-            final key = slot['key'] as String;
-            final booked = slot['booked'] as bool;
-            final blocked = slot['blocked'] as bool;
-            final hour = int.tryParse('${slot['start']}'.split(':').first) ?? 0;
-            final past = slotStartHasPassed(_selectedDate, hour, DateTime.now());
-            final selected = _selectedSlots.contains(key);
-            final disabled = booked || blocked || past;
-
-            return GestureDetector(
-              onTap: () {
-                if (disabled) {
-                  if (booked) _suggestNextOpenSlot(i);
-                  return;
-                }
-                HapticFeedback.selectionClick();
-                setState(() {
-                  if (selected) {
-                    _selectedSlots.remove(key);
-                  } else {
-                    _selectedSlots.add(key);
-                  }
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOutCubic,
-                decoration: BoxDecoration(
-                  color: disabled
-                      ? AppColors.surfaceDim
-                      : selected
-                          ? AppColors.primary
-                          : Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: disabled
-                        ? AppColors.borderLight
-                        : selected
-                            ? AppColors.primary
-                            : AppColors.border,
-                    width: selected ? 2 : 1,
-                  ),
-                  boxShadow: selected
-                      ? [
-                          BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.2),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ]
-                      : null,
-                ),
-                alignment: Alignment.center,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      slot['start'] as String,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: disabled
-                            ? AppColors.textDisabled
-                            : selected
-                                ? Colors.white
-                                : AppColors.textPrimary,
-                      ),
-                    ),
-                    if (disabled)
-                      Text(
-                        past ? 'Past' : booked ? 'Booked' : 'Blocked',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textDisabled,
-                        ),
-                      ),
-                    if (selected)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 1),
-                        child: Icon(Icons.check_rounded, size: 12, color: Colors.white.withValues(alpha: 0.8)),
-                      ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
       ],
     );
   }
@@ -1102,7 +1083,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
           padding: const EdgeInsets.symmetric(vertical: 40),
           child: Column(
             children: [
-              Icon(Icons.card_membership_rounded, size: 40, color: Colors.grey[300]),
+              Icon(Icons.card_membership_rounded, size: 40, color: AppColors.textDisabled),
               const SizedBox(height: 12),
               Text('No plans available', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600)),
             ],

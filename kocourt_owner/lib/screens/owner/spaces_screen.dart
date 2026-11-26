@@ -179,8 +179,9 @@ class _SpacesScreenState extends State<SpacesScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [
@@ -195,21 +196,13 @@ class _SpacesScreenState extends State<SpacesScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Center(child: Text('${index + 1}', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary))),
-                    ),
+                    TimePlate(top: (index + 1).toString().padLeft(2, '0'), width: 46),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(space['name'] ?? 'Space ${index + 1}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                          Text(space['name'] ?? 'Space ${index + 1}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                           const SizedBox(height: 2),
                           Text(
                             spaceModeLabel(space['booking_mode'], space['capacity']),
@@ -226,7 +219,7 @@ class _SpacesScreenState extends State<SpacesScreen> {
           if (_canManage)
             IconButton(
               onPressed: () => _deleteSpace(space),
-              icon: Icon(Icons.delete_outline, size: 20, color: Colors.grey[400]),
+              icon: Icon(Icons.delete_outline, size: 20, color: AppColors.textMuted),
             ),
         ],
       ),

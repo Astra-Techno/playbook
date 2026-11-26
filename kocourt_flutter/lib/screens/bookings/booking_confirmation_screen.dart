@@ -1,8 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import 'booking_ticket.dart';
 
+/// Booking pass: kick-off countdown, jersey-striped ticket, desk check-in code and squad.
 class BookingConfirmationScreen extends StatefulWidget {
   final int bookingId;
   final Map<String, dynamic>? booking;
@@ -16,6 +25,10 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
   Map<String, dynamic>? _booking;
   bool _loading = true;
   String? _error;
+  List<Map<String, dynamic>> _squad = [];
+  String? _passPayload;
+  String? _passCode;
+  Timer? _tick;
 
   @override
   void initState() {
@@ -23,10 +36,22 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
     if (widget.booking != null) {
       _booking = widget.booking;
       _loading = false;
+      _loadSquad();
     } else {
       _fetchBooking();
     }
+    _tick = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
   }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  int get _id => int.tryParse('${_booking?['id'] ?? widget.bookingId}') ?? 0;
 
   Future<void> _fetchBooking() async {
     try {
@@ -34,6 +59,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
       final raw = res.data['booking'] ?? res.data;
       if (raw is! Map) throw const FormatException('Booking was not returned.');
       _booking = Map<String, dynamic>.from(raw);
+      _loadSquad();
     } catch (caught) {
       _error = caught is FormatException
           ? caught.message
@@ -42,12 +68,138 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
+  Future<void> _loadPass() async {
+    if (_id <= 0 || '${_booking?['status'] ?? 'confirmed'}' != 'confirmed') return;
+    try {
+      final res = await Api().get('/bookings/$_id/check-in-code');
+      final payload = '${res.data['payload'] ?? ''}';
+      final code = '${res.data['code'] ?? ''}';
+      if (mounted && payload.isNotEmpty && code.length == 8) {
+        setState(() {
+          _passPayload = payload;
+          _passCode = code;
+        });
+      }
+    } catch (_) {
+      // Older servers have no QR; the booking number still works at the desk.
+    }
+  }
+
+  Future<void> _loadSquad() async {
+    _loadPass();
+    if (_id <= 0) return;
+    try {
+      final res = await Api().get('/booking-players', params: {'booking_id': _id});
+      final rows = List<Map<String, dynamic>>.from(
+        (res.data['players'] ?? []).map((e) => Map<String, dynamic>.from(e)),
+      );
+      if (mounted) setState(() => _squad = rows);
+    } catch (_) {
+      // Squad is a bonus; the pass still works without it.
+    }
+  }
+
+  bool get _isBooker {
+    final me = context.read<AuthProvider>().userId;
+    return me != null && '${_booking?['user_id']}' == '$me';
+  }
+
+  Future<void> _shareGame(BookingTicket ticket) async {
+    final courtId = _booking?['court_id'];
+    await SharePlus.instance.share(ShareParams(
+      text: 'I booked ${ticket.venue} for ${ticket.date}, ${ticket.time}. Join my game on KoCourt!'
+          '${courtId != null ? '\nhttps://www.kocourt.com/court/$courtId' : ''}',
+    ));
+  }
+
+  Future<void> _directions(BookingTicket ticket) async {
+    final query = [ticket.venue, ticket.place].where((s) => s.isNotEmpty).join(', ');
+    final uri = Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': query});
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) && mounted) {
+      context.toastError('Could not open maps.');
+    }
+  }
+
+  Future<void> _addPlayer() async {
+    final phone = TextEditingController();
+    String? problem;
+    var busy = false;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheet) => StatefulBuilder(
+        builder: (sheet, setSheet) {
+          Future<void> submit() async {
+            if (!isTenDigitMobile(phone.text)) {
+              setSheet(() => problem = 'Enter a 10-digit mobile number.');
+              return;
+            }
+            setSheet(() {
+              busy = true;
+              problem = null;
+            });
+            try {
+              final found = await Api().get('/users/search', params: {'phone': normalizeIndianMobile(phone.text)});
+              final user = found.data['user'];
+              if (user is! Map) {
+                setSheet(() => problem = 'No KoCourt account for this number yet. Share the game link instead.');
+                return;
+              }
+              final added = await Api().post('/booking-players', data: {'booking_id': _id, 'user_ids': [user['id']]});
+              if (!sheet.mounted) return;
+              Navigator.pop(sheet);
+              if (!mounted) return;
+              final count = int.tryParse('${added.data['added'] ?? 0}') ?? 0;
+              count > 0 ? context.toastSuccess('${user['name'] ?? 'Player'} added to your squad') : context.toastInfo('Already in your squad');
+              _loadSquad();
+            } catch (caught) {
+              setSheet(() => problem = Api.failureMessage(caught, fallback: 'Could not add this player.'));
+            } finally {
+              if (sheet.mounted) setSheet(() => busy = false);
+            }
+          }
+
+          return Padding(
+            padding: EdgeInsets.fromLTRB(20, 0, 20, MediaQuery.of(sheet).viewInsets.bottom + 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('Add to your squad', style: Theme.of(sheet).textTheme.titleLarge),
+                const SizedBox(height: 4),
+                const Text('They get a notification with the game time.', style: TextStyle(color: AppColors.textSecondary)),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: phone,
+                  autofocus: true,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(labelText: 'Their KoCourt mobile number', errorText: problem),
+                  onSubmitted: (_) => busy ? null : submit(),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 52,
+                  child: ElevatedButton(
+                    onPressed: busy ? null : submit,
+                    child: busy
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                        : const Text('Add player'),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    phone.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.primary)));
     }
 
     if (_booking == null) {
@@ -69,70 +221,114 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
       );
     }
 
-    final ticket = ticketFromBooking(_booking!);
+    final booking = _booking!;
+    final ticket = ticketFromBooking(booking);
+    final brand = context.brand.primary;
+    // v5: the pass wears the venue's sport colour.
+    final tint = sportTint(booking['court_type']);
+    final first = context.read<AuthProvider>().userName.split(' ').first;
+    final cancelled = ticket.status == 'cancelled';
+    final countdown = cancelled
+        ? 'Cancelled'
+        : passCountdown(
+            DateTime.tryParse('${booking['start_time'] ?? ''}'),
+            DateTime.tryParse('${booking['end_time'] ?? ''}'),
+            DateTime.now(),
+          );
+    final times = ticket.time.split(' – ');
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F7F9),
+      backgroundColor: tint.bg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF6F7F9),
-        title: const Text('Booking', style: TextStyle(fontWeight: FontWeight.w800)),
+        backgroundColor: Colors.transparent,
+        leading: IconButton(tooltip: 'Close', icon: const Icon(Icons.close_rounded), onPressed: () => context.go('/')),
+        actions: [
+          IconButton(tooltip: 'Share game', icon: const Icon(Icons.ios_share_rounded), onPressed: () => _shareGame(ticket)),
+        ],
       ),
-      body: SafeArea(
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [tint.bg, AppColors.surface],
+            stops: const [0, 0.3],
+          ),
+        ),
+        child: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           children: [
-            const Icon(Icons.check_circle_rounded, size: 56, color: AppColors.secondary),
-            const SizedBox(height: 8),
-            const Text('Booking confirmed', textAlign: TextAlign.center, style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 4),
-            const Text('Your slot is reserved', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textMuted)),
-            const SizedBox(height: 20),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFE6E8EC)),
-              ),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(ticket.venue, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-                        if (ticket.place.isNotEmpty) ...[
-                          const SizedBox(height: 4),
-                          Text(ticket.place, style: const TextStyle(color: AppColors.textMuted)),
-                        ],
-                      ],
-                    ),
+            // Pops in like a whistle blast.
+            Center(
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: const Duration(milliseconds: 700),
+                curve: Curves.elasticOut,
+                builder: (_, v, child) => Transform.scale(scale: v, child: child),
+                child: Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: [BoxShadow(color: tint.fg.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 8))],
                   ),
-                  const Divider(height: 1),
-                  Padding(
-                    padding: const EdgeInsets.all(18),
-                    child: Column(
-                      children: [
-                        _line('Date', ticket.date),
-                        _line('Time', ticket.time),
-                        if (ticket.space.isNotEmpty) _line('Space', ticket.space),
-                        _line('Amount paid', ticket.amount),
-                        _line('Payment', '${_booking!['payment_status'] ?? 'paid'}'),
-                        _line('Booking ID', ticket.id > 0 ? '${ticket.id}' : '—'),
-                        _line('Status', ticket.status),
-                      ],
-                    ),
-                  ),
-                ],
+                  child: Icon(cancelled ? Icons.close_rounded : Icons.check_rounded,
+                      size: 32, color: cancelled ? AppColors.error : AppColors.secondary),
+                ),
               ),
             ),
-            const SizedBox(height: 20),
-            SizedBox(
-              height: 52,
-              child: ElevatedButton(
-                onPressed: () => context.go('/'),
-                child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 10),
+            Text(
+              cancelled ? 'Booking cancelled' : (first.isEmpty ? "You're in" : "You're in, $first"),
+              textAlign: TextAlign.center,
+              style: GoogleFonts.archivo(fontSize: 26, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              [if (ticket.amount.isNotEmpty) ticket.amount, 'Payment ${booking['payment_status'] ?? 'paid'}'].join(' · '),
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+            ),
+            if (countdown.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Center(
+                child: _Slanted(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(color: brand, borderRadius: BorderRadius.circular(8)),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.timer_outlined, size: 16, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Text(countdown, style: GoogleFonts.archivo(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
+                      ],
+                    ),
+                  ),
+                ),
               ),
+            ],
+            const SizedBox(height: 18),
+            _pass(ticket, booking, tint.fg, times),
+            const SizedBox(height: 16),
+            _squadCard(ticket, brand),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _directions(ticket),
+                    icon: const Icon(Icons.directions_rounded),
+                    label: const Text('Directions'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(onPressed: () => context.go('/'), child: const Text('Done')),
+                ),
+              ],
             ),
             TextButton(
               onPressed: () => context.go('/bookings'),
@@ -141,19 +337,313 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
           ],
         ),
       ),
+      ),
     );
   }
 
-  Widget _line(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _pass(BookingTicket ticket, Map<String, dynamic> booking, Color brand, List<String> times) {
+    final facts = <(String, String)>[
+      ('Date', ticket.date),
+      ('Kick-off', times.first),
+      ('Full time', times.length > 1 ? times.last : '—'),
+      ('Paid', ticket.amount.isEmpty ? '—' : ticket.amount),
+      ('Booking', ticket.id > 0 ? '#${ticket.id}' : '—'),
+      ('Status', ticket.status[0].toUpperCase() + ticket.status.substring(1)),
+    ];
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [BoxShadow(color: brand.withValues(alpha: 0.2), blurRadius: 40, offset: const Offset(0, 16))],
+      ),
+      child: Column(
         children: [
-          SizedBox(width: 110, child: Text(label, style: const TextStyle(color: AppColors.textMuted))),
-          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w800))),
+          // Jersey-sash header
+          Container(
+            color: brand,
+            child: CustomPaint(
+              painter: const _SashPainter(),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Venue', style: TextStyle(color: Color(0xFFE5DAFF), fontSize: 11, fontWeight: FontWeight.w600)),
+                          Text(ticket.venue,
+                              style: GoogleFonts.archivo(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis),
+                          if (ticket.place.isNotEmpty)
+                            Text(ticket.place, style: const TextStyle(color: Color(0xFFE5DAFF), fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    ),
+                    if (ticket.space.isNotEmpty)
+                      _Slanted(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
+                          child: Text(ticket.space.toUpperCase(),
+                              style: GoogleFonts.archivo(color: brand, fontSize: 15, fontWeight: FontWeight.w900)),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 4),
+            child: GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: 2.1,
+              children: [
+                for (final (label, value) in facts)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 2),
+                      Text(value, style: GoogleFonts.archivo(fontSize: 15, fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+              ],
+            ),
+          ),
+          const _TearLine(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 6, 18, 18),
+            child: _checkIn(ticket, brand),
+          ),
         ],
       ),
     );
   }
+
+  /// QR the desk scans; falls back to the booking number when no code is available.
+  Widget _checkIn(BookingTicket ticket, Color brand) {
+    final payload = _passPayload;
+    final code = _passCode;
+    if (payload == null || code == null) {
+      return Row(
+        children: [
+          _Slanted(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(color: brand.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+              child: Text(ticket.id > 0 ? '#${ticket.id}' : '—',
+                  style: GoogleFonts.archivo(fontSize: 24, fontWeight: FontWeight.w900, color: brand, letterSpacing: 1)),
+            ),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Text(
+              'Show this booking number at the desk to check in.',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.35),
+            ),
+          ),
+        ],
+      );
+    }
+    return Row(
+      children: [
+        Semantics(
+          label: 'Check-in QR code',
+          image: true,
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: QrImageView(
+              data: payload,
+              size: 124,
+              padding: EdgeInsets.zero,
+              eyeStyle: QrEyeStyle(eyeShape: QrEyeShape.square, color: brand),
+              dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: AppColors.textPrimary),
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Check-in code', style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 2),
+              Text(
+                '${code.substring(0, 4)} ${code.substring(4)}',
+                style: GoogleFonts.archivo(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Booking #${ticket.id} · show the QR at the desk. Check-in opens 30 min before kick-off.',
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.35),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _squadCard(BookingTicket ticket, Color brand) {
+    final canAdd = _isBooker && ticket.status != 'cancelled';
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('Squad', style: GoogleFonts.archivo(fontSize: 17, fontWeight: FontWeight.w900)),
+              const SizedBox(width: 8),
+              Text('${_squad.length + 1} players', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              const Spacer(),
+              if (canAdd)
+                TextButton.icon(onPressed: _addPlayer, icon: const Icon(Icons.person_add_alt_1_rounded, size: 18), label: const Text('Add')),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _Jersey(label: 'You', color: brand, captain: true),
+              for (final p in _squad) _Jersey(label: '${p['name'] ?? 'Player'}'.split(' ').first, color: AppColors.secondary),
+            ],
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => _shareGame(ticket),
+            icon: const Icon(Icons.share_rounded, size: 18),
+            label: const Text('Invite friends by link'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Slanted extends StatelessWidget {
+  const _Slanted({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      Transform(transform: Matrix4.skewX(-0.17), alignment: Alignment.center, child: child);
+}
+
+/// Squad member chip shaped like a jersey number plate; the booker wears the armband.
+class _Jersey extends StatelessWidget {
+  const _Jersey({required this.label, required this.color, this.captain = false});
+  final String label;
+  final Color color;
+  final bool captain;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(6, 6, 12, 6),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 13,
+            backgroundColor: color,
+            child: Text(captain ? 'C' : label.characters.first.toUpperCase(),
+                style: GoogleFonts.archivo(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
+          ),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+}
+
+class _SashPainter extends CustomPainter {
+  const _SashPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = Colors.white.withValues(alpha: 0.14);
+    Path band(double right, double width) => Path()
+      ..moveTo(size.width - right - width + 20, 0)
+      ..lineTo(size.width - right + 20, 0)
+      ..lineTo(size.width - right - 20, size.height)
+      ..lineTo(size.width - right - width - 20, size.height)
+      ..close();
+    canvas.drawPath(band(90, 40), paint);
+    canvas.drawPath(band(140, 10), paint);
+  }
+
+  @override
+  bool shouldRepaint(_SashPainter oldDelegate) => false;
+}
+
+/// Dashed perforation with notches, like a ticket stub.
+class _TearLine extends StatelessWidget {
+  const _TearLine();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 24,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: CustomPaint(painter: _DashPainter()),
+          ),
+          const Positioned(left: -12, top: 0, child: _Notch()),
+          const Positioned(right: -12, top: 0, child: _Notch()),
+        ],
+      ),
+    );
+  }
+}
+
+class _Notch extends StatelessWidget {
+  const _Notch();
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          shape: BoxShape.circle,
+          border: Border.all(color: AppColors.border),
+        ),
+      );
+}
+
+class _DashPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.border
+      ..strokeWidth = 2;
+    for (double x = 20; x < size.width - 20; x += 10) {
+      canvas.drawLine(Offset(x, size.height / 2), Offset(x + 5, size.height / 2), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashPainter oldDelegate) => false;
 }

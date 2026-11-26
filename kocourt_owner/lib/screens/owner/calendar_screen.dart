@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import '../../widgets/tab_status.dart';
@@ -149,7 +150,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: ['S', 'M', 'T', 'W', 'T', 'F', 'S']
-                  .map((d) => Expanded(child: Center(child: Text(d, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey[400])))))
+                  .map((d) => Expanded(child: Center(child: Text(d, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textMuted)))))
                   .toList(),
             ),
           ),
@@ -176,14 +177,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   child: Container(
                     margin: const EdgeInsets.all(2),
                     decoration: BoxDecoration(
-                      color: isSelected ? Colors.black : null,
+                      color: isSelected ? context.brand.primary : null,
                       borderRadius: BorderRadius.circular(10),
                       border: isToday && !isSelected ? Border.all(color: AppColors.primary) : null,
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('$day', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isSelected ? Colors.white : Colors.black)),
+                        Text('$day', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isSelected ? Colors.white : AppColors.textPrimary)),
                         if (isBusy)
                           Container(
                             width: 5, height: 5, margin: const EdgeInsets.only(top: 2),
@@ -201,9 +202,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                Text(DateFormat('EEE, MMM d').format(_selectedDate), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                Text(DateFormat('EEE, MMM d').format(_selectedDate), style: GoogleFonts.archivo(fontSize: 17, fontWeight: FontWeight.w900)),
                 const Spacer(),
-                Text('${_bookings.length} bookings', style: TextStyle(fontSize: 13, color: Colors.grey[400])),
+                Text('${_bookings.length} bookings', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
               ],
             ),
           ),
@@ -216,7 +217,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     : _dayError != null && _bookings.isEmpty && _blocks.isEmpty
                     ? Center(child: Padding(padding: const EdgeInsets.all(24), child: TabErrorBanner(message: _dayError!, onRetry: _loadDay)))
                     : _bookings.isEmpty && _blocks.isEmpty
-                        ? Center(child: Text('No bookings', style: TextStyle(color: Colors.grey[400])))
+                        ? Center(child: Text('No bookings', style: TextStyle(color: AppColors.textMuted)))
                         : ListView(
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             children: [
@@ -292,33 +293,57 @@ class _CalendarScreenState extends State<CalendarScreen> {
               }
             },
       child: Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
-      child: Row(
-        children: [
-          Container(
-            width: 4, height: 40,
-            decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(2)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(bookingPerson(booking), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                Text('${booking['start_time'] ?? ''} – ${booking['end_time'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                if (recordedAfterPlayLabel(booking) != null)
-                  Text(recordedAfterPlayLabel(booking)!, style: TextStyle(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w600)),
-                if (space.isNotEmpty) Text(space, style: TextStyle(fontSize: 11, color: Colors.grey[400])),
-              ],
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            TimePlate(
+              top: _clock(booking['start_time'], hourOnly: true),
+              bottom: 'to ${_clock(booking['end_time'])}',
+              filled: booking['status'] != 'cancelled',
+              width: 72,
             ),
-          ),
-          Text('₹${booking['total_price'] ?? 0}', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.primary)),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(bookingPerson(booking), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                  if (space.isNotEmpty) Text(space, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  if (recordedAfterPlayLabel(booking) != null)
+                    Text(recordedAfterPlayLabel(booking)!, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      if (booking['status'] == 'cancelled') StatusTag.forBooking('cancelled'),
+                      if (booking['attendance'] == 'checked_in') const StatusTag('Checked in', tone: TagTone.free),
+                      if (booking['attendance'] == 'no_show') const StatusTag('No-show', tone: TagTone.due),
+                      if (booking['collection_method'] == 'pay_at_venue' && booking['payment_status'] != 'paid')
+                        const StatusTag('Pay at venue', tone: TagTone.ending),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Text('₹${booking['total_price'] ?? 0}', style: GoogleFonts.archivo(fontWeight: FontWeight.w900, fontSize: 15)),
+          ],
+        ),
       ),
-    ),
     );
+  }
+
+  /// "6 PM" (hourOnly) or "7:30 PM" from "YYYY-MM-DD HH:MM:SS".
+  String _clock(Object? raw, {bool hourOnly = false}) {
+    final at = DateTime.tryParse('${raw ?? ''}');
+    if (at == null) return '${raw ?? ''}';
+    return DateFormat(hourOnly && at.minute == 0 ? 'h a' : 'h:mm a').format(at);
   }
 
   Widget _blockTile(Map<String, dynamic> block) {
@@ -326,16 +351,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.surfaceDim,
+        borderRadius: BorderRadius.circular(AppRadius.md),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Closed', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-          Text('${block['start_time'] ?? ''} – ${block['end_time'] ?? ''}', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+          const StatusTag('Closed', tone: TagTone.muted),
+          const SizedBox(height: 6),
+          Text('${_clock(block['start_time'])} – ${_clock(block['end_time'])}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
           if ('${block['reason'] ?? ''}'.isNotEmpty)
-            Text('${block['reason']}', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+            Text('${block['reason']}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
         ],
       ),
     );

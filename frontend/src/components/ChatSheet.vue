@@ -105,25 +105,25 @@ const fmtTime = (dt) => {
 
                     <!-- Header -->
                     <div class="flex items-center gap-3 px-5 pt-5 pb-4 border-b border-gray-100 shrink-0">
-                        <div class="w-9 h-9 rounded-full bg-black flex items-center justify-center shrink-0">
+                        <div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center shrink-0">
                             <MessageCircle :size="16" class="text-white" />
                         </div>
                         <div class="flex-1 min-w-0">
-                            <p class="font-bold text-black text-sm truncate">{{ receiverName }}</p>
-                            <p v-if="courtName" class="text-[11px] text-gray-400 truncate">{{ courtName }}</p>
+                            <p class="font-bold text-on-surface text-sm truncate">{{ receiverName }}</p>
+                            <p v-if="courtName" class="text-[11px] text-outline truncate">{{ courtName }}</p>
                         </div>
                         <button @click="close" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                            <X :size="16" class="text-gray-500" />
+                            <X :size="16" class="text-on-surface-variant" />
                         </button>
                     </div>
 
                     <!-- Messages -->
                     <div ref="listRef" class="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0">
                         <div v-if="loading" class="flex items-center justify-center py-8">
-                            <Loader2 :size="24" class="animate-spin text-black" />
+                            <Loader2 :size="24" class="animate-spin text-on-surface" />
                         </div>
                         <div v-else-if="messages.length === 0"
-                            class="flex flex-col items-center justify-center py-10 text-gray-400">
+                            class="flex flex-col items-center justify-center py-10 text-outline">
                             <MessageCircle :size="36" class="mb-2 text-slate-200" />
                             <p class="text-sm">No messages yet</p>
                             <p class="text-xs mt-1">Start the conversation below</p>
@@ -135,11 +135,11 @@ const fmtTime = (dt) => {
                                 <div class="max-w-[75%]">
                                     <div class="px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed"
                                         :class="isMine(msg)
-                                            ? 'bg-black text-white rounded-br-sm'
-                                            : 'bg-gray-100 text-black rounded-bl-sm'">
+                                            ? 'bg-primary text-white rounded-br-sm'
+                                            : 'bg-gray-100 text-on-surface rounded-bl-sm'">
                                         {{ msg.body }}
                                     </div>
-                                    <p class="text-[10px] text-gray-400 mt-1"
+                                    <p class="text-[10px] text-outline mt-1"
                                         :class="isMine(msg) ? 'text-right' : 'text-left'">
                                         {{ fmtTime(msg.created_at) }}
                                     </p>
@@ -154,12 +154,12 @@ const fmtTime = (dt) => {
                             v-model="text"
                             rows="1"
                             placeholder="Type a message..."
-                            class="flex-1 min-h-[42px] max-h-24 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:border border-gray-200 placeholder:text-gray-400"
+                            class="flex-1 min-h-[42px] max-h-24 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:border border-gray-200 placeholder:text-outline"
                             @keydown.enter.exact.prevent="send"
                             style="field-sizing: content;"
                         />
                         <button @click="send" :disabled="!text.trim() || sending"
-                            class="w-10 h-10 rounded-full bg-black flex items-center justify-center shrink-0 active:scale-90 transition-all disabled:opacity-40">
+                            class="w-10 h-10 rounded-full bg-primary flex items-center justify-center shrink-0 active:scale-90 transition-all disabled:opacity-40">
                             <Loader2 v-if="sending" :size="16" class="animate-spin text-white" />
                             <Send v-else :size="16" class="text-white" />
                         </button>

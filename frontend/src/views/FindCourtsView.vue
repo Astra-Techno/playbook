@@ -126,22 +126,22 @@ const slotLabel = computed(() => {
     <Teleport to="#header-subtitle">Available at this time</Teleport>
 
     <div class="min-h-full bg-white px-4 py-4 space-y-4 pb-6">
-        <p class="text-xs text-gray-500 leading-relaxed">
+        <p class="text-xs text-on-surface-variant leading-relaxed">
             Venues near you with at least one court or space free for your chosen window (bookings + blocks considered).
         </p>
 
         <div class="bg-white rounded-2xl p-4 ring-1 ring-slate-100 space-y-3 shadow-sm">
             <div class="grid grid-cols-2 gap-3">
                 <label class="block col-span-2">
-                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Date</span>
+                    <span class="text-[10px] font-bold text-outline uppercase tracking-wider">Date</span>
                     <input v-model="dateStr" type="date" class="input-field mt-1 text-sm py-2.5" />
                 </label>
                 <label class="block">
-                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Start</span>
+                    <span class="text-[10px] font-bold text-outline uppercase tracking-wider">Start</span>
                     <input v-model="timeStr" type="time" class="input-field mt-1 text-sm py-2.5" />
                 </label>
                 <label class="block">
-                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Duration</span>
+                    <span class="text-[10px] font-bold text-outline uppercase tracking-wider">Duration</span>
                     <select v-model.number="durationMin" class="input-field mt-1 text-sm py-2.5">
                         <option v-for="o in durationOptions" :key="o.v" :value="o.v">{{ o.label }}</option>
                     </select>
@@ -152,19 +152,19 @@ const slotLabel = computed(() => {
                 type="button"
                 @click="useMyLocation"
                 :disabled="locating"
-                class="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-100 text-black font-bold text-sm active:scale-[0.98] transition-transform disabled:opacity-50">
+                class="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-100 text-on-surface font-bold text-sm active:scale-[0.98] transition-transform disabled:opacity-50">
                 <Loader2 v-if="locating" :size="16" class="animate-spin" />
                 <Navigation v-else :size="16" />
                 {{ locating ? 'Getting location…' : 'Use my location' }}
             </button>
 
-            <p v-if="hasCoords" class="text-[10px] text-gray-400 font-mono">
+            <p v-if="hasCoords" class="text-[10px] text-outline font-mono">
                 {{ lat?.toFixed(4) }}, {{ lng?.toFixed(4) }} · {{ radiusKm }} km
             </p>
         </div>
 
-        <div v-if="slotLabel" class="flex items-center gap-2 text-sm text-gray-500">
-            <Clock :size="16" class="text-black shrink-0" />
+        <div v-if="slotLabel" class="flex items-center gap-2 text-sm text-on-surface-variant">
+            <Clock :size="16" class="text-on-surface shrink-0" />
             <span>{{ slotLabel }} · {{ durationMin }} min</span>
         </div>
 
@@ -172,14 +172,14 @@ const slotLabel = computed(() => {
             <div v-for="i in 4" :key="i" class="bg-white rounded-2xl h-20 animate-pulse ring-1 ring-slate-100" />
         </div>
 
-        <div v-else-if="!hasCoords" class="text-center py-12 text-gray-500 text-sm">
+        <div v-else-if="!hasCoords" class="text-center py-12 text-on-surface-variant text-sm">
             Turn on location to see venues with free slots near you.
         </div>
 
         <div v-else-if="!records.length" class="text-center py-12 px-4">
             <MapPin :size="36" class="mx-auto text-gray-300 mb-3" />
-            <p class="font-bold text-gray-700">No available venues in range</p>
-            <p class="text-sm text-gray-400 mt-1">Try another time, longer radius, or a different area.</p>
+            <p class="font-bold text-on-surface-variant">No available venues in range</p>
+            <p class="text-sm text-outline mt-1">Try another time, longer radius, or a different area.</p>
         </div>
 
         <div v-else class="space-y-2">
@@ -191,21 +191,21 @@ const slotLabel = computed(() => {
                 class="w-full bg-white rounded-2xl p-4 ring-1 ring-slate-100 flex items-center gap-3 text-left shadow-sm active:scale-[0.99] transition-transform">
                 <div class="w-14 h-14 rounded-xl bg-gray-100 shrink-0 overflow-hidden">
                     <img v-if="c.image_url" :src="c.image_url" class="w-full h-full object-cover" alt="" />
-                    <div v-else class="w-full h-full flex items-center justify-center text-gray-300">
+                    <div v-else class="w-full h-full flex items-center justify-center text-outline">
                         <MapPin :size="22" />
                     </div>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="font-bold text-black truncate">{{ c.name }}</p>
-                    <p class="text-xs text-gray-500 truncate">{{ c.location || c.type }}</p>
+                    <p class="font-bold text-on-surface truncate">{{ c.name }}</p>
+                    <p class="text-xs text-on-surface-variant truncate">{{ c.location || c.type }}</p>
                     <div class="flex items-center gap-2 mt-1 flex-wrap">
-                        <span v-if="c.distance_km != null" class="text-[10px] font-bold text-black bg-gray-100 px-2 py-0.5 rounded-full">
+                        <span v-if="c.distance_km != null" class="text-[10px] font-bold text-on-surface bg-gray-100 px-2 py-0.5 rounded-full">
                             {{ c.distance_km }} km
                         </span>
-                        <span v-if="c.avg_rating != null" class="text-[10px] font-bold text-amber-700 flex items-center gap-0.5">
-                            <Star :size="10" class="fill-amber-400 text-amber-400" /> {{ c.avg_rating }}
+                        <span v-if="c.avg_rating != null" class="text-[10px] font-bold text-ending flex items-center gap-0.5">
+                            <Star :size="10" class="fill-amber-400 text-ending" /> {{ c.avg_rating }}
                         </span>
-                        <span class="text-[10px] font-bold text-gray-500 flex items-center gap-0.5">
+                        <span class="text-[10px] font-bold text-on-surface-variant flex items-center gap-0.5">
                             <IndianRupee :size="10" />{{ c.hourly_rate }}/hr
                         </span>
                     </div>

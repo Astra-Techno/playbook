@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -13,6 +14,7 @@ import 'venue_equipment_screen.dart';
 import 'release_flags.dart';
 import 'venue_listing.dart';
 import 'calendar_screen.dart';
+import 'court_register_screen.dart';
 import '../../widgets/sheets/walkin_sheet.dart';
 import 'walk_in_fields.dart';
 import 'venue_members_screen.dart';
@@ -93,13 +95,13 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
     final verified = venueIsVerified(_court!['is_verified']);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
             expandedHeight: 200,
             pinned: true,
-            backgroundColor: Colors.black,
+            backgroundColor: context.brand.primary,
             flexibleSpace: FlexibleSpaceBar(
               background: CachedNetworkImage(imageUrl: img, fit: BoxFit.cover),
             ),
@@ -112,7 +114,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                 children: [
                   Row(
                     children: [
-                      Flexible(child: Text(_court!['name'] ?? '', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800))),
+                      Flexible(child: Text(_court!['name'] ?? '', style: GoogleFonts.archivo(fontSize: 24, fontWeight: FontWeight.w900))),
                       if (verified) ...[
                         const SizedBox(width: 8),
                         const Icon(Icons.verified_rounded, size: 20, color: AppColors.primary),
@@ -124,12 +126,19 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                     children: [
                       const Icon(AppIcons.mapPin, size: 14, color: AppColors.primary),
                       const SizedBox(width: 4),
-                      Expanded(child: Text(_court!['location'] ?? '', style: TextStyle(fontSize: 13, color: Colors.grey[500]))),
+                      Expanded(child: Text(_court!['location'] ?? '', style: TextStyle(fontSize: 13, color: AppColors.textSecondary))),
                     ],
                   ),
                   if (_court!['hourly_rate'] != null) ...[
                     const SizedBox(height: 8),
-                    Text('\u20B9${_court!['hourly_rate']}/slot', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.primary)),
+                    Slanted(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(color: context.brand.primary, borderRadius: BorderRadius.circular(8)),
+                        child: Text('\u20B9${_court!['hourly_rate']} / slot',
+                            style: GoogleFonts.archivo(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white)),
+                      ),
+                    ),
                   ],
                   const SizedBox(height: 16),
                   _statusCard(
@@ -157,6 +166,9 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                     _menuItem(AppIcons.plus, 'Add booking', 'Record a guest on this venue', () async {
                       await WalkInSheet.open(context, courtId: widget.courtId, date: bookingDay(DateTime.now()));
                     }),
+                  _menuItem(Icons.point_of_sale_rounded, 'Court register', 'Live courts, till, check-ins and walk-ins', () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => CourtRegisterScreen(courtId: widget.courtId)));
+                  }),
                   _menuItem(AppIcons.calendarDays, 'Booking Calendar', 'Day view, with Add booking', () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => CalendarScreen(courtId: widget.courtId)));
                   }),
@@ -242,15 +254,16 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(listing, style: const TextStyle(fontWeight: FontWeight.w700, height: 1.4)),
           const SizedBox(height: 4),
-          Text(verification, style: TextStyle(fontSize: 13, color: Colors.grey[600], height: 1.4)),
+          Text(verification, style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4)),
           if (rejection != null && rejection.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(rejection, style: const TextStyle(fontSize: 13, color: AppColors.error, height: 1.4)),
@@ -287,7 +300,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
           if (!selected) _setListed(available);
         },
         style: FilledButton.styleFrom(
-          backgroundColor: selected ? AppColors.primary : const Color(0xFFF3F4F6),
+          backgroundColor: selected ? context.brand.primary : AppColors.surfaceDim,
           foregroundColor: selected ? Colors.white : AppColors.textPrimary,
           padding: const EdgeInsets.symmetric(horizontal: 8),
           elevation: 0,
@@ -303,7 +316,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
   Widget _sectionLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.grey[400], letterSpacing: 1.5)),
+      child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textMuted, letterSpacing: 1.5)),
     );
   }
 
@@ -314,18 +327,18 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           children: [
-            Icon(icon, size: 20, color: Colors.grey[700]),
+            MenuIcon(icon),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
-                  Text(desc, style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+                  Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  Text(desc, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                 ],
               ),
             ),
-            Icon(AppIcons.chevronRight, size: 18, color: Colors.grey[300]),
+            Icon(AppIcons.chevronRight, size: 18, color: AppColors.textDisabled),
           ],
         ),
       ),

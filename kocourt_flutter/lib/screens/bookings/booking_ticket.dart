@@ -1,3 +1,13 @@
+import '../home/home_logic.dart' show kickoffIn;
+
+/// Countdown line on the pass: before, during and after the game.
+String passCountdown(DateTime? start, DateTime? end, DateTime now) {
+  if (start == null) return '';
+  if (now.isBefore(start)) return 'Kick-off in ${kickoffIn(start.difference(now))}';
+  if (end != null && now.isBefore(end)) return 'Live now · ends in ${kickoffIn(end.difference(now))}';
+  return 'Full time';
+}
+
 class BookingTicket {
   final int id;
   final String venue;

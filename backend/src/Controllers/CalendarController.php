@@ -61,9 +61,11 @@ class CalendarController
         }
 
         // ── Day view ───────────────────────────────────────────
+        // attendance/collection/payment feed the owner Court register tiles and till.
         $bStmt = $this->db->prepare("
             SELECT b.id, b.sub_court_id, b.start_time, b.end_time, b.status,
                    b.guest_name, b.guest_phone, b.notes, b.total_price,
+                   b.attendance, b.collection_method, b.payment_status,
                    u.name AS user_name, u.phone AS user_phone
             FROM bookings b
             LEFT JOIN users u ON u.id = b.user_id

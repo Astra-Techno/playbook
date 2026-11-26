@@ -66,7 +66,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                   ),
                 )
               : _reviews.isEmpty
-              ? Center(child: Text('No reviews yet', style: TextStyle(color: Colors.grey[400])))
+              ? Center(child: Text('No reviews yet', style: TextStyle(color: AppColors.textMuted)))
               : RefreshIndicator(
                   onRefresh: _load,
                   color: AppColors.primary,
@@ -78,7 +78,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
                         padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: Colors.grey[50], borderRadius: BorderRadius.circular(12)),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.md), border: Border.all(color: AppColors.border)),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -86,7 +86,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                               children: [
                                 CircleAvatar(
                                   radius: 16,
-                                  backgroundColor: Colors.grey[200],
+                                  backgroundColor: AppColors.border,
                                   child: Text((r['user_name'] ?? 'U')[0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
                                 ),
                                 const SizedBox(width: 10),
@@ -102,10 +102,10 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                             ),
                             if (r['court_name'] != null) ...[
                               const SizedBox(height: 4),
-                              Text(r['court_name'], style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                              Text(r['court_name'], style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                             ],
                             const SizedBox(height: 8),
-                            Text(r['comment'] ?? '', style: TextStyle(fontSize: 13, color: Colors.grey[700], height: 1.4)),
+                            Text(r['comment'] ?? '', style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4)),
                             if (r['reply'] != null && r['reply'].toString().isNotEmpty) ...[
                               const SizedBox(height: 8),
                               Container(
@@ -120,7 +120,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> {
                                   children: [
                                     const Text('Owner Reply', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800)),
                                     const SizedBox(height: 4),
-                                    Text(r['reply'], style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                                    Text(r['reply'], style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                                   ],
                                 ),
                               ),

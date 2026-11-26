@@ -69,7 +69,7 @@
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>KoCourt Owner uses your location when you choose the current location for a venue.</string>
     <key>NSCameraUsageDescription</key>
-    <string>Take photos for your profile and venues.</string>
+    <string>Take photos for your profile and venues, and scan players' booking passes to check them in.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Choose photos for your profile, venues and community posts.</string>
     <key>LSApplicationQueriesSchemes</key>

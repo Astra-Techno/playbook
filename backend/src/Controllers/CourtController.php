@@ -198,6 +198,34 @@ class CourtController {
         ]);
     }
 
+    // GET /courts/free-soon?ids=1,2&from=YYYY-MM-DD HH:MM:SS&hours=3
+    // `from` is the player's local next full hour, so the server clock's zone doesn't matter.
+    public function freeSoon() {
+        require_once __DIR__ . '/../FreeSoon.php';
+        $ids = FreeSoon::ids((string)($_GET['ids'] ?? ''));
+        $windows = FreeSoon::windows((string)($_GET['from'] ?? ''), (int)($_GET['hours'] ?? 3));
+        if (!$ids || !$windows) {
+            http_response_code(400);
+            echo json_encode(['message' => 'ids and from (YYYY-MM-DD HH:MM:SS) are required']);
+            return;
+        }
+        $booking = new Booking();
+        $marks = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $booking->conn->prepare("SELECT id, open_time, close_time FROM courts WHERE id IN ($marks)");
+        $stmt->execute($ids);
+        $free = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            foreach ($windows as [$start, $end]) {
+                if ($this->courtOpenForWindow($row, $start, $end) && $this->courtHasFreeSlot($booking, (int)$row['id'], $start, $end)) {
+                    $free[(string)$row['id']] = $start;
+                    break;
+                }
+            }
+        }
+        http_response_code(200);
+        echo json_encode(['free_from' => (object)$free]);
+    }
+
     private function courtOpenForWindow(array $court, string $start_dt, string $end_dt): bool {
         return ScheduleRules::windowInsideHours(
             substr($court['open_time'] ?? '06:00:00', 0, 8),

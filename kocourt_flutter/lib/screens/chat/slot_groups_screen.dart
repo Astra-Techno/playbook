@@ -83,17 +83,17 @@ class _SlotGroupsScreenState extends State<SlotGroupsScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.forum_rounded, size: 48, color: Colors.grey[300]),
+                          Icon(Icons.forum_rounded, size: 48, color: AppColors.textDisabled),
                           const SizedBox(height: 16),
                           Text(
                             'No active slot groups',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.grey[700]),
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             'Book a court to join a group chat with\nother players in your time slot',
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                           ),
                         ],
                       ),
@@ -187,7 +187,7 @@ class _SlotGroupsScreenState extends State<SlotGroupsScreen> {
                       const SizedBox(height: 6),
                       Text(
                         '${lastSender ?? 'Someone'}: $lastMessage',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),

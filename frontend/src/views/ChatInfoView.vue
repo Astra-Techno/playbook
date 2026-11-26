@@ -121,7 +121,7 @@ const addSelectedMembers = async () => {
   <div class="min-h-screen bg-white">
     <!-- Header -->
     <div class="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
-      <button @click="router.back()" class="text-gray-600"><ChevronLeft :size="24" /></button>
+      <button @click="router.back()" class="text-on-surface-variant"><ChevronLeft :size="24" /></button>
       <p class="font-bold flex-1">{{ isDm ? 'Chat Info' : 'Group Info' }}</p>
       <button v-if="isAdmin && !isDm" @click="editGroup" class="text-primary"><Edit :size="20" /></button>
     </div>
@@ -139,13 +139,13 @@ const addSelectedMembers = async () => {
           <span v-else class="text-3xl">{{ isDm ? '💬' : '👥' }}</span>
         </div>
         <h2 class="text-xl font-extrabold mt-4">{{ group?.name || 'Chat' }}</h2>
-        <p v-if="group?.description" class="text-sm text-gray-500 mt-1">{{ group.description }}</p>
-        <p class="text-xs text-gray-400 mt-1">{{ members.length }} members</p>
+        <p v-if="group?.description" class="text-sm text-on-surface-variant mt-1">{{ group.description }}</p>
+        <p class="text-xs text-outline mt-1">{{ members.length }} members</p>
       </div>
 
       <!-- Mute -->
       <div @click="toggleMute" class="menu-row cursor-pointer">
-        <component :is="isMuted ? BellOff : Bell" :size="18" class="text-gray-500" />
+        <component :is="isMuted ? BellOff : Bell" :size="18" class="text-on-surface-variant" />
         <span>{{ isMuted ? 'Unmute notifications' : 'Mute notifications' }}</span>
       </div>
 
@@ -168,10 +168,10 @@ const addSelectedMembers = async () => {
               <span class="font-semibold truncate">{{ m.id === auth.user?.id ? 'You' : m.name }}</span>
               <span v-if="m.role === 'admin'" class="text-[10px] bg-primary/10 text-primary font-bold px-1.5 py-0.5 rounded">Admin</span>
             </div>
-            <p v-if="m.phone" class="text-xs text-gray-400">{{ m.phone }}</p>
+            <p v-if="m.phone" class="text-xs text-outline">{{ m.phone }}</p>
           </div>
           <button v-if="isAdmin && m.id !== auth.user?.id" @click="removeMember(m.id, m.name)"
-            class="text-red-300 hover:text-red-500">
+            class="text-due hover:text-due">
             <X :size="16" />
           </button>
         </div>
@@ -179,10 +179,10 @@ const addSelectedMembers = async () => {
 
       <!-- Actions -->
       <div class="divider-band" />
-      <div v-if="!isDm" @click="leaveGroup" class="menu-row text-red-500 cursor-pointer">
+      <div v-if="!isDm" @click="leaveGroup" class="menu-row text-due cursor-pointer">
         <LogOut :size="18" /> Leave group
       </div>
-      <div v-if="isAdmin && !isDm" @click="deleteGroup" class="menu-row text-red-500 cursor-pointer">
+      <div v-if="isAdmin && !isDm" @click="deleteGroup" class="menu-row text-due cursor-pointer">
         <Trash2 :size="18" /> Delete group
       </div>
     </div>
@@ -196,7 +196,7 @@ const addSelectedMembers = async () => {
             <button v-if="selectedIds.size > 0" @click="addSelectedMembers" class="text-primary font-bold text-sm">
               Add ({{ selectedIds.size }})
             </button>
-            <button @click="showPicker = false"><X :size="20" class="text-gray-400" /></button>
+            <button @click="showPicker = false"><X :size="20" class="text-outline" /></button>
           </div>
         </div>
         <div class="p-4">
@@ -204,9 +204,9 @@ const addSelectedMembers = async () => {
             class="input-field" autofocus />
         </div>
         <div class="flex-1 overflow-y-auto px-4 pb-8">
-          <p v-if="searching" class="text-center text-gray-400 text-sm py-8">Searching...</p>
-          <p v-else-if="searchQuery.length < 2" class="text-center text-gray-400 text-sm py-8">Type to search</p>
-          <p v-else-if="searchResults.length === 0" class="text-center text-gray-400 text-sm py-8">No users found</p>
+          <p v-if="searching" class="text-center text-outline text-sm py-8">Searching...</p>
+          <p v-else-if="searchQuery.length < 2" class="text-center text-outline text-sm py-8">Type to search</p>
+          <p v-else-if="searchResults.length === 0" class="text-center text-outline text-sm py-8">No users found</p>
           <div v-else v-for="u in searchResults" :key="u.id" @click="toggleSelect(u.id)"
             class="flex items-center gap-3 py-3 cursor-pointer">
             <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
@@ -215,7 +215,7 @@ const addSelectedMembers = async () => {
             </div>
             <div class="flex-1 min-w-0">
               <span class="font-semibold">{{ u.name }}</span>
-              <p v-if="u.phone" class="text-xs text-gray-400">{{ u.phone }}</p>
+              <p v-if="u.phone" class="text-xs text-outline">{{ u.phone }}</p>
             </div>
             <div class="w-5 h-5 rounded-full border-2 flex items-center justify-center"
               :class="selectedIds.has(u.id) ? 'bg-primary border-primary' : 'border-gray-300'">

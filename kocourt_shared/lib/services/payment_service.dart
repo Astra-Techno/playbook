@@ -108,6 +108,8 @@ class PaymentService {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           row('Venue', 'INR ${money(price['venue']['base'])}'),
+                          if (quote['snapshot']['addons'] is Map)
+                            row('  incl. kit rental', 'INR ${money(quote['snapshot']['addons']['paise'])}'),
                           row('Venue GST', 'INR ${money(price['venue']['tax'])}'),
                           row('KoCourt fee', 'INR ${money(price['fee']['base'])}'),
                           row('Fee GST', 'INR ${money(price['fee']['tax'])}'),

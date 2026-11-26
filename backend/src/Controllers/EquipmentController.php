@@ -13,7 +13,7 @@ class EquipmentController
             return;
         }
         $stmt = $db->prepare('
-            SELECT id, name, quantity_on_hand, deposit_rupees, status
+            SELECT id, name, quantity_on_hand, deposit_rupees, rental_rupees, status
             FROM equipment_items
             WHERE court_id = ?
             ORDER BY id DESC
@@ -79,11 +79,17 @@ class EquipmentController
             echo json_encode(['message' => $plan['message']]);
             return;
         }
+        $rental = $this->whole($input['rental_rupees'] ?? 0);
+        if ($rental === null || $rental > 50000) {
+            http_response_code(422);
+            echo json_encode(['message' => 'Rental price must be from 0 to 50000 rupees.']);
+            return;
+        }
         $ins = $db->prepare('
-            INSERT INTO equipment_items (court_id, name, quantity_on_hand, deposit_rupees, status, created_by)
-            VALUES (?, ?, ?, ?, \'active\', ?)
+            INSERT INTO equipment_items (court_id, name, quantity_on_hand, deposit_rupees, rental_rupees, status, created_by)
+            VALUES (?, ?, ?, ?, ?, \'active\', ?)
         ');
-        $ins->execute([$courtId, $plan['name'], $plan['quantity'], $plan['deposit_rupees'], $userId]);
+        $ins->execute([$courtId, $plan['name'], $plan['quantity'], $plan['deposit_rupees'], $rental, $userId]);
         echo json_encode(['id' => (int)$db->lastInsertId(), 'status' => 'active']);
     }
 

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
@@ -14,6 +15,9 @@ import '../notifications/notifications_screen.dart';
 import 'widgets/venue_card.dart';
 import 'widgets/ghost_card.dart';
 import 'widgets/sport_chips.dart';
+import 'widgets/next_game_card.dart';
+import 'widgets/free_now_stack.dart';
+import 'home_logic.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -28,6 +32,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _locating = false;
 
   int _unreadNotifications = 0;
+  // "Free right now": first free hour per venue id, for the venues in [_freeKey].
+  Map<String, String>? _freeFrom;
+  String _freeKey = '';
 
   @override
   void initState() {
@@ -176,7 +183,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Center(
                       child: Container(
                         width: 40, height: 4,
-                        decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                        decoration: BoxDecoration(color: AppColors.textDisabled, borderRadius: BorderRadius.circular(2)),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -195,7 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               )
                             : null,
                         filled: true,
-                        fillColor: Colors.grey[100],
+                        fillColor: AppColors.surfaceDim,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                       ),
@@ -255,7 +262,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                     if (suggestions.isNotEmpty) ...[
-                      Divider(height: 1, color: Colors.grey[200]),
+                      Divider(height: 1, color: AppColors.border),
                       const SizedBox(height: 4),
                       Flexible(
                         child: ListView.builder(
@@ -354,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Center(
                       child: Container(
                         width: 40, height: 4,
-                        decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)),
+                        decoration: BoxDecoration(color: AppColors.textDisabled, borderRadius: BorderRadius.circular(2)),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -502,7 +509,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       body: RefreshIndicator(
         onRefresh: () async {
           await _detectLocation();
@@ -514,8 +521,21 @@ class _HomeScreenState extends State<HomeScreen> {
           slivers: [
             _buildHeader(),
             SliverToBoxAdapter(child: _buildSearchBar()),
-            SliverToBoxAdapter(child: _buildDiscovery()),
+            SliverToBoxAdapter(child: _buildOpenNow()),
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(20, 14, 20, 0),
+                child: Row(
+                  children: [
+                    Expanded(child: NextGameCard()),
+                    SizedBox(width: 10),
+                    Expanded(child: PlayersWantedTile()),
+                  ],
+                ),
+              ),
+            ),
             SliverToBoxAdapter(child: SportChips()),
+            SliverToBoxAdapter(child: _buildDiscovery()),
             _buildVenueList(),
             _buildGhostSection(),
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -527,39 +547,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildHeader() {
     final auth = context.watch<AuthProvider>();
+    final brand = context.brand.primary;
+    final first = auth.isLoggedIn ? auth.userName.split(' ').first : '';
     return SliverAppBar(
       floating: true,
       snap: true,
-      toolbarHeight: 80,
-      backgroundColor: Colors.white,
+      toolbarHeight: 88,
+      backgroundColor: AppColors.surface,
       surfaceTintColor: Colors.transparent,
       flexibleSpace: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          padding: const EdgeInsets.fromLTRB(20, 8, 16, 4),
           child: Row(
             children: [
-              // Logo
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.25),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: Image.asset('assets/images/logo.png', fit: BoxFit.cover),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Name + location
               Expanded(
                 child: GestureDetector(
                   onTap: _showLocationPicker,
@@ -568,137 +569,135 @@ class _HomeScreenState extends State<HomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        auth.isLoggedIn
-                            ? auth.userName.split(' ').first
-                            : 'Welcome to KoCourt',
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
                       Row(
                         children: [
-                          Icon(AppIcons.mapPin, size: 12, color: AppColors.primary),
+                          Icon(AppIcons.mapPin, size: 13, color: brand),
                           const SizedBox(width: 3),
                           Flexible(
                             child: Text(
                               _locating ? 'Detecting...' : _locationLabel,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textMuted,
-                              ),
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 2),
-                          Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.textMuted),
+                          const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.textSecondary),
                         ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        first.isNotEmpty ? 'Game on, $first' : 'Find your game',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.archivo(fontSize: 26, fontWeight: FontWeight.w900, height: 1.05, color: AppColors.textPrimary),
                       ),
                     ],
                   ),
                 ),
               ),
-              // Notification bell with badge
               Semantics(
                 button: true,
                 label: 'Open notifications',
                 child: GestureDetector(
-                onTap: () {
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen())).then((_) => _loadNotificationCount());
-                },
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.borderLight),
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen())).then((_) => _loadNotificationCount());
+                  },
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: const Icon(AppIcons.bell, size: 20, color: AppColors.textPrimary),
                       ),
-                      child: const Icon(AppIcons.bell, size: 20, color: AppColors.textSecondary),
-                    ),
-                    if (_unreadNotifications > 0)
-                      Positioned(
-                        top: -2,
-                        right: -2,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: AppColors.error,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                          child: Text(
-                            _unreadNotifications > 9 ? '9+' : '$_unreadNotifications',
-                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
-                            textAlign: TextAlign.center,
+                      if (_unreadNotifications > 0)
+                        Positioned(
+                          top: -2,
+                          right: -2,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+                            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                            child: Text(
+                              _unreadNotifications > 9 ? '9+' : '$_unreadNotifications',
+                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
+                              textAlign: TextAlign.center,
+                            ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
-              // Avatar
-              GestureDetector(
-                onTap: () {
-                  if (!auth.isLoggedIn) {
-                    context.go('/login');
-                  }
-                },
-                child: Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: auth.isLoggedIn
-                          ? AppColors.primary.withValues(alpha: 0.2)
-                          : AppColors.border,
-                      width: 2,
+              Semantics(
+                button: !auth.isLoggedIn,
+                label: auth.isLoggedIn ? 'Signed in as ${auth.userName}' : 'Sign in',
+                child: GestureDetector(
+                  onTap: auth.isLoggedIn ? null : () => context.go('/login'),
+                  child: Slanted(
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(color: brand, borderRadius: BorderRadius.circular(13)),
+                      alignment: Alignment.center,
+                      child: auth.isLoggedIn && auth.avatarUrl != null
+                          ? CachedNetworkImage(imageUrl: auth.avatarUrl!, width: 44, height: 44, fit: BoxFit.cover)
+                          : Text(
+                              auth.isLoggedIn && auth.userName.isNotEmpty ? auth.userName[0].toUpperCase() : '?',
+                              style: GoogleFonts.archivo(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
+                            ),
                     ),
-                    boxShadow: auth.isLoggedIn
-                        ? [
-                            BoxShadow(
-                              color: AppColors.primary.withValues(alpha: 0.1),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
-                        : null,
-                  ),
-                  child: ClipOval(
-                    child: auth.avatarUrl != null
-                        ? CachedNetworkImage(
-                            imageUrl: auth.avatarUrl!,
-                            fit: BoxFit.cover,
-                          )
-                        : Container(
-                            color: auth.isLoggedIn
-                                ? AppColors.primary.withValues(alpha: 0.08)
-                                : AppColors.surfaceDim,
-                            alignment: Alignment.center,
-                            child: Text(
-                              auth.isLoggedIn ? auth.userName[0].toUpperCase() : '?',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                                color: auth.isLoggedIn ? AppColors.primary : AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
                   ),
                 ),
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _loadFreeSoon(String key, List<Map<String, dynamic>> open) async {
+    try {
+      final res = await Api().get('/courts/free-soon', params: {
+        'ids': open.map((v) => v['id']).join(','),
+        'from': nextFullHourSql(DateTime.now()),
+        'hours': 3,
+      });
+      final raw = res.data['free_from'];
+      final map = raw is Map ? {for (final e in raw.entries) '${e.key}': '${e.value}'} : <String, String>{};
+      if (mounted && key == _freeKey) setState(() => _freeFrom = map);
+    } catch (_) {
+      // Keep showing open venues if the lookup fails; it is a hint, not a booking.
+    }
+  }
+
+  Widget _buildOpenNow() {
+    final venues = context.watch<VenueProvider>();
+    if (!venues.fetched || venues.venues.isEmpty) return const SizedBox.shrink();
+    final now = DateTime.now();
+    final open = venues.venues.where((v) => isOpenNow(v, now)).take(8).toList();
+    final key = '${nextFullHourSql(now)}|${open.map((v) => v['id']).join(',')}';
+    if (key != _freeKey) {
+      _freeKey = key;
+      _freeFrom = null;
+      if (open.isNotEmpty) _loadFreeSoon(key, open);
+    }
+    final free = withFreeFrom(open, _freeFrom).take(5).toList();
+    if (free.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+      child: FreeNowStack(
+        venues: free,
+        onOpen: (venue) => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => CourtDetailsScreen(courtId: courtIdFrom(venue['id']))),
         ),
       ),
     );
@@ -742,9 +741,9 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Container(
               height: 50,
               decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.borderLight),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(25),
+                border: Border.all(color: AppColors.border),
               ),
               child: Row(
                 children: [
@@ -769,9 +768,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       ),
                       onChanged: (val) {
-                        context.read<VenueProvider>()
-                          ..setSearchText(val)
-                          ..fetchVenues();
+                        context.read<VenueProvider>().setSearchText(val);
                       },
                     ),
                   ),
@@ -791,8 +788,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 50,
                   width: 50,
                   decoration: BoxDecoration(
-                    color: AppColors.textPrimary,
-                    borderRadius: BorderRadius.circular(16),
+                    color: context.brand.primary,
+                    borderRadius: BorderRadius.circular(25),
                   ),
                   child: const Icon(AppIcons.slidersHorizontal, size: 18, color: Colors.white),
                 ),
@@ -874,20 +871,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Column(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Venues near you',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            color: AppColors.textPrimary,
-                          ),
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.textPrimary,
+                              ),
                         ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Handpicked for your game today',
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Pick a court and lock in your game',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w500,

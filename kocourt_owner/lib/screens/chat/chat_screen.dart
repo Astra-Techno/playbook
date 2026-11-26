@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
@@ -150,7 +151,7 @@ class _ChatScreenState extends State<ChatScreen> {
       return '$hour:$m $period';
     }
     if (diff.inDays == 1) return 'Yesterday';
-    return '${date.day}/${date.month}';
+    return DateFormat('d MMM').format(date);
   }
 
   @override
@@ -166,7 +167,7 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             if (widget.otherUserName != null && widget.courtName != null)
-              Text(widget.otherUserName!, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              Text(widget.otherUserName!, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
           ],
         ),
         backgroundColor: Colors.white,
@@ -211,7 +212,7 @@ class _ChatScreenState extends State<ChatScreen> {
                                   padding: const EdgeInsets.symmetric(vertical: 12),
                                   child: Text(
                                     _dateBadge(msg['created_at']),
-                                    style: TextStyle(fontSize: 11, color: Colors.grey[400], fontWeight: FontWeight.w600),
+                                    style: TextStyle(fontSize: 11, color: AppColors.textMuted, fontWeight: FontWeight.w600),
                                   ),
                                 ),
                               _MessageBubble(message: msg, isMe: isMe, formatTime: _formatTime),
@@ -290,7 +291,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final diff = now.difference(date);
     if (diff.inDays == 0) return 'Today';
     if (diff.inDays == 1) return 'Yesterday';
-    return '${date.day}/${date.month}/${date.year}';
+    return DateFormat('d MMM yyyy').format(date);
   }
 }
 
