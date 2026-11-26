@@ -7,8 +7,10 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans:    ['Inter', 'system-ui', 'sans-serif'],
-                display: ['Archivo', 'Inter', 'system-ui', 'sans-serif'],
+                // Matchday type system, same roles as kocourt_shared/lib/core/fonts.dart
+                sans:    ['Figtree', 'system-ui', 'sans-serif'],
+                display: ['"Bricolage Grotesque"', 'Figtree', 'system-ui', 'sans-serif'],
+                score:   ['"Barlow Condensed"', '"Arial Narrow"', 'system-ui', 'sans-serif'],
             },
             colors: {
                 // v4 "Pro Light" — logo violet, shared with the Flutter apps (kocourt_shared/lib/core/theme.dart)

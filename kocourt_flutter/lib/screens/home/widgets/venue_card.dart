@@ -188,7 +188,7 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                             if (sportType.isNotEmpty)
                               slanted(_AnimatedBadge(
                                 text: category.label.toUpperCase(),
-                                icon: category.icon,
+                                leading: SportIcon(sportType, size: 13, tint: Colors.white, fallback: category.icon),
                                 color: sportTint(sportType).bg,
                                 textColor: sportTint(sportType).fg,
                               )),
@@ -437,13 +437,13 @@ class _AnimatedBadge extends StatelessWidget {
   final String text;
   final Color color;
   final Color textColor;
-  final IconData? icon;
+  final Widget? leading;
 
   const _AnimatedBadge({
     required this.text,
     required this.color,
     required this.textColor,
-    this.icon,
+    this.leading,
   });
 
   @override
@@ -457,8 +457,8 @@ class _AnimatedBadge extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (icon != null) ...[
-            Icon(icon, size: 11, color: textColor),
+          if (leading != null) ...[
+            leading!,
             const SizedBox(width: 4),
           ],
           Text(

@@ -112,6 +112,12 @@
                border border-outline-variant;
     }
 
+    /* Matchday card ground for blocks that can't use KoCard.vue (same look). */
+    .ko-surface {
+        @apply rounded-[20px] border border-outline-variant p-4;
+        background: linear-gradient(160deg, #F1EBFD, #fff 70%);
+    }
+
     /* ── v4 sports touches (match kocourt_shared/lib/widgets/sport_tags.dart) ── */
     /* Leans an element like a jersey number plate. */
     .slanted {
@@ -132,7 +138,7 @@
     /* Slanted kick-off plate: big time on top, small line under. */
     .time-plate {
         @apply inline-flex flex-col items-center justify-center rounded-[10px] bg-primary text-white
-               font-display font-black leading-none px-2 py-2 min-w-[62px];
+               font-score font-bold tabular-nums leading-none px-2 py-2 min-w-[62px];
         transform: skewX(-10deg);
     }
     .time-plate > * { transform: skewX(10deg); }

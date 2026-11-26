@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import '../../widgets/tab_status.dart';
@@ -202,7 +201,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                Text(DateFormat('EEE, MMM d').format(_selectedDate), style: GoogleFonts.archivo(fontSize: 17, fontWeight: FontWeight.w900)),
+                Text(DateFormat('EEE, MMM d').format(_selectedDate), style: AppFonts.display(fontSize: 17, fontWeight: FontWeight.w900)),
                 const Spacer(),
                 Text('${_bookings.length} bookings', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
               ],
@@ -332,7 +331,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ],
               ),
             ),
-            Text('₹${booking['total_price'] ?? 0}', style: GoogleFonts.archivo(fontWeight: FontWeight.w900, fontSize: 15)),
+            Text('₹${booking['total_price'] ?? 0}', style: AppFonts.score(fontWeight: FontWeight.w900, fontSize: 15)),
           ],
         ),
       ),

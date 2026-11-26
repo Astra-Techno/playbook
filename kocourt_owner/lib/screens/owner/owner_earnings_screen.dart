@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:intl/intl.dart';
@@ -214,7 +213,7 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
             child: Icon(icon, size: 14, color: color),
           ),
           const SizedBox(height: 12),
-          Text(value, style: GoogleFonts.archivo(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+          Text(value, style: AppFonts.score(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
           const SizedBox(height: 4),
           Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textMuted)),
         ],
@@ -241,7 +240,7 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: Text(_formatCurrency(split?.collected),
-                      style: GoogleFonts.archivo(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900, height: 1)),
+                      style: AppFonts.score(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900, height: 1)),
                 ),
               ],
             ),
@@ -255,7 +254,7 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
                 children: [
                   Text('Not yet paid out', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: context.brand.primaryDark)),
                   Text(_formatCurrency(split?.notYetPaidOut),
-                      style: GoogleFonts.archivo(fontSize: 16, fontWeight: FontWeight.w900, color: context.brand.primaryDark)),
+                      style: AppFonts.display(fontSize: 16, fontWeight: FontWeight.w900, color: context.brand.primaryDark)),
                 ],
               ),
             ),
@@ -439,7 +438,7 @@ class _OwnerEarningsScreenState extends State<OwnerEarningsScreen> {
             children: [
               Text(
                 _formatCurrency(t['amount']),
-                style: GoogleFonts.archivo(fontWeight: FontWeight.w900, fontSize: 16, color: AppColors.secondary),
+                style: AppFonts.score(fontWeight: FontWeight.w900, fontSize: 16, color: AppColors.secondary),
               ),
               const SizedBox(height: 4),
               StatusTag(isSubscription ? 'Membership' : 'Booking', tone: isSubscription ? TagTone.brand : TagTone.free),

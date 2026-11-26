@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 
 // ── Pure helpers (tested in test/slot_timeline_test.dart) ───────────────────
@@ -203,7 +202,7 @@ class _SlotTimelineState extends State<SlotTimeline> {
             if (widget.selected.isNotEmpty)
               Text(
                 selectionLabel(slots, widget.selected),
-                style: GoogleFonts.archivo(fontSize: 14, fontWeight: FontWeight.w900, color: brand),
+                style: AppFonts.score(fontSize: 14, fontWeight: FontWeight.w900, color: brand),
               ),
           ],
         ),
@@ -469,7 +468,7 @@ class SquadSplit extends StatelessWidget {
           ),
           Text(
             '${rupees(share.ceilToDouble())} each',
-            style: GoogleFonts.archivo(fontSize: 15, fontWeight: FontWeight.w900, color: brand),
+            style: AppFonts.score(fontSize: 15, fontWeight: FontWeight.w900, color: brand),
           ),
           IconButton(
             tooltip: 'More players',

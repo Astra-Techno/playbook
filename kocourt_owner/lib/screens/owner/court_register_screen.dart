@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 
 import '../../widgets/sheets/walkin_sheet.dart';
@@ -192,7 +191,7 @@ class _CourtRegisterScreenState extends State<CourtRegisterScreen> {
 
   Widget _heading(String text) => Padding(
         padding: const EdgeInsets.only(bottom: 10),
-        child: Text(text, style: GoogleFonts.archivo(fontSize: 20, fontWeight: FontWeight.w900)),
+        child: Text(text, style: AppFonts.display(fontSize: 20, fontWeight: FontWeight.w900)),
       );
 
   Widget _till() {
@@ -221,7 +220,7 @@ class _CourtRegisterScreenState extends State<CourtRegisterScreen> {
                   Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                   FittedBox(
                     fit: BoxFit.scaleDown,
-                    child: Text(_money(value), style: GoogleFonts.archivo(fontSize: 18, fontWeight: FontWeight.w900, color: colour)),
+                    child: Text(_money(value), style: AppFonts.score(fontSize: 18, fontWeight: FontWeight.w900, color: colour)),
                   ),
                 ],
               ),
@@ -274,7 +273,7 @@ class _CourtRegisterScreenState extends State<CourtRegisterScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Arriving next', style: GoogleFonts.archivo(fontSize: 16, fontWeight: FontWeight.w900)),
+          Text('Arriving next', style: AppFonts.display(fontSize: 16, fontWeight: FontWeight.w900)),
           const SizedBox(height: 8),
           if (rows.isEmpty)
             const Padding(
@@ -294,7 +293,7 @@ class _CourtRegisterScreenState extends State<CourtRegisterScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 7),
                       alignment: Alignment.center,
                       decoration: BoxDecoration(color: brand.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
-                      child: Text(startClock(b), style: GoogleFonts.archivo(fontSize: 12, fontWeight: FontWeight.w900, color: brand)),
+                      child: Text(startClock(b), style: AppFonts.score(fontSize: 12, fontWeight: FontWeight.w900, color: brand)),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -369,7 +368,7 @@ class _CourtTileCard extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(name, style: GoogleFonts.archivo(fontSize: 16, fontWeight: FontWeight.w900), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      child: Text(name, style: AppFonts.display(fontSize: 16, fontWeight: FontWeight.w900), maxLines: 1, overflow: TextOverflow.ellipsis),
                     ),
                     Transform(
                       transform: Matrix4.skewX(-0.17),
@@ -399,7 +398,7 @@ class _CourtTileCard extends StatelessWidget {
                         child: Center(
                           child: tile.kind == TileKind.free
                               ? Icon(Icons.add_rounded, color: ring)
-                              : Text(tile.clock, style: GoogleFonts.archivo(fontSize: 14, fontWeight: FontWeight.w900, color: tagFg)),
+                              : Text(tile.clock, style: AppFonts.score(fontSize: 14, fontWeight: FontWeight.w900, color: tagFg)),
                         ),
                       ),
                     ),

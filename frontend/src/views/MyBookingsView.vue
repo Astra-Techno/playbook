@@ -5,11 +5,11 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import {
-    CalendarDays, Clock,
     CheckCircle2, XCircle, AlertCircle,
     Trophy, Star, X, Loader2, Share2, MessageCircle
 } from 'lucide-vue-next'
 import ChatSheet from '../components/ChatSheet.vue'
+import KoCard from '../components/KoCard.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -77,6 +77,24 @@ const getStatus = (s) => statusConfig[s] || statusConfig.pending
 const parseLocal = (dt) => { const [d, t] = String(dt).split(' '); return new Date(`${d}T${t || '00:00:00'}`) }
 const formatDate = (dt) => parseLocal(dt).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
 const formatTime = (dt) => parseLocal(dt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })
+const formatHour = (dt) => parseLocal(dt).toLocaleTimeString('en-IN', { hour: 'numeric', hour12: true }).toUpperCase()
+
+// Matchday card parts
+const cardKicker = (b) => {
+    if (b.status === 'cancelled') return 'Cancelled'
+    if (activeFilter.value === 'past') return 'Played'
+    const day = parseLocal(b.start_time)
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const diff = Math.round((new Date(day.getFullYear(), day.getMonth(), day.getDate()) - today) / 86400000)
+    return diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : day.toLocaleDateString('en-IN', { weekday: 'long' })
+}
+const cardStats = (b) => {
+    const mins = Math.round((parseLocal(b.end_time) - parseLocal(b.start_time)) / 60000)
+    const out = []
+    if (mins > 0) out.push({ value: String(mins), label: 'minutes' })
+    if (Number(b.total_price) > 0) out.push({ value: `₹${Math.round(Number(b.total_price))}`, label: b.status === 'cancelled' ? 'booked' : 'paid' })
+    return out
+}
 
 onMounted(async () => {
     if (!auth.isLoggedIn) { router.push('/login'); return }
@@ -242,83 +260,53 @@ const openChat = (booking) => {
 
             <!-- Booking Cards -->
             <div v-else class="space-y-4">
-                <div v-for="booking in displayedBookings" :key="booking.id" class="card p-4">
-                    <div class="flex gap-3 items-start">
-                        <!-- Date block -->
-                        <div class="shrink-0 w-12 h-12 time-plate !min-w-0 !px-0"
-                            :class="booking.status === 'cancelled' ? 'bg-slate-400' : 'bg-primary'">
-                            <span class="text-lg font-bold leading-none">{{ parseLocal(booking.start_time).getDate() }}</span>
-                            <span class="text-[10px] font-semibold uppercase">{{ parseLocal(booking.start_time).toLocaleDateString('en-IN', { month: 'short' }) }}</span>
-                        </div>
-
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-start justify-between gap-2">
-                                <h3 class="font-bold text-on-surface text-[15px] truncate">{{ booking.court_name || 'Court Booking' }}</h3>
-                                <span :class="[getStatus(booking.status).cls, 'tag shrink-0']">
-                                    <component :is="getStatus(booking.status).icon" :size="10" />
-                                    {{ getStatus(booking.status).label }}
-                                </span>
-                            </div>
-
-                            <div class="flex items-center gap-3 mt-1.5 text-xs text-on-surface-variant">
-                                <span class="flex items-center gap-1">
-                                    <Clock :size="11" :stroke-width="2" />
-                                    {{ formatTime(booking.start_time) }} – {{ formatTime(booking.end_time) }}
-                                </span>
-                                <span class="flex items-center gap-1">
-                                    <CalendarDays :size="11" :stroke-width="2" />
-                                    {{ formatDate(booking.start_time) }}
-                                </span>
-                            </div>
-
-                            <div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-50">
-                                <span class="text-xs text-outline font-medium capitalize">
-                                    {{ booking.type === 'hourly' ? 'Hourly slot' : 'Membership' }}
-                                </span>
-                                <span class="font-bold text-on-surface text-sm">₹{{ booking.total_price }}</span>
-                            </div>
-
-                            <p v-if="booking.refund_status" class="mt-3 text-xs text-on-surface-variant" role="status">Refund: {{ booking.refund_status.replaceAll('_', ' ') }}<template v-if="Number(booking.refund_amount_paise) > 0"> · INR {{ (booking.refund_amount_paise / 100).toFixed(2) }}</template><span v-if="booking.refund_reference" class="block break-all">{{ booking.refund_reference }}</span></p>
-                            <!-- Action row -->
-                            <div v-if="booking.status !== 'cancelled'" class="flex gap-2 mt-3 flex-wrap">
-                                <!-- Cancel upcoming -->
-                                <button v-if="activeFilter === 'upcoming'"
-                                    @click="cancelBooking(booking)"
-                                    :disabled="cancellingId === booking.id"
-                                    class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-red-50 text-due hover:bg-red-100 transition-colors disabled:opacity-50">
-                                    <Loader2 v-if="cancellingId === booking.id" :size="11" class="animate-spin" />
-                                    <XCircle v-else :size="11" />
-                                    Cancel Booking
+                <KoCard v-for="booking in displayedBookings" :key="booking.id"
+                    :sport="booking.status === 'cancelled' ? null : booking.court_type"
+                    :kicker="cardKicker(booking)"
+                    :title="booking.court_name || 'Court booking'"
+                    :meta="`${formatDate(booking.start_time)} · ${formatTime(booking.start_time)} – ${formatTime(booking.end_time)}`"
+                    :badge="formatHour(booking.start_time)"
+                    :stats="cardStats(booking)"
+                    :action="booking.status === 'cancelled' ? null : (activeFilter === 'upcoming' ? 'Show pass' : 'Book again')"
+                    @action="activeFilter === 'upcoming' ? router.push(`/booking-confirmation/${booking.id}`) : router.push(`/courts/${booking.court_id}`)">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span :class="[getStatus(booking.status).cls, 'tag shrink-0']">
+                            <component :is="getStatus(booking.status).icon" :size="10" />
+                            {{ getStatus(booking.status).label }}
+                        </span>
+                        <template v-if="booking.status !== 'cancelled'">
+                            <button v-if="activeFilter === 'upcoming'"
+                                @click="cancelBooking(booking)"
+                                :disabled="cancellingId === booking.id"
+                                class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-white text-due border border-outline-variant transition-colors disabled:opacity-50">
+                                <Loader2 v-if="cancellingId === booking.id" :size="11" class="animate-spin" />
+                                <XCircle v-else :size="11" />
+                                Cancel booking
+                            </button>
+                            <template v-else>
+                                <button v-if="!reviewedIds.has(String(booking.id))"
+                                    @click="openRatingModal(booking)"
+                                    class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-white text-ending border border-outline-variant">
+                                    <Star :size="11" /> Rate court
                                 </button>
-                                <!-- Rate + Share past -->
-                                <template v-else>
-                                    <button v-if="!reviewedIds.has(String(booking.id))"
-                                        @click="openRatingModal(booking)"
-                                        class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-amber-50 text-ending hover:bg-amber-100 transition-colors">
-                                        <Star :size="11" />
-                                        Rate Court
-                                    </button>
-                                    <span v-else class="text-[11px] font-semibold text-on-surface flex items-center gap-1 px-1">
-                                        <Star :size="11" class="fill-amber-400 text-ending" /> Reviewed
-                                    </span>
-                                    <button
-                                        @click="router.push(`/post/create?booking_id=${booking.id}&court_id=${booking.court_id}&court_name=${encodeURIComponent(booking.court_name)}`)"
-                                        class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-gray-50 text-on-surface hover:bg-gray-100 transition-colors">
-                                        <Share2 :size="11" />
-                                        Share Experience
-                                    </button>
-                                </template>
-                                <!-- Message owner — shown on all non-cancelled bookings -->
-                                <button v-if="booking.owner_id"
-                                    @click="openChat(booking)"
-                                    class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-gray-100 text-on-surface-variant hover:bg-slate-200 transition-colors">
-                                    <MessageCircle :size="11" />
-                                    Message
+                                <span v-else class="text-[11px] font-semibold text-on-surface flex items-center gap-1 px-1">
+                                    <Star :size="11" class="fill-amber-400 text-ending" /> Reviewed
+                                </span>
+                                <button
+                                    @click="router.push(`/post/create?booking_id=${booking.id}&court_id=${booking.court_id}&court_name=${encodeURIComponent(booking.court_name)}`)"
+                                    class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-white text-on-surface border border-outline-variant">
+                                    <Share2 :size="11" /> Share
                                 </button>
-                            </div>
-                        </div>
+                            </template>
+                            <button v-if="booking.owner_id"
+                                @click="openChat(booking)"
+                                class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-white text-on-surface-variant border border-outline-variant">
+                                <MessageCircle :size="11" /> Message
+                            </button>
+                        </template>
                     </div>
-                </div>
+                    <p v-if="booking.refund_status" class="mt-2 text-xs text-on-surface-variant" role="status">Refund: {{ booking.refund_status.replaceAll('_', ' ') }}<template v-if="Number(booking.refund_amount_paise) > 0"> · INR {{ (booking.refund_amount_paise / 100).toFixed(2) }}</template><span v-if="booking.refund_reference" class="block break-all">{{ booking.refund_reference }}</span></p>
+                </KoCard>
             </div>
         </div>
 

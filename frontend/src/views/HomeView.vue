@@ -1,4 +1,6 @@
 <script setup>
+import KoSportIcon from '../components/KoSportIcon.vue'
+import { sportKey, sportTint } from '../utils/sport'
 import { ref, onMounted, watch, computed } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
@@ -365,9 +367,19 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                     @click="selectedSport = c.id"
                     class="flex flex-col items-center gap-2 min-w-[72px] shrink-0 active:scale-95 duration-200">
                     <!-- Square icon box -->
-                    <div class="w-16 h-16 rounded-2xl flex items-center justify-center transition-all"
+                    <!-- Matchday sport tile: sport tint, our own icon; filled with the sport colour when picked -->
+                    <div v-if="sportKey(c.id)" class="w-16 h-16 rounded-2xl flex items-center justify-center transition-all border border-outline-variant"
+                        :class="selectedSport === c.id ? '-translate-y-0.5 shadow-lg' : ''"
+                        :style="selectedSport === c.id
+                            ? { background: sportTint(c.id).fg }
+                            : { background: `linear-gradient(160deg, ${sportTint(c.id).bg}, #fff 85%)` }">
+                        <KoSportIcon :type="c.id" :size="32"
+                            :tone="selectedSport === c.id ? '#ffffff' : null"
+                            :tint="selectedSport === c.id ? sportTint(c.id).fg : '#ffffff'" />
+                    </div>
+                    <div v-else class="w-16 h-16 rounded-2xl flex items-center justify-center transition-all"
                         :class="selectedSport === c.id
-                            ? 'bg-primary text-on-primary shadow-lg shadow-primary/25 border-b-2 border-primary-container -translate-y-0.5'
+                            ? 'bg-primary text-on-primary shadow-lg shadow-primary/25 -translate-y-0.5'
                             : 'bg-surface-container-lowest text-on-surface-variant/80 shadow-soft border border-surface-variant/40'">
                         <component :is="c.icon" :size="28" :stroke-width="selectedSport === c.id ? 2 : 1.5" />
                     </div>
