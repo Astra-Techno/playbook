@@ -1228,8 +1228,59 @@ if (isset($seg[0]) && $seg[0] === 'booking-players') {
         FOREIGN KEY (invited_by) REFERENCES users(id)    ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
-    // GET /booking-players?booking_id=X
     require_once __DIR__ . '/src/BookingSquad.php';
+    // Split pay (track who owes): the booker marks who paid them back.
+    if (!$db->query("SHOW COLUMNS FROM booking_players LIKE 'paid'")->fetch()) {
+        $db->exec('ALTER TABLE booking_players ADD COLUMN paid TINYINT(1) NOT NULL DEFAULT 0');
+    }
+
+    // PUT /booking-players/paid  { booking_id, user_id, paid }   — booker only
+    // POST /booking-players/remind  { booking_id, user_id }      — booker only, once a day per player
+    if (in_array($seg[1] ?? '', ['paid', 'remind'], true)) {
+        $authUser = Auth::require();
+        $uid  = (int)$authUser['id'];
+        $body = json_decode(file_get_contents('php://input'), true) ?? [];
+        $bid  = (int)($body['booking_id'] ?? 0);
+        $pid  = (int)($body['user_id'] ?? 0);
+        $squadBooking = BookingSquad::booking($db, $bid);
+        if (!$squadBooking) { http_response_code(404); echo json_encode(['message' => 'Booking not found']); exit(); }
+        if (!BookingSquad::canInvite($squadBooking, $uid, (string)$authUser['role'])) {
+            http_response_code(403); echo json_encode(['message' => 'Only the person who booked can do this']); exit();
+        }
+        $member = $db->prepare('SELECT paid FROM booking_players WHERE booking_id = ? AND user_id = ?');
+        $member->execute([$bid, $pid]);
+        $row = $member->fetch(PDO::FETCH_ASSOC);
+        if (!$row) { http_response_code(404); echo json_encode(['message' => 'Not in this squad']); exit(); }
+
+        if ($seg[1] === 'paid' && $_SERVER['REQUEST_METHOD'] === 'PUT') {
+            $paid = !empty($body['paid']) ? 1 : 0;
+            $db->prepare('UPDATE booking_players SET paid = ? WHERE booking_id = ? AND user_id = ?')->execute([$paid, $bid, $pid]);
+            echo json_encode(['paid' => (bool)$paid]);
+            exit();
+        }
+        if ($seg[1] === 'remind' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+            if ((int)$row['paid'] === 1) { http_response_code(409); echo json_encode(['message' => 'Already marked paid']); exit(); }
+            $info = $db->prepare('SELECT b.start_time, b.total_price, c.id AS court_id, c.name AS court_name, u.name AS booker_name,
+                                         (SELECT COUNT(*) FROM booking_players bp WHERE bp.booking_id = b.id) AS squad
+                                  FROM bookings b JOIN courts c ON c.id = b.court_id JOIN users u ON u.id = b.user_id WHERE b.id = ?');
+            $info->execute([$bid]);
+            $g = $info->fetch(PDO::FETCH_ASSOC);
+            $msg = BookingSquad::reminder((string)$g['booker_name'], (string)$g['court_name'], (string)$g['start_time'], BookingSquad::share((float)$g['total_price'], (int)$g['squad']));
+            $today = (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d');
+            // event_key is unique per user, so a second reminder the same day is a no-op.
+            $ins = $db->prepare('INSERT IGNORE INTO user_notifications (user_id, type, title, body, court_id, event_key) VALUES (?,?,?,?,?,?)');
+            $ins->execute([$pid, 'squad_payment', $msg['title'], $msg['body'], (int)$g['court_id'], "owe:$bid:$today"]);
+            if ($ins->rowCount()) {
+                require_once __DIR__ . '/src/Push.php';
+                Push::sendToUser($pid, $msg['title'], $msg['body'], ['type' => 'squad_payment', 'booking_id' => (string)$bid]);
+            }
+            echo json_encode(['sent' => $ins->rowCount() > 0, 'message' => $ins->rowCount() ? 'Reminder sent' : 'Already reminded today']);
+            exit();
+        }
+        http_response_code(405); echo json_encode(['message' => 'Method not allowed']); exit();
+    }
+
+    // GET /booking-players?booking_id=X
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $authUser = Auth::require();
         $uid  = (int)$authUser['id'];
@@ -1245,12 +1296,19 @@ if (isset($seg[0]) && $seg[0] === 'booking-players') {
         }
         // No phone numbers: squad mates see names only.
         $stmt = $db->prepare(
-            "SELECT u.id, u.name, u.avatar_url
+            "SELECT u.id, u.name, u.avatar_url, bp.paid
              FROM booking_players bp JOIN users u ON u.id = bp.user_id
              WHERE bp.booking_id = ?"
         );
         $stmt->execute([$bid]);
         $players = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Who has paid the booker back is between the booker and each player.
+        $isBooker = (int)$squadBooking['user_id'] === $uid;
+        foreach ($players as &$p) {
+            $p['paid'] = (bool)$p['paid'];
+            if (!$isBooker && (int)$p['id'] !== $uid) unset($p['paid']);
+        }
+        unset($p);
         // Open spots posted to Matches from this pass (match_requests.booking_id), if any.
         $openMatch = null;
         try {

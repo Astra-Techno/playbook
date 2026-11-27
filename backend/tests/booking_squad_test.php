@@ -28,4 +28,12 @@ check(!BookingSquad::canInvite($booking, 30, 'user'), 'an added player cannot ad
 check(!BookingSquad::canInvite($booking, 20, 'user'), 'the venue owner cannot add players to a customer booking');
 check(!BookingSquad::canInvite($booking, 77, 'user'), 'a stranger cannot add players');
 
+// Split pay (track who owes)
+check(BookingSquad::share(1200, 4) === 240, 'booker + 4 split the total');
+check(BookingSquad::share(1000, 2) === 334, 'share rounds up');
+check(BookingSquad::share(0, 3) === null, 'free booking has no share');
+$r = BookingSquad::reminder('Arjun Kumar', 'Kick Arena', '2026-12-02 19:00:00', 240);
+check(str_contains($r['title'], 'Arjun is waiting for your ₹240'), 'reminder names the booker and amount');
+check(str_contains($r['body'], 'Kick Arena on Wed 2 Dec, 7 PM'), 'reminder names the game');
+
 exit($failed ? 1 : 0);

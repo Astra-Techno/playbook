@@ -22,6 +22,27 @@ class BookingSquad
         return $role === 'admin' || (int)$booking['user_id'] === $userId;
     }
 
+    /** Each player's share, rounded up: the booker plus $squadSize squad mates split the total. */
+    public static function share(float $total, int $squadSize): ?int
+    {
+        if ($total <= 0) return null;
+        return (int)ceil($total / max(1, $squadSize + 1));
+    }
+
+    /**
+     * In-app reminder for a squad mate who has not paid the booker back yet.
+     * @return array{title:string, body:string}
+     */
+    public static function reminder(string $bookerName, string $courtName, string $startTime, ?int $share): array
+    {
+        $when = date('D j M, g A', strtotime($startTime));
+        $first = trim(explode(' ', trim($bookerName))[0] ?? '') ?: 'Your booker';
+        return [
+            'title' => $share ? "$first is waiting for your ₹$share" : "$first is waiting for your share",
+            'body' => "For the game at $courtName on $when. Pay them directly; they'll mark it paid.",
+        ];
+    }
+
     /** Booking row joined to its venue owner, or null. */
     public static function booking(PDO $db, int $bookingId): ?array
     {

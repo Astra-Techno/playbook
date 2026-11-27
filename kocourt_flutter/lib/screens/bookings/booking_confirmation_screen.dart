@@ -6,6 +6,7 @@ import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'booking_ticket.dart';
@@ -28,6 +29,8 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
   List<Map<String, dynamic>> _squad = [];
   // Open spots posted to Matches from this pass (GET /booking-players → open_match).
   Map<String, dynamic>? _openMatch;
+  // Booker's UPI ID for "pay me" links. Kept on this device only, never sent to KoCourt.
+  String? _upiId;
   String? _passPayload;
   String? _passCode;
   Timer? _tick;
@@ -42,6 +45,9 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
     } else {
       _fetchBooking();
     }
+    SharedPreferences.getInstance().then((prefs) {
+      if (mounted) setState(() => _upiId = prefs.getString('upi_id'));
+    });
     _tick = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() {});
     });
@@ -130,11 +136,124 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
       perHead: perHeadRupees(_booking?['total_price'], _players + _openSpots),
       courtId: _booking?['court_id'],
       open: _openSpots,
+      payLink: _isBooker
+          ? upiPayLink(_upiId, payee: context.read<AuthProvider>().userName, amount: perHeadRupees(_booking?['total_price'], _players + _openSpots))
+          : null,
     );
     final wa = Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}');
     if (!await launchUrl(wa, mode: LaunchMode.externalApplication)) {
       await SharePlus.instance.share(ShareParams(text: text));
     }
+  }
+
+  Future<void> _setUpi() async {
+    final ctrl = TextEditingController(text: _upiId ?? '');
+    String? problem;
+    final saved = await showDialog<String>(
+      context: context,
+      builder: (dialog) => StatefulBuilder(
+        builder: (dialog, setDialog) => AlertDialog(
+          title: const Text('Your UPI ID'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Added as a "pay me" link when you invite your squad. Saved on this phone only.',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ctrl,
+                autofocus: true,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(labelText: 'e.g. name@okaxis', errorText: problem),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialog), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () {
+                if (!isUpiId(ctrl.text)) {
+                  setDialog(() => problem = 'Enter a UPI ID like name@bank');
+                  return;
+                }
+                Navigator.pop(dialog, ctrl.text.trim());
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+    ctrl.dispose();
+    if (saved == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('upi_id', saved);
+    if (mounted) setState(() => _upiId = saved);
+  }
+
+  Future<void> _markPaid(Map<String, dynamic> player, bool paid) async {
+    try {
+      await Api().put('/booking-players/paid', data: {'booking_id': _id, 'user_id': player['id'], 'paid': paid});
+      _loadSquad();
+    } catch (caught) {
+      if (mounted) context.toastError(Api.failureMessage(caught, fallback: 'Could not update.'));
+    }
+  }
+
+  Future<void> _remind(Map<String, dynamic> player) async {
+    try {
+      final res = await Api().post('/booking-players/remind', data: {'booking_id': _id, 'user_id': player['id']});
+      if (mounted) context.toastInfo('${res.data['message'] ?? 'Reminder sent'}');
+    } catch (caught) {
+      if (mounted) context.toastError(Api.failureMessage(caught, fallback: 'Could not send a reminder.'));
+    }
+  }
+
+  /// Track who owes: the booker paid in full; squad mates pay them back directly.
+  Widget _dues(String booker, int? perHead) {
+    if (perHead == null || _squad.isEmpty) return const SizedBox.shrink();
+    if (!_isBooker) {
+      final me = context.read<AuthProvider>().userId;
+      final mine = _squad.where((p) => '${p['id']}' == '$me').firstOrNull;
+      if (mine == null) return const SizedBox.shrink();
+      final paid = mine['paid'] == true;
+      return Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Text(paid ? 'You paid $booker back ✓' : 'You owe ${booker.split(' ').first} \u20B9$perHead. Pay them directly.',
+            style: TextStyle(fontWeight: FontWeight.w700, color: paid ? AppColors.secondary : AppColors.textPrimary)),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final p in _squad)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Expanded(child: Text('${p['name'] ?? 'Player'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600))),
+                  if (p['paid'] == true) ...[
+                    const Text('Paid ✓', style: TextStyle(color: AppColors.secondary, fontWeight: FontWeight.w800)),
+                    TextButton(onPressed: () => _markPaid(p, false), child: const Text('Undo')),
+                  ] else ...[
+                    Text('Owes \u20B9$perHead', style: AppFonts.score(fontSize: 15, color: AppColors.textPrimary)),
+                    TextButton(onPressed: () => _markPaid(p, true), child: const Text('Mark paid')),
+                    TextButton(onPressed: () => _remind(p), child: const Text('Remind')),
+                  ],
+                ],
+              ),
+            ),
+          TextButton.icon(
+            onPressed: _setUpi,
+            icon: const Icon(Icons.account_balance_wallet_outlined, size: 18),
+            label: Text(_upiId == null ? 'Add your UPI ID for pay-me links' : 'UPI: $_upiId (change)'),
+          ),
+        ],
+      ),
+    );
   }
 
   /// "Need players": posts the open spots to Matches; joiners land in this squad.
@@ -616,6 +735,8 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
             note: note.isEmpty ? null : note,
             max: 7,
           ),
+          // Dues split among who is actually in (matches the server's reminder amount).
+          _dues(booker, perHeadRupees(_booking?['total_price'], _players)),
           if (canAdd) ...[
             const SizedBox(height: 8),
             Wrap(

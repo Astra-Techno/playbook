@@ -86,7 +86,7 @@ int? perHeadRupees(Object? totalPrice, int players) {
 }
 
 /// WhatsApp invite for the squad: venue, time, share, map and join links.
-String squadInviteText(BookingTicket t, {required int players, int? perHead, Object? courtId, int open = 0}) {
+String squadInviteText(BookingTicket t, {required int players, int? perHead, Object? courtId, int open = 0, String? payLink}) {
   final where = [t.venue, t.place].where((s) => s.isNotEmpty).join(', ');
   final map = Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': where});
   return [
@@ -97,6 +97,7 @@ String squadInviteText(BookingTicket t, {required int players, int? perHead, Obj
       if (perHead != null) '₹$perHead each',
     ].join(' · '),
     'Map: $map',
+    if (payLink != null && perHead != null) 'Pay me ₹$perHead on UPI: $payLink',
     if (courtId != null) 'Join on KoCourt: https://www.kocourt.com/court/$courtId',
   ].join('\n');
 }
@@ -109,4 +110,19 @@ String recapText(BookingTicket t, {required int players, int? minutes}) {
     if (players > 1) 'squad of $players',
   ];
   return '${parts.join(' · ')}. Good game!';
+}
+
+/// True for a UPI ID like "arjun@okaxis" or "98765.43210@ybl".
+bool isUpiId(String value) => RegExp(r'^[A-Za-z0-9.\-_]{2,256}@[A-Za-z]{2,64}$').hasMatch(value.trim());
+
+/// UPI "pay me" link for the booker's share, or null without a valid UPI ID or amount.
+String? upiPayLink(String? upiId, {required String payee, int? amount}) {
+  if (upiId == null || !isUpiId(upiId) || amount == null || amount <= 0) return null;
+  return Uri(scheme: 'upi', host: 'pay', queryParameters: {
+    'pa': upiId.trim(),
+    'pn': payee.trim().isEmpty ? 'KoCourt player' : payee.trim(),
+    'am': '$amount',
+    'cu': 'INR',
+    'tn': 'KoCourt game share',
+  }).toString();
 }
