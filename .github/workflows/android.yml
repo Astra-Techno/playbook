@@ -99,7 +99,7 @@ jobs:
             echo "::error::${{ matrix.artifact }} is signed with the debug key."
             exit 1
           fi
-          keytool -printcert -jarfile "${{ matrix.artifact }}.apk" | grep -E "Owner:|SHA256:" | head -2"
+          keytool -printcert -jarfile "${{ matrix.artifact }}.apk" | grep -E "Owner:|SHA256:" | head -2
 
       - name: Job summary
         run: |
