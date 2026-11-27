@@ -8,6 +8,8 @@ import 'package:flutter_cashfree_pg_sdk/api/cfsession/cfsession.dart';
 import 'package:flutter_cashfree_pg_sdk/utils/cfenums.dart';
 import '../core/api.dart';
 import '../core/theme.dart';
+import '../core/fonts.dart';
+import '../core/format.dart';
 
 class PaymentResult {
   final bool success;
@@ -50,103 +52,96 @@ class PaymentService {
       if (!context.mounted) return PaymentResult(success: false, error: 'Checkout closed');
       final price = quote['snapshot']['price'];
       final policy = quote['snapshot']['policy'];
-      String money(dynamic value) => ((value as num) / 100).toStringAsFixed(2);
-      final terms = type == 'subscription'
-          ? 'Subscription cancellations require support review.'
-          : policy['cancellation.enabled'] == true
-              ? 'Venue refund: 100% at least ${policy['cancellation.full_hours']} hours before play; '
-                '${policy['cancellation.partial_percent']}% at least ${policy['cancellation.partial_hours']} hours before; '
-                'otherwise ${policy['cancellation.late_percent']}%. '
-                'Platform fee refund: ${policy['cancellation.fee_refund'].toString().replaceAll('_', ' ')}. '
-                'Venue cancellations refund the full payment.'
-              : 'Customer cancellation is disabled. Venue cancellations refund the full payment.';
-      final accepted = await showDialog<bool>(
+      int paise(dynamic v) => (v is num ? v : num.tryParse('$v') ?? 0).round();
+      String money(dynamic v) => rupees(paise(v) / 100);
+      final total = paise(price['total']);
+      // Refund policy as short lines instead of one paragraph.
+      final policyLines = <String>[
+        if (type == 'subscription') 'Membership cancellations are reviewed by support.'
+        else if (policy['cancellation.enabled'] == true) ...[
+          'Full refund up to ${policy['cancellation.full_hours']} h before play',
+          '${policy['cancellation.partial_percent']}% refund up to ${policy['cancellation.partial_hours']} h before',
+          '${policy['cancellation.late_percent']}% refund after that',
+        ] else
+          'This venue does not allow cancellations by players',
+        'If the venue cancels, you get the full amount back',
+        'Refunds reach your payment method in about ${policy['refund.expected_days']} working days',
+      ];
+      final accepted = await showModalBottomSheet<bool>(
         context: context,
-        builder: (dialogContext) {
-          final brand = dialogContext.brand;
-          Widget row(String label, String value, {bool emphasize = false}) {
+        isScrollControlled: true,
+        showDragHandle: true,
+        backgroundColor: Colors.white,
+        builder: (sheet) {
+          final brand = sheet.brand;
+          Widget row(String label, dynamic value) {
+            if (paise(value) == 0) return const SizedBox.shrink();
             return Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Row(
                 children: [
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        color: AppColors.textSecondary,
-                        fontWeight: emphasize ? FontWeight.w700 : FontWeight.w500,
-                        fontSize: emphasize ? 15 : 13,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    value,
-                    style: TextStyle(
-                      color: brand.ink,
-                      fontWeight: FontWeight.w800,
-                      fontSize: emphasize ? 16 : 13,
-                    ),
-                  ),
+                  Expanded(child: Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14))),
+                  Text(money(value), style: AppFonts.score(fontSize: 16, color: brand.ink)),
                 ],
               ),
             );
           }
 
-          return Dialog(
-            insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          return SafeArea(
+            top: false,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('Review payment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: brand.ink)),
+                  Text('Review and pay', style: AppFonts.display(fontSize: 20, color: brand.ink)),
                   const SizedBox(height: 16),
                   Flexible(
                     child: SingleChildScrollView(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          row('Venue', 'INR ${money(price['venue']['base'])}'),
-                          if (quote['snapshot']['addons'] is Map)
-                            row('  incl. kit rental', 'INR ${money(quote['snapshot']['addons']['paise'])}'),
-                          row('Venue GST', 'INR ${money(price['venue']['tax'])}'),
-                          row('KoCourt fee', 'INR ${money(price['fee']['base'])}'),
-                          row('Fee GST', 'INR ${money(price['fee']['tax'])}'),
+                          row(type == 'subscription' ? 'Membership' : 'Court booking', price['venue']['base']),
+                          if (quote['snapshot']['addons'] is Map) row('   incl. kit rental', quote['snapshot']['addons']['paise']),
+                          row('GST', price['venue']['tax']),
+                          row('KoCourt fee', price['fee']['base']),
+                          row('GST on fee', price['fee']['tax']),
                           const Divider(height: 20),
-                          row('Total', 'INR ${money(price['total'])}', emphasize: true),
-                          const SizedBox(height: 12),
-                          Text(
-                            terms,
-                            style: const TextStyle(fontSize: 12, height: 1.45, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Expanded(child: Text('Total', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: brand.ink))),
+                              Text(money(total), style: AppFonts.score(fontSize: 30, color: brand.ink)),
+                            ],
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Eligible refunds return to the original payment method; exceptions require review. Expected credit: ${policy['refund.expected_days']} business days after initiation.',
-                            style: const TextStyle(fontSize: 12, height: 1.45, color: AppColors.textMuted, fontWeight: FontWeight.w500),
-                          ),
+                          const SizedBox(height: 16),
+                          for (final line in policyLines)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.check_circle_outline_rounded, size: 16, color: brand.primary),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: Text(line, style: const TextStyle(fontSize: 13, height: 1.35, color: AppColors.textSecondary))),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(dialogContext, false),
-                          child: const Text('Back'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: () => Navigator.pop(dialogContext, true),
-                          child: const Text('Continue'),
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 52,
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(sheet, true),
+                      style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                      child: Text('Pay ${money(total)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                    ),
                   ),
+                  TextButton(onPressed: () => Navigator.pop(sheet, false), child: const Text('Not now')),
                 ],
               ),
             ),
