@@ -110,7 +110,7 @@ class _CourtRegisterScreenState extends State<CourtRegisterScreen> {
     }
   }
 
-  String _money(double v) => '₹${v.round()}';
+  String _money(double v) => rupees(v.round());
 
   @override
   Widget build(BuildContext context) {

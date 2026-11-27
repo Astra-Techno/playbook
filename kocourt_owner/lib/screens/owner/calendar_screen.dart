@@ -331,7 +331,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ],
               ),
             ),
-            Text('₹${booking['total_price'] ?? 0}', style: AppFonts.score(fontWeight: FontWeight.w900, fontSize: 15)),
+            Text(rupees(booking['total_price'] ?? 0), style: AppFonts.score(fontWeight: FontWeight.w900, fontSize: 15)),
           ],
         ),
       ),

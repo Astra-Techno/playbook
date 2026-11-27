@@ -280,15 +280,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
         ],
         if (_ghostPlaces.isNotEmpty) ...[
           const SizedBox(height: 24),
-          Text(
-            'DISCOVER & CLAIM',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textMuted,
-              letterSpacing: 1.5,
-            ),
-          ),
+          Text('Claim your venue', style: AppFonts.display(fontSize: 18)),
           const SizedBox(height: 4),
           Text(
             'Nearby venues not yet on KoCourt',
@@ -556,7 +548,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                   });
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.textPrimary,
+                  backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

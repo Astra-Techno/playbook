@@ -115,7 +115,7 @@ class _SpaceFormScreenState extends State<SpaceFormScreen> {
             decoration: const InputDecoration(labelText: 'Hourly rate', hintText: 'Leave blank to use the venue rate'),
           ),
           const SizedBox(height: 20),
-          const Text('BOOKING', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.4, color: AppColors.textMuted)),
+          const Text('Booking mode', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
           const SizedBox(height: 8),
           SegmentedButton<String>(
             segments: const [
