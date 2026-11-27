@@ -11,4 +11,18 @@ void main() {
     expect(passCountdown(start, end, DateTime(2026, 11, 26, 21)), 'Full time');
     expect(passCountdown(null, end, DateTime(2026, 11, 26)), '');
   });
+
+  test('squad share and WhatsApp invite', () {
+    expect(perHeadRupees('1200.00', 5), 240);
+    expect(perHeadRupees(1000, 3), 334);
+    expect(perHeadRupees(0, 4), isNull);
+    expect(perHeadRupees('600', 0), isNull);
+    const t = BookingTicket(id: 9, venue: 'Kick Arena', place: 'Anna Nagar', date: 'Wed, 2 Dec', time: '7:00 PM – 8:00 PM', space: 'Turf 2', amount: '₹1200', status: 'confirmed');
+    final text = squadInviteText(t, players: 4, perHead: 300, courtId: 12, open: 1);
+    expect(text, contains('Game on: Kick Arena (Turf 2)'));
+    expect(text, contains('4 in, 1 spot open · ₹300 each'));
+    expect(text, contains('https://www.kocourt.com/court/12'));
+    expect(text, contains('query=Kick+Arena%2C+Anna+Nagar'));
+    expect(squadInviteText(t, players: 1), isNot(contains('each')));
+  });
 }

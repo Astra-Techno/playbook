@@ -38,6 +38,9 @@ const onAddonsDone = (counts) => {
 const subscribeLoading = ref(null)  // holds plan_id being subscribed
 
 const selectedDate  = ref('')
+// Rebook from the Home "Your crew" card: preselect day, space and hours once slots load.
+const pendingRebook = ref(null)
+const rebookSquad = String(route.query.squad || '').split(',').map(Number).filter((n) => n > 0)
 const selectedSlots = ref([]) // multi-select
 const bookedSlots   = ref([])
 const blockedSlots  = ref([])
@@ -518,6 +521,12 @@ onMounted(async () => {
         }
     } catch { court.value = null }
     finally { loading.value = false }
+    const q = route.query
+    if (court.value && /^\d{4}-\d{2}-\d{2}$/.test(String(q.date || '')) && Number(q.start) >= 0 && Number(q.end) > Number(q.start)) {
+        pendingRebook.value = { start: Number(q.start), end: Number(q.end) }
+        if (q.space) selectedSpace.value = spaces.value.find((sp) => String(sp.id) === String(q.space)) || null
+        selectedDate.value = String(q.date)
+    }
 })
 
 watch(selectedSpace, () => {
@@ -540,6 +549,17 @@ watch(selectedDate, async (date) => {
             bookedSlots.value  = bRes.data.records || []
             blockedSlots.value = blkRes.data.blocks || []
         } catch { bookedSlots.value = []; blockedSlots.value = [] }
+    }
+    if (pendingRebook.value) {
+        const { start, end } = pendingRebook.value
+        pendingRebook.value = null
+        const wanted = TIME_SLOTS.value.filter((sl) => sl.hour >= start && sl.hour < end)
+        if (wanted.length && wanted.every((sl) => slotState(sl) === 'free')) {
+            selectedSlots.value = wanted
+            toast.info('Same time as last game picked. Check and pay.')
+        } else {
+            toast.error('That time is taken this week. Pick another slot.')
+        }
     }
 })
 
@@ -745,6 +765,10 @@ const confirmBooking = async () => {
             try {
                 const vRes = await axios.post('/payments/verify', { order_id })
                 const bookingIds = (vRes.data.booking_ids || [])
+                if (rebookSquad.length && bookingIds.length) {
+                    await axios.post('/booking-players', { booking_id: bookingIds[0], user_ids: rebookSquad })
+                        .catch(() => toast.info('Booked. Add your squad from the pass.'))
+                }
                 toast.success(`${selectedSlots.value.length} slot${selectedSlots.value.length > 1 ? 's' : ''} booked!`)
                 if (bookingIds.length === 1) {
                     router.replace(`/booking-confirmation/${bookingIds[0]}`)

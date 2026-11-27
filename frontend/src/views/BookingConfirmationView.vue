@@ -1,8 +1,13 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 import { CheckCircle2, CalendarDays, Clock, MapPin, Hash, Loader2 } from 'lucide-vue-next'
+import KoCard from '../components/KoCard.vue'
+import JerseyRow from '../components/JerseyRow.vue'
+import { useAuthStore } from '../stores/auth'
+import { useToastStore } from '../stores/toast'
+import { sportTint } from '../utils/sport'
 
 const route  = useRoute()
 const router = useRouter()
@@ -10,6 +15,58 @@ const router = useRouter()
 const booking  = ref(null)
 const loading  = ref(true)
 const notFound = ref(false)
+const auth  = useAuthStore()
+const toast = useToastStore()
+
+// Matchday squad (same as the app's pass): GET /booking-players → players + open_match.
+const squad = ref([])
+const openMatch = ref(null)
+const askSpots = ref(0) // > 0 while the "Need players" stepper is open
+const isBooker = computed(() => booking.value && String(booking.value.user_id) === String(auth.user?.id))
+const live = computed(() => booking.value?.status === 'confirmed')
+const players = computed(() => squad.value.length + 1)
+const openSpots = computed(() => Number(openMatch.value?.spots_left || 0))
+const perHead = computed(() => {
+    const total = Number(booking.value?.total_price || 0)
+    return total > 0 ? Math.ceil(total / (players.value + openSpots.value)) : null
+})
+const bookerName = computed(() => (isBooker.value ? (auth.user?.name || 'You') : (booking.value?.user_name || 'Booker')))
+const squadNote = computed(() => [
+    perHead.value != null ? `₹${perHead.value} each` : null,
+    openSpots.value > 0 ? `${openSpots.value} spot${openSpots.value === 1 ? '' : 's'} open` : null,
+].filter(Boolean).join(' · ') || null)
+
+const loadSquad = async () => {
+    try {
+        const res = await axios.get('/booking-players', { params: { booking_id: route.params.bookingId } })
+        squad.value = res.data.players || []
+        openMatch.value = res.data.open_match || null
+    } catch { /* the pass works without the squad */ }
+}
+
+const inviteText = () => {
+    const b = booking.value
+    const where = [b.court_name, b.court_location].filter(Boolean).join(', ')
+    return [
+        `Game on: ${b.court_name}${b.space_name ? ` (${b.space_name})` : ''}`,
+        `${fmtDate(b.start_time)} · ${fmtTime(b.start_time)} – ${fmtTime(b.end_time)}`,
+        [`${players.value} in${openSpots.value > 0 ? `, ${openSpots.value} spot${openSpots.value === 1 ? '' : 's'} open` : ''}`, perHead.value != null ? `₹${perHead.value} each` : null].filter(Boolean).join(' · '),
+        `Map: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(where)}`,
+        `Join on KoCourt: https://www.kocourt.com/court/${b.court_id}`,
+    ].join('\n')
+}
+const whatsappUrl = computed(() => (booking.value ? `https://wa.me/?text=${encodeURIComponent(inviteText())}` : '#'))
+
+const postOpenSpots = async () => {
+    try {
+        await axios.post('/match-requests', { booking_id: booking.value.id, players_needed: askSpots.value })
+        toast.success('Posted to Matches')
+        askSpots.value = 0
+        loadSquad()
+    } catch (e) {
+        toast.error(e.response?.data?.message || 'Could not post this game.')
+    }
+}
 
 const parseLocal = (dt) => { const [d, t] = String(dt).split(' '); return new Date(`${d}T${t || '00:00:00'}`) }
 const fmtDate = (dt) => parseLocal(dt).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
@@ -19,6 +76,7 @@ onMounted(async () => {
     try {
         const res = await axios.get(`/bookings/${route.params.bookingId}`)
         booking.value = res.data.booking
+        loadSquad()
     } catch {
         notFound.value = true
     } finally {
@@ -112,6 +170,30 @@ onMounted(async () => {
                     </div>
                 </div>
             </div>
+
+            <!-- Matchday squad card -->
+            <KoCard class="w-full mb-6"
+                :sport="booking.court_type"
+                kicker="Squad"
+                :title="`${players} player${players === 1 ? '' : 's'}${openSpots > 0 ? ` · need ${openSpots}` : ''}`"
+                :meta="isBooker ? 'You booked this game' : `Booked by ${bookerName}`"
+                :badge="perHead != null ? `₹${perHead}` : null">
+                <JerseyRow :names="[bookerName, ...squad.map((p) => p.name)]" :open="openSpots" :tone="sportTint(booking.court_type).fg" :note="squadNote" :max="7" />
+                <div v-if="isBooker && live" class="mt-3">
+                    <button v-if="!askSpots" type="button" class="text-sm font-bold text-primary" @click="askSpots = openSpots || 1">
+                        {{ openMatch ? 'Change open spots' : 'Need players? Post to Matches' }}
+                    </button>
+                    <div v-else class="flex flex-wrap items-center gap-2">
+                        <button type="button" class="h-8 w-8 rounded-full border border-outline-variant font-bold disabled:opacity-30" :disabled="askSpots <= 1" aria-label="One fewer" @click="askSpots--">−</button>
+                        <span class="w-6 text-center font-score text-lg font-bold">{{ askSpots }}</span>
+                        <button type="button" class="h-8 w-8 rounded-full border border-primary font-bold text-primary disabled:opacity-30" :disabled="askSpots >= 20" aria-label="One more" @click="askSpots++">+</button>
+                        <button type="button" class="rounded-xl bg-primary px-3 py-2 text-sm font-bold text-on-primary" @click="postOpenSpots">Post "Need {{ askSpots }}"</button>
+                        <button type="button" class="text-sm text-on-surface-variant" @click="askSpots = 0">Cancel</button>
+                    </div>
+                </div>
+                <a v-if="live" :href="whatsappUrl" target="_blank" rel="noopener"
+                    class="mt-3 block w-full rounded-[14px] bg-primary py-3.5 text-center text-[15px] font-bold text-on-primary">Invite on WhatsApp</a>
+            </KoCard>
 
             <!-- Actions -->
             <div class="w-full flex flex-col gap-3">

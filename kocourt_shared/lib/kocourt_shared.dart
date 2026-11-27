@@ -26,6 +26,7 @@ export 'widgets/stopwatch_ring.dart';
 export 'widgets/sport_tags.dart';
 export 'widgets/sport_icon.dart';
 export 'widgets/ko_card.dart';
+export 'widgets/jersey_row.dart';
 export 'widgets/profile_header.dart';
 export 'widgets/toast_overlay.dart';
 export 'widgets/tactile_surface.dart';

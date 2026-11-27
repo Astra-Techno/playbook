@@ -17,6 +17,7 @@ import 'widgets/sport_chips.dart';
 import 'widgets/next_game_card.dart';
 import 'widgets/free_now_stack.dart';
 import 'widgets/play_time_chips.dart';
+import 'widgets/crew_card.dart';
 import 'home_logic.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -560,6 +561,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     NextGameCard(),
                     PlayersWantedTile(),
+                    CrewCard(),
                   ],
                 ),
               ),

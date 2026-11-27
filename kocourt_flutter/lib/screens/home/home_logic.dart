@@ -138,3 +138,21 @@ List<Map<String, dynamic>> withStrips(List<Map<String, dynamic>> venues, Map<Str
   out.sort((a, b) => '${a['free_from']}'.compareTo('${b['free_from']}'));
   return out;
 }
+
+// ── Matchday phase 2: your crew ──
+
+/// "Wed 7 PM" for a slot start; "7:30 PM" style when not on the hour.
+String slotDayLabel(DateTime start) {
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  final time = start.minute == 0 ? hourLabel(start.hour) : '${start.hour % 12 == 0 ? 12 : start.hour % 12}:${start.minute.toString().padLeft(2, '0')} ${start.hour < 12 ? 'AM' : 'PM'}';
+  return '${days[start.weekday - 1]} $time';
+}
+
+/// "with Arjun", "with Arjun and Ravi", "with Arjun +3".
+String crewWith(List<String> names) {
+  if (names.isEmpty) return '';
+  final first = names.first.trim().split(RegExp(r'\s+')).first;
+  if (names.length == 1) return 'with $first';
+  if (names.length == 2) return 'with $first and ${names[1].trim().split(RegExp(r'\s+')).first}';
+  return 'with $first +${names.length - 1}';
+}

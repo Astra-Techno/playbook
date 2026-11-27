@@ -25,6 +25,8 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _squad = [];
+  // Open spots posted to Matches from this pass (GET /booking-players → open_match).
+  Map<String, dynamic>? _openMatch;
   String? _passPayload;
   String? _passCode;
   Timer? _tick;
@@ -92,7 +94,13 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
       final rows = List<Map<String, dynamic>>.from(
         (res.data['players'] ?? []).map((e) => Map<String, dynamic>.from(e)),
       );
-      if (mounted) setState(() => _squad = rows);
+      final open = res.data['open_match'];
+      if (mounted) {
+        setState(() {
+          _squad = rows;
+          _openMatch = open is Map ? Map<String, dynamic>.from(open) : null;
+        });
+      }
     } catch (_) {
       // Squad is a bonus; the pass still works without it.
     }
@@ -109,6 +117,67 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
       text: 'I booked ${ticket.venue} for ${ticket.date}, ${ticket.time}. Join my game on KoCourt!'
           '${courtId != null ? '\nhttps://www.kocourt.com/court/$courtId' : ''}',
     ));
+  }
+
+  int get _players => _squad.length + 1;
+  int get _openSpots => int.tryParse('${_openMatch?['spots_left'] ?? 0}') ?? 0;
+
+  Future<void> _inviteOnWhatsApp(BookingTicket ticket) async {
+    final text = squadInviteText(
+      ticket,
+      players: _players,
+      perHead: perHeadRupees(_booking?['total_price'], _players + _openSpots),
+      courtId: _booking?['court_id'],
+      open: _openSpots,
+    );
+    final wa = Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}');
+    if (!await launchUrl(wa, mode: LaunchMode.externalApplication)) {
+      await SharePlus.instance.share(ShareParams(text: text));
+    }
+  }
+
+  /// "Need players": posts the open spots to Matches; joiners land in this squad.
+  Future<void> _postOpenSpots() async {
+    var spots = _openSpots > 0 ? _openSpots : 1;
+    final ok = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => StatefulBuilder(
+        builder: (sheet, setSheet) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Need players?', style: Theme.of(sheet).textTheme.titleLarge),
+              const SizedBox(height: 4),
+              const Text('Posts this game to Matches. Whoever joins is added to your squad.', style: TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(tooltip: 'One fewer', onPressed: spots > 1 ? () => setSheet(() => spots--) : null, icon: const Icon(Icons.remove_circle_outline)),
+                  SizedBox(width: 72, child: Text('$spots', textAlign: TextAlign.center, style: AppFonts.score(fontSize: 34))),
+                  IconButton(tooltip: 'One more', onPressed: spots < 20 ? () => setSheet(() => spots++) : null, icon: const Icon(Icons.add_circle_outline)),
+                ],
+              ),
+              Text(spots == 1 ? 'player needed' : 'players needed', textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 16),
+              SizedBox(height: 52, child: ElevatedButton(onPressed: () => Navigator.pop(sheet, true), child: Text('Post "Need $spots"'))),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await Api().post('/match-requests', data: {'booking_id': _id, 'players_needed': spots});
+      if (!mounted) return;
+      context.toastSuccess('Posted to Matches');
+      _loadSquad();
+    } catch (caught) {
+      if (mounted) context.toastError(Api.failureMessage(caught, fallback: 'Could not post this game.'));
+    }
   }
 
   Future<void> _directions(BookingTicket ticket) async {
@@ -495,45 +564,51 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
     );
   }
 
+  /// Matchday squad card: jerseys (open spots dashed), share per head, one invite action.
   Widget _squadCard(BookingTicket ticket, Color brand) {
-    final canAdd = _isBooker && ticket.status != 'cancelled';
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
+    final live = ticket.status != 'cancelled';
+    final canAdd = _isBooker && live;
+    final me = context.read<AuthProvider>().userName;
+    final booker = _isBooker ? (me.isEmpty ? 'You' : me) : '${_booking?['user_name'] ?? 'Booker'}';
+    final perHead = perHeadRupees(_booking?['total_price'], _players + _openSpots);
+    final note = [
+      if (perHead != null) '\u20B9$perHead each',
+      if (_openSpots > 0) '$_openSpots spot${_openSpots == 1 ? '' : 's'} open',
+    ].join(' · ');
+    return KoCard(
+      sport: _booking?['court_type'],
+      kicker: 'Squad',
+      title: '$_players player${_players == 1 ? '' : 's'}${_openSpots > 0 ? ' · need $_openSpots' : ''}',
+      meta: _isBooker ? 'You booked this game' : 'Booked by $booker',
+      badge: perHead == null ? null : '\u20B9$perHead',
+      middle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text('Squad', style: AppFonts.display(fontSize: 17, fontWeight: FontWeight.w900)),
-              const SizedBox(width: 8),
-              Text('${_squad.length + 1} players', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-              const Spacer(),
-              if (canAdd)
-                TextButton.icon(onPressed: _addPlayer, icon: const Icon(Icons.person_add_alt_1_rounded, size: 18), label: const Text('Add')),
-            ],
+          JerseyRow(
+            names: [booker, for (final p in _squad) '${p['name'] ?? 'Player'}'],
+            open: _openSpots,
+            tone: sportTint(_booking?['court_type']).fg,
+            note: note.isEmpty ? null : note,
+            max: 7,
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _Jersey(label: 'You', color: brand, captain: true),
-              for (final p in _squad) _Jersey(label: '${p['name'] ?? 'Player'}'.split(' ').first, color: AppColors.secondary),
-            ],
-          ),
-          const SizedBox(height: 12),
-          OutlinedButton.icon(
-            onPressed: () => _shareGame(ticket),
-            icon: const Icon(Icons.share_rounded, size: 18),
-            label: const Text('Invite friends by link'),
-          ),
+          if (canAdd) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: [
+                TextButton.icon(onPressed: _addPlayer, icon: const Icon(Icons.person_add_alt_1_rounded, size: 18), label: const Text('Add player')),
+                TextButton.icon(
+                  onPressed: _postOpenSpots,
+                  icon: const Icon(Icons.campaign_outlined, size: 18),
+                  label: Text(_openMatch == null ? 'Need players' : 'Change open spots'),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
+      actionLabel: live ? 'Invite on WhatsApp' : null,
+      onAction: () => _inviteOnWhatsApp(ticket),
     );
   }
 }
@@ -545,35 +620,6 @@ class _Slanted extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       Transform(transform: Matrix4.skewX(-0.17), alignment: Alignment.center, child: child);
-}
-
-/// Squad member chip shaped like a jersey number plate; the booker wears the armband.
-class _Jersey extends StatelessWidget {
-  const _Jersey({required this.label, required this.color, this.captain = false});
-  final String label;
-  final Color color;
-  final bool captain;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(6, 6, 12, 6),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(20)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircleAvatar(
-            radius: 13,
-            backgroundColor: color,
-            child: Text(captain ? 'C' : label.characters.first.toUpperCase(),
-                style: AppFonts.display(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
-          ),
-          const SizedBox(width: 6),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
-        ],
-      ),
-    );
-  }
 }
 
 class _SashPainter extends CustomPainter {

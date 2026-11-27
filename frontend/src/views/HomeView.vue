@@ -13,6 +13,7 @@ import {
 } from 'lucide-vue-next'
 import ClaimVenueSheet from '../components/ClaimVenueSheet.vue'
 import PlayTimeChips from '../components/PlayTimeChips.vue'
+import CrewCard from '../components/CrewCard.vue'
 import DayStrip from '../components/DayStrip.vue'
 import { playTime, playTarget, ensureStrips, strips, nextFreeHour, hourLabel } from '../utils/playTime'
 
@@ -452,6 +453,9 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                     Try searching a different city or selecting another category
                 </p>
             </div>
+
+            <!-- Matchday: your crew with one-tap rebook (hidden until you have played with others) -->
+            <CrewCard class="mb-5" />
 
             <!-- Section header -->
             <div v-if="courts.length > 0" class="flex justify-between items-end mb-3">
