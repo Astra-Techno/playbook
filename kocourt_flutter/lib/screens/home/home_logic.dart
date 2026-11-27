@@ -1,4 +1,5 @@
 // Pure helpers behind the Home "next game" card and open-now labels.
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import '../matches/match_roster.dart' show matchSpotsLeft;
 
 /// Earliest confirmed booking that has not started yet, or null.
@@ -63,27 +64,77 @@ int gamesNeedingPlayers(List<Map<String, dynamic>> requests) {
   return count;
 }
 
-/// The first full hour a player could still start, as the server's `from`
-/// ("YYYY-MM-DD HH:00:00"). 7:20 PM gives 8 PM; 7:00 PM sharp gives 7 PM.
-String nextFullHourSql(DateTime now) {
-  final t = DateTime(now.year, now.month, now.day, now.hour + (now.minute > 0 || now.second > 0 ? 1 : 0));
-  String two(int v) => v.toString().padLeft(2, '0');
-  return '${t.year}-${two(t.month)}-${two(t.day)} ${two(t.hour)}:00:00';
-}
-
-/// "Free right now": once GET /courts/free-soon has answered ([freeFrom] not
-/// null), keep only venues with a free hour and tag each with it. Before that,
-/// the open venues show as they are.
-List<Map<String, dynamic>> withFreeFrom(List<Map<String, dynamic>> open, Map<String, String>? freeFrom) {
-  if (freeFrom == null) return open;
-  return [
-    for (final v in open)
-      if (freeFrom['${v['id']}'] != null) {...v, 'free_from': freeFrom['${v['id']}']},
-  ];
+/// Hour of a venue's `free_from` ("YYYY-MM-DD HH:00:00"), or null.
+int? freeHour(Map<String, dynamic> venue) {
+  final from = '${venue['free_from'] ?? ''}';
+  return from.length >= 13 ? int.tryParse(from.substring(11, 13)) : null;
 }
 
 /// Badge text for a venue in the stack: "Free 7 PM" when known, else "Open now".
 String freeLabel(Map<String, dynamic> venue) {
   final from = '${venue['free_from'] ?? ''}';
   return from.length >= 19 ? 'Free ${clockLabel(from.substring(11))}' : 'Open now';
+}
+
+// ── Matchday phase 1: "When are you playing?" chips and the day strip ──
+
+/// The time chips at the top of Home and the venue list.
+enum PlayTime { now, tonight, tomorrowMorning }
+
+String playTimeLabel(PlayTime t) => switch (t) {
+      PlayTime.now => 'Now',
+      PlayTime.tonight => 'Tonight',
+      PlayTime.tomorrowMorning => 'Tomorrow 7 AM',
+    };
+
+/// The chosen time, shared by every screen that shows the chips (kept for the session).
+final playTimeChoice = ValueNotifier<PlayTime>(PlayTime.now);
+
+String _sqlDate(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+/// The day and first hour a chip asks for. "Now" is the next full hour;
+/// "Tonight" is 7 PM (or the next hour once it is later than that).
+({String date, int hour}) playTarget(PlayTime t, DateTime now) {
+  final nextHour = now.hour + (now.minute > 0 || now.second > 0 ? 1 : 0);
+  switch (t) {
+    case PlayTime.now:
+      return (date: _sqlDate(now), hour: nextHour);
+    case PlayTime.tonight:
+      return (date: _sqlDate(now), hour: nextHour > 19 ? nextHour : 19);
+    case PlayTime.tomorrowMorning:
+      return (date: _sqlDate(now.add(const Duration(days: 1))), hour: 7);
+  }
+}
+
+/// First hour at or after [fromHour] that a day strip marks free ('f' or 'p').
+int? nextFreeHour(String? strip, int fromHour, {int firstHour = 6}) {
+  if (strip == null) return null;
+  for (var i = 0; i < strip.length; i++) {
+    final hour = firstHour + i;
+    if (hour >= fromHour && (strip[i] == 'f' || strip[i] == 'p')) return hour;
+  }
+  return null;
+}
+
+/// "7 PM", "12 PM", "6 AM".
+String hourLabel(int hour) {
+  final h = hour % 24;
+  final h12 = h % 12 == 0 ? 12 : h % 12;
+  return '$h12 ${h < 12 ? 'AM' : 'PM'}';
+}
+
+/// Venues tagged with their strip and next free hour for the chosen time,
+/// soonest first; venues with nothing free are dropped. Before strips load
+/// ([strips] null) the list is returned as it is.
+List<Map<String, dynamic>> withStrips(List<Map<String, dynamic>> venues, Map<String, String>? strips, ({String date, int hour}) target) {
+  if (strips == null) return venues;
+  final out = <Map<String, dynamic>>[];
+  for (final v in venues) {
+    final strip = strips['${v['id']}'];
+    final hour = nextFreeHour(strip, target.hour);
+    if (hour == null) continue;
+    out.add({...v, 'strip': strip, 'free_from': '${target.date} ${hour.toString().padLeft(2, '0')}:00:00'});
+  }
+  out.sort((a, b) => '${a['free_from']}'.compareTo('${b['free_from']}'));
+  return out;
 }

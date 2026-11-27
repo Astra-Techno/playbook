@@ -16,6 +16,7 @@ import 'widgets/ghost_card.dart';
 import 'widgets/sport_chips.dart';
 import 'widgets/next_game_card.dart';
 import 'widgets/free_now_stack.dart';
+import 'widgets/play_time_chips.dart';
 import 'home_logic.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -31,15 +32,45 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _locating = false;
 
   int _unreadNotifications = 0;
-  // "Free right now": first free hour per venue id, for the venues in [_freeKey].
-  Map<String, String>? _freeFrom;
-  String _freeKey = '';
+  // Day strips (GET /courts/day-strip) per date, then per venue id.
+  final Map<String, Map<String, String>> _strips = {};
+  final Set<String> _stripsAsked = {};
 
   @override
   void initState() {
     super.initState();
     _detectLocation();
     _loadNotificationCount();
+    playTimeChoice.addListener(_onPlayTime);
+  }
+
+  void _onPlayTime() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    playTimeChoice.removeListener(_onPlayTime);
+    _debounce?.cancel();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  /// Fetches strips for [ids] on [date] that are not loaded or asked for yet (8 per call).
+  void _ensureStrips(String date, Iterable<Object?> ids) {
+    final missing = [for (final id in ids) if (!_stripsAsked.contains('$date|$id')) '$id'];
+    for (var i = 0; i < missing.length; i += 8) {
+      final chunk = missing.sublist(i, i + 8 > missing.length ? missing.length : i + 8);
+      _stripsAsked.addAll(chunk.map((id) => '$date|$id'));
+      Api().get('/courts/day-strip', params: {'ids': chunk.join(','), 'date': date}).then((res) {
+        final raw = res.data['strips'];
+        if (!mounted || raw is! Map) return;
+        setState(() => (_strips[date] ??= {}).addAll({for (final e in raw.entries) '${e.key}': '${e.value}'}));
+      }).catchError((_) {
+        // Strips are a hint; cards still work without them. Allow a retry later.
+        _stripsAsked.removeAll(chunk.map((id) => '$date|$id'));
+      });
+    }
   }
 
   Future<void> _loadNotificationCount() async {
@@ -662,42 +693,48 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _loadFreeSoon(String key, List<Map<String, dynamic>> open) async {
-    try {
-      final res = await Api().get('/courts/free-soon', params: {
-        'ids': open.map((v) => v['id']).join(','),
-        'from': nextFullHourSql(DateTime.now()),
-        'hours': 3,
-      });
-      final raw = res.data['free_from'];
-      final map = raw is Map ? {for (final e in raw.entries) '${e.key}': '${e.value}'} : <String, String>{};
-      if (mounted && key == _freeKey) setState(() => _freeFrom = map);
-    } catch (_) {
-      // Keep showing open venues if the lookup fails; it is a hint, not a booking.
-    }
-  }
-
+  /// "When are you playing?" chips and the swipe stack of venues free at that time.
   Widget _buildOpenNow() {
     final venues = context.watch<VenueProvider>();
     if (!venues.fetched || venues.venues.isEmpty) return const SizedBox.shrink();
     final now = DateTime.now();
-    final open = venues.venues.where((v) => isOpenNow(v, now)).take(8).toList();
-    final key = '${nextFullHourSql(now)}|${open.map((v) => v['id']).join(',')}';
-    if (key != _freeKey) {
-      _freeKey = key;
-      _freeFrom = null;
-      if (open.isNotEmpty) _loadFreeSoon(key, open);
-    }
-    final free = withFreeFrom(open, _freeFrom).take(5).toList();
-    if (free.isEmpty) return const SizedBox.shrink();
+    final choice = playTimeChoice.value;
+    final target = playTarget(choice, now);
+    // "Now" starts from venues open now; later times look at every listed venue.
+    final candidates = (choice == PlayTime.now ? venues.venues.where((v) => isOpenNow(v, now)) : venues.venues).take(8).toList();
+    _ensureStrips(target.date, candidates.map((v) => v['id']));
+    final loaded = candidates.every((v) => _strips[target.date]?.containsKey('${v['id']}') ?? false);
+    final free = withStrips(candidates, loaded ? _strips[target.date] : null, target).take(5).toList();
+    final title = switch (choice) {
+      PlayTime.now => 'Free right now',
+      PlayTime.tonight => 'Free tonight',
+      PlayTime.tomorrowMorning => 'Free tomorrow morning',
+    };
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-      child: FreeNowStack(
-        venues: free,
-        onOpen: (venue) => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => CourtDetailsScreen(courtId: courtIdFrom(venue['id']))),
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: AppFonts.display(fontSize: 20)),
+          const SizedBox(height: 8),
+          const PlayTimeChips(),
+          const SizedBox(height: 10),
+          if (free.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(loaded ? 'Nothing free nearby for this time. Try another chip.' : 'Checking free hours…',
+                  style: const TextStyle(color: AppColors.textSecondary)),
+            )
+          else
+            FreeNowStack(
+              venues: free,
+              date: target.date,
+              onOpen: (venue) => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => CourtDetailsScreen(courtId: courtIdFrom(venue['id']))),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -925,7 +962,15 @@ class _HomeScreenState extends State<HomeScreen> {
             SliverList.builder(
               itemCount: venues.venues.length,
               itemBuilder: (context, i) {
-                final venue = venues.venues[i];
+                final target = playTarget(playTimeChoice.value, DateTime.now());
+                if (i == 0) _ensureStrips(target.date, venues.venues.take(8).map((v) => v['id']));
+                final raw = venues.venues[i];
+                final strip = _strips[target.date]?['${raw['id']}'];
+                final hour = nextFreeHour(strip, target.hour);
+                // Matchday: the card shows the day strip and the next free hour for the chosen time.
+                final venue = strip == null
+                    ? raw
+                    : {...raw, 'strip': strip, 'strip_date': target.date, 'strip_hour': target.hour, if (hour != null) 'free_from': '${target.date} ${hour.toString().padLeft(2, '0')}:00:00'};
                 return RepaintBoundary(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),

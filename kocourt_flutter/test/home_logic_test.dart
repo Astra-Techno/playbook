@@ -38,18 +38,41 @@ void main() {
     expect(gamesNeedingPlayers(const []), 0);
   });
 
-  test('free right now uses the next full hour and real free slots', () {
-    expect(nextFullHourSql(DateTime(2026, 11, 25, 19, 20)), '2026-11-25 20:00:00');
-    expect(nextFullHourSql(DateTime(2026, 11, 25, 19)), '2026-11-25 19:00:00');
-    expect(nextFullHourSql(DateTime(2026, 11, 25, 23, 5)), '2026-11-26 00:00:00');
-    final open = [
-      {'id': 1, 'name': 'A'},
-      {'id': 2, 'name': 'B'},
+  test('free label reads the free hour', () {
+    expect(freeLabel({'free_from': '2026-11-25 19:00:00'}), 'Free 7 PM');
+    expect(freeLabel({'id': 1}), 'Open now');
+    expect(freeHour({'free_from': '2026-11-25 07:00:00'}), 7);
+    expect(freeHour({'id': 1}), isNull);
+  });
+
+  test('time chips pick the right day and hour', () {
+    final at = DateTime(2026, 11, 25, 16, 20);
+    expect(playTarget(PlayTime.now, at), (date: '2026-11-25', hour: 17));
+    expect(playTarget(PlayTime.tonight, at), (date: '2026-11-25', hour: 19));
+    expect(playTarget(PlayTime.tonight, DateTime(2026, 11, 25, 20, 30)), (date: '2026-11-25', hour: 21));
+    expect(playTarget(PlayTime.tomorrowMorning, DateTime(2026, 11, 30, 22)), (date: '2026-12-01', hour: 7));
+  });
+
+  test('day strip gives the next free hour and sorts venues by it', () {
+    //            6 7 8 9 ...
+    const strip = 'cttfttttttttttpft';
+    expect(nextFreeHour(strip, 6), 9);
+    expect(nextFreeHour(strip, 10), 20);
+    expect(nextFreeHour(strip, 23), isNull);
+    expect(nextFreeHour(null, 6), isNull);
+    expect(hourLabel(20), '8 PM');
+    expect(hourLabel(12), '12 PM');
+    expect(hourLabel(0), '12 AM');
+    final venues = [
+      {'id': 1, 'name': 'Late'},
+      {'id': 2, 'name': 'Early'},
+      {'id': 3, 'name': 'Full'},
     ];
-    expect(withFreeFrom(open, null), open);
-    final free = withFreeFrom(open, {'2': '2026-11-25 19:00:00'});
-    expect(free.map((v) => v['name']), ['B']);
-    expect(freeLabel(free.single), 'Free 7 PM');
-    expect(freeLabel(open.first), 'Open now');
+    final target = (date: '2026-11-25', hour: 8);
+    expect(withStrips(venues, null, target), venues);
+    final out = withStrips(venues, {'1': strip, '2': 'ftffffffffffffff', '3': 'ttttttttttttttttt'}, target);
+    expect(out.map((v) => v['name']), ['Early', 'Late']);
+    expect(out.first['free_from'], '2026-11-25 08:00:00');
+    expect(freeLabel(out.last), 'Free 9 AM');
   });
 }
