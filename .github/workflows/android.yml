@@ -1,4 +1,4 @@
-name: Android AAB
+name: Android release (AAB + APK)
 
 on:
   workflow_dispatch:
@@ -24,10 +24,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Each app has its own upload key, so each reads its own secrets:
+          # <KEY>_KEYSTORE_BASE64, <KEY>_STORE_PASSWORD, <KEY>_KEY_ALIAS, <KEY>_KEY_PASSWORD
           - app: kocourt_flutter
             artifact: com.kocourt.player
+            key: PLAYER
           - app: kocourt_owner
             artifact: kocourt-owner
+            key: OWNER
     env:
       API_BASE_URL: ${{ inputs.api_base_url || 'https://www.kocourt.com/api' }}
     steps:
@@ -54,15 +58,15 @@ jobs:
       - name: Decode release keystore
         id: signing
         env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEYSTORE_BASE64: ${{ secrets[format('{0}_KEYSTORE_BASE64', matrix.key)] }}
+          STORE_PASSWORD: ${{ secrets[format('{0}_STORE_PASSWORD', matrix.key)] }}
+          KEY_ALIAS: ${{ secrets[format('{0}_KEY_ALIAS', matrix.key)] }}
+          KEY_PASSWORD: ${{ secrets[format('{0}_KEY_PASSWORD', matrix.key)] }}
         run: |
+          # A debug-signed bundle is always rejected by Play, so stop instead of building one.
           if [ -z "$KEYSTORE_BASE64" ] || [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
-            echo "signed=false" >> "$GITHUB_OUTPUT"
-            echo "No Android keystore secrets found. Building with the debug key (Play Console will reject this for production upload)."
-            exit 0
+            echo "::error::Missing ${{ matrix.key }}_KEYSTORE_BASE64 / ${{ matrix.key }}_STORE_PASSWORD / ${{ matrix.key }}_KEY_ALIAS / ${{ matrix.key }}_KEY_PASSWORD repository secrets for ${{ matrix.app }}."
+            exit 1
           fi
           echo "$KEYSTORE_BASE64" | base64 -d > "${{ matrix.app }}/android/upload-keystore.jks"
           {
@@ -77,11 +81,25 @@ jobs:
         run: flutter build appbundle --release --dart-define="API_BASE_URL=$API_BASE_URL"
         working-directory: ${{ matrix.app }}
 
-      - name: Rename AAB
+      - name: Build release APK (same upload key, for direct installs)
+        run: flutter build apk --release --dart-define="API_BASE_URL=$API_BASE_URL"
+        working-directory: ${{ matrix.app }}
+
+      - name: Rename AAB and APK
         run: |
           src="${{ matrix.app }}/build/app/outputs/bundle/release/app-release.aab"
           cp "$src" "${{ matrix.artifact }}.aab"
-          ls -lh "${{ matrix.artifact }}.aab"
+          cp "${{ matrix.app }}/build/app/outputs/flutter-apk/app-release.apk" "${{ matrix.artifact }}.apk"
+          ls -lh "${{ matrix.artifact }}.aab" "${{ matrix.artifact }}.apk"
+
+      - name: Check the bundle is not debug-signed
+        run: |
+          # The debug certificate's subject is "CN=Android Debug"; Play rejects it.
+          if keytool -printcert -jarfile "${{ matrix.artifact }}.apk" | grep -q "CN=Android Debug"; then
+            echo "::error::${{ matrix.artifact }} is signed with the debug key."
+            exit 1
+          fi
+          keytool -printcert -jarfile "${{ matrix.artifact }}.apk" | grep -E "Owner:|SHA256:" | head -2"
 
       - name: Job summary
         run: |
@@ -90,15 +108,18 @@ jobs:
             echo ""
             echo "- App: \`${{ matrix.app }}\`"
             echo "- API: \`$API_BASE_URL\`"
-            if [ "${{ steps.signing.outputs.signed }}" = "true" ]; then
-              echo "- Signing: release keystore from repository secrets"
-            else
-              echo "- Signing: debug (add \`ANDROID_KEYSTORE_BASE64\`, \`ANDROID_STORE_PASSWORD\`, \`ANDROID_KEY_ALIAS\`, \`ANDROID_KEY_PASSWORD\` for Play upload)"
-            fi
+            echo "- Signing: ${{ matrix.key }} upload key from repository secrets"
+            echo "- Files: \`${{ matrix.artifact }}.aab\` (Play Console) and \`${{ matrix.artifact }}.apk\` (direct install)"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}-release-aab
           path: ${{ matrix.artifact }}.aab
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}-release-apk
+          path: ${{ matrix.artifact }}.apk
           if-no-files-found: error
