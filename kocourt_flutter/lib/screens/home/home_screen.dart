@@ -1007,85 +1007,46 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// "Not on KoCourt yet": one compact swipeable row, so it never crowds out real venues.
   Widget _buildGhostSection() {
     return Consumer<VenueProvider>(
       builder: (context, venues, _) {
-        if (venues.ghostPlaces.isEmpty && !venues.isGhostLoading) {
-          return const SliverToBoxAdapter(child: SizedBox.shrink());
-        }
-
-        return SliverMainAxisGroup(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 32, 20, 12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Also Nearby',
-                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Not on KoCourt yet',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textMuted),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.warningLight,
-                        borderRadius: BorderRadius.circular(AppRadius.full),
-                      ),
-                      child: const Text(
-                        'COMING SOON',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.warning,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+        if (venues.ghostPlaces.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+        final places = venues.ghostPlaces.take(8).toList();
+        return SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 28, 20, 4),
+                child: Text('Not on KoCourt yet', style: AppFonts.display(fontSize: 18)),
               ),
-            ),
-            if (venues.isGhostLoading)
-              SliverToBoxAdapter(
-                child: Padding(
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: Text('Tell us which places you want to book here', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              ),
+              SizedBox(
+                height: 176,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(children: List.generate(2, (_) => _buildSkeleton())),
+                  itemCount: places.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 12),
+                  itemBuilder: (context, i) => GhostCard(
+                    place: places[i],
+                    onInterest: () {
+                      final auth = context.read<AuthProvider>();
+                      if (!auth.isLoggedIn) {
+                        context.go('/login');
+                        return;
+                      }
+                      venues.sendInterest(places[i], auth.userId!);
+                    },
+                  ),
                 ),
               ),
-            SliverList.builder(
-              itemCount: venues.ghostPlaces.length,
-              itemBuilder: (context, i) {
-                final place = venues.ghostPlaces[i];
-                return RepaintBoundary(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                    child: GhostCard(
-                      place: place,
-                      onInterest: () {
-                        final auth = context.read<AuthProvider>();
-                        if (!auth.isLoggedIn) {
-                          context.go('/login');
-                          return;
-                        }
-                        venues.sendInterest(place, auth.userId!);
-                      },
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
+            ],
+          ),
         );
       },
     );

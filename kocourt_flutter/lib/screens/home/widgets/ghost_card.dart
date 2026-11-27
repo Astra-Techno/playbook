@@ -1,251 +1,73 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 
+/// Matchday "Not on KoCourt yet" card: compact, swipeable, sport-tinted.
+/// One tap registers interest so we can bring the place on board.
 class GhostCard extends StatelessWidget {
+  const GhostCard({super.key, required this.place, required this.onInterest});
+
   final Map<String, dynamic> place;
   final VoidCallback onInterest;
 
-  const GhostCard({
-    super.key,
-    required this.place,
-    required this.onInterest,
-  });
-
   @override
   Widget build(BuildContext context) {
-    final rawImg = place['image_url'];
-    final imageUrl = (rawImg is String && rawImg.isNotEmpty) ? rawImg : venueImages['other']!;
-    final category = sportCategories.firstWhere(
-      (c) => c.id == place['type'],
-      orElse: () => sportCategories.first,
-    );
-    final requestCount = place['request_count'] ?? 0;
-    final userRequested = place['user_requested'] == true;
-
+    final type = place['type'];
+    final tint = sportTint(type);
+    final interested = int.tryParse('${place['request_count'] ?? 0}') ?? 0;
+    final mine = place['user_requested'] == true;
+    final rating = num.tryParse('${place['rating'] ?? ''}');
     return Container(
+      width: 232,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        boxShadow: AppShadows.card,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [tint.bg, Colors.white], stops: const [0, 0.75]),
       ),
-      clipBehavior: Clip.hardEdge,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Image
-          Stack(
+          Row(
             children: [
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: ColorFiltered(
-                  colorFilter: const ColorFilter.matrix([
-                    0.6, 0.2, 0.1, 0, 20,
-                    0.2, 0.6, 0.1, 0, 20,
-                    0.2, 0.2, 0.5, 0, 20,
-                    0, 0, 0, 1, 0,
-                  ]),
-                  child: CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(color: AppColors.surfaceDim),
-                    errorWidget: (_, __, ___) => Container(color: AppColors.surfaceDim),
-                  ),
-                ),
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+                child: SportIcon(type, size: 22, tint: tint.bg, fallback: Icons.place_outlined),
               ),
-              // NOT ON KOCOURT badge
-              Positioned(
-                top: 12,
-                left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(AppRadius.xs),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(AppIcons.lock, size: 9, color: Colors.white),
-                      SizedBox(width: 5),
-                      Text(
-                        'NOT ON KOCOURT YET',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // Type badge
-              Positioned(
-                bottom: 12,
-                left: 12,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppRadius.xs),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SportIcon(category.id, size: 14, fallback: category.icon),
-                      const SizedBox(width: 4),
-                      Text(
-                        category.label.toUpperCase(),
-                        style: const TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // Rating
-              if (place['rating'] != null)
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(AppRadius.xs),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.star_rounded, size: 12, color: AppColors.accent),
-                        const SizedBox(width: 2),
-                        Text(
-                          '${place['rating']}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.accentDark,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              const Spacer(),
+              if (rating != null && rating > 0)
+                Row(children: [
+                  const Icon(Icons.star_rounded, size: 15, color: Color(0xFFF59E0B)),
+                  const SizedBox(width: 2),
+                  Text(rating.toStringAsFixed(1), style: AppFonts.score(fontSize: 14, color: AppColors.textPrimary)),
+                ]),
             ],
           ),
-
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  place['name'] ?? '',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  place['address'] ?? '',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-
-                if (requestCount > 0) ...[
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: 20.0 + (requestCount > 1 ? 14.0 : 0) + (requestCount > 2 ? 14.0 : 0),
-                        height: 20,
-                        child: Stack(
-                          children: List.generate(
-                            requestCount > 3 ? 3 : requestCount,
-                            (i) => Positioned(
-                              left: i * 14.0,
-                              child: Container(
-                                width: 20,
-                                height: 20,
-                                decoration: BoxDecoration(
-                                  color: AppColors.surfaceDim,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  '${i + 1}',
-                                  style: const TextStyle(fontSize: 7, fontWeight: FontWeight.w800),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        '$requestCount ${requestCount == 1 ? 'person' : 'people'} interested',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textMuted),
-                      ),
-                    ],
-                  ),
-                ],
-
-                const SizedBox(height: 14),
-
-                // Express Interest button only
-                SizedBox(
-                  width: double.infinity,
-                  height: 44,
-                  child: userRequested
-                      ? Container(
-                          decoration: BoxDecoration(
-                            color: AppColors.secondary.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.check_rounded, size: 14, color: AppColors.secondary),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Interest Sent',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.secondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : ElevatedButton(
-                          onPressed: onInterest,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.textPrimary,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
-                            elevation: 0,
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(AppIcons.bell, size: 13),
-                              SizedBox(width: 6),
-                              Text('Express Interest', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                            ],
-                          ),
-                        ),
-                ),
-              ],
+          const SizedBox(height: 10),
+          Text('${place['name'] ?? 'Nearby place'}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppFonts.display(fontSize: 15, height: 1.2)),
+          const SizedBox(height: 2),
+          Text(
+            interested == 0 ? 'Be the first to ask for it' : '$interested ${interested == 1 ? 'person wants' : 'people want'} it on KoCourt',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const Spacer(),
+          SizedBox(
+            width: double.infinity,
+            height: 38,
+            child: OutlinedButton(
+              onPressed: mine ? null : onInterest,
+              style: OutlinedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: AppColors.primary,
+                side: BorderSide(color: mine ? AppColors.border : AppColors.primary),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: EdgeInsets.zero,
+              ),
+              child: Text(mine ? "You're on the list ✓" : "I'm interested", style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
             ),
           ),
         ],

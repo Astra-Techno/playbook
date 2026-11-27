@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kocourt_shared/kocourt_shared.dart' show rupees;
 import 'package:kocourt/screens/court_details/slot_timeline.dart';
 
 Map<String, dynamic> slot(int h, {bool booked = false, bool past = false}) => {

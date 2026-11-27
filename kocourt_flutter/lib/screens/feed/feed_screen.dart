@@ -4,7 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'create_post_screen.dart';
-import 'post_detail_screen.dart';
+import 'package:share_plus/share_plus.dart';
+import 'comments_sheet.dart';
 import 'post_images.dart';
 
 class FeedScreen extends StatefulWidget {
@@ -48,16 +49,54 @@ class _FeedScreenState extends State<FeedScreen> {
     }
   }
 
+  /// Like instantly; the server call runs behind it and is undone if it fails.
   Future<void> _likePost(Map<String, dynamic> post) async {
     final auth = context.read<AuthProvider>();
     if (!auth.isLoggedIn) {
       context.go('/login');
       return;
     }
+    final wasLiked = post['is_liked'] == true || post['user_liked'] == true;
+    final count = int.tryParse('${post['likes_count'] ?? 0}') ?? 0;
+    void apply(bool liked, int n) => setState(() {
+          post['is_liked'] = liked;
+          post['user_liked'] = liked;
+          post['likes_count'] = n < 0 ? 0 : n;
+        });
+    apply(!wasLiked, count + (wasLiked ? -1 : 1));
     try {
       await Api().post('/posts/${post['id']}/like', data: {'user_id': auth.userId});
-      _loadPosts();
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        apply(wasLiked, count);
+        context.toastError('Could not update your like.');
+      }
+    }
+  }
+
+  Future<void> _openComments(Map<String, dynamic> post) async {
+    final auth = context.read<AuthProvider>();
+    final id = int.tryParse('${post['id']}');
+    if (id == null) return;
+    if (!auth.isLoggedIn) {
+      context.go('/login');
+      return;
+    }
+    final count = await CommentsSheet.open(context, postId: id, userId: auth.userId);
+    if (count != null && mounted) setState(() => post['comment_count'] = count);
+  }
+
+  Future<void> _sharePost(Map<String, dynamic> post) async {
+    final who = '${post['user_name'] ?? 'A player'}';
+    final text = '${post['content'] ?? ''}'.trim();
+    final where = post['court_name'] != null ? ' at ${post['court_name']}' : '';
+    await SharePlus.instance.share(ShareParams(
+      text: [
+        '$who on KoCourt$where:',
+        text.isEmpty ? 'See the post' : text,
+        'https://www.kocourt.com/feed/${post['id']}',
+      ].join('\n'),
+    ));
   }
 
   @override
@@ -65,7 +104,7 @@ class _FeedScreenState extends State<FeedScreen> {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('Community', style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text('Community'),
         centerTitle: false,
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
@@ -82,7 +121,7 @@ class _FeedScreenState extends State<FeedScreen> {
               margin: const EdgeInsets.only(right: 16),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                color: AppColors.textPrimary,
+                color: AppColors.primary,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Row(
@@ -90,7 +129,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 children: [
                   Icon(AppIcons.plus, size: 14, color: Colors.white),
                   SizedBox(width: 5),
-                  Text('New Post', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                  Text('New post', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
                 ],
               ),
             ),
@@ -122,14 +161,8 @@ class _FeedScreenState extends State<FeedScreen> {
                   child: ListView.builder(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: _posts.length,
-                    itemBuilder: (_, i) => GestureDetector(
-                      onTap: () {
-                        final id = int.tryParse('${_posts[i]['id']}');
-                        if (id == null || id < 1) return;
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => PostDetailScreen(postId: id)));
-                      },
-                      child: _buildPostCard(_posts[i]),
-                    ),
+                    // Everything happens in the feed: double-tap to like, comments in a sheet.
+                    itemBuilder: (_, i) => _buildPostCard(_posts[i]),
                   ),
                 ),
     );
@@ -186,10 +219,11 @@ class _FeedScreenState extends State<FeedScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      post['user_name'] ?? 'Anonymous',
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                    ),
+                    Text.rich(TextSpan(children: [
+                      TextSpan(text: '${post['user_name'] ?? 'Player'}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                      if (timeAgo(post['created_at']).isNotEmpty)
+                        TextSpan(text: '  ·  ${timeAgo(post['created_at'])}', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                    ])),
                     if (post['court_name'] != null)
                       Row(
                         children: [
@@ -211,15 +245,19 @@ class _FeedScreenState extends State<FeedScreen> {
                   ],
                 ),
               ),
-              Icon(Icons.more_horiz_rounded, size: 20, color: AppColors.textMuted),
             ],
           ),
           const SizedBox(height: 14),
           // Content
           if ('${post['content'] ?? ''}'.trim().isNotEmpty)
-            Text(
-              '${post['content']}'.trim(),
-              style: const TextStyle(fontSize: 14, height: 1.6, color: AppColors.textPrimary),
+            GestureDetector(
+              onDoubleTap: () {
+                if (!liked) _likePost(post);
+              },
+              child: Text(
+                '${post['content']}'.trim(),
+                style: const TextStyle(fontSize: 15, height: 1.5, color: AppColors.textPrimary),
+              ),
             ),
           for (final url in postImageUrls(post)) ...[
             const SizedBox(height: 14),
@@ -275,7 +313,9 @@ class _FeedScreenState extends State<FeedScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
+              GestureDetector(
+                onTap: () => _openComments(post),
+                child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: AppColors.surface,
@@ -297,8 +337,13 @@ class _FeedScreenState extends State<FeedScreen> {
                   ],
                 ),
               ),
+              ),
               const Spacer(),
-              Icon(AppIcons.share, size: 18, color: AppColors.textMuted),
+              IconButton(
+                tooltip: 'Share post',
+                onPressed: () => _sharePost(post),
+                icon: Icon(AppIcons.share, size: 18, color: AppColors.textMuted),
+              ),
             ],
           ),
         ],

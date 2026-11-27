@@ -20,7 +20,9 @@ set_exception_handler(function (Throwable $e) use ($_debug) {
         http_response_code(500);
         header('Content-Type: application/json; charset=UTF-8');
     }
-    $payload = ['status' => 'error', 'message' => $e->getMessage()];
+    // Never show users raw database or PHP errors; log them for us instead.
+    error_log('[KoCourt] ' . get_class($e) . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+    $payload = ['status' => 'error', 'message' => $_debug ? $e->getMessage() : 'Something went wrong. Please try again.'];
     if ($_debug) {
         $payload['exception'] = get_class($e);
         $payload['file']      = str_replace(__DIR__, '', $e->getFile());

@@ -13,9 +13,6 @@ int slotHour(Map<String, dynamic> slot) => int.tryParse('${slot['start']}'.split
 
 double hourPrice(Map<int, double> prices, int hour, double fallback) => prices[hour] ?? fallback;
 
-String rupees(double value) =>
-    '₹${value == value.roundToDouble() ? value.toInt() : value.toStringAsFixed(2)}';
-
 /// Consecutive hours that share one price, for the price band above the timeline.
 class PriceBand {
   const PriceBand(this.price, this.hours, {required this.peak});
