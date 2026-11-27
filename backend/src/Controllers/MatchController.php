@@ -41,6 +41,10 @@ class MatchController
                 UNIQUE KEY uq_match_user (match_id, user_id)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
         ");
+        // Matchday phase 2: open spots posted from a booking pass.
+        if (!$this->db->query("SHOW COLUMNS FROM match_requests LIKE 'booking_id'")->fetch()) {
+            $this->db->exec('ALTER TABLE match_requests ADD COLUMN booking_id INT NULL DEFAULT NULL, ADD INDEX idx_match_booking (booking_id)');
+        }
     }
 
     // GET /match-requests?court_id=X  or no params = all open (global discovery)
@@ -133,6 +137,12 @@ class MatchController
         $user_id  = (int)$authUser['id'];
         $data = json_decode(file_get_contents('php://input'));
 
+        // Open spots from a booking pass: venue, time and sport come from the booking.
+        if (!empty($data->booking_id)) {
+            $this->createFromBooking((int)$data->booking_id, $user_id, (int)($data->players_needed ?? $data->slots_needed ?? 1), trim($data->notes ?? '') ?: null);
+            return;
+        }
+
         if (empty($data->court_id)) {
             http_response_code(400); echo json_encode(['message' => 'court_id required']); return;
         }
@@ -203,12 +213,59 @@ class MatchController
         }
 
         $this->db->prepare("INSERT INTO match_participants (match_id, user_id) VALUES (?,?)")->execute([$id, $user_id]);
+        $this->syncSquad($match, $user_id, true);
 
         if (MatchRoster::isFull((int)$match['players_needed'], $currentCount + 1)) {
             $this->db->prepare("UPDATE match_requests SET status='full' WHERE id=?")->execute([$id]);
         }
 
         echo json_encode(['message' => 'Joined successfully']);
+    }
+
+    private function createFromBooking(int $bookingId, int $userId, int $spots, ?string $notes): void
+    {
+        require_once __DIR__ . '/../SquadMatch.php';
+        $b = $this->db->prepare('SELECT b.id, b.user_id, b.court_id, b.status, b.start_time, b.end_time, c.name AS court_name, c.type AS court_type FROM bookings b JOIN courts c ON c.id = b.court_id WHERE b.id = ?');
+        $b->execute([$bookingId]);
+        $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
+        $plan = SquadMatch::fromBooking($b->fetch(PDO::FETCH_ASSOC) ?: null, $userId, $spots, $now);
+        if (!$plan['ok']) {
+            http_response_code($plan['http']); echo json_encode(['message' => $plan['message']]); return;
+        }
+        $f = $plan['fields'];
+        // One live post per booking: asking again updates how many are needed.
+        $existing = $this->db->prepare("SELECT id FROM match_requests WHERE booking_id = ? AND status IN ('open','full') ORDER BY id DESC LIMIT 1");
+        $existing->execute([$bookingId]);
+        $id = (int)$existing->fetchColumn();
+        if ($id > 0) {
+            $this->db->prepare("UPDATE match_requests SET players_needed = ?, title = ?, status = 'open' WHERE id = ?")->execute([$f['players_needed'], $f['title'], $id]);
+            echo json_encode(['message' => 'Open spots updated', 'id' => $id]);
+            return;
+        }
+        $ins = $this->db->prepare('INSERT INTO match_requests (court_id, user_id, title, sport, date, start_time, end_time, players_needed, notes, booking_id) VALUES (?,?,?,?,?,?,?,?,?,?)');
+        $ins->execute([$f['court_id'], $userId, $f['title'], $f['sport'], $f['date'], $f['start_time'], $f['end_time'], $f['players_needed'], $notes, $f['booking_id']]);
+        $id = (int)$this->db->lastInsertId();
+        try {
+            $this->db->prepare('INSERT INTO match_participants (match_id, user_id) VALUES (?,?)')->execute([$id, $userId]);
+        } catch (Exception $e) {}
+        http_response_code(201);
+        echo json_encode(['message' => 'Posted to Matches', 'id' => $id]);
+    }
+
+    /** Joining or leaving a match linked to a booking keeps the booking's squad in step. */
+    private function syncSquad(array $match, int $userId, bool $joined): void
+    {
+        if (empty($match['booking_id'])) return;
+        try {
+            if ($joined) {
+                $this->db->prepare('INSERT IGNORE INTO booking_players (booking_id, user_id, invited_by) VALUES (?,?,?)')
+                    ->execute([(int)$match['booking_id'], $userId, (int)$match['user_id']]);
+            } else {
+                $this->db->prepare('DELETE FROM booking_players WHERE booking_id = ? AND user_id = ?')->execute([(int)$match['booking_id'], $userId]);
+            }
+        } catch (PDOException $e) {
+            // booking_players is created on the first squad add; the match itself still works.
+        }
     }
 
     // DELETE /match-requests/:id
@@ -228,7 +285,13 @@ class MatchController
     {
         $authUser = Auth::require();
         $user_id  = (int)$authUser['id'];
-        $this->db->prepare("DELETE FROM match_participants WHERE match_id=? AND user_id=?")->execute([$id, $user_id]);
+        $mr = $this->db->prepare('SELECT * FROM match_requests WHERE id = ?');
+        $mr->execute([$id]);
+        $match = $mr->fetch(PDO::FETCH_ASSOC);
+        $del = $this->db->prepare("DELETE FROM match_participants WHERE match_id=? AND user_id=?");
+        $del->execute([$id, $user_id]);
+        // The host never leaves their own booking's squad through Matches.
+        if ($match && $del->rowCount() > 0 && (int)$match['user_id'] !== $user_id) $this->syncSquad($match, $user_id, false);
         // Re-open if was full
         $this->db->prepare("UPDATE match_requests SET status='open' WHERE id=? AND status='full'")->execute([$id]);
         echo json_encode(['message' => 'Left match']);

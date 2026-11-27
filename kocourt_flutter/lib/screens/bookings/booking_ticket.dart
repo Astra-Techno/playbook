@@ -77,3 +77,26 @@ BookingTicket ticketFromBooking(Map<String, dynamic> booking) {
     status: '${booking['status'] ?? 'confirmed'}',
   );
 }
+
+/// Rounded-up share per player, or null when there is no price or nobody yet.
+int? perHeadRupees(Object? totalPrice, int players) {
+  final total = num.tryParse('${totalPrice ?? ''}') ?? 0;
+  if (total <= 0 || players <= 0) return null;
+  return (total / players).ceil();
+}
+
+/// WhatsApp invite for the squad: venue, time, share, map and join links.
+String squadInviteText(BookingTicket t, {required int players, int? perHead, Object? courtId, int open = 0}) {
+  final where = [t.venue, t.place].where((s) => s.isNotEmpty).join(', ');
+  final map = Uri.https('www.google.com', '/maps/search/', {'api': '1', 'query': where});
+  return [
+    'Game on: ${t.venue}${t.space.isNotEmpty ? ' (${t.space})' : ''}',
+    '${t.date} · ${t.time}',
+    [
+      '$players in${open > 0 ? ', $open spot${open == 1 ? '' : 's'} open' : ''}',
+      if (perHead != null) '₹$perHead each',
+    ].join(' · '),
+    'Map: $map',
+    if (courtId != null) 'Join on KoCourt: https://www.kocourt.com/court/$courtId',
+  ].join('\n');
+}

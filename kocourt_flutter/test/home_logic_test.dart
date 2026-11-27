@@ -75,4 +75,13 @@ void main() {
     expect(out.first['free_from'], '2026-11-25 08:00:00');
     expect(freeLabel(out.last), 'Free 9 AM');
   });
+
+  test('crew wording', () {
+    expect(slotDayLabel(DateTime(2026, 12, 2, 19)), 'Wed 7 PM');
+    expect(slotDayLabel(DateTime(2026, 12, 2, 6, 30)), 'Wed 6:30 AM');
+    expect(crewWith(['Arjun Kumar']), 'with Arjun');
+    expect(crewWith(['Arjun Kumar', 'Ravi']), 'with Arjun and Ravi');
+    expect(crewWith(['Arjun', 'Ravi', 'Sam', 'Priya']), 'with Arjun +3');
+    expect(crewWith(const []), '');
+  });
 }

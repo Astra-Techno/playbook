@@ -1170,6 +1170,53 @@ if (isset($seg[0]) && $seg[0] === 'users' && isset($seg[1]) && $seg[1] === 'sear
     exit();
 }
 
+// ── Your crew  GET /players/crew ──────────────────────────────────────────────
+// People you played with in the last 180 days (names and avatars only) and a
+// rebook suggestion for your latest game with a squad. Only your own games count.
+if (isset($seg[0]) && $seg[0] === 'players' && ($seg[1] ?? '') === 'crew' && !isset($seg[2]) && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $authUser = Auth::require();
+    $me = (int)$authUser['id'];
+    require_once __DIR__ . '/src/PlayerCrew.php';
+    $db = Database::getConnection();
+    $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
+    try {
+        $stmt = $db->prepare(
+            "SELECT b.id, b.user_id, b.court_id, b.sub_court_id, b.start_time, b.end_time, c.name AS court_name, c.type AS court_type
+             FROM bookings b JOIN courts c ON c.id = b.court_id
+             WHERE b.status = 'confirmed' AND b.guest_name IS NULL
+               AND b.start_time >= DATE_SUB(?, INTERVAL 180 DAY)
+               AND (b.user_id = ? OR b.id IN (SELECT booking_id FROM booking_players WHERE user_id = ?))
+             ORDER BY b.start_time DESC LIMIT 200"
+        );
+        $stmt->execute([$now, $me, $me]);
+        $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $playersByBooking = [];
+        $ids = [$me => true];
+        if ($bookings) {
+            $bids = array_map(fn ($b) => (int)$b['id'], $bookings);
+            $marks = implode(',', array_fill(0, count($bids), '?'));
+            $p = $db->prepare("SELECT booking_id, user_id FROM booking_players WHERE booking_id IN ($marks)");
+            $p->execute($bids);
+            foreach ($p->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $playersByBooking[(int)$row['booking_id']][] = (int)$row['user_id'];
+                $ids[(int)$row['user_id']] = true;
+            }
+            foreach ($bookings as $b) $ids[(int)$b['user_id']] = true;
+        }
+        $people = [];
+        $uids = array_keys($ids);
+        $marks = implode(',', array_fill(0, count($uids), '?'));
+        $u = $db->prepare("SELECT id, name, avatar_url FROM users WHERE id IN ($marks)");
+        $u->execute($uids);
+        foreach ($u->fetchAll(PDO::FETCH_ASSOC) as $row) $people[(int)$row['id']] = $row;
+        echo json_encode(PlayerCrew::build($bookings, $playersByBooking, $people, $me, $now));
+    } catch (PDOException $e) {
+        // booking_players is created on first squad add; before that nobody has a crew.
+        echo json_encode(['mates' => [], 'rebook' => null]);
+    }
+    exit();
+}
+
 // ── Booking Players  POST/GET /booking-players ────────────────────────────────
 if (isset($seg[0]) && $seg[0] === 'booking-players') {
     $db = Database::getConnection();
@@ -1208,7 +1255,22 @@ if (isset($seg[0]) && $seg[0] === 'booking-players') {
              WHERE bp.booking_id = ?"
         );
         $stmt->execute([$bid]);
-        echo json_encode(['players' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+        $players = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Open spots posted to Matches from this pass (match_requests.booking_id), if any.
+        $openMatch = null;
+        try {
+            require_once __DIR__ . '/src/MatchRoster.php';
+            $m = $db->prepare("SELECT mr.id, mr.players_needed, mr.status, (SELECT COUNT(*) FROM match_participants mp WHERE mp.match_id = mr.id) AS participants
+                               FROM match_requests mr WHERE mr.booking_id = ? AND mr.status IN ('open','full') ORDER BY mr.id DESC LIMIT 1");
+            $m->execute([$bid]);
+            if ($row = $m->fetch(PDO::FETCH_ASSOC)) {
+                $openMatch = ['id' => (int)$row['id'], 'players_needed' => (int)$row['players_needed'], 'status' => $row['status'],
+                              'spots_left' => MatchRoster::spotsLeft((int)$row['players_needed'], (int)$row['participants'])];
+            }
+        } catch (PDOException $e) {
+            // match tables or booking_id not created yet: no open spots.
+        }
+        echo json_encode(['players' => $players, 'open_match' => $openMatch]);
         exit();
     }
 
