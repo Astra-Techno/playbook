@@ -102,6 +102,7 @@ jobs:
           php backend/tests/booking_addons_test.php
           php backend/tests/player_crew_test.php
           php backend/tests/squad_match_test.php
+          php backend/tests/player_stats_test.php
 
   maestro:
     name: Maestro E2E tests

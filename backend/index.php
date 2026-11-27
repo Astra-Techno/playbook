@@ -1180,40 +1180,35 @@ if (isset($seg[0]) && $seg[0] === 'players' && ($seg[1] ?? '') === 'crew' && !is
     $db = Database::getConnection();
     $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
     try {
-        $stmt = $db->prepare(
-            "SELECT b.id, b.user_id, b.court_id, b.sub_court_id, b.start_time, b.end_time, c.name AS court_name, c.type AS court_type
-             FROM bookings b JOIN courts c ON c.id = b.court_id
-             WHERE b.status = 'confirmed' AND b.guest_name IS NULL
-               AND b.start_time >= DATE_SUB(?, INTERVAL 180 DAY)
-               AND (b.user_id = ? OR b.id IN (SELECT booking_id FROM booking_players WHERE user_id = ?))
-             ORDER BY b.start_time DESC LIMIT 200"
-        );
-        $stmt->execute([$now, $me, $me]);
-        $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
-        $playersByBooking = [];
-        $ids = [$me => true];
-        if ($bookings) {
-            $bids = array_map(fn ($b) => (int)$b['id'], $bookings);
-            $marks = implode(',', array_fill(0, count($bids), '?'));
-            $p = $db->prepare("SELECT booking_id, user_id FROM booking_players WHERE booking_id IN ($marks)");
-            $p->execute($bids);
-            foreach ($p->fetchAll(PDO::FETCH_ASSOC) as $row) {
-                $playersByBooking[(int)$row['booking_id']][] = (int)$row['user_id'];
-                $ids[(int)$row['user_id']] = true;
-            }
-            foreach ($bookings as $b) $ids[(int)$b['user_id']] = true;
-        }
-        $people = [];
-        $uids = array_keys($ids);
-        $marks = implode(',', array_fill(0, count($uids), '?'));
-        $u = $db->prepare("SELECT id, name, avatar_url FROM users WHERE id IN ($marks)");
-        $u->execute($uids);
-        foreach ($u->fetchAll(PDO::FETCH_ASSOC) as $row) $people[(int)$row['id']] = $row;
+        $since = (new DateTimeImmutable($now))->modify('-180 days')->format('Y-m-d H:i:s');
+        [$bookings, $playersByBooking, $people] = PlayerCrew::load($db, $me, $since);
         echo json_encode(PlayerCrew::build($bookings, $playersByBooking, $people, $me, $now));
     } catch (PDOException $e) {
         // booking_players is created on first squad add; before that nobody has a crew.
         echo json_encode(['mates' => [], 'rebook' => null]);
     }
+    exit();
+}
+
+// ── Player card stats  GET /players/stats ─────────────────────────────────────
+// This season (calendar year): hours played, games, show-up rate, squad mates, top sports.
+if (isset($seg[0]) && $seg[0] === 'players' && ($seg[1] ?? '') === 'stats' && !isset($seg[2]) && $_SERVER['REQUEST_METHOD'] === 'GET') {
+    $authUser = Auth::require();
+    $me = (int)$authUser['id'];
+    require_once __DIR__ . '/src/PlayerCrew.php';
+    require_once __DIR__ . '/src/PlayerStats.php';
+    $db = Database::getConnection();
+    $now = (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d H:i:s');
+    $since = substr($now, 0, 4) . '-01-01 00:00:00';
+    try {
+        [$bookings, $playersByBooking, $people] = PlayerCrew::load($db, $me, $since);
+    } catch (PDOException $e) {
+        $bookings = []; $playersByBooking = []; $people = []; // no squads table yet
+    }
+    $stats = PlayerStats::compute($bookings, $now);
+    $stats['squad_mates'] = count(PlayerCrew::build($bookings, $playersByBooking, $people, $me, $now)['mates']);
+    $stats['since'] = substr($since, 0, 10);
+    echo json_encode($stats);
     exit();
 }
 

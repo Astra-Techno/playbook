@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import 'notification_groups.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -69,6 +70,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final groups = groupNotifications(_notifications);
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(title: const Text('Notifications')),
@@ -95,59 +97,55 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   color: AppColors.primary,
                   child: ListView.builder(
                     padding: const EdgeInsets.all(20),
-                    itemCount: _notifications.length,
+                    itemCount: groups.length,
                     itemBuilder: (_, i) {
-                      final n = _notifications[i];
-                      final isRead = _isRead(n);
-                      return GestureDetector(
-                        onTap: () {
-                          if (!isRead) {
-                            HapticFeedback.lightImpact();
-                            _markRead(n['id']);
-                          }
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: isRead ? Colors.white : AppColors.primary.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            border: Border.all(color: isRead ? AppColors.border : AppColors.primary.withValues(alpha: 0.2)),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      final g = groups[i];
+                      if (g.single) return _tile(g.items.first);
+                      final unread = g.items.where((n) => !_isRead(n)).length;
+                      // Matchday: one card per venue and day.
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: KoCard(
+                          kicker: groupDayLabel(g.day, DateTime.now()),
+                          title: g.courtName ?? 'Updates',
+                          meta: '${g.items.length} updates',
+                          badge: unread > 0 ? '$unread new' : null,
+                          middle: Column(
                             children: [
-                              MenuIcon(_getIcon(n['type'])),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      n['title'] ?? '',
-                                      style: TextStyle(fontWeight: isRead ? FontWeight.w600 : FontWeight.w800, fontSize: 14),
+                              for (final n in g.items)
+                                InkWell(
+                                  borderRadius: BorderRadius.circular(12),
+                                  onTap: _isRead(n) ? null : () {
+                                    HapticFeedback.lightImpact();
+                                    _markRead(n['id']);
+                                  },
+                                  child: Container(
+                                    margin: const EdgeInsets.only(bottom: 6),
+                                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: _isRead(n) ? AppColors.border : AppColors.primary.withValues(alpha: 0.3)),
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      n['body'] ?? '',
-                                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text('${n['title'] ?? ''}', style: TextStyle(fontSize: 13.5, fontWeight: _isRead(n) ? FontWeight.w600 : FontWeight.w800)),
+                                              if ('${n['body'] ?? ''}'.isNotEmpty)
+                                                Text('${n['body']}', style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(_timeAgo(n['created_at']), style: AppFonts.score(fontSize: 12, color: AppColors.textMuted)),
+                                      ],
                                     ),
-                                    if (n['court_name'] != null) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        n['court_name'],
-                                        style: TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w600),
-                                      ),
-                                    ],
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      _timeAgo(n['created_at']),
-                                      style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                                    ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                              if (!isRead) const StatusTag('New'),
                             ],
                           ),
                         ),
@@ -155,6 +153,63 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     },
                   ),
                 ),
+    );
+  }
+
+  Widget _tile(Map<String, dynamic> n) {
+    final isRead = _isRead(n);
+    return GestureDetector(
+      onTap: () {
+        if (!isRead) {
+          HapticFeedback.lightImpact();
+          _markRead(n['id']);
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isRead ? Colors.white : AppColors.primary.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: isRead ? AppColors.border : AppColors.primary.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            MenuIcon(_getIcon(n['type'])),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    n['title'] ?? '',
+                    style: TextStyle(fontWeight: isRead ? FontWeight.w600 : FontWeight.w800, fontSize: 14),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    n['body'] ?? '',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                  if (n['court_name'] != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      n['court_name'],
+                      style: TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                  const SizedBox(height: 4),
+                  Text(
+                    _timeAgo(n['created_at']),
+                    style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            if (!isRead) const StatusTag('New'),
+          ],
+        ),
+      ),
     );
   }
 }

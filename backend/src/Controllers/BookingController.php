@@ -791,6 +791,12 @@ class BookingController {
         }
         // A weekly walk-in regular: the owner or a manager books for a guest, like a single walk-in.
         $isWalkIn   = !empty($data->guest_name);
+        // Players pay for weekly games through checkout (one payment covers every date).
+        if (!$isWalkIn && ($authUser['role'] ?? '') !== 'admin') {
+            http_response_code(409);
+            echo json_encode(['message' => 'Weekly games are paid through checkout. Update your app if this keeps happening.']);
+            return;
+        }
         $guestName  = $isWalkIn ? trim($data->guest_name) : null;
         $guestPhone = $isWalkIn && !empty($data->guest_phone) ? trim($data->guest_phone) : null;
         $collectionMethod = null;
