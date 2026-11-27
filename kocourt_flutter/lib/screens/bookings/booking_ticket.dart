@@ -100,3 +100,13 @@ String squadInviteText(BookingTicket t, {required int players, int? perHead, Obj
     if (courtId != null) 'Join on KoCourt: https://www.kocourt.com/court/$courtId',
   ].join('\n');
 }
+
+/// Default text for an opt-in game recap post (the player edits it before posting).
+String recapText(BookingTicket t, {required int players, int? minutes}) {
+  final parts = [
+    'Played at ${t.venue}${t.space.isNotEmpty ? ' (${t.space})' : ''}',
+    if (minutes != null && minutes > 0) '$minutes min',
+    if (players > 1) 'squad of $players',
+  ];
+  return '${parts.join(' · ')}. Good game!';
+}

@@ -9,6 +9,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'booking_ticket.dart';
+import '../feed/create_post_screen.dart';
 
 /// Booking pass: kick-off countdown, jersey-striped ticket, desk check-in code and squad.
 class BookingConfirmationScreen extends StatefulWidget {
@@ -382,6 +383,30 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
             _pass(ticket, booking, tint.fg, times),
             const SizedBox(height: 16),
             _squadCard(ticket, brand),
+            // Opt-in recap once the game is over: opens the post editor prefilled.
+            if (!cancelled && countdown == 'Full time') ...[
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () async {
+                  final start = DateTime.tryParse('${booking['start_time'] ?? ''}');
+                  final end = DateTime.tryParse('${booking['end_time'] ?? ''}');
+                  final posted = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CreatePostScreen(
+                        initialText: recapText(ticket, players: _players, minutes: start != null && end != null ? end.difference(start).inMinutes : null),
+                        courtId: booking['court_id'],
+                        bookingId: booking['id'],
+                      ),
+                    ),
+                  );
+                  if (!context.mounted || posted == null || posted == false) return;
+                  context.toastSuccess('Recap posted to the feed');
+                },
+                icon: const Icon(Icons.campaign_outlined, size: 18),
+                label: const Text('Share a game recap'),
+              ),
+            ],
             const SizedBox(height: 16),
             Row(
               children: [

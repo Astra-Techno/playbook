@@ -5,7 +5,12 @@ import 'package:dio/dio.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 
 class CreatePostScreen extends StatefulWidget {
-  const CreatePostScreen({super.key});
+  const CreatePostScreen({super.key, this.initialText, this.courtId, this.bookingId});
+
+  /// Game recap from the pass: prefilled text plus the venue and booking it is about.
+  final String? initialText;
+  final Object? courtId;
+  final Object? bookingId;
 
   @override
   State<CreatePostScreen> createState() => _CreatePostScreenState();
@@ -15,6 +20,12 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   final _contentCtrl = TextEditingController();
   String? _imageUrl;
   bool _posting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialText != null) _contentCtrl.text = widget.initialText!;
+  }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -39,6 +50,8 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         'content': text,
         if (photo.isNotEmpty) 'images': [photo],
         if (photo.isNotEmpty) 'image_url': photo,
+        if (widget.courtId != null) 'court_id': widget.courtId,
+        if (widget.bookingId != null) 'booking_id': widget.bookingId,
       });
       if (!mounted) return;
       final data = res.data;
