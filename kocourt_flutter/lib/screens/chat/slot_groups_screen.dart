@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'slot_chat_screen.dart';
@@ -47,19 +46,8 @@ class _SlotGroupsScreenState extends State<SlotGroupsScreen> {
   }
 
   String _formatDate(String? dateStr) {
-    if (dateStr == null) return '';
-    try {
-      final d = DateTime.parse(dateStr);
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      final tomorrow = today.add(const Duration(days: 1));
-      final date = DateTime(d.year, d.month, d.day);
-      if (date == today) return 'Today';
-      if (date == tomorrow) return 'Tomorrow';
-      return DateFormat('EEE, MMM d').format(d);
-    } catch (_) {
-      return dateStr;
-    }
+    final date = DateTime.tryParse((dateStr ?? '').replaceFirst(' ', 'T'));
+    return date == null ? (dateStr ?? '') : friendlyDay(date);
   }
 
   @override
