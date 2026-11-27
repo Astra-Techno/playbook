@@ -13,6 +13,7 @@ import {
 } from 'lucide-vue-next'
 import MatchSheet from '../components/MatchSheet.vue'
 import AddonsSheet from '../components/AddonsSheet.vue'
+import { weeklyDates } from '../utils/weekly'
 
 const route = useRoute()
 const router = useRouter()
@@ -710,7 +711,8 @@ const handleSlotClick = (slot) => {
     }
 }
 
-const confirmBooking = async () => {
+// dates: weekly booking passes every date in the series; one payment covers all of them.
+const confirmBooking = async (dates = null) => {
     if (spaces.value.length && !selectedSpace.value) { toast.error('Choose a space first'); return }
     if (!selectedDate.value || !selectedSlots.value.length) { toast.error('Choose a date and time slot'); return }
     if (selectedSlots.value.some(isPastSlot)) {
@@ -733,11 +735,13 @@ const confirmBooking = async () => {
         return acc
     }, [])
 
-    const slots = groups.map(group => ({
-        start_time:  `${selectedDate.value} ${group[0].pad}:00`,
-        end_time:    `${selectedDate.value} ${String(group[group.length - 1].hour + 1).padStart(2, '0')}:00:00`,
+    const days = Array.isArray(dates) && dates.length ? dates : [selectedDate.value]
+    const slots = days.flatMap(day => groups.map(group => ({
+        start_time:  `${day} ${group[0].pad}:00`,
+        end_time:    `${day} ${String(group[group.length - 1].hour + 1).padStart(2, '0')}:00:00`,
         total_price: group.reduce((sum, s) => sum + slotPrice(s.pad), 0),
-    }))
+    })))
+    if (slots.length > 48) { toast.error('That is more than 48 slots. Choose fewer days or an earlier end date.'); return }
 
     // Add-ons (bat, balls, bibs): only asked when the venue rents kit.
     let addons = []
@@ -753,12 +757,12 @@ const confirmBooking = async () => {
     bookingLoading.value = true
 
     await openCashfree(
-        totalPrice.value,
+        totalPrice.value * days.length,
         'booking',
         {
             user_id: auth.user?.id, court_id: court.value.id,
             sub_court_id: selectedSpace.value?.id || null,
-            slots, type: 'hourly', total_price: totalPrice.value,
+            slots, type: 'hourly', total_price: totalPrice.value * days.length,
             ...(addons.length ? { addons } : {}),
         },
         async ({ order_id }) => {
@@ -769,7 +773,11 @@ const confirmBooking = async () => {
                     await axios.post('/booking-players', { booking_id: bookingIds[0], user_ids: rebookSquad })
                         .catch(() => toast.info('Booked. Add your squad from the pass.'))
                 }
-                toast.success(`${selectedSlots.value.length} slot${selectedSlots.value.length > 1 ? 's' : ''} booked!`)
+                toast.success(`${bookingIds.length} slot${bookingIds.length === 1 ? '' : 's'} booked!`)
+                if (days.length > 1) {
+                    isRecurring.value = false
+                    recurringDays.value = []
+                }
                 if (bookingIds.length === 1) {
                     router.replace(`/booking-confirmation/${bookingIds[0]}`)
                     return
@@ -797,33 +805,11 @@ const confirmRecurring = async () => {
     if (!recurringDays.value.length || !recurringEndDate.value) {
         toast.error('Select days and end date'); return
     }
+    // Weekly games are paid like any booking: one checkout covers every date (max 12 weeks).
+    const dates = weeklyDates(selectedDate.value, recurringEndDate.value, recurringDays.value)
+    if (!dates.length) { toast.error('No dates match those days before the end date'); return }
     recurringLoading.value = true
-    const sorted = [...selectedSlots.value].sort((a, b) => a.hour - b.hour)
-    const startH = sorted[0].pad
-    const endH   = String(sorted[sorted.length - 1].hour + 1).padStart(2, '0')
-    try {
-        const res = await axios.post('/bookings/recurring', {
-            user_id:              auth.user?.id,
-            court_id:             court.value.id,
-            sub_court_id:         selectedSpace.value?.id || null,
-            start_time:           `${selectedDate.value} ${startH}:00:00`,
-            end_time:             `${selectedDate.value} ${endH}:00:00`,
-            recurrence_days:      recurringDays.value,
-            recurrence_end_date:  recurringEndDate.value,
-        })
-        const { bookings, message } = res.data
-        toast.success(message || `${bookings.length} bookings created!`)
-        isRecurring.value   = false
-        recurringDays.value = []
-        selectedSlots.value = []
-        if (bookings.length === 1) {
-            router.replace(`/booking-confirmation/${bookings[0]}`)
-        } else {
-            router.replace('/bookings')
-        }
-    } catch (err) {
-        toast.error(err.response?.data?.message || 'Failed to create recurring bookings')
-    } finally { recurringLoading.value = false }
+    try { await confirmBooking(dates) } finally { recurringLoading.value = false }
 }
 
 const goFindOtherVenues = () => {
@@ -1590,7 +1576,7 @@ const subscribePlan = async (plan) => {
                         class="w-full bg-primary text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 shadow-float active:scale-95 disabled:opacity-50 disabled:scale-100">
                         <span v-if="recurringLoading" class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
                         <RefreshCw v-else :size="16" />
-                        <span>Book Recurring Slots</span>
+                        <span>Review and pay for weekly slots</span>
                     </button>
                 </template>
 

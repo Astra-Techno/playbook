@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
@@ -13,6 +13,26 @@ import {
 
 const router = useRouter()
 const auth = useAuthStore()
+
+// Player card numbers: hours this season, show-up rate (games until a venue marks one), squad mates.
+const stats = ref(null)
+onMounted(async () => {
+    if (!auth.isLoggedIn) return
+    try { stats.value = (await axios.get('/players/stats')).data } catch { /* card shows without stats */ }
+})
+const cardStats = computed(() => {
+    const st = stats.value
+    if (!st || !st.games) return []
+    const hours = Number(st.hours) || 0
+    const mates = Number(st.squad_mates) || 0
+    return [
+        { value: Number.isInteger(hours) ? String(hours) : hours.toFixed(1), label: 'hours this season' },
+        st.show_up_rate == null
+            ? { value: String(st.games), label: st.games === 1 ? 'game played' : 'games played' }
+            : { value: `${st.show_up_rate}%`, label: 'show-up rate' },
+        { value: String(mates), label: mates === 1 ? 'squad mate' : 'squad mates' },
+    ]
+})
 const toast = useToastStore()
 
 const editingName  = ref(false)
@@ -268,7 +288,7 @@ const menuGroups = computed(() => [
             </header>
 
             <!-- User summary: Matchday player card -->
-            <div class="ko-surface mx-5 my-4 flex items-center gap-5">
+            <div class="ko-surface mx-5 my-4 flex flex-wrap items-center gap-5">
                 <div class="relative shrink-0">
                     <div class="w-20 h-20 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                         <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
@@ -304,6 +324,13 @@ const menuGroups = computed(() => [
                         class="text-[15px] text-on-surface-variant mt-1 font-medium hover:text-on-surface transition-colors text-left">
                         {{ editingProfile ? 'Close profile editor' : 'Show profile' }}
                     </button>
+                </div>
+                <!-- Player card stats (GET /players/stats), same tiles as the app -->
+                <div v-if="cardStats.length" class="grid w-full grid-cols-3 gap-2">
+                    <div v-for="s in cardStats" :key="s.label" class="min-w-0 rounded-xl border border-outline-variant bg-white p-2.5">
+                        <div class="truncate font-score text-[26px] font-bold leading-none tabular-nums text-on-surface">{{ s.value }}</div>
+                        <div class="mt-1 text-[11.5px] leading-tight text-on-surface-variant">{{ s.label }}</div>
+                    </div>
                 </div>
             </div>
 

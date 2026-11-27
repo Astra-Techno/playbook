@@ -12,6 +12,7 @@ import '../static/faq_screen.dart';
 import '../static/terms_screen.dart';
 import '../static/privacy_screen.dart';
 import '../payments/payment_history_screen.dart';
+import 'profile_logic.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -21,6 +22,24 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  // Player card numbers (GET /players/stats); the card shows without them.
+  Map<String, dynamic>? _stats;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    if (!context.read<AuthProvider>().isLoggedIn) return;
+    try {
+      final res = await Api().get('/players/stats');
+      if (mounted && res.data is Map) setState(() => _stats = Map<String, dynamic>.from(res.data as Map));
+    } catch (_) {
+      // Older server or offline: the card keeps name and phone only.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,6 +116,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         initial: auth.userName.isNotEmpty ? auth.userName[0].toUpperCase() : '?',
                         avatarUrl: auth.avatarUrl,
                         role: 'Player',
+                        stats: playerCardStats(_stats),
                       ),
                     ),
 

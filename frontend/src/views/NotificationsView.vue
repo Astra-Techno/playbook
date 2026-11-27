@@ -5,6 +5,7 @@ import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import { Bell, CheckCheck, Loader2 } from 'lucide-vue-next'
+import KoCard from '../components/KoCard.vue'
 
 const router = useRouter()
 const auth   = useAuthStore()
@@ -26,6 +27,27 @@ const fetchNotifications = async () => {
     } finally {
         loading.value = false
     }
+}
+
+// Matchday: group per venue and day, same rules as the app (notification_groups.dart).
+const groups = computed(() => {
+    const byKey = new Map()
+    for (const n of notifications.value) {
+        const day = String(n.created_at || '').slice(0, 10)
+        const key = n.court_id && day ? `court:${n.court_id}|${day}` : `one:${n.id}`
+        if (!byKey.has(key)) byKey.set(key, { key, courtName: n.court_name, day, items: [] })
+        byKey.get(key).items.push(n)
+    }
+    return [...byKey.values()]
+})
+const dayLabel = (day) => {
+    const d = new Date(`${day}T00:00:00`)
+    if (Number.isNaN(d.getTime())) return ''
+    const today = new Date(); today.setHours(0, 0, 0, 0)
+    const diff = Math.round((today - d) / 86400000)
+    if (diff === 0) return 'Today'
+    if (diff === 1) return 'Yesterday'
+    return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
 const markRead = async (n) => {
@@ -108,7 +130,26 @@ onMounted(() => {
 
         <!-- Notifications list -->
         <div v-else class="px-4 py-4 space-y-2">
-            <div v-for="n in notifications" :key="n.id"
+            <template v-for="g in groups" :key="g.key">
+            <KoCard v-if="g.items.length > 1"
+                :kicker="dayLabel(g.day)"
+                :title="g.courtName || 'Updates'"
+                :meta="`${g.items.length} updates`"
+                :badge="g.items.filter(isUnread).length ? `${g.items.filter(isUnread).length} new` : null">
+                <div class="space-y-1.5">
+                    <button v-for="n in g.items" :key="n.id" type="button" @click="markRead(n)"
+                        class="flex w-full items-start gap-2 rounded-xl border bg-white px-3 py-2 text-left"
+                        :class="isUnread(n) ? 'border-primary/30' : 'border-outline-variant'">
+                        <span class="min-w-0 flex-1">
+                            <span class="block text-[13.5px] text-on-surface" :class="isUnread(n) ? 'font-extrabold' : 'font-semibold'">{{ n.title }}</span>
+                            <span v-if="n.body" class="block text-xs text-on-surface-variant">{{ n.body }}</span>
+                        </span>
+                        <span class="shrink-0 font-score text-xs font-semibold text-outline">{{ timeAgo(n.created_at) }}</span>
+                    </button>
+                </div>
+            </KoCard>
+            <template v-else>
+            <div v-for="n in g.items" :key="n.id"
                 @click="markRead(n)"
                 class="bg-white rounded-2xl p-4 shadow-sm ring-1 transition-all cursor-pointer active:scale-[0.99]"
                 :class="isUnread(n) ? 'border border-gray-200 border-l-4 border-l-black' : 'ring-slate-100'">
@@ -129,6 +170,8 @@ onMounted(() => {
                     </div>
                 </div>
             </div>
+            </template>
+            </template>
         </div>
 
     </div>

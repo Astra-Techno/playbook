@@ -19,7 +19,8 @@ const courtId    = route.query.court_id    ? parseInt(route.query.court_id)    :
 const courtName  = route.query.court_name  ? decodeURIComponent(route.query.court_name) : null
 
 // Form state
-const postText       = ref('')
+// A post from a past booking starts as an editable game recap (same wording as the app).
+const postText       = ref(bookingId && courtName ? `Played at ${courtName}. Good game!` : '')
 const visibility     = ref('public')
 const submitting     = ref(false)
 const selectedFiles  = ref([])

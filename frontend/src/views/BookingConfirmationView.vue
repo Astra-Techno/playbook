@@ -52,9 +52,42 @@ const inviteText = () => {
         `${fmtDate(b.start_time)} · ${fmtTime(b.start_time)} – ${fmtTime(b.end_time)}`,
         [`${players.value} in${openSpots.value > 0 ? `, ${openSpots.value} spot${openSpots.value === 1 ? '' : 's'} open` : ''}`, perHead.value != null ? `₹${perHead.value} each` : null].filter(Boolean).join(' · '),
         `Map: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(where)}`,
+        payLink.value && perHead.value ? `Pay me ₹${perHead.value} on UPI: ${payLink.value}` : null,
         `Join on KoCourt: https://www.kocourt.com/court/${b.court_id}`,
-    ].join('\n')
+    ].filter(Boolean).join('\n')
 }
+// Track who owes: the booker paid in full; squad mates pay them back directly.
+// Dues split among who is actually in (same as the server's reminder amount).
+const dueEach = computed(() => {
+    const total = Number(booking.value?.total_price || 0)
+    return total > 0 ? Math.ceil(total / players.value) : null
+})
+const myRow = computed(() => squad.value.find((p) => String(p.id) === String(auth.user?.id)) || null)
+const readUpi = () => { try { return localStorage.getItem('kocourt_upi_id') || '' } catch { return '' } }
+const upiId = ref(readUpi())
+const upiDraft = ref('')
+const editingUpi = ref(false)
+const isUpiId = (v) => /^[A-Za-z0-9.\-_]{2,256}@[A-Za-z]{2,64}$/.test(String(v || '').trim())
+const saveUpi = () => {
+    if (!isUpiId(upiDraft.value)) { toast.error('Enter a UPI ID like name@bank'); return }
+    upiId.value = upiDraft.value.trim()
+    try { localStorage.setItem('kocourt_upi_id', upiId.value) } catch { /* private window: keep for this visit */ }
+    editingUpi.value = false
+}
+const payLink = computed(() => {
+    if (!isBooker.value || !isUpiId(upiId.value) || !perHead.value) return null
+    const q = new URLSearchParams({ pa: upiId.value, pn: auth.user?.name || 'KoCourt player', am: String(perHead.value), cu: 'INR', tn: 'KoCourt game share' })
+    return `upi://pay?${q.toString()}`
+})
+const markPaid = async (p, paid) => {
+    try { await axios.put('/booking-players/paid', { booking_id: booking.value.id, user_id: p.id, paid }); loadSquad() }
+    catch (e) { toast.error(e.response?.data?.message || 'Could not update.') }
+}
+const remind = async (p) => {
+    try { const r = await axios.post('/booking-players/remind', { booking_id: booking.value.id, user_id: p.id }); toast.info(r.data?.message || 'Reminder sent') }
+    catch (e) { toast.error(e.response?.data?.message || 'Could not send a reminder.') }
+}
+
 const whatsappUrl = computed(() => (booking.value ? `https://wa.me/?text=${encodeURIComponent(inviteText())}` : '#'))
 
 const postOpenSpots = async () => {
@@ -190,6 +223,39 @@ onMounted(async () => {
                         <button type="button" class="rounded-xl bg-primary px-3 py-2 text-sm font-bold text-on-primary" @click="postOpenSpots">Post "Need {{ askSpots }}"</button>
                         <button type="button" class="text-sm text-on-surface-variant" @click="askSpots = 0">Cancel</button>
                     </div>
+                </div>
+                <!-- Who owes the booker (booker sees everyone; a squad mate sees only their own) -->
+                <div v-if="dueEach && squad.length" class="mt-3 space-y-1.5">
+                    <template v-if="isBooker">
+                        <div v-for="p in squad" :key="p.id" class="flex items-center gap-2 text-sm">
+                            <span class="min-w-0 flex-1 truncate font-semibold">{{ p.name }}</span>
+                            <template v-if="p.paid">
+                                <span class="font-extrabold text-free">Paid ✓</span>
+                                <button type="button" class="text-xs font-bold text-primary" @click="markPaid(p, false)">Undo</button>
+                            </template>
+                            <template v-else>
+                                <span class="font-score text-base font-bold">Owes ₹{{ dueEach }}</span>
+                                <button type="button" class="text-xs font-bold text-primary" @click="markPaid(p, true)">Mark paid</button>
+                                <button type="button" class="text-xs font-bold text-primary" @click="remind(p)">Remind</button>
+                            </template>
+                        </div>
+                        <div class="pt-1 text-xs">
+                            <template v-if="!editingUpi">
+                                <button type="button" class="font-bold text-primary" @click="upiDraft = upiId; editingUpi = true">
+                                    {{ upiId ? `UPI: ${upiId} (change)` : 'Add your UPI ID for pay-me links' }}
+                                </button>
+                            </template>
+                            <div v-else class="flex items-center gap-2">
+                                <input v-model="upiDraft" id="upi-id" type="text" placeholder="name@okaxis" aria-label="Your UPI ID" class="min-w-0 flex-1 rounded-lg border border-outline-variant px-2 py-1.5" />
+                                <button type="button" class="font-bold text-primary" @click="saveUpi">Save</button>
+                                <button type="button" class="text-on-surface-variant" @click="editingUpi = false">Cancel</button>
+                            </div>
+                            <p class="mt-1 text-[11px] text-outline">Saved in this browser only.</p>
+                        </div>
+                    </template>
+                    <p v-else-if="myRow" class="text-sm font-bold" :class="myRow.paid ? 'text-free' : 'text-on-surface'">
+                        {{ myRow.paid ? `You paid ${bookerName} back ✓` : `You owe ${bookerName.split(' ')[0]} ₹${dueEach}. Pay them directly.` }}
+                    </p>
                 </div>
                 <a v-if="live" :href="whatsappUrl" target="_blank" rel="noopener"
                     class="mt-3 block w-full rounded-[14px] bg-primary py-3.5 text-center text-[15px] font-bold text-on-primary">Invite on WhatsApp</a>

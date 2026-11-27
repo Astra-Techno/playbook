@@ -185,7 +185,8 @@ class PaymentController {
                     foreach ($holdSlots as $slot) {
                         if (!$slotCheck->isSlotAvailable($holdCourtId, $slot['start'], $slot['end'], $slot['sub_court_id'])) {
                             http_response_code(409);
-                            echo json_encode(['message' => 'Time slot not available.']);
+                            $when = date('D j M, g A', strtotime($slot['start']));
+                            echo json_encode(['message' => "Time slot not available: $when. Nothing was charged.", 'taken' => $slot['start']]);
                             return;
                         }
                     }

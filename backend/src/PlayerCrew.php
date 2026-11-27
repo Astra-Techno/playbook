@@ -58,6 +58,44 @@ final class PlayerCrew
     }
 
     /**
+     * Confirmed games $me booked or played in since $since (walk-ins excluded), their squads and
+     * the public profiles of everyone involved — the input for build() and PlayerStats.
+     * @return array{0:list<array<string,mixed>>,1:array<int,list<int>>,2:array<int,array<string,mixed>>}
+     */
+    public static function load(PDO $db, int $me, string $since): array
+    {
+        $stmt = $db->prepare(
+            "SELECT b.id, b.user_id, b.court_id, b.sub_court_id, b.start_time, b.end_time, b.attendance, c.name AS court_name, c.type AS court_type
+             FROM bookings b JOIN courts c ON c.id = b.court_id
+             WHERE b.status = 'confirmed' AND b.guest_name IS NULL AND b.start_time >= ?
+               AND (b.user_id = ? OR b.id IN (SELECT booking_id FROM booking_players WHERE user_id = ?))
+             ORDER BY b.start_time DESC LIMIT 400"
+        );
+        $stmt->execute([$since, $me, $me]);
+        $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $playersByBooking = [];
+        $ids = [$me => true];
+        if ($bookings) {
+            $bids = array_map(fn ($b) => (int)$b['id'], $bookings);
+            $marks = implode(',', array_fill(0, count($bids), '?'));
+            $p = $db->prepare("SELECT booking_id, user_id FROM booking_players WHERE booking_id IN ($marks)");
+            $p->execute($bids);
+            foreach ($p->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                $playersByBooking[(int)$row['booking_id']][] = (int)$row['user_id'];
+                $ids[(int)$row['user_id']] = true;
+            }
+            foreach ($bookings as $b) $ids[(int)$b['user_id']] = true;
+        }
+        $people = [];
+        $uids = array_keys($ids);
+        $marks = implode(',', array_fill(0, count($uids), '?'));
+        $u = $db->prepare("SELECT id, name, avatar_url FROM users WHERE id IN ($marks)");
+        $u->execute($uids);
+        foreach ($u->fetchAll(PDO::FETCH_ASSOC) as $row) $people[(int)$row['id']] = $row;
+        return [$bookings, $playersByBooking, $people];
+    }
+
+    /**
      * The same weekday and time as a past game, at the first occurrence after $now.
      * @return array{0:string,1:string}
      */

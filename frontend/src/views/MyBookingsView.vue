@@ -295,7 +295,7 @@ const openChat = (booking) => {
                                 <button
                                     @click="router.push(`/post/create?booking_id=${booking.id}&court_id=${booking.court_id}&court_name=${encodeURIComponent(booking.court_name)}`)"
                                     class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-white text-on-surface border border-outline-variant">
-                                    <Share2 :size="11" /> Share
+                                    <Share2 :size="11" /> Share a recap
                                 </button>
                             </template>
                             <button v-if="booking.owner_id"
