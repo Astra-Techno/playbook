@@ -226,6 +226,39 @@ class CourtController {
         echo json_encode(['free_from' => (object)$free]);
     }
 
+    // GET /courts/day-strip?ids=1,2&date=YYYY-MM-DD
+    // Each venue's day as 17 letters (6 AM..10 PM slots): c closed, t taken, p free at peak, f free.
+    // Uses the same opening-hours and availability checks as booking. Past hours are greyed by the client.
+    public function dayStrip() {
+        require_once __DIR__ . '/../FreeSoon.php';
+        require_once __DIR__ . '/../PeakAccess.php';
+        // shortcut: ~4 queries per venue-hour (stops at the first free space); capped at 8 venues. Add a per-day cache if list pages get slow.
+        $ids = array_slice(FreeSoon::ids((string)($_GET['ids'] ?? '')), 0, 8);
+        $date = (string)($_GET['date'] ?? '');
+        $windows = FreeSoon::dayWindows($date);
+        if (!$ids || !$windows) {
+            http_response_code(400);
+            echo json_encode(['message' => 'ids and date (YYYY-MM-DD) are required']);
+            return;
+        }
+        $booking = new Booking();
+        $marks = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $booking->conn->prepare("SELECT * FROM courts WHERE id IN ($marks)");
+        $stmt->execute($ids);
+        $strips = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            $strip = '';
+            foreach ($windows as [$start, $end]) {
+                $open = $this->courtOpenForWindow($row, $start, $end);
+                $free = $open && $this->courtHasFreeSlot($booking, (int)$row['id'], $start, $end);
+                $strip .= FreeSoon::stateChar($open, $free, PeakAccess::getPeakType($start, $row) !== null);
+            }
+            $strips[(string)$row['id']] = $strip;
+        }
+        http_response_code(200);
+        echo json_encode(['date' => $date, 'first_hour' => FreeSoon::STRIP_FIRST_HOUR, 'strips' => (object)$strips]);
+    }
+
     private function courtOpenForWindow(array $court, string $start_dt, string $end_dt): bool {
         return ScheduleRules::windowInsideHours(
             substr($court['open_time'] ?? '06:00:00', 0, 8),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
+import 'day_strip.dart';
 import '../home_logic.dart';
 
 /// Shared with CourtDetailsScreen so the photo flies from card to header.
@@ -352,6 +353,25 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                             ),
                           ],
                         ),
+                        // Matchday day strip for the chosen time (set by Home once strips load).
+                        if (widget.venue['strip'] is String) ...[
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Text(
+                                widget.venue['free_from'] == null ? 'No free hour left' : freeLabel(widget.venue),
+                                style: AppFonts.score(fontSize: 14, color: widget.venue['free_from'] == null ? AppColors.textMuted : sportTint(widget.venue['type']).fg),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          DayStrip(
+                            strip: widget.venue['strip'] as String,
+                            tone: sportTint(widget.venue['type']).fg,
+                            date: widget.venue['strip_date'] as String?,
+                            highlightHour: freeHour(widget.venue),
+                          ),
+                        ],
                         const SizedBox(height: 12),
 
                         // Footer divider

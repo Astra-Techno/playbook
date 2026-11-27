@@ -24,4 +24,13 @@ check(count(FreeSoon::windows('2026-11-25 08:00:00', 99)) === 6, 'at most six ho
 check(FreeSoon::ids('3,5,x,5,-2,0') === [3, 5], 'ids are positive and unique');
 check(count(FreeSoon::ids(implode(',', range(1, 30)))) === 10, 'at most ten venues');
 
+$day = FreeSoon::dayWindows('2026-11-25');
+check(count($day) === 17, 'day strip has 17 hours');
+check($day[0] === ['2026-11-25 06:00:00', '2026-11-25 07:00:00'], 'strip starts at 6 AM');
+check($day[16][1] === '2026-11-25 23:00:00', 'last slot ends at 11 PM');
+check(FreeSoon::dayWindows('25-11-2026') === [] && FreeSoon::dayWindows('2026-11-25; DROP') === [], 'bad dates give no strip');
+check(FreeSoon::stateChar(false, true, true) === 'c', 'closed wins');
+check(FreeSoon::stateChar(true, false, true) === 't', 'taken');
+check(FreeSoon::stateChar(true, true, true) === 'p' && FreeSoon::stateChar(true, true, false) === 'f', 'free at peak and off-peak');
+
 exit($failed ? 1 : 0);
