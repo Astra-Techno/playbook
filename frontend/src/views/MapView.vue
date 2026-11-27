@@ -6,6 +6,9 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { ChevronLeft, X, MapPin, Star, IndianRupee, Navigation, Lock, Bell, Clock, Loader2 } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
+import PlayTimeChips from '../components/PlayTimeChips.vue'
+import { sportSvg, sportTint } from '../utils/sport'
+import { playTime, playTarget, ensureStrips, strips, nextFreeHour } from '../utils/playTime'
 
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
@@ -44,6 +47,12 @@ let courtLayerGroup = null
 let ghostLayerGroup = null
 
 const courtsOnMap = computed(() => courts.value.filter(c => c.lat && c.lng))
+
+// Day strips for pins (first 24 venues) at the chosen time; replot as they arrive.
+watch([courtsOnMap, playTime], () => {
+    ensureStrips(playTarget(playTime.value).date, courtsOnMap.value.slice(0, 24).map((c) => c.id))
+}, { immediate: true })
+watch([strips, playTime], () => replotCourts())
 const totalOnMap = computed(() =>
     courtsOnMap.value.length +
     places.value.filter(p => p.lat && p.lng).length
@@ -56,13 +65,6 @@ const availabilityLabel = computed(() => {
     return `${n} free · ${t} venues`
 })
 
-const sportColor = {
-    shuttle: '#7c3aed', turf: '#16a34a', gym: '#dc2626',
-    tennis:  '#d97706', cricket: '#0891b2', swimming: '#2563eb',
-    boxing:  '#9333ea', basket: '#ea580c', dance: '#ec4899',
-    yoga:    '#8b5cf6', martial: '#b45309', golf: '#15803d',
-    bowling: '#0369a1', other: '#64748b',
-}
 const sportEmoji = {
     shuttle: '🏸', turf: '⚽', gym: '🏋️', tennis: '🎾',
     cricket: '🏏', swimming: '🏊', boxing: '🥊', basket: '🏀',
@@ -70,23 +72,29 @@ const sportEmoji = {
     bowling: '🎳', other: '🏟️',
 }
 
-// Active court marker — coloured teardrop
-const makeIcon = (type) => L.divIcon({
-    className: '',
-    html: `<div style="background:${sportColor[type] || sportColor.other};width:36px;height:36px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid white;box-shadow:0 3px 10px rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">
-        <span style="transform:rotate(45deg);font-size:14px;line-height:1;">${sportEmoji[type] || '🏟️'}</span>
-    </div>`,
-    iconSize: [36, 36], iconAnchor: [18, 36], popupAnchor: [0, -38],
-})
-
-// Has a free slot for the selected window — emerald ring
-const makeAvailableIcon = (type) => L.divIcon({
-    className: '',
-    html: `<div style="background:${sportColor[type] || sportColor.other};width:38px;height:38px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:3px solid #10b981;box-shadow:0 0 0 3px rgba(16,185,129,0.35),0 4px 14px rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;">
-        <span style="transform:rotate(45deg);font-size:14px;line-height:1;">${sportEmoji[type] || '🏟️'}</span>
-    </div>`,
-    iconSize: [38, 38], iconAnchor: [19, 38], popupAnchor: [0, -40],
-})
+// Matchday pin: white pill in the sport colour, our sport icon, next free hour ("7P").
+const pinLabel = (court) => {
+    const t = playTarget(playTime.value)
+    const h = nextFreeHour(strips.value[t.date]?.[String(court.id)], t.hour)
+    if (h == null) return ''
+    const h12 = h % 12 === 0 ? 12 : h % 12
+    return `${h12}${h < 12 ? 'A' : 'P'}`
+}
+const makePin = (court, available = false) => {
+    const { bg, fg } = sportTint(court.type)
+    const svg = sportSvg(court.type)
+    const label = pinLabel(court)
+    const icon = svg
+        ? `<span style="width:20px;height:20px;display:inline-block;line-height:0;--tone:${fg};--tint:${bg};--surface:#fff">${svg}</span>`
+        : `<span style="font-size:13px;line-height:1">${sportEmoji[court.type] || '🏟️'}</span>`
+    return L.divIcon({
+        className: 'ko-pin',
+        html: `<div style="display:inline-flex;align-items:center;gap:4px;padding:4px ${label ? 9 : 5}px 4px 5px;border-radius:999px;background:#fff;border:2px solid ${fg};${available ? 'box-shadow:0 0 0 3px rgba(16,185,129,0.4),0 4px 12px rgba(0,0,0,0.18);' : 'box-shadow:0 4px 12px rgba(40,20,90,0.22);'}font:700 15px/1 'Barlow Condensed','Arial Narrow',sans-serif;color:${fg};white-space:nowrap">${icon}${label}</div>`,
+        iconSize: null,
+        iconAnchor: [15, 15],
+        popupAnchor: [0, -18],
+    })
+}
 
 // Filter on but no free slot — muted
 const makeMutedCourtIcon = (type) => L.divIcon({
@@ -107,8 +115,8 @@ const makeGhostIcon = (type) => L.divIcon({
 })
 
 const pickCourtIcon = (court) => {
-    if (!showAvailability.value) return makeIcon(court.type)
-    if (availableIds.value.has(court.id)) return makeAvailableIcon(court.type)
+    if (!showAvailability.value) return makePin(court)
+    if (availableIds.value.has(court.id)) return makePin(court, true)
     return makeMutedCourtIcon(court.type)
 }
 
@@ -279,6 +287,9 @@ const refreshAvailability = () => {
                     <span v-else class="ml-auto w-4 h-4 border-2 border-gray-200 border-t-primary rounded-full animate-spin shrink-0"></span>
                 </div>
             </div>
+
+            <!-- Matchday: pins show the next free hour for this time -->
+            <PlayTimeChips class="pointer-events-auto" />
 
             <!-- Availability overlay -->
             <div class="pointer-events-auto bg-white/95 backdrop-blur-md rounded-2xl shadow-md px-3 py-2.5 ring-1 ring-slate-100">

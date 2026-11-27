@@ -12,6 +12,9 @@ import {
     Lock, Bell, X, RotateCcw, KeyRound, Clock
 } from 'lucide-vue-next'
 import ClaimVenueSheet from '../components/ClaimVenueSheet.vue'
+import PlayTimeChips from '../components/PlayTimeChips.vue'
+import DayStrip from '../components/DayStrip.vue'
+import { playTime, playTarget, ensureStrips, strips, nextFreeHour, hourLabel } from '../utils/playTime'
 
 const router = useRouter()
 const auth   = useAuthStore()
@@ -28,6 +31,14 @@ const favorites     = ref(new Set())
 const favLoading    = ref(new Set())
 
 const RADIUS_OPTIONS = [5, 10, 25, 50]
+
+// Matchday phase 1: day strips for the first 8 venues at the chosen time.
+const target = computed(() => playTarget(playTime.value))
+watch([courts, target], () => {
+    ensureStrips(target.value.date, courts.value.slice(0, 8).map((c) => c.id))
+}, { immediate: true })
+const stripOf = (venue) => strips.value[target.value.date]?.[String(venue.id)] ?? null
+const freeHourOf = (venue) => nextFreeHour(stripOf(venue), target.value.hour)
 const filterSheet = ref(false)
 
 // draft state inside the sheet (applied on "Apply")
@@ -453,6 +464,7 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                     See all <ChevronRight :size="14" />
                 </button>
             </div>
+            <PlayTimeChips v-if="courts.length > 0" class="mb-4" />
 
             <!-- Venue cards — Kinetic Stadium design -->
             <div class="space-y-4">
@@ -513,6 +525,15 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                                 {{ parseFloat(venue.avg_rating).toFixed(1) }}
                                 <Star :size="11" class="text-primary" style="fill:currentColor" />
                             </div>
+                        </div>
+
+                        <!-- Matchday: next free hour + day strip for the chosen time -->
+                        <div v-if="stripOf(venue)" class="mt-3">
+                            <p class="font-score text-[15px] font-bold mb-1.5"
+                                :style="{ color: freeHourOf(venue) == null ? '#9CA3AF' : sportTint(venue.type).fg }">
+                                {{ freeHourOf(venue) == null ? 'No free hour left' : `Free ${hourLabel(freeHourOf(venue))}` }}
+                            </p>
+                            <DayStrip :strip="stripOf(venue)" :tone="sportTint(venue.type).fg" :highlight="freeHourOf(venue)" :date="target.date" />
                         </div>
 
                         <!-- Footer: social proof + reviews -->
