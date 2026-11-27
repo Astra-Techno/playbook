@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
@@ -7,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../court_details/court_details_screen.dart';
 import 'booking_ticket.dart' show passCountdown;
+import '../home/home_logic.dart' show kickoffIn;
 import '../court_details/slot_block.dart';
 import '../chat/chat_screen.dart';
 import '../chat/slot_chat_screen.dart';
@@ -161,7 +161,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
                               Expanded(
                                 child: Text(
                                   'Your games',
-                                  style: GoogleFonts.archivo(fontSize: 30, fontWeight: FontWeight.w900),
+                                  style: AppFonts.display(fontSize: 30, fontWeight: FontWeight.w900),
                                 ),
                               ),
                               GestureDetector(
@@ -559,92 +559,57 @@ class _BookingsScreenState extends State<BookingsScreen> {
             ? DateFormat('h:mm a').format(startDt)
             : '${DateFormat('h:mm').format(startDt)} – ${DateFormat('h:mm a').format(endDt)}';
 
+    final minutes = startDt != null && endDt != null ? endDt.difference(startDt).inMinutes : 0;
+    final price = num.tryParse('${booking['total_price'] ?? ''}') ?? 0;
+    final upcoming = isConfirmed && !isPast;
+    void openVenue() => Navigator.push(context, MaterialPageRoute(builder: (_) => CourtDetailsScreen(courtId: courtIdFrom(courtId))));
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Card(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(AppRadius.lg),
-          onTap: courtId != null
-              ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => CourtDetailsScreen(courtId: courtIdFrom(courtId))))
-              : null,
-          onLongPress: isConfirmed && !isPast ? () => _showBookingActions(booking) : null,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: KoCard(
+        // Cancelled games lose their sport colour so live ones stand out.
+        sport: isCancelled ? null : booking['court_type'],
+        kicker: isPast && isConfirmed ? 'Played' : (dayLabel.isNotEmpty ? dayLabel : formattedDate),
+        title: '$courtName',
+        meta: '$formattedDate · $timeRange',
+        badge: startDt == null ? null : DateFormat('h a').format(startDt),
+        stats: isPast && isConfirmed
+            ? [
+                if (minutes > 0) KoStat('$minutes', 'minutes'),
+                if (price > 0) KoStat('₹${price.round()}', 'paid'),
+              ]
+            : const [],
+        middle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Row(
-                  children: [
-                    TimePlate(
-                      top: startDt == null ? '—' : DateFormat('h a').format(startDt),
-                      bottom: dayLabel.isNotEmpty ? dayLabel : formattedDate,
-                      filled: false,
-                      tint: isConfirmed && !isPast ? sportTint(booking['court_type']) : null,
-                      width: 78,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(courtName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800), overflow: TextOverflow.ellipsis),
-                          const SizedBox(height: 2),
-                          Text('$formattedDate · $timeRange', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                          if (countdown.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(Icons.timer_outlined, size: 13, color: context.brand.primary),
-                                const SizedBox(width: 4),
-                                Text(countdown, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: context.brand.primary)),
-                              ],
-                            ),
-                          ],
-                          if (booking['refund_status'] != null) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              'Refund: ${booking['refund_status'].toString().replaceAll('_', ' ')} · INR ${((num.tryParse(booking['refund_amount_paise'].toString()) ?? 0) / 100).toStringAsFixed(2)}',
-                              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    isPast && isConfirmed ? const StatusTag('Played', tone: TagTone.muted) : StatusTag.forBooking('$status'),
-                  ],
-                ),
-                if (isConfirmed) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      if (isPast)
-                        TextButton.icon(
-                          onPressed: () => _bookAgain(booking),
-                          icon: const Icon(Icons.replay_rounded, size: 18),
-                          label: const Text('Book again'),
-                        )
-                      else ...[
-                        TextButton.icon(
-                          onPressed: () => context.push('/booking-confirmation/${booking['id']}'),
-                          icon: const Icon(Icons.qr_code_2_rounded, size: 18),
-                          label: const Text('Pass'),
-                        ),
-                        const Spacer(),
-                        TextButton(
-                          onPressed: () => _cancelBooking(booking['id']),
-                          style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                          child: const Text('Cancel booking'),
-                        ),
-                      ],
-                    ],
+                isPast && isConfirmed ? const StatusTag('Played', tone: TagTone.muted) : StatusTag.forBooking('$status'),
+                if (countdown.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  Flexible(child: Text(countdown, style: AppFonts.score(fontSize: 13, color: context.brand.primary))),
+                ],
+                const Spacer(),
+                if (upcoming)
+                  TextButton(
+                    onPressed: () => _cancelBooking(booking['id']),
+                    style: TextButton.styleFrom(foregroundColor: AppColors.error, visualDensity: VisualDensity.compact),
+                    child: const Text('Cancel booking'),
                   ),
-                ] else if (isCancelled)
-                  const SizedBox(height: 4),
               ],
             ),
-          ),
+            if (booking['refund_status'] != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Refund: ${booking['refund_status'].toString().replaceAll('_', ' ')} · INR ${((num.tryParse(booking['refund_amount_paise'].toString()) ?? 0) / 100).toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+              ),
+            ],
+          ],
         ),
+        actionLabel: upcoming ? 'Show pass' : (isPast && isConfirmed ? 'Book again' : null),
+        onAction: upcoming ? () => context.push('/booking-confirmation/${booking['id']}') : () => _bookAgain(booking),
+        onTap: courtId != null ? openVenue : null,
+        onLongPress: upcoming ? () => _showBookingActions(booking) : null,
       ),
     );
   }
@@ -683,96 +648,31 @@ class _BookingsScreenState extends State<BookingsScreen> {
     );
   }
 
-  /// v5 "Next up": light sport-tinted card for the soonest game.
+  /// Matchday "Next up": the soonest game as a full card.
   Widget _buildNextUp(Map<String, dynamic> booking) {
-    final brand = context.brand.primary;
-    final tint = sportTint(booking['court_type']);
     final start = parseSqlDateTime('${booking['start_time'] ?? ''}');
     final end = parseSqlDateTime('${booking['end_time'] ?? ''}');
-    final countdown = passCountdown(start, end, DateTime.now());
-    final sport = sportLabel(booking['court_type']).toUpperCase();
+    final left = start?.difference(DateTime.now());
+    final minutes = start != null && end != null ? end.difference(start).inMinutes : 0;
+    final price = num.tryParse('${booking['total_price'] ?? ''}') ?? 0;
     final courtId = booking['court_id'];
+    void showPass() => context.push('/booking-confirmation/${booking['id']}');
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [tint.bg, Colors.white], begin: Alignment.topLeft, end: Alignment.bottomRight, stops: const [0, 0.7]),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: tint.fg.withValues(alpha: 0.2)),
-          boxShadow: [BoxShadow(color: tint.fg.withValues(alpha: 0.12), blurRadius: 28, offset: const Offset(0, 12))],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(sport.isEmpty ? 'NEXT UP' : 'NEXT UP · $sport',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.1, color: tint.fg)),
-                ),
-                if (countdown.isNotEmpty)
-                  Slanted(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(color: brand, borderRadius: BorderRadius.circular(6)),
-                      child: Text(countdown.replaceFirst('Kick-off in ', 'in '),
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                TimePlate(
-                  top: start == null ? '—' : DateFormat('h a').format(start),
-                  bottom: start == null ? '' : DateFormat('EEE d').format(start).toUpperCase(),
-                  tint: tint,
-                  width: 74,
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${booking['court_name'] ?? 'Your game'}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.archivo(fontSize: 22, fontWeight: FontWeight.w900)),
-                      Text(
-                        start == null || end == null ? '' : '${DateFormat('h:mm').format(start)} – ${DateFormat('h:mm a').format(end)}',
-                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () => context.push('/booking-confirmation/${booking['id']}'),
-                    style: FilledButton.styleFrom(shape: const StadiumBorder(), minimumSize: const Size(0, 44)),
-                    child: const Text('Show pass'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: courtId == null
-                        ? null
-                        : () => Navigator.push(context, MaterialPageRoute(builder: (_) => CourtDetailsScreen(courtId: courtIdFrom(courtId)))),
-                    style: OutlinedButton.styleFrom(shape: const StadiumBorder(), minimumSize: const Size(0, 44), backgroundColor: Colors.white),
-                    child: const Text('Venue'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+      child: KoCard(
+        sport: booking['court_type'],
+        kicker: 'Next up',
+        title: '${booking['court_name'] ?? 'Your game'}',
+        meta: start == null || end == null ? null : '${DateFormat('EEE d MMM').format(start)} · ${DateFormat('h:mm').format(start)} – ${DateFormat('h:mm a').format(end)}',
+        badge: start == null ? null : DateFormat('h a').format(start),
+        stats: [
+          if (left != null && !left.isNegative) KoStat(kickoffIn(left), 'to kick-off'),
+          if (minutes > 0) KoStat('$minutes', 'minutes'),
+          if (price > 0) KoStat('₹${price.round()}', 'paid'),
+        ],
+        actionLabel: 'Show pass',
+        onAction: showPass,
+        onTap: courtId == null ? showPass : () => Navigator.push(context, MaterialPageRoute(builder: (_) => CourtDetailsScreen(courtId: courtIdFrom(courtId)))),
       ),
     );
   }

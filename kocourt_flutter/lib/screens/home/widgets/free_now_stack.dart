@@ -1,6 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 
 import '../home_logic.dart';
@@ -217,7 +216,7 @@ class _VenueCard extends StatelessWidget {
                             Text('${venue['name'] ?? ''}',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.archivo(fontSize: 23, fontWeight: FontWeight.w900, height: 1)),
+                                style: AppFonts.display(fontSize: 23, fontWeight: FontWeight.w900, height: 1)),
                             const SizedBox(height: 4),
                             Text(meta,
                                 maxLines: 1,

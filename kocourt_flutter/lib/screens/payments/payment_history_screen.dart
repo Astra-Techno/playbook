@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:intl/intl.dart';
@@ -149,7 +148,7 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen> {
                                       ),
                                       Text(
                                         '\u20B9${amount.toStringAsFixed(amount == amount.roundToDouble() ? 0 : 2)}',
-                                        style: GoogleFonts.archivo(fontWeight: FontWeight.w900, fontSize: 17),
+                                        style: AppFonts.score(fontWeight: FontWeight.w900, fontSize: 17),
                                       ),
                                     ],
                                   ),

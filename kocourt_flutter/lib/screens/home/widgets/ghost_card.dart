@@ -97,7 +97,7 @@ class GhostCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(category.icon, size: 12, color: AppColors.textPrimary),
+                      SportIcon(category.id, size: 14, fallback: category.icon),
                       const SizedBox(width: 4),
                       Text(
                         category.label.toUpperCase(),

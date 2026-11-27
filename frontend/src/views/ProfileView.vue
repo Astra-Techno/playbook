@@ -267,8 +267,8 @@ const menuGroups = computed(() => [
                 </button>
             </header>
 
-            <!-- User summary -->
-            <div class="flex items-center gap-5 px-6 py-6">
+            <!-- User summary: Matchday player card -->
+            <div class="ko-surface mx-5 my-4 flex items-center gap-5">
                 <div class="relative shrink-0">
                     <div class="w-20 h-20 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                         <img v-if="auth.user?.avatar_url" :src="auth.user.avatar_url" class="w-full h-full object-cover" />
@@ -282,7 +282,7 @@ const menuGroups = computed(() => [
                 </div>
                 <div class="flex-1 min-w-0">
                     <div v-if="!editingName" class="flex items-center gap-2">
-                        <h2 class="text-[22px] font-bold text-on-surface leading-tight truncate">{{ auth.user?.name }}</h2>
+                        <h2 class="font-display text-[22px] font-extrabold tracking-tight text-on-surface leading-tight truncate">{{ auth.user?.name }}</h2>
                         <button @click="startEditName" class="shrink-0 w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">
                             <Pencil :size="12" class="text-on-surface-variant" />
                         </button>

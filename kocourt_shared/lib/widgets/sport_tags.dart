@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import '../core/fonts.dart';
 
 import '../core/constants.dart';
 import '../core/theme.dart';
@@ -21,6 +21,9 @@ SportTint sportTint(Object? type) => switch ('${type ?? ''}'.trim().toLowerCase(
       'basket' || 'basketball' => const SportTint(Color(0xFFFFEDE5), Color(0xFFC2410C)),
       'boxing' => const SportTint(Color(0xFFFEECEC), Color(0xFFB91C1C)),
       'gym' => const SportTint(Color(0xFFF1F2F6), Color(0xFF374151)),
+      'pickleball' => const SportTint(Color(0xFFF2F9E1), Color(0xFF4D7C0F)),
+      'table_tennis' || 'table tennis' || 'tt' => const SportTint(Color(0xFFFDECF3), Color(0xFFBE185D)),
+      'volleyball' => const SportTint(Color(0xFFE6F7F5), Color(0xFF0F766E)),
       _ => const SportTint(Color(0xFFF3EEFF), Color(0xFF5521B5)),
     };
 
@@ -119,7 +122,7 @@ class TimePlate extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(top,
-                style: GoogleFonts.archivo(fontSize: 17, fontWeight: FontWeight.w900, height: 1, color: filled ? Colors.white : brand)),
+                style: AppFonts.score(fontSize: 17, fontWeight: FontWeight.w900, height: 1, color: filled ? Colors.white : brand)),
             if (bottom.isNotEmpty) ...[
               const SizedBox(height: 3),
               Text(bottom,

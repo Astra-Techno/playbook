@@ -49,7 +49,8 @@ class SportChips extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Icon(cat.icon, size: 20, color: fg),
+                          // Matchday icon: white fill on the tint, sport fill when selected.
+                          SportIcon(cat.id, size: 24, tone: fg, tint: selected ? tint.fg : Colors.white, fallback: cat.icon),
                           Text(cat.label,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

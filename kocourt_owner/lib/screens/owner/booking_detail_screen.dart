@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import '../chat/chat_screen.dart';
@@ -289,7 +288,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(bookingPerson(booking), style: GoogleFonts.archivo(fontSize: 22, fontWeight: FontWeight.w900)),
+                    Text(bookingPerson(booking), style: AppFonts.display(fontSize: 22, fontWeight: FontWeight.w900)),
                     Text(
                       [booking['court_name'] ?? '', space].where((v) => '$v'.isNotEmpty).join(' · '),
                       style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
@@ -317,7 +316,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             children: [
               const Text('Amount', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
               const Spacer(),
-              Text('₹${booking['total_price'] ?? 0}', style: GoogleFonts.archivo(fontSize: 22, fontWeight: FontWeight.w900)),
+              Text('₹${booking['total_price'] ?? 0}', style: AppFonts.score(fontSize: 22, fontWeight: FontWeight.w900)),
             ],
           ),
         ],

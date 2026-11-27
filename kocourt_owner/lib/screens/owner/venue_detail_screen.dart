@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -114,7 +113,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                 children: [
                   Row(
                     children: [
-                      Flexible(child: Text(_court!['name'] ?? '', style: GoogleFonts.archivo(fontSize: 24, fontWeight: FontWeight.w900))),
+                      Flexible(child: Text(_court!['name'] ?? '', style: AppFonts.display(fontSize: 24, fontWeight: FontWeight.w900))),
                       if (verified) ...[
                         const SizedBox(width: 8),
                         const Icon(Icons.verified_rounded, size: 20, color: AppColors.primary),
@@ -136,7 +135,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(color: context.brand.primary, borderRadius: BorderRadius.circular(8)),
                         child: Text('\u20B9${_court!['hourly_rate']} / slot',
-                            style: GoogleFonts.archivo(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white)),
+                            style: AppFonts.display(fontSize: 17, fontWeight: FontWeight.w900, color: Colors.white)),
                       ),
                     ),
                   ],

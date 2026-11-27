@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
@@ -196,7 +195,7 @@ class _ScanCheckInScreenState extends State<ScanCheckInScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(color: brand, borderRadius: BorderRadius.circular(8)),
-                child: Text('SCAN BOOKING PASS', style: GoogleFonts.archivo(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                child: Text('SCAN BOOKING PASS', style: AppFonts.display(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1)),
               ),
             ),
           ),
@@ -277,7 +276,7 @@ class _ResultCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(color: colour, borderRadius: BorderRadius.circular(6)),
                   child: Text(result.ok ? 'CHECKED IN' : 'NOT CHECKED IN',
-                      style: GoogleFonts.archivo(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.8)),
+                      style: AppFonts.display(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.8)),
                 ),
               ),
               const Spacer(),
@@ -286,7 +285,7 @@ class _ResultCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           if (booking != null) ...[
-            Text('${booking['player'] ?? 'Player'}', style: GoogleFonts.archivo(fontSize: 22, fontWeight: FontWeight.w900)),
+            Text('${booking['player'] ?? 'Player'}', style: AppFonts.display(fontSize: 22, fontWeight: FontWeight.w900)),
             if (where.isNotEmpty || booking['start_time'] != null)
               Text(
                 [where, checkInTimeRange(booking['start_time'], booking['end_time'])].where((s) => s.isNotEmpty).join(' · '),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
@@ -269,13 +268,13 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           const SizedBox(height: 18),
         ],
         if (owned.isNotEmpty) ...[
-          Text('Your venues', style: GoogleFonts.archivo(fontSize: 18, fontWeight: FontWeight.w900)),
+          Text('Your venues', style: AppFonts.display(fontSize: 18, fontWeight: FontWeight.w900)),
           const SizedBox(height: 10),
           ...owned.map(_venueCard),
         ],
         if (assigned.isNotEmpty) ...[
           if (owned.isNotEmpty) const SizedBox(height: 12),
-          Text('Assigned to you', style: GoogleFonts.archivo(fontSize: 18, fontWeight: FontWeight.w900)),
+          Text('Assigned to you', style: AppFonts.display(fontSize: 18, fontWeight: FontWeight.w900)),
           const SizedBox(height: 10),
           ...assigned.map(_venueCard),
         ],
@@ -371,7 +370,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 children: [
                   Text(
                     '$total $venueLabel',
-                    style: GoogleFonts.archivo(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
+                    style: AppFonts.display(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -429,7 +428,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       children: [
         Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textMuted)),
         const SizedBox(height: 4),
-        Text(_formatCurrency(amount), style: GoogleFonts.archivo(fontSize: 22, fontWeight: FontWeight.w900)),
+        Text(_formatCurrency(amount), style: AppFonts.score(fontSize: 22, fontWeight: FontWeight.w900)),
       ],
     );
   }

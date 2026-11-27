@@ -18,6 +18,7 @@ dependencies:
   image_picker: ^1.1.2
   intl: ^0.20.3
   flutter_cashfree_pg_sdk: ^2.4.0+52
+  flutter_svg: ^2.5.1
 
 dev_dependencies:
   flutter_test:

@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../home/home_logic.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'slot_block.dart';
 import 'slot_timeline.dart';
 import 'addons_sheet.dart';
@@ -545,7 +544,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                       Flexible(
                         child: Text(
                           _court!['name'] ?? '',
-                          style: GoogleFonts.archivo(fontSize: 28, fontWeight: FontWeight.w900, height: 1.05),
+                          style: AppFonts.display(fontSize: 28, fontWeight: FontWeight.w900, height: 1.05),
                         ),
                       ),
                       if (_court!['is_verified'] == true || _court!['is_verified'] == 1) ...[

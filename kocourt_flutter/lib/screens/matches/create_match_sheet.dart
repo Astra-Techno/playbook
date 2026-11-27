@@ -213,14 +213,18 @@ class _CreateMatchSheetState extends State<CreateMatchSheet> {
                           borderRadius: BorderRadius.circular(18),
                         ),
                         alignment: Alignment.center,
-                        child: Text(
-                          '${sport.emoji} ${sport.label}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: selected ? Colors.white : AppColors.textSecondary,
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          SportIcon(sport.id, size: 18, tone: selected ? Colors.white : null, tint: selected ? AppColors.primary : null, fallback: sport.icon),
+                          const SizedBox(width: 6),
+                          Text(
+                            sport.label,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: selected ? Colors.white : AppColors.textSecondary,
+                            ),
                           ),
-                        ),
+                        ]),
                       ),
                     ),
                   );

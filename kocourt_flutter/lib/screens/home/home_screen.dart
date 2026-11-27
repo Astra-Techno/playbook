@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
@@ -525,11 +524,11 @@ class _HomeScreenState extends State<HomeScreen> {
             const SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.fromLTRB(20, 14, 20, 0),
-                child: Row(
+                // Matchday cards: next game first, then open games needing players.
+                child: Column(
                   children: [
-                    Expanded(child: NextGameCard()),
-                    SizedBox(width: 10),
-                    Expanded(child: PlayersWantedTile()),
+                    NextGameCard(),
+                    PlayersWantedTile(),
                   ],
                 ),
               ),
@@ -588,7 +587,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         first.isNotEmpty ? 'Game on, $first' : 'Find your game',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.archivo(fontSize: 26, fontWeight: FontWeight.w900, height: 1.05, color: AppColors.textPrimary),
+                        style: AppFonts.display(fontSize: 26, fontWeight: FontWeight.w900, height: 1.05, color: AppColors.textPrimary),
                       ),
                     ],
                   ),
@@ -650,7 +649,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ? CachedNetworkImage(imageUrl: auth.avatarUrl!, width: 44, height: 44, fit: BoxFit.cover)
                           : Text(
                               auth.isLoggedIn && auth.userName.isNotEmpty ? auth.userName[0].toUpperCase() : '?',
-                              style: GoogleFonts.archivo(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
+                              style: AppFonts.display(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white),
                             ),
                     ),
                   ),

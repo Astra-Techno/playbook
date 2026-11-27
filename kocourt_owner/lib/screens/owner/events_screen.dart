@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import '../../widgets/tab_phase.dart';
@@ -105,7 +104,7 @@ class _EventsScreenState extends State<EventsScreen> {
                                       crossAxisAlignment: CrossAxisAlignment.start,
                                       children: [
                                         Text((event['title'] ?? 'Event').toString(),
-                                            style: GoogleFonts.archivo(fontSize: 17, fontWeight: FontWeight.w900)),
+                                            style: AppFonts.display(fontSize: 17, fontWeight: FontWeight.w900)),
                                         const SizedBox(height: 6),
                                         Wrap(
                                           spacing: 6,

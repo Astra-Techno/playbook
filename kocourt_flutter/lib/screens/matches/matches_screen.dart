@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
@@ -211,7 +210,7 @@ class _MatchesScreenState extends State<MatchesScreen> {
           const SizedBox(height: 10),
           Text(
             match['title'] ?? match['court_name'] ?? 'Looking for players',
-            style: GoogleFonts.archivo(fontSize: 17, fontWeight: FontWeight.w800),
+            style: AppFonts.display(fontSize: 17, fontWeight: FontWeight.w800),
           ),
           if (match['court_name'] != null && match['title'] != null) ...[
             const SizedBox(height: 2),

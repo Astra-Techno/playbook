@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -283,7 +282,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
             Text(
               cancelled ? 'Booking cancelled' : (first.isEmpty ? "You're in" : "You're in, $first"),
               textAlign: TextAlign.center,
-              style: GoogleFonts.archivo(fontSize: 26, fontWeight: FontWeight.w900),
+              style: AppFonts.display(fontSize: 26, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 4),
             Text(
@@ -303,7 +302,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                       children: [
                         const Icon(Icons.timer_outlined, size: 16, color: Colors.white),
                         const SizedBox(width: 6),
-                        Text(countdown, style: GoogleFonts.archivo(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
+                        Text(countdown, style: AppFonts.score(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white)),
                       ],
                     ),
                   ),
@@ -375,7 +374,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                         children: [
                           const Text('Venue', style: TextStyle(color: Color(0xFFE5DAFF), fontSize: 11, fontWeight: FontWeight.w600)),
                           Text(ticket.venue,
-                              style: GoogleFonts.archivo(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
+                              style: AppFonts.display(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis),
                           if (ticket.place.isNotEmpty)
@@ -389,7 +388,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
                           child: Text(ticket.space.toUpperCase(),
-                              style: GoogleFonts.archivo(color: brand, fontSize: 15, fontWeight: FontWeight.w900)),
+                              style: AppFonts.display(color: brand, fontSize: 15, fontWeight: FontWeight.w900)),
                         ),
                       ),
                   ],
@@ -411,7 +410,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
                     children: [
                       Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 2),
-                      Text(value, style: GoogleFonts.archivo(fontSize: 15, fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(value, style: AppFonts.display(fontSize: 15, fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis),
                     ],
                   ),
               ],
@@ -439,7 +438,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(color: brand.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
               child: Text(ticket.id > 0 ? '#${ticket.id}' : '—',
-                  style: GoogleFonts.archivo(fontSize: 24, fontWeight: FontWeight.w900, color: brand, letterSpacing: 1)),
+                  style: AppFonts.score(fontSize: 24, fontWeight: FontWeight.w900, color: brand, letterSpacing: 1)),
             ),
           ),
           const SizedBox(width: 14),
@@ -482,7 +481,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
               const SizedBox(height: 2),
               Text(
                 '${code.substring(0, 4)} ${code.substring(4)}',
-                style: GoogleFonts.archivo(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                style: AppFonts.display(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: 1.5),
               ),
               const SizedBox(height: 6),
               Text(
@@ -510,7 +509,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
         children: [
           Row(
             children: [
-              Text('Squad', style: GoogleFonts.archivo(fontSize: 17, fontWeight: FontWeight.w900)),
+              Text('Squad', style: AppFonts.display(fontSize: 17, fontWeight: FontWeight.w900)),
               const SizedBox(width: 8),
               Text('${_squad.length + 1} players', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
               const Spacer(),
@@ -567,7 +566,7 @@ class _Jersey extends StatelessWidget {
             radius: 13,
             backgroundColor: color,
             child: Text(captain ? 'C' : label.characters.first.toUpperCase(),
-                style: GoogleFonts.archivo(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
+                style: AppFonts.display(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
           ),
           const SizedBox(width: 6),
           Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),

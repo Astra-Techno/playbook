@@ -5,7 +5,8 @@ import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import { useNotificationsStore } from '../stores/notifications'
-import { Award, MapPin, ChevronRight, AlertTriangle, RefreshCw, X } from 'lucide-vue-next'
+import { Award, AlertTriangle, RefreshCw, X } from 'lucide-vue-next'
+import KoCard from '../components/KoCard.vue'
 
 const router        = useRouter()
 const auth          = useAuthStore()
@@ -110,63 +111,24 @@ onMounted(fetchSubs)
             <div v-if="active.length" class="px-4 pt-5">
                 <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-3">Active</p>
                 <div class="space-y-3">
-                    <div v-for="s in active" :key="s.id"
-                        class="bg-white rounded-2xl p-4 shadow-sm"
-                        :class="isExpiringSoon(s.end_date) ? 'ring-1 ring-amber-300' : 'ring-1 border border-gray-200'">
-
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                                    :class="isExpiringSoon(s.end_date) ? 'bg-amber-100' : 'bg-gray-100'">
-                                    <Award :size="20" :class="isExpiringSoon(s.end_date) ? 'text-ending' : 'text-on-surface'" />
-                                </div>
-                                <div>
-                                    <p class="font-black text-on-surface text-sm leading-tight">{{ s.plan_name }}</p>
-                                    <div class="flex items-center gap-1 mt-0.5">
-                                        <MapPin :size="10" class="text-outline" />
-                                        <p class="text-[11px] font-bold text-on-surface-variant">{{ s.court_name }}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            <span class="text-[10px] font-black px-2.5 py-1 rounded-full shrink-0"
-                                :class="isExpiringSoon(s.end_date) ? 'bg-amber-100 text-ending' : 'bg-emerald-100 text-free'">
-                                {{ isExpiringSoon(s.end_date) ? 'Expiring soon' : 'Active' }}
-                            </span>
-                        </div>
-
-                        <div class="mt-4 grid grid-cols-3 gap-2 text-center">
-                            <div class="bg-white rounded-xl py-2.5">
-                                <p class="text-[10px] font-bold text-outline uppercase tracking-wider mb-0.5">Slot</p>
-                                <p class="text-xs font-black text-on-surface">{{ slotLabel(s.slot_type) }}</p>
-                            </div>
-                            <div class="bg-white rounded-xl py-2.5">
-                                <p class="text-[10px] font-bold text-outline uppercase tracking-wider mb-0.5">Expires</p>
-                                <p class="text-xs font-black text-on-surface">{{ fmt(s.end_date) }}</p>
-                            </div>
-                            <div class="rounded-xl py-2.5"
-                                :class="isExpiringSoon(s.end_date) ? 'bg-amber-50' : 'bg-gray-100'">
-                                <p class="text-[10px] font-bold uppercase tracking-wider mb-0.5"
-                                    :class="isExpiringSoon(s.end_date) ? 'text-ending' : 'text-outline'">Days left</p>
-                                <p class="text-xs font-black"
-                                    :class="isExpiringSoon(s.end_date) ? 'text-ending' : 'text-on-surface'">
-                                    {{ daysLeft(s.end_date) }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="mt-3 flex gap-2">
-                            <button @click="router.push(`/courts/${s.court_id}`)"
-                                class="flex-1 flex items-center justify-between text-xs font-bold text-on-surface bg-gray-50 rounded-xl px-4 py-2.5 active:scale-[0.98] transition-transform">
-                                <span>{{ isExpiringSoon(s.end_date) ? 'Renew Now' : 'View Court' }}</span>
-                                <ChevronRight :size="14" />
-                            </button>
-                            <button @click="cancelSub(s)"
-                                :disabled="cancellingId === s.id"
-                                class="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-due hover:text-due active:scale-95 transition-all disabled:opacity-40">
-                                <X :size="16" />
-                            </button>
-                        </div>
-                    </div>
+                    <KoCard v-for="s in active" :key="s.id"
+                        :kicker="isExpiringSoon(s.end_date) ? 'Expiring soon' : 'Membership'"
+                        :title="s.court_name"
+                        :meta="s.plan_name"
+                        :badge="`${daysLeft(s.end_date)}d`"
+                        :stats="[
+                            { value: String(daysLeft(s.end_date)), label: 'days left' },
+                            { value: slotLabel(s.slot_type), label: 'access' },
+                            { value: new Date(s.end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }), label: 'ends' },
+                        ]"
+                        :action="isExpiringSoon(s.end_date) ? 'Renew now' : 'View court'"
+                        :secondary="!isExpiringSoon(s.end_date)"
+                        @action="router.push(`/courts/${s.court_id}`)">
+                        <button @click="cancelSub(s)" :disabled="cancellingId === s.id"
+                            class="flex items-center gap-1 text-xs font-semibold px-3 py-2 rounded-xl bg-white text-due border border-outline-variant disabled:opacity-40">
+                            <X :size="12" /> Cancel membership
+                        </button>
+                    </KoCard>
                 </div>
             </div>
 

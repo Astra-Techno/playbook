@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart' show CupertinoPageTransitionsBuilder;
 import 'package:flutter/material.dart';
+import 'fonts.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../widgets/page_transition.dart';
 
 /// Per-app brand. Both apps share the logo violet (design v4 "Pro Light").
@@ -256,9 +256,9 @@ class AppTheme {
   static ThemeData get owner => _build(BrandTokens.owner);
 
   static ThemeData _build(BrandTokens brand) {
-    // Inter for reading, Archivo for sporty headings and big numbers.
-    final body = GoogleFonts.interTextTheme();
-    TextStyle head(TextStyle? s) => GoogleFonts.archivo(textStyle: s, fontWeight: FontWeight.w800);
+    // Matchday: Figtree for reading, Bricolage Grotesque for headings (see fonts.dart).
+    final body = AppFonts.bodyTheme();
+    TextStyle head(TextStyle? s) => AppFonts.display(textStyle: s, fontWeight: FontWeight.w800);
     final textTheme = body.copyWith(
       displayLarge: head(body.displayLarge),
       displayMedium: head(body.displayMedium),
@@ -309,7 +309,7 @@ class AppTheme {
         scrolledUnderElevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
         iconTheme: IconThemeData(color: brand.ink),
-        titleTextStyle: GoogleFonts.archivo(
+        titleTextStyle: AppFonts.display(
           color: brand.ink,
           fontSize: 19,
           fontWeight: FontWeight.w800,
@@ -321,14 +321,14 @@ class AppTheme {
         indicatorColor: brand.primary.withValues(alpha: 0.1),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return GoogleFonts.inter(
+            return AppFonts.body(
               fontSize: 10,
               fontWeight: FontWeight.w800,
               color: brand.primary,
               letterSpacing: 0.5,
             );
           }
-          return GoogleFonts.inter(
+          return AppFonts.body(
             fontSize: 10,
             fontWeight: FontWeight.w600,
             color: AppColors.textMuted,
@@ -349,7 +349,7 @@ class AppTheme {
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: radius),
-          textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
+          textStyle: AppFonts.body(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
@@ -359,13 +359,13 @@ class AppTheme {
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: radius),
-          textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
+          textStyle: AppFonts.body(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: brand.primary,
-          textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
+          textStyle: AppFonts.body(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -374,7 +374,7 @@ class AppTheme {
           side: const BorderSide(color: AppColors.border),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: radius),
-          textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
+          textStyle: AppFonts.body(fontSize: 15, fontWeight: FontWeight.w700),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -386,26 +386,26 @@ class AppTheme {
         errorBorder: border(AppColors.error),
         focusedErrorBorder: border(AppColors.error, width: 2),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        labelStyle: GoogleFonts.inter(
+        labelStyle: AppFonts.body(
           color: AppColors.textSecondary,
           fontWeight: FontWeight.w600,
           fontSize: 14,
         ),
-        floatingLabelStyle: GoogleFonts.inter(
+        floatingLabelStyle: AppFonts.body(
           color: brand.primary,
           fontWeight: FontWeight.w700,
           fontSize: 14,
         ),
-        hintStyle: GoogleFonts.inter(
+        hintStyle: AppFonts.body(
           color: AppColors.textDisabled,
           fontWeight: FontWeight.w500,
         ),
-        helperStyle: GoogleFonts.inter(
+        helperStyle: AppFonts.body(
           color: AppColors.textMuted,
           fontSize: 12,
           fontWeight: FontWeight.w500,
         ),
-        errorStyle: GoogleFonts.inter(
+        errorStyle: AppFonts.body(
           color: AppColors.error,
           fontSize: 12,
           fontWeight: FontWeight.w600,
@@ -415,12 +415,12 @@ class AppTheme {
         backgroundColor: AppColors.surfaceWhite,
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
-        titleTextStyle: GoogleFonts.archivo(
+        titleTextStyle: AppFonts.display(
           color: brand.ink,
           fontSize: 19,
           fontWeight: FontWeight.w800,
         ),
-        contentTextStyle: GoogleFonts.inter(
+        contentTextStyle: AppFonts.body(
           color: AppColors.textSecondary,
           fontSize: 14,
           fontWeight: FontWeight.w500,
@@ -439,7 +439,7 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         backgroundColor: brand.ink,
-        contentTextStyle: GoogleFonts.inter(
+        contentTextStyle: AppFonts.body(
           color: Colors.white,
           fontWeight: FontWeight.w600,
           fontSize: 14,
@@ -463,8 +463,8 @@ class AppTheme {
         side: const BorderSide(color: AppColors.border),
         shape: const StadiumBorder(),
         showCheckmark: false,
-        labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: brand.ink),
-        secondaryLabelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
+        labelStyle: AppFonts.body(fontSize: 13, fontWeight: FontWeight.w700, color: brand.ink),
+        secondaryLabelStyle: AppFonts.body(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
@@ -472,12 +472,12 @@ class AppTheme {
         foregroundColor: brand.onPrimary,
         elevation: 2,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
-        extendedTextStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
+        extendedTextStyle: AppFonts.body(fontSize: 15, fontWeight: FontWeight.w700),
       ),
       listTileTheme: ListTileThemeData(
         iconColor: brand.ink,
-        titleTextStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: brand.ink),
-        subtitleTextStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
+        titleTextStyle: AppFonts.body(fontSize: 15, fontWeight: FontWeight.w700, color: brand.ink),
+        subtitleTextStyle: AppFonts.body(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(color: brand.primary),
       dividerTheme: const DividerThemeData(

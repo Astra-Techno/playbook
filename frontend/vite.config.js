@@ -1,5 +1,5 @@
 import { fileURLToPath, URL } from 'node:url'
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, searchForWorkspaceRoot } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
 export default defineConfig(({ mode }) => {
@@ -27,6 +27,8 @@ export default defineConfig(({ mode }) => {
       }
     },
     server: {
+      // Sport icons are shared with the Flutter apps (kocourt_shared/assets/sports).
+      fs: { allow: [searchForWorkspaceRoot(process.cwd()), '../kocourt_shared/assets'] },
       proxy: {
         '/api': {
           target: apiTarget,

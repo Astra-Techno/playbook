@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 
@@ -103,72 +102,32 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                       final isActive = s['status'] == 'active';
                       final daysRemaining = int.tryParse('${s['days_remaining'] ?? 100}') ?? 100;
                       final isExpiring = s['days_remaining'] != null && daysRemaining <= 7;
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(AppRadius.lg),
-                          border: Border.all(color: isExpiring && isActive ? AppColors.warning : AppColors.border),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(s['court_name'] ?? '', style: GoogleFonts.archivo(fontWeight: FontWeight.w900, fontSize: 18)),
-                                      const SizedBox(height: 4),
-                                      isActive ? const StatusTag('Active', tone: TagTone.free) : const StatusTag('Expired', tone: TagTone.due),
-                                    ],
-                                  ),
-                                ),
-                                // Season-pass countdown over the last 30 days.
-                                if (isActive && s['days_remaining'] != null)
-                                  SizedBox(
-                                    width: 54,
-                                    height: 54,
-                                    child: CustomPaint(
-                                      painter: StopwatchRingPainter(
-                                        progress: (daysRemaining / 30).clamp(0.0, 1.0),
-                                        color: isExpiring ? AppColors.warning : context.brand.primary,
-                                      ),
-                                      child: Center(
-                                        child: Text('${daysRemaining}d',
-                                            style: GoogleFonts.archivo(fontSize: 13, fontWeight: FontWeight.w900)),
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Text(s['plan_name'] ?? '', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
-                            const SizedBox(height: 4),
-                            Text('${s['start_date'] ?? ''} → ${s['end_date'] ?? ''}', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                            if (isExpiring && isActive) ...[
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Icon(Icons.warning_amber_rounded, size: 14, color: AppColors.warningDark),
-                                  const SizedBox(width: 4),
-                                  Text('Expiring in $daysRemaining days', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.warningDark)),
-                                ],
-                              ),
-                            ],
-                            if (!isActive || isExpiring) ...[
-                              const SizedBox(height: 12),
-                              SizedBox(
-                                width: double.infinity, height: 40,
-                                child: ElevatedButton(
-                                  onPressed: () => _renew(s),
-                                  child: const Text('Renew', style: TextStyle(fontWeight: FontWeight.w700)),
-                                ),
-                              ),
-                            ],
+                      final ends = DateTime.tryParse('${s['end_date'] ?? ''}');
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: KoCard(
+                          kicker: isActive ? 'Membership' : 'Membership ended',
+                          title: '${s['court_name'] ?? ''}',
+                          meta: '${s['plan_name'] ?? ''}',
+                          badge: isActive && s['days_remaining'] != null ? '${daysRemaining}d' : null,
+                          stats: [
+                            if (isActive && s['days_remaining'] != null) KoStat('$daysRemaining', 'days left'),
+                            if (ends != null) KoStat('${ends.day}/${ends.month}', isActive ? 'renews or ends' : 'ended'),
                           ],
+                          middle: Row(
+                            children: [
+                              isActive ? const StatusTag('Active', tone: TagTone.free) : const StatusTag('Expired', tone: TagTone.due),
+                              if (isExpiring && isActive) ...[
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text('Expiring in $daysRemaining days',
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.warningDark)),
+                                ),
+                              ],
+                            ],
+                          ),
+                          actionLabel: !isActive || isExpiring ? 'Renew' : null,
+                          onAction: () => _renew(s),
                         ),
                       );
                     },
