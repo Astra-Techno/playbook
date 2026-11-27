@@ -126,6 +126,15 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
     ));
   }
 
+  /// "Paid ₹1,200", "Pay ₹1,200 at the venue", "Payment pending".
+  String _paymentLine(Map<String, dynamic> booking, BookingTicket ticket) {
+    final amount = rupees(booking['total_price']);
+    final status = '${booking['payment_status'] ?? 'paid'}';
+    if (status == 'paid' || status == 'demo') return amount.isEmpty ? 'Paid' : 'Paid $amount';
+    if (booking['collection_method'] != null) return amount.isEmpty ? 'Pay at the venue' : 'Pay $amount at the venue';
+    return amount.isEmpty ? 'Payment pending' : '$amount · payment pending';
+  }
+
   int get _players => _squad.length + 1;
   int get _openSpots => int.tryParse('${_openMatch?['spots_left'] ?? 0}') ?? 0;
 
@@ -475,7 +484,7 @@ class _BookingConfirmationScreenState extends State<BookingConfirmationScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              [if (ticket.amount.isNotEmpty) ticket.amount, 'Payment ${booking['payment_status'] ?? 'paid'}'].join(' · '),
+              _paymentLine(booking, ticket),
               textAlign: TextAlign.center,
               style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500),
             ),
