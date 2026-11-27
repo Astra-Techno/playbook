@@ -6,6 +6,7 @@ export 'core/api.dart';
 export 'core/api_error_bus.dart';
 export 'core/theme.dart';
 export 'core/fonts.dart';
+export 'core/format.dart';
 export 'core/constants.dart';
 export 'core/icons.dart';
 export 'core/phone_fields.dart';

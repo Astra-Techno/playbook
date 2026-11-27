@@ -3,6 +3,7 @@ import 'package:kocourt_shared/kocourt_shared.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../court_details/court_details_screen.dart';
 import 'court_list_params.dart';
+import '../home/home_logic.dart' show isOpenNow;
 
 class FindCourtsScreen extends StatefulWidget {
   const FindCourtsScreen({super.key});
@@ -60,8 +61,8 @@ class _FindCourtsScreenState extends State<FindCourtsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(title: const Text('All venues', style: TextStyle(fontWeight: FontWeight.w800))),
+      backgroundColor: AppColors.surface,
+      appBar: AppBar(title: const Text('All venues')),
       body: Column(
         children: [
           // Search bar
@@ -71,11 +72,11 @@ class _FindCourtsScreenState extends State<FindCourtsScreen> {
               controller: _searchCtrl,
               onSubmitted: (_) => _search(),
               decoration: InputDecoration(
-                hintText: 'Search by location...',
+                hintText: 'Search venues or areas',
                 prefixIcon: const Icon(AppIcons.search, size: 18),
                 suffixIcon: IconButton(onPressed: _search, icon: const Icon(AppIcons.compass, size: 18)),
                 filled: true,
-                fillColor: AppColors.surfaceDim,
+                fillColor: Colors.white,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               ),
@@ -97,12 +98,17 @@ class _FindCourtsScreenState extends State<FindCourtsScreen> {
                       _search();
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.fromLTRB(10, 6, 14, 6),
                       decoration: BoxDecoration(
-                        color: sel ? AppColors.primary : AppColors.surfaceDim,
+                        color: sel ? (c.id == 'All' ? AppColors.primary : sportTint(c.id).fg) : Colors.white,
                         borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: sel ? Colors.transparent : AppColors.border),
                       ),
-                      child: Text(c.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: sel ? Colors.white : AppColors.textSecondary)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        SportIcon(c.id, size: 18, tone: sel ? Colors.white : null, tint: sel ? sportTint(c.id).fg : null, fallback: c.icon),
+                        const SizedBox(width: 6),
+                        Text(c.label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: sel ? Colors.white : AppColors.textPrimary)),
+                      ]),
                     ),
                   ),
                 );
@@ -135,39 +141,73 @@ class _FindCourtsScreenState extends State<FindCourtsScreen> {
                         itemBuilder: (_, i) {
                           final c = _results[i];
                           final img = getVenueImage(c);
-                          return GestureDetector(
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CourtDetailsScreen(courtId: c['id']))),
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: AppColors.border),
-                              ),
-                              child: Row(
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
-                                    child: CachedNetworkImage(imageUrl: img, width: 100, height: 80, fit: BoxFit.cover),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(c['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                                          const SizedBox(height: 4),
-                                          Text(c['location'] ?? '', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                                          if (c['hourly_rate'] != null)
-                                            Text('₹${c['hourly_rate']}/slot', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primary)),
-                                        ],
+                          final tint = sportTint(c['type']);
+                          final open = isOpenNow(c, DateTime.now());
+                          final rating = num.tryParse('${c['avg_rating'] ?? ''}');
+                          final place = [
+                            if ('${c['location'] ?? ''}'.isNotEmpty) '${c['location']}',
+                            if (c['distance_km'] != null) '${c['distance_km']} km',
+                          ].join(' · ');
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Material(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(18),
+                                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CourtDetailsScreen(courtId: courtIdFrom(c['id'])))),
+                                child: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: AppColors.border)),
+                                  child: Row(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(14),
+                                        child: CachedNetworkImage(
+                                          imageUrl: img,
+                                          width: 88,
+                                          height: 88,
+                                          fit: BoxFit.cover,
+                                          errorWidget: (_, _, _) => Container(width: 88, height: 88, color: tint.bg, alignment: Alignment.center, child: SportIcon(c['type'], size: 36)),
+                                        ),
                                       ),
-                                    ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(children: [
+                                              SportIcon(c['type'], size: 15, tint: Colors.white),
+                                              const SizedBox(width: 5),
+                                              Flexible(child: Text(sportLabel(c['type']).toUpperCase(), style: AppFonts.score(fontSize: 12, letterSpacing: 1, color: tint.fg))),
+                                            ]),
+                                            const SizedBox(height: 3),
+                                            Text('${c['name'] ?? ''}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppFonts.display(fontSize: 16)),
+                                            if (place.isNotEmpty)
+                                              Text(place, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: AppColors.textSecondary)),
+                                            const SizedBox(height: 6),
+                                            Row(children: [
+                                              if (c['hourly_rate'] != null) ...[
+                                                Text(rupees(c['hourly_rate']), style: AppFonts.score(fontSize: 16, color: AppColors.textPrimary)),
+                                                const Text('/hr', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                                                const SizedBox(width: 10),
+                                              ],
+                                              if (rating != null && rating > 0) ...[
+                                                const Icon(Icons.star_rounded, size: 15, color: Color(0xFFF59E0B)),
+                                                Text(rating.toStringAsFixed(1), style: AppFonts.score(fontSize: 14, color: AppColors.textPrimary)),
+                                                const SizedBox(width: 10),
+                                              ],
+                                              Flexible(
+                                                child: Text(open ? 'Open now' : 'Closed', maxLines: 1,
+                                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: open ? AppColors.secondary : AppColors.textMuted)),
+                                              ),
+                                            ]),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const Padding(padding: EdgeInsets.only(right: 12), child: Icon(AppIcons.chevronRight, size: 18, color: Colors.grey)),
-                                ],
+                                ),
                               ),
                             ),
                           );

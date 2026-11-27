@@ -254,7 +254,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     final location = _court?['location'] ?? '';
     final rate = _court?['hourly_rate'] ?? '';
     final text = '$name\n${location.isNotEmpty ? '$location\n' : ''}'
-        '${rate.toString().isNotEmpty ? '\u20B9$rate/hr\n' : ''}'
+        '${rate.toString().isNotEmpty ? '${rupees(rate)}/hr\n' : ''}'
         '\nBook now on KoCourt!\nhttps://www.kocourt.com/court/${widget.courtId}';
     await SharePlus.instance.share(ShareParams(text: text));
   }
@@ -578,7 +578,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            '\u20B9${_court!['hourly_rate']}',
+                            rupees(_court!['hourly_rate']),
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.w900,

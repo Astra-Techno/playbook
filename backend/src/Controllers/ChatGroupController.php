@@ -502,14 +502,30 @@ class ChatGroupController {
         $stmt->execute([$userId, $userId]);
         foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) $ids[(int)$id] = true;
 
-        // 5. Match partners: accepted match requests
-        $stmt = $db->prepare("
-            SELECT DISTINCT CASE WHEN requester_id = ? THEN opponent_id ELSE requester_id END AS partner_id
-            FROM match_requests
-            WHERE (requester_id = ? OR opponent_id = ?) AND status = 'accepted'
-        ");
-        $stmt->execute([$userId, $userId, $userId]);
-        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) $ids[(int)$id] = true;
+        // 5. Match partners: anyone who shared a match with me (host included in participants)
+        try {
+            $stmt = $db->prepare("
+                SELECT DISTINCT mp2.user_id
+                FROM match_participants mp1
+                JOIN match_participants mp2 ON mp2.match_id = mp1.match_id AND mp2.user_id != mp1.user_id
+                WHERE mp1.user_id = ?
+            ");
+            $stmt->execute([$userId]);
+            foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) $ids[(int)$id] = true;
+        } catch (PDOException $e) { /* matches tables not created yet */ }
+
+        // 6. Squad mates: the booker and players of any booking squad I was in
+        try {
+            $stmt = $db->prepare("
+                SELECT DISTINCT u FROM (
+                    SELECT bp2.user_id AS u FROM booking_players bp1 JOIN booking_players bp2 ON bp2.booking_id = bp1.booking_id WHERE bp1.user_id = ?
+                    UNION SELECT b.user_id FROM booking_players bp JOIN bookings b ON b.id = bp.booking_id WHERE bp.user_id = ?
+                    UNION SELECT bp.user_id FROM booking_players bp JOIN bookings b ON b.id = bp.booking_id WHERE b.user_id = ?
+                ) squad WHERE u != ?
+            ");
+            $stmt->execute([$userId, $userId, $userId, $userId]);
+            foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $id) $ids[(int)$id] = true;
+        } catch (PDOException $e) { /* booking_players created on first squad add */ }
 
         return array_keys($ids);
     }
@@ -548,8 +564,7 @@ class ChatGroupController {
             SELECT 1
             FROM bookings b1
             JOIN bookings b2 ON b2.court_id = b1.court_id
-                AND b2.slot_date = b1.slot_date
-                AND b2.slot_time = b1.slot_time
+                AND b2.start_time = b1.start_time
                 AND b2.user_id = ?
             WHERE b1.user_id = ? AND b1.status = 'confirmed' AND b2.status = 'confirmed'
             LIMIT 1

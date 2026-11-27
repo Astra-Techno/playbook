@@ -251,7 +251,7 @@ class _VenueCardState extends State<VenueCard> with TickerProviderStateMixin {
                               text: TextSpan(
                                 children: [
                                   TextSpan(
-                                    text: '\u20B9$rate',
+                                    text: rupees(rate),
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w900,
                                       fontSize: 15,

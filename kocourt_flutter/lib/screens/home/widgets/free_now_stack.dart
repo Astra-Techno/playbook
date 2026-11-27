@@ -143,7 +143,7 @@ class _VenueCard extends StatelessWidget {
     final hour = freeHour(venue);
     final meta = [
       'Open till ${clockLabel(venue['close_time'] ?? '22:00:00')}',
-      if (rate != null) '₹$rate/hr',
+      if (rate != null) '${rupees(rate)}/hr',
       if (km != null) '$km km',
     ].join(' · ');
 

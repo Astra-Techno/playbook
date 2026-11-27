@@ -103,9 +103,9 @@ class _MatchesScreenState extends State<MatchesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('Find a Game', style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text('Find a game'),
         centerTitle: false,
         actions: [
           GestureDetector(
@@ -139,19 +139,19 @@ class _MatchesScreenState extends State<MatchesScreen> {
                       Icon(AppIcons.users, size: 48, color: AppColors.textDisabled),
                       const SizedBox(height: 16),
                       Text(
-                        'No open matches',
+                        'No open games yet',
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Create one and find players',
+                        'Post a game and players nearby can join',
                         style: TextStyle(color: AppColors.textMuted),
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
                         onPressed: _showCreateSheet,
                         icon: const Icon(AppIcons.plus, size: 16),
-                        label: const Text('Create Match', style: TextStyle(fontWeight: FontWeight.w700)),
+                        label: const Text('Create a game', style: TextStyle(fontWeight: FontWeight.w700)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
@@ -174,6 +174,8 @@ class _MatchesScreenState extends State<MatchesScreen> {
     );
   }
 
+  /// Matchday match card: sport kicker, venue, friendly day/time, squad as jerseys
+  /// (each player once, open spots dashed) and one clear action.
   Widget _buildMatchCard(Map<String, dynamic> match) {
     final auth = context.read<AuthProvider>();
     final isCreator = sameUser(auth.userId, match['user_id']) || sameUser(auth.userId, match['created_by']);
@@ -185,196 +187,75 @@ class _MatchesScreenState extends State<MatchesScreen> {
     final joinedCount = int.tryParse('${match['joined_count'] ?? participants.length}') ?? participants.length;
     final spotsLeft = matchSpotsLeft(slotsNeeded, joinedCount > participants.length ? joinedCount : participants.length);
     final isFull = spotsLeft == 0;
-
+    final id = matchId(match['id']);
     final sport = (match['sport'] ?? match['sport_type'] ?? '').toString();
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              if (sport.isNotEmpty) StatusTag.sport(sport),
-              const Spacer(),
-              isFull
-                  ? const StatusTag('Full', tone: TagTone.ending)
-                  : StatusTag('Need $spotsLeft', tone: TagTone.free),
+    final day = DateTime.tryParse('${match['date'] ?? ''}');
+    final venue = '${match['court_name'] ?? ''}'.trim();
+    final custom = '${match['title'] ?? ''}'.trim();
+    final title = venue.isNotEmpty ? venue : (custom.isNotEmpty ? custom : 'Open game');
+    final hostName = '${match['creator_name'] ?? 'a player'}'.split(' ').first;
+    final host = isCreator ? "You're hosting" : 'Hosted by $hostName';
+    // Host is a participant too; show each player once.
+    final seen = <String>{};
+    final names = [
+      for (final p in participants)
+        if (seen.add('${p['user_id']}')) sameUser(p['user_id'], auth.userId) ? 'You' : '${p['name'] ?? 'Player'}',
+    ];
+    final notes = '${match['notes'] ?? ''}'.trim();
+    final hasCustomTitle = custom.isNotEmpty && custom != 'Looking for players' && !custom.startsWith('Need ');
+
+    String? action;
+    VoidCallback? onAction;
+    var secondary = false;
+    if (!isCreator && hasJoined && id != null) {
+      action = "You're in · Leave";
+      secondary = true;
+      onAction = () => _leaveMatch(id);
+    } else if (!isCreator && !isFull && auth.isLoggedIn && id != null) {
+      action = spotsLeft == 1 ? 'Join · last spot' : 'Join game';
+      onAction = () => _joinMatch(id);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: KoCard(
+        sport: sport,
+        kicker: sport.isEmpty ? 'Open game' : sportLabel(sport),
+        title: title,
+        meta: [if (day != null) friendlyDay(day), clockRange(match['start_time'], match['end_time']), host].where((t) => t.isNotEmpty).join(' · '),
+        badge: isFull ? 'Full' : 'Need $spotsLeft',
+        middle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (hasCustomTitle) ...[
+              Text(custom, style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 6),
             ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            match['title'] ?? match['court_name'] ?? 'Looking for players',
-            style: AppFonts.display(fontSize: 17, fontWeight: FontWeight.w800),
-          ),
-          if (match['court_name'] != null && match['title'] != null) ...[
-            const SizedBox(height: 2),
-            Text(
-              match['court_name'],
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            JerseyRow(
+              names: names,
+              open: spotsLeft,
+              tone: sportTint(sport).fg,
+              note: isFull ? 'Game is full' : '$spotsLeft spot${spotsLeft == 1 ? '' : 's'} left',
             ),
-          ],
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Icon(AppIcons.calendarDays, size: 13, color: AppColors.textMuted),
-              const SizedBox(width: 4),
-              Text(
-                match['date'] ?? '',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-              ),
-              const SizedBox(width: 16),
-              Icon(AppIcons.clock, size: 13, color: AppColors.textMuted),
-              const SizedBox(width: 4),
-              Text(
-                '${_formatTime(match['start_time'])} - ${_formatTime(match['end_time'])}',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-              ),
+            if (notes.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(notes, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
             ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Icon(AppIcons.users, size: 13, color: AppColors.textMuted),
-              const SizedBox(width: 4),
-              Text(
-                isFull ? 'Match is full' : '$spotsLeft spot${spotsLeft == 1 ? '' : 's'} left',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: isFull ? AppColors.warningDark : AppColors.textSecondary,
-                  fontWeight: isFull ? FontWeight.w600 : FontWeight.w400,
+            if (isCreator && id != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: () => _cancelMatch(id),
+                  style: TextButton.styleFrom(foregroundColor: AppColors.error, padding: EdgeInsets.zero, visualDensity: VisualDensity.compact),
+                  child: const Text('Cancel game'),
                 ),
               ),
-            ],
-          ),
-          if (participants.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 28,
-              child: Row(
-                children: [
-                  ...participants.take(5).map((p) => Container(
-                    margin: const EdgeInsets.only(right: 4),
-                    child: CircleAvatar(
-                      radius: 14,
-                      backgroundColor: AppColors.border,
-                      backgroundImage: p['avatar_url'] != null ? NetworkImage(p['avatar_url']) : null,
-                      child: p['avatar_url'] == null
-                          ? Text(
-                              (p['name'] ?? '?')[0].toUpperCase(),
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
-                            )
-                          : null,
-                    ),
-                  )),
-                  if (participants.length > 5)
-                    Text(
-                      '+${participants.length - 5}',
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                    ),
-                ],
-              ),
-            ),
           ],
-          if (match['notes']?.toString().isNotEmpty == true) ...[
-            const SizedBox(height: 8),
-            Text(
-              match['notes'],
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 14,
-                backgroundColor: AppColors.border,
-                backgroundImage: match['creator_avatar'] != null ? NetworkImage(match['creator_avatar']) : null,
-                child: match['creator_avatar'] == null
-                    ? Text(
-                        (match['creator_name'] ?? '?')[0].toUpperCase(),
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
-                      )
-                    : null,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                isCreator ? 'You' : (match['creator_name'] ?? 'Player'),
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
-              ),
-              const Spacer(),
-              if (isCreator)
-                SizedBox(
-                  height: 36,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      final id = matchId(match['id']);
-                      if (id != null) _cancelMatch(id);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.error,
-                      side: const BorderSide(color: AppColors.error, width: 1.5),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                    ),
-                    child: const Text('Cancel', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                  ),
-                )
-              else if (hasJoined)
-                SizedBox(
-                  height: 36,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      final id = matchId(match['id']);
-                      if (id != null) _leaveMatch(id);
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textSecondary,
-                      side: BorderSide(color: AppColors.textDisabled),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                    ),
-                    child: const Text('Leave', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                  ),
-                )
-              else if (!isFull && auth.isLoggedIn)
-                SizedBox(
-                  height: 36,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      final id = matchId(match['id']);
-                      if (id != null) _joinMatch(id);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                    ),
-                    child: const Text('Join', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
-                  ),
-                ),
-            ],
-          ),
-        ],
+        ),
+        actionLabel: action,
+        secondaryAction: secondary,
+        onAction: onAction,
       ),
     );
-  }
-
-  String _formatTime(String? time) {
-    if (time == null || time.isEmpty) return '';
-    final parts = time.split(':');
-    if (parts.length < 2) return time;
-    final h = int.tryParse(parts[0]) ?? 0;
-    final m = parts[1];
-    final period = h >= 12 ? 'PM' : 'AM';
-    final hour = h == 0 ? 12 : (h > 12 ? h - 12 : h);
-    return '$hour:$m $period';
   }
 }
