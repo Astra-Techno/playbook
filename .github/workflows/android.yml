@@ -92,14 +92,19 @@ jobs:
           cp "${{ matrix.app }}/build/app/outputs/flutter-apk/app-release.apk" "${{ matrix.artifact }}.apk"
           ls -lh "${{ matrix.artifact }}.aab" "${{ matrix.artifact }}.apk"
 
-      - name: Check the bundle is not debug-signed
+      - name: Check the bundle is release-signed
         run: |
-          # The debug certificate's subject is "CN=Android Debug"; Play rejects it.
-          if keytool -printcert -jarfile "${{ matrix.artifact }}.apk" | grep -q "CN=Android Debug"; then
-            echo "::error::${{ matrix.artifact }} is signed with the debug key."
+          # The AAB carries a jar signature keytool can read (APKs use v2/v3, which it can't).
+          cert=$(keytool -printcert -jarfile "${{ matrix.artifact }}.aab" 2>&1 || true)
+          if ! echo "$cert" | grep -q "Owner:"; then
+            echo "::error::${{ matrix.artifact }}.aab is not signed."
             exit 1
           fi
-          keytool -printcert -jarfile "${{ matrix.artifact }}.apk" | grep -E "Owner:|SHA256:" | head -2
+          if echo "$cert" | grep -q "CN=Android Debug"; then
+            echo "::error::${{ matrix.artifact }}.aab is signed with the debug key."
+            exit 1
+          fi
+          echo "$cert" | grep -E "Owner:" | head -1
 
       - name: Job summary
         run: |
