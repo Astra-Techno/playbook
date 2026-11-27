@@ -12,6 +12,7 @@ import {
     UserPlus, X, Search, Loader2, Users, LayoutGrid, RefreshCw, Images
 } from 'lucide-vue-next'
 import MatchSheet from '../components/MatchSheet.vue'
+import AddonsSheet from '../components/AddonsSheet.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,6 +26,15 @@ const plans = ref([])
 const activeTab = ref('booking')
 const loading = ref(true)
 const bookingLoading = ref(false)
+
+// "Add kit?" sheet: resolves with { id: qty } or null when dismissed.
+const addonsSheet = ref({ open: false, list: [], resolve: null })
+const pickAddons = (list) => new Promise((resolve) => { addonsSheet.value = { open: true, list, resolve } })
+const onAddonsDone = (counts) => {
+    const r = addonsSheet.value.resolve
+    addonsSheet.value = { open: false, list: [], resolve: null }
+    r?.(counts)
+}
 const subscribeLoading = ref(null)  // holds plan_id being subscribed
 
 const selectedDate  = ref('')
@@ -415,6 +425,10 @@ const price = computed(() => {
     return court.value ? parseFloat(court.value.hourly_rate) : 0
 })
 
+// Squad split estimate shown under the total (matches the app's SquadSplit).
+const squad = ref(1)
+const perHead = computed(() => Math.ceil(totalPrice.value / Math.max(1, squad.value)))
+
 const totalPrice = computed(() => {
     if (selectedSlots.value.length === 0) return 0
     return selectedSlots.value.reduce((sum, slot) => sum + slotPrice(slot.pad), 0)
@@ -610,7 +624,8 @@ const openCashfree = async (amount, type, payload, onSuccess) => {
             : policy['cancellation.enabled']
                 ? `Venue refund: 100% at least ${policy['cancellation.full_hours']} hours before play; ${policy['cancellation.partial_percent']}% at least ${policy['cancellation.partial_hours']} hours before; otherwise ${policy['cancellation.late_percent']}%. Platform fee refund: ${policy['cancellation.fee_refund'].replaceAll('_', ' ')}. Venue cancellations refund the full payment.`
                 : 'Customer cancellation is disabled. Venue cancellations refund the full payment.'
-        if (!window.confirm(`Review payment\nVenue: INR ${money(price.venue.base)}\nVenue GST: INR ${money(price.venue.tax)}\nKoCourt fee: INR ${money(price.fee.base)}\nFee GST: INR ${money(price.fee.tax)}\nTotal: INR ${money(price.total)}\n\n${terms}\nEligible refunds require support review; expected credit ${policy['refund.expected_days']} business days after initiation.\n\nContinue?`)) return
+        const kit = quote.snapshot.addons ? `  incl. kit rental: INR ${money(quote.snapshot.addons.paise)}\n` : ''
+        if (!window.confirm(`Review payment\nVenue: INR ${money(price.venue.base)}\n${kit}Venue GST: INR ${money(price.venue.tax)}\nKoCourt fee: INR ${money(price.fee.base)}\nFee GST: INR ${money(price.fee.tax)}\nTotal: INR ${money(price.total)}\n\n${terms}\nEligible refunds require support review; expected credit ${policy['refund.expected_days']} business days after initiation.\n\nContinue?`)) return
         amount = quote.amount
         const res = await axios.post('/payments/create-order', {
             amount, type, payload, quote_hash: quote.quote_hash,
@@ -704,6 +719,17 @@ const confirmBooking = async () => {
         total_price: group.reduce((sum, s) => sum + slotPrice(s.pad), 0),
     }))
 
+    // Add-ons (bat, balls, bibs): only asked when the venue rents kit.
+    let addons = []
+    try {
+        const list = (await axios.get(`/courts/${court.value.id}/addons`)).data?.addons || []
+        if (list.length) {
+            const picked = await pickAddons(list)
+            if (picked === null) return
+            addons = Object.entries(picked).filter(([, q]) => q > 0).map(([id, q]) => ({ item_id: Number(id), quantity: q }))
+        }
+    } catch { /* no add-on list (older server): book without kit */ }
+
     bookingLoading.value = true
 
     await openCashfree(
@@ -713,6 +739,7 @@ const confirmBooking = async () => {
             user_id: auth.user?.id, court_id: court.value.id,
             sub_court_id: selectedSpace.value?.id || null,
             slots, type: 'hourly', total_price: totalPrice.value,
+            ...(addons.length ? { addons } : {}),
         },
         async ({ order_id }) => {
             try {
@@ -1248,7 +1275,19 @@ const subscribePlan = async (plan) => {
                         </div>
                         <div class="flex justify-between items-center pt-3 mt-3 border-t border-black/20">
                             <span class="font-bold text-on-surface-variant">Total payable</span>
-                            <span class="text-xl font-extrabold text-on-surface">₹{{ totalPrice }}</span>
+                            <span class="font-score text-2xl font-bold tabular-nums text-on-surface">₹{{ totalPrice }}</span>
+                        </div>
+                        <!-- Squad split (same as the app): an estimate per player; one person still pays. -->
+                        <div class="flex items-center justify-between pt-3 mt-3 border-t border-black/10">
+                            <span class="text-on-surface-variant">Players</span>
+                            <div class="flex items-center gap-2">
+                                <button type="button" class="h-8 w-8 rounded-full border border-outline-variant font-bold disabled:opacity-30"
+                                    :disabled="squad <= 1" aria-label="One player fewer" @click="squad--">−</button>
+                                <span class="w-5 text-center font-score text-lg font-bold">{{ squad }}</span>
+                                <button type="button" class="h-8 w-8 rounded-full border border-primary font-bold text-primary disabled:opacity-30"
+                                    :disabled="squad >= 30" aria-label="One player more" @click="squad++">+</button>
+                                <span class="ml-1 font-score text-lg font-bold text-primary tabular-nums">₹{{ perHead }} each</span>
+                            </div>
                         </div>
                     </div>
 
@@ -1504,7 +1543,7 @@ const subscribePlan = async (plan) => {
                         <div class="flex items-center justify-between gap-4">
                             <div v-if="selectedSlots.length && selectedDate" class="min-w-0">
                                 <p class="text-on-surface font-bold text-[18px]">₹{{ totalPrice }}</p>
-                                <p class="text-on-surface-variant text-[13px]">{{ selectedSlots.length }} slot{{ selectedSlots.length > 1 ? 's' : '' }} selected</p>
+                                <p class="text-on-surface-variant text-[13px]">{{ selectedSlots.length }} slot{{ selectedSlots.length > 1 ? 's' : '' }} selected<template v-if="squad > 1"> · ₹{{ perHead }} each</template></p>
                             </div>
                             <div v-else class="min-w-0">
                                 <p class="text-on-surface font-bold text-[18px]">₹{{ price }}</p>
@@ -1775,4 +1814,5 @@ const subscribePlan = async (plan) => {
         </div>
     </Transition>
 
+    <AddonsSheet :open="addonsSheet.open" :addons="addonsSheet.list" @done="onAddonsDone" />
 </template>

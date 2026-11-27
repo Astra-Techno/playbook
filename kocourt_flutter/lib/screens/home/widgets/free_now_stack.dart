@@ -3,15 +3,19 @@ import 'package:flutter/material.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 
 import '../home_logic.dart';
+import 'day_strip.dart';
 
 /// v5 "Open now" card stack: swipe through venues open right now. The photo
 /// fades into white, two tilted cards behind hint there is more to swipe, and
 /// the incoming card rises with a slight tilt.
 class FreeNowStack extends StatefulWidget {
-  const FreeNowStack({super.key, required this.venues, required this.onOpen});
+  const FreeNowStack({super.key, required this.venues, required this.onOpen, this.date});
 
   final List<Map<String, dynamic>> venues;
   final ValueChanged<Map<String, dynamic>> onOpen;
+
+  /// Day the strips describe ("YYYY-MM-DD").
+  final String? date;
 
   @override
   State<FreeNowStack> createState() => _FreeNowStackState();
@@ -41,11 +45,13 @@ class _FreeNowStackState extends State<FreeNowStack> {
     final behind1 = sportTint(venues[(current + 1) % venues.length]['type']);
     final behind2 = sportTint(venues[(current + 2) % venues.length]['type']);
     final still = MediaQuery.disableAnimationsOf(context);
+    // Cards grow to fit the day strip once strips have loaded.
+    final extra = venues.any((v) => v['strip'] is String) ? 44.0 : 0.0;
 
     return Column(
       children: [
         SizedBox(
-          height: 262,
+          height: 262 + extra,
           child: Stack(
             children: [
               if (venues.length > 2)
@@ -53,7 +59,7 @@ class _FreeNowStackState extends State<FreeNowStack> {
                   left: 28,
                   right: 28,
                   top: 0,
-                  height: 236,
+                  height: 236 + extra,
                   child: Transform.rotate(angle: -0.05, child: _BackCard(color: behind2.bg)),
                 ),
               if (venues.length > 1)
@@ -61,7 +67,7 @@ class _FreeNowStackState extends State<FreeNowStack> {
                   left: 14,
                   right: 14,
                   top: 6,
-                  height: 238,
+                  height: 238 + extra,
                   child: Transform.rotate(angle: 0.045, child: _BackCard(color: behind1.bg)),
                 ),
               Positioned.fill(
@@ -75,6 +81,7 @@ class _FreeNowStackState extends State<FreeNowStack> {
                       venue: venues[i],
                       position: '${i + 1} of ${venues.length}',
                       onOpen: () => widget.onOpen(venues[i]),
+                      date: widget.date,
                     );
                     if (still) return card;
                     // The card leaving tilts away and shrinks a little.
@@ -122,8 +129,9 @@ class _BackCard extends StatelessWidget {
 }
 
 class _VenueCard extends StatelessWidget {
-  const _VenueCard({required this.venue, required this.position, required this.onOpen});
+  const _VenueCard({required this.venue, required this.position, required this.onOpen, this.date});
   final Map<String, dynamic> venue;
+  final String? date;
   final String position;
   final VoidCallback onOpen;
 
@@ -131,6 +139,8 @@ class _VenueCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final rate = venue['hourly_rate'];
     final km = venue['distance_km'];
+    final strip = venue['strip'] is String ? venue['strip'] as String : null;
+    final hour = freeHour(venue);
     final meta = [
       'Open till ${clockLabel(venue['close_time'] ?? '22:00:00')}',
       if (rate != null) '₹$rate/hr',
@@ -233,11 +243,16 @@ class _VenueCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 18),
                           shape: const StadiumBorder(),
                         ),
-                        child: const Text('Book'),
+                        child: Text(hour == null ? 'Book' : 'Book ${hourLabel(hour)}'),
                       ),
                     ],
                   ),
                 ),
+                if (strip != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                    child: DayStrip(strip: strip, tone: sportTint(venue['type']).fg, highlightHour: hour, date: date),
+                  ),
               ],
             ),
           ),
