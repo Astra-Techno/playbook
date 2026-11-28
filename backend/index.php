@@ -454,6 +454,9 @@ if (isset($seg[0]) && $seg[0] === 'subscriptions') {
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && $seg[1] === 'members') { Auth::requireOwner(); $subController->members(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'desk' && !isset($seg[2])) { Auth::requireOwner(); $subController->desk(); exit(); }
+    // Member door pass: the member's QR, and the venue's scan
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($seg[1] ?? '') === 'check-in-scan' && !isset($seg[2])) { $subController->scanCheckIn(); exit(); }
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && ctype_digit((string)$seg[1]) && ($seg[2] ?? '') === 'check-in-code') { $subController->checkInCode((int)$seg[1]); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::require(); $subController->index(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'renew') { Auth::require(); $subController->renew(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($seg[1])) { Auth::require(); $subController->create(); exit(); }

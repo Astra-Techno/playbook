@@ -6,6 +6,24 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 
 /// Same format the server prints on the player's pass (BookingCheckIn::payload).
 const checkInPrefix = 'KOCOURT-CHECKIN';
+/// Membership door pass (MemberCheckIn::payload on the server).
+const memberPassPrefix = 'KOCOURT-MEMBER';
+
+/// Membership passes go to the members endpoint; everything else is a booking pass.
+String checkInEndpoint(String payload) =>
+    payload.trim().startsWith('$memberPassPrefix:') ? '/subscriptions/check-in-scan' : '/bookings/check-in-scan';
+
+/// "Gold monthly · 18 days left · 12 visits this month" for a scanned member.
+String memberScanLine(Map<String, dynamic> member) {
+  final days = int.tryParse('${member['days_left'] ?? ''}');
+  final visits = int.tryParse('${member['visits_this_month'] ?? ''}');
+  return [
+    '${member['plan'] ?? ''}',
+    if (days != null && days > 0) '$days ${days == 1 ? 'day' : 'days'} left',
+    if (visits != null) '$visits ${visits == 1 ? 'visit' : 'visits'} this month',
+  ].where((s) => s.isNotEmpty).join(' · ');
+}
+
 final _codePattern = RegExp(r'^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{8}$');
 
 /// Pass payload from a typed booking number and 8-character code, or null if either is wrong.
@@ -33,11 +51,16 @@ String checkInTimeRange(Object? start, Object? end) {
 }
 
 class _ScanResult {
-  const _ScanResult({required this.ok, required this.message, this.booking});
+  const _ScanResult({required this.ok, required this.message, this.booking, this.member, this.already = false});
   final bool ok;
   final String message;
   final Map<String, dynamic>? booking;
+  final Map<String, dynamic>? member;
+  final bool already;
 }
+
+Map<String, dynamic>? _mapOf(Object? body, String key) =>
+    body is Map && body[key] is Map ? Map<String, dynamic>.from(body[key] as Map) : null;
 
 /// Front-desk QR scanner: point at a player's pass to check them in.
 class ScanCheckInScreen extends StatefulWidget {
@@ -72,12 +95,14 @@ class _ScanCheckInScreenState extends State<ScanCheckInScreen> {
     await _camera.stop();
     _ScanResult result;
     try {
-      final res = await Api().post('/bookings/check-in-scan', data: {'payload': payload});
+      final res = await Api().post(checkInEndpoint(payload), data: {'payload': payload});
       final data = res.data is Map ? Map<String, dynamic>.from(res.data) : <String, dynamic>{};
       result = _ScanResult(
         ok: true,
         message: '${data['message'] ?? 'Checked in.'}',
-        booking: data['booking'] is Map ? Map<String, dynamic>.from(data['booking']) : null,
+        booking: _mapOf(data, 'booking'),
+        member: _mapOf(data, 'member'),
+        already: data['already'] == true,
       );
       HapticFeedback.heavyImpact();
     } catch (caught) {
@@ -85,7 +110,8 @@ class _ScanCheckInScreenState extends State<ScanCheckInScreen> {
       result = _ScanResult(
         ok: false,
         message: Api.failureMessage(caught, fallback: 'Could not check this pass.'),
-        booking: body is Map && body['booking'] is Map ? Map<String, dynamic>.from(body['booking']) : null,
+        booking: _mapOf(body, 'booking'),
+        member: _mapOf(body, 'member'),
       );
       HapticFeedback.vibrate();
     }
@@ -195,7 +221,7 @@ class _ScanCheckInScreenState extends State<ScanCheckInScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(color: brand, borderRadius: BorderRadius.circular(8)),
-                child: Text('SCAN BOOKING PASS', style: AppFonts.display(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1)),
+                child: Text('SCAN PASS', style: AppFonts.display(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1)),
               ),
             ),
           ),
@@ -224,7 +250,7 @@ class _ScanCheckInScreenState extends State<ScanCheckInScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 const Text(
-                                  "Point at the QR on the player's booking pass.",
+                                  "Point at the QR on a booking or membership pass.",
                                   style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                                 ),
                                 const SizedBox(height: 12),
@@ -257,6 +283,7 @@ class _ResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final booking = result.booking;
+    final member = result.member;
     final colour = result.ok ? AppColors.secondary : AppColors.error;
     final where = [booking?['venue'], booking?['space']].where((v) => '${v ?? ''}'.isNotEmpty).join(' · ');
     return Container(
@@ -275,7 +302,7 @@ class _ResultCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(color: colour, borderRadius: BorderRadius.circular(6)),
-                  child: Text(result.ok ? 'CHECKED IN' : 'NOT CHECKED IN',
+                  child: Text(!result.ok ? 'NOT CHECKED IN' : result.already ? 'ALREADY IN TODAY' : member != null ? 'MEMBER CHECKED IN' : 'CHECKED IN',
                       style: AppFonts.display(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.8)),
                 ),
               ),
@@ -293,7 +320,13 @@ class _ResultCard extends StatelessWidget {
               ),
             const SizedBox(height: 8),
           ],
-          if (!result.ok || booking == null) Text(result.message, style: TextStyle(color: colour, fontWeight: FontWeight.w700)),
+          if (member != null) ...[
+            Text('${member['member'] ?? 'Member'}', style: AppFonts.display(fontSize: 22, fontWeight: FontWeight.w900)),
+            if (memberScanLine(member).isNotEmpty)
+              Text(memberScanLine(member), style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+          ],
+          if (!result.ok || (booking == null && member == null)) Text(result.message, style: TextStyle(color: colour, fontWeight: FontWeight.w700)),
           const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,

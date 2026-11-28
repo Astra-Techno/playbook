@@ -176,7 +176,7 @@ class _VenueMembersScreenState extends State<VenueMembersScreen> {
                                 children: [
                                   Text(m['user_name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                                   Text('${m['plan_name'] ?? ''} · ${membershipSlotLabel(m['slot_type'])}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                                  Text('Expires: ${m['end_date'] ?? ''}', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                                  Text(memberVisitLine(m), style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
                                 ],
                               ),
                             ),

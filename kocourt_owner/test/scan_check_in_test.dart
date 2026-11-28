@@ -15,4 +15,17 @@ void main() {
     expect(checkInTimeRange('2026-11-25 11:30:00', '2026-11-25 13:00:00'), '11:30 AM – 1 PM');
     expect(checkInTimeRange(null, null), '');
   });
+
+  test('membership passes go to the members endpoint', () {
+    expect(checkInEndpoint('KOCOURT-MEMBER:12:ABCD2345'), '/subscriptions/check-in-scan');
+    expect(checkInEndpoint(' KOCOURT-MEMBER:12:ABCD2345 '), '/subscriptions/check-in-scan');
+    expect(checkInEndpoint('KOCOURT-CHECKIN:7:ABCD2345'), '/bookings/check-in-scan');
+    expect(checkInEndpoint('anything else'), '/bookings/check-in-scan');
+  });
+
+  test('member line shows plan, days left and visits', () {
+    expect(memberScanLine({'plan': 'Monthly', 'days_left': 18, 'visits_this_month': 12}), 'Monthly · 18 days left · 12 visits this month');
+    expect(memberScanLine({'plan': 'Monthly', 'days_left': 1, 'visits_this_month': 1}), 'Monthly · 1 day left · 1 visit this month');
+    expect(memberScanLine({'plan': 'Monthly', 'days_left': 0}), 'Monthly');
+  });
 }
