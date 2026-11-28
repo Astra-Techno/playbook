@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
@@ -142,20 +141,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   String _formatTime(String? dateStr) {
-    if (dateStr == null) return '';
-    final date = DateTime.tryParse(dateStr);
-    if (date == null) return dateStr;
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inDays == 0) {
-      final h = date.hour;
-      final m = date.minute.toString().padLeft(2, '0');
-      final period = h >= 12 ? 'PM' : 'AM';
-      final hour = h == 0 ? 12 : (h > 12 ? h - 12 : h);
-      return '$hour:$m $period';
-    }
-    if (diff.inDays == 1) return 'Yesterday';
-    return DateFormat('d MMM').format(date);
+    final date = DateTime.tryParse((dateStr ?? '').replaceFirst(' ', 'T'));
+    if (date == null) return dateStr ?? '';
+    return friendlyDay(date) == 'Today' ? clock(date) : friendlyDay(date);
   }
 
   @override
@@ -288,14 +276,8 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   String _dateBadge(String? dateStr) {
-    if (dateStr == null) return '';
-    final date = DateTime.tryParse(dateStr);
-    if (date == null) return dateStr;
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inDays == 0) return 'Today';
-    if (diff.inDays == 1) return 'Yesterday';
-    return DateFormat('d MMM yyyy').format(date);
+    final date = DateTime.tryParse((dateStr ?? '').replaceFirst(' ', 'T'));
+    return date == null ? (dateStr ?? '') : friendlyDay(date);
   }
 }
 

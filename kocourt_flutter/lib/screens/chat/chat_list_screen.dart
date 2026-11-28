@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'group_chat_screen.dart';
@@ -46,27 +45,15 @@ class _ChatListScreenState extends State<ChatListScreen> {
     }
   }
 
-  String _timeAgo(String? dateStr) {
-    if (dateStr == null) return '';
-    final date = DateTime.tryParse(dateStr);
-    if (date == null) return dateStr;
-    final diff = DateTime.now().difference(date);
-    if (diff.inMinutes < 1) return 'now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}h';
-    if (diff.inDays < 7) return '${diff.inDays}d';
-    return DateFormat('d MMM').format(date);
-  }
+  String _timeAgo(String? dateStr) => timeAgo(dateStr);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('Chats', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 20)),
+        title: const Text('Chats'),
         centerTitle: false,
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openNewChat,
@@ -99,7 +86,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
           const SizedBox(height: 16),
           Text('No conversations yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
           const SizedBox(height: 6),
-          Text('Tap + to start a new chat', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+          Text('Message players you have played or posted with', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+          const SizedBox(height: 16),
+          FilledButton.icon(onPressed: _openNewChat, icon: const Icon(Icons.edit_rounded, size: 18), label: const Text('Start a chat')),
         ],
       ),
     );
@@ -220,10 +209,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       if (hasUnread) ...[
                         const SizedBox(width: 8),
                         Container(
+                          constraints: const BoxConstraints(minWidth: 22),
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                          decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                          decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(11)),
                           child: Text(
                             unread > 99 ? '99+' : '$unread',
+                            textAlign: TextAlign.center,
                             style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w700),
                           ),
                         ),

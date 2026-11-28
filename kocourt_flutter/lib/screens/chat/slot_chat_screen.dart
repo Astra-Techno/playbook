@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
@@ -424,14 +423,8 @@ class _SlotChatScreenState extends State<SlotChatScreen> {
   }
 
   String _dateBadge(String? dateStr) {
-    if (dateStr == null) return '';
-    final date = DateTime.tryParse(dateStr);
-    if (date == null) return dateStr;
-    final now = DateTime.now();
-    final diff = now.difference(date);
-    if (diff.inDays == 0) return 'Today';
-    if (diff.inDays == 1) return 'Yesterday';
-    return DateFormat('d MMM yyyy').format(date);
+    final date = DateTime.tryParse((dateStr ?? '').replaceFirst(' ', 'T'));
+    return date == null ? (dateStr ?? '') : friendlyDay(date);
   }
 }
 

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'chat_screen.dart';
@@ -31,17 +30,7 @@ class _ChatThreadsScreenState extends State<ChatThreadsScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
-  String _timeAgo(String? dateStr) {
-    if (dateStr == null) return '';
-    final date = DateTime.tryParse(dateStr);
-    if (date == null) return dateStr;
-    final diff = DateTime.now().difference(date);
-    if (diff.inMinutes < 1) return 'now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-    if (diff.inHours < 24) return '${diff.inHours}h';
-    if (diff.inDays < 7) return '${diff.inDays}d';
-    return DateFormat('d MMM').format(date);
-  }
+  String _timeAgo(String? dateStr) => timeAgo(dateStr);
 
   @override
   Widget build(BuildContext context) {
