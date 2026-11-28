@@ -27,6 +27,13 @@ check(StaffAccess::allows('viewer', 'calendar', true) === true, 'a viewer can op
 check(StaffAccess::allows('viewer', 'bookings', true) === true, 'a viewer can read bookings at their venue');
 check(StaffAccess::allows('viewer', 'walk_in', true) === false, 'a viewer cannot record a walk-in');
 check(StaffAccess::allows('viewer', 'customers', true) === false, 'a viewer cannot open the customer directory');
+check(StaffAccess::allows('manager', 'members', true) === true, 'a manager can see members and sell a membership at the desk');
+check(StaffAccess::allows('manager', 'coaching', true) === true, 'a manager can run coaching classes');
+check(StaffAccess::allows('manager', 'equipment', true) === true, 'a manager can run equipment rentals');
+check(StaffAccess::allows('viewer', 'members', true) === false, 'a viewer cannot sell memberships');
+check(StaffAccess::allows('viewer', 'coaching', true) === false, 'a viewer cannot change classes');
+check(StaffAccess::allows('manager', 'pricing', true) === false, 'a manager cannot change pricing');
+check(StaffAccess::allows('manager', 'plans', true) === false, 'a manager cannot change membership plans');
 check(StaffAccess::allows('manager', 'staff', true) === false, 'a manager cannot invite staff');
 check(StaffAccess::allows('manager', 'earnings', true) === false, 'a manager cannot open earnings');
 check(StaffAccess::allows('manager', 'walk_in', false) === false, 'a manager of one venue cannot act at another venue');

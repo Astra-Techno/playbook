@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../EquipmentRental.php';
+require_once __DIR__ . '/../StaffAccess.php';
 
 class EquipmentController
 {
@@ -202,8 +203,7 @@ class EquipmentController
             echo json_encode(['message' => 'Venue not found']);
             return false;
         }
-        $allowed = ($authUser['role'] ?? '') === 'admin' || (int)$venue['owner_id'] === (int)$authUser['id'];
-        if (!$allowed) {
+        if (!StaffAccess::canAtVenue($db, $courtId, $authUser, 'equipment')) {
             http_response_code(403);
             echo json_encode(['message' => 'Forbidden']);
             return false;

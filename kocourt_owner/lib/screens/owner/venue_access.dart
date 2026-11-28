@@ -25,6 +25,22 @@ class VenueListing {
   }
 }
 
+/// What the signed-in user may do at a venue. Mirrors the server's StaffAccess:
+/// managers run the desk; viewers only read the calendar and bookings;
+/// venue settings, pricing, plans, staff and money stay with the owner.
+class VenueAbilities {
+  final bool owner;
+  final bool manager;
+
+  VenueAbilities({required this.owner, String? staffRole}) : manager = owner || staffRole == 'manager';
+
+  /// Walk-ins, check-ins, blocks, customers, members, coaching and equipment.
+  bool get desk => manager;
+
+  /// Edit or delete the venue, pricing, plans, cancellation terms, staff, earnings and reports.
+  bool get settings => owner;
+}
+
 int? venueId(Map<String, dynamic> court) {
   final raw = court['id'];
   if (raw is int) return raw;

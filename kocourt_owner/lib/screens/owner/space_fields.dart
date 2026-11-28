@@ -42,6 +42,7 @@ Map<String, dynamic> spaceWriteBody({
   required String capacityText,
   required String hourlyRateText,
   required String bookingMode,
+  String? sport,
 }) {
   final trimmedName = name.trim();
   if (trimmedName.isEmpty) {
@@ -65,6 +66,8 @@ Map<String, dynamic> spaceWriteBody({
     'capacity': capacity,
     'booking_mode': bookingMode,
     'hourly_rate': rateText.isEmpty ? '' : double.parse(rateText),
+    // Blank keeps the venue's sport for this space.
+    'sport': sport ?? '',
   };
   if (courtId != null) body['court_id'] = courtId;
   return body;

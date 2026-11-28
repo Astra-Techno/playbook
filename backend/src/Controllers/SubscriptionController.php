@@ -3,6 +3,7 @@ require_once __DIR__ . '/../Models/Subscription.php';
 require_once __DIR__ . '/../Models/Plan.php';
 require_once __DIR__ . '/../MembershipDirectory.php';
 require_once __DIR__ . '/../AccountLookup.php';
+require_once __DIR__ . '/../StaffAccess.php';
 
 class SubscriptionController {
 
@@ -31,16 +32,13 @@ class SubscriptionController {
     // Returns all active subscribers for a venue or specific space's plans
     public function members() {
         $authUser     = Auth::requireOwner();
-        $owner_id     = (int)$authUser['id'];
         $court_id     = (int)($_GET['court_id'] ?? 0);
         $sub_court_id = isset($_GET['sub_court_id']) ? (int)$_GET['sub_court_id'] : null;
         if (!$court_id) { http_response_code(400); echo json_encode(['message' => 'court_id required']); return; }
 
-        // Verify the requesting owner actually owns this court
+        // The owner, or a manager at this venue
         $db  = Database::getConnection();
-        $chk = $db->prepare("SELECT id FROM courts WHERE id=? AND owner_id=?");
-        $chk->execute([$court_id, $owner_id]);
-        if (!$chk->fetch()) { http_response_code(403); echo json_encode(['error' => 'Forbidden']); return; }
+        if (!StaffAccess::canAtVenue($db, $court_id, $authUser, 'members')) { http_response_code(403); echo json_encode(['error' => 'Forbidden']); return; }
 
         $db = Database::getConnection();
 
@@ -236,10 +234,7 @@ class SubscriptionController {
             echo json_encode(['message' => 'Plan not found']);
             return;
         }
-        $own = $db->prepare('SELECT owner_id FROM courts WHERE id = ?');
-        $own->execute([(int)$planRow['court_id']]);
-        $ownerId = $own->fetchColumn();
-        if ($ownerId === false || ((int)$ownerId !== (int)$authUser['id'] && ($authUser['role'] ?? '') !== 'admin')) {
+        if (!StaffAccess::canAtVenue($db, (int)$planRow['court_id'], $authUser, 'members')) {
             http_response_code(403);
             echo json_encode(['message' => 'Forbidden']);
             return;

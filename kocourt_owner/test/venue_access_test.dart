@@ -32,4 +32,16 @@ void main() {
     expect(listings.single.id, 12);
     expect(listings.single.accessLabel, 'Staff · Manager');
   });
+
+  test('owner runs everything, manager runs the desk, viewer only reads', () {
+    final owner = VenueAbilities(owner: true);
+    final manager = VenueAbilities(owner: false, staffRole: 'manager');
+    final viewer = VenueAbilities(owner: false, staffRole: 'viewer');
+    final unknown = VenueAbilities(owner: false);
+
+    expect([owner.desk, owner.settings], [true, true]);
+    expect([manager.desk, manager.settings], [true, false]);
+    expect([viewer.desk, viewer.settings], [false, false]);
+    expect([unknown.desk, unknown.settings], [false, false]);
+  });
 }
