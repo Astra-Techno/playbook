@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
-import 'package:intl/intl.dart';
 import 'dashboard_load.dart';
 import 'venue_access.dart';
 import 'venue_detail_screen.dart';
@@ -158,16 +156,12 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     });
   }
 
-  String _formatCurrency(double value) {
-    return NumberFormat.currency(locale: 'en_IN', symbol: '\u20B9', decimalDigits: 0).format(value);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface,
       appBar: AppBar(
-        title: const Text('My Venues', style: TextStyle(fontWeight: FontWeight.w800)),
+        title: const Text('My venues', style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           IconButton(
             tooltip: 'Scan a booking pass',
@@ -231,7 +225,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                     builder: (_) => const EditVenueScreen(),
                   )).then((_) => _load()),
                   icon: const Icon(AppIcons.plus, size: 16),
-                  label: const Text('Add Your First Venue'),
+                  label: const Text('Add your first venue'),
                 ),
               ],
             ),
@@ -249,21 +243,10 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
           const SizedBox(height: 16),
         ],
         if (listings.isNotEmpty) ...[
-          _portfolioHero(owned.length, assigned.length),
-          if (_collected != null || _collectedError != null) ...[
-            const SizedBox(height: 12),
-            _collectionsCard(),
-          ],
-          if (_occupancyError != null) ...[
-            const SizedBox(height: 12),
-            Text(_occupancyError!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
-          ],
-          if (_occupancy.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            const Text(
-              'Booked time counts confirmed bookings inside today’s open hours. Each space adds its own open hours. Closures stay on the calendar.',
-              style: TextStyle(fontSize: 12, height: 1.35, color: AppColors.textMuted),
-            ),
+          _todayCard(owned.length, assigned.length),
+          for (final error in [?_collectedError, ?_occupancyError]) ...[
+            const SizedBox(height: 8),
+            Text(error, style: const TextStyle(color: AppColors.error, fontSize: 13)),
           ],
           const SizedBox(height: 18),
         ],
@@ -328,156 +311,47 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     );
   }
 
-  Widget _portfolioHero(int ownedCount, int assignedCount) {
+  Widget _todayCard(int ownedCount, int assignedCount) {
     final total = ownedCount + assignedCount;
-    final venueLabel = total == 1 ? 'active venue' : 'active venues';
-    final subtitle = ownedCount > 0 && assignedCount > 0
-        ? '$ownedCount owned · $assignedCount assigned'
-        : assignedCount > 0
-            ? 'Venues the owner has shared with you.'
-            : 'Your venue portfolio is ready to manage.';
-    return TactileSurface(
-      radius: 22,
-      accentColor: AppColors.primary,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        color: context.brand.primary,
-        child: Row(
-          children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-              ),
-              child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 28),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$total $venueLabel',
-                    style: AppFonts.display(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.84), fontSize: 12, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _collectionsCard() {
     final collected = _collected;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_collectedError != null) ...[
-            Text(_collectedError!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
-            const SizedBox(height: 8),
-          ],
-          if (collected != null) ...[
-            Row(
-              children: [
-                Expanded(child: _collectionFigure('Collected today', collected.today)),
-                const SizedBox(width: 12),
-                Expanded(child: _collectionFigure('This week', collected.thisWeek)),
-              ],
-            ),
-            const SizedBox(height: 8),
-          ],
-          const Text(
-            'Collected is paid and demo payments for venues you own, after successful refunds. Booking prices stay on each venue.',
-            style: TextStyle(fontSize: 12, height: 1.35, color: AppColors.textMuted),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _collectionFigure(String label, double amount) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textMuted)),
-        const SizedBox(height: 4),
-        Text(_formatCurrency(amount), style: AppFonts.score(fontSize: 22, fontWeight: FontWeight.w900)),
+    final bookings = _occupancy.values.fold<int>(0, (sum, day) => sum + day.confirmedCount);
+    return KoCard(
+      kicker: 'Today',
+      title: collected != null ? '${rupees(collected.today)} collected' : '$bookings booking${bookings == 1 ? '' : 's'} today',
+      meta: ownedCount > 0 && assignedCount > 0
+          ? '$ownedCount owned · $assignedCount assigned'
+          : collected != null
+              ? 'Paid bookings at venues you own, after refunds'
+              : 'Venues the owner has shared with you',
+      stats: [
+        if (collected != null) KoStat(rupees(collected.thisWeek), 'This week'),
+        KoStat('$bookings', 'Bookings'),
+        KoStat('$total', total == 1 ? 'Venue' : 'Venues'),
       ],
     );
   }
 
   Widget _venueCard(VenueListing venue) {
     final c = venue.court;
-    final img = getVenueImage(c);
     final courtId = venue.id;
-    return TactileSurface(
-      onTap: courtId == null
-          ? null
-          : () => Navigator.push(context, MaterialPageRoute(
-                builder: (_) => VenueDetailScreen(courtId: courtId, openedAsOwner: venue.isOwner),
-              )).then((_) => _load()),
-      margin: const EdgeInsets.only(bottom: 12),
-      radius: 16,
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
-            child: CachedNetworkImage(imageUrl: img, width: 100, height: 80, fit: BoxFit.cover),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(c['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                  const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      StatusTag(venue.accessLabel, tone: venue.isOwner ? TagTone.brand : TagTone.free),
-                      StatusTag.sport(c['type']),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(c['location'] ?? '', style: TextStyle(fontSize: 12, color: AppColors.textSecondary), overflow: TextOverflow.ellipsis),
-                  if (courtId != null && _occupancy[courtId] != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      occupancyLine(_occupancy[courtId]!),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-          const Padding(
-            padding: EdgeInsets.only(right: 12),
-            child: Icon(AppIcons.chevronRight, size: 18, color: Colors.grey),
-          ),
+    final day = courtId == null ? null : _occupancy[courtId];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: KoCard(
+        sport: c['type'],
+        kicker: venue.accessLabel,
+        title: '${c['name'] ?? ''}',
+        meta: '${c['location'] ?? ''}',
+        stats: [
+          if (day != null) KoStat('${day.confirmedCount}', 'Bookings today'),
+          if (day != null && day.openMinutes > 0)
+            KoStat('${(day.bookedMinutes * 100 / day.openMinutes).round()}%', 'Booked today'),
         ],
+        onTap: courtId == null
+            ? null
+            : () => Navigator.push(context, MaterialPageRoute(
+                  builder: (_) => VenueDetailScreen(courtId: courtId, openedAsOwner: venue.isOwner),
+                )).then((_) => _load()),
       ),
     );
   }

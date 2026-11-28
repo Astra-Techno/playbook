@@ -252,7 +252,7 @@ class _BlockSlotsScreenState extends State<BlockSlotsScreen> {
     if (start == null || end == null) return '${block['start_time']} → ${block['end_time']}';
     final sameDay = start.year == end.year && start.month == end.month && start.day == end.day;
     return sameDay
-        ? '${DateFormat('EEE d MMM').format(start)} · ${DateFormat('h:mm a').format(start)} – ${DateFormat('h:mm a').format(end)}'
-        : '${DateFormat('d MMM, h:mm a').format(start)} – ${DateFormat('d MMM, h:mm a').format(end)}';
+        ? '${friendlyDay(start)} · ${clockRange(start, end)}'
+        : '${friendlyDay(start)}, ${clock(start)} – ${friendlyDay(end)}, ${clock(end)}';
   }
 }

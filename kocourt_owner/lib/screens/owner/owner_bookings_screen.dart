@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import '../../widgets/tab_phase.dart';
@@ -170,6 +169,7 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
   Widget _bookingTile(Map<String, dynamic> b) {
     final status = (b['status'] ?? 'confirmed').toString();
     final start = DateTime.tryParse('${b['start_time'] ?? ''}');
+    final end = DateTime.tryParse('${b['end_time'] ?? ''}');
     final person = '${b['guest_name'] ?? b['user_name'] ?? ''}'.isNotEmpty ? bookingPerson(b) : '';
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
@@ -191,8 +191,8 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
             child: Row(
               children: [
                 TimePlate(
-                  top: start == null ? '\u2014' : DateFormat('h a').format(start),
-                  bottom: start == null ? '' : DateFormat('EEE d MMM').format(start),
+                  top: start == null ? '\u2014' : clock(start),
+                  bottom: start == null ? '' : friendlyDay(start),
                   filled: false,
                   // v5: the plate wears the venue's sport colour.
                   tint: status == 'cancelled' ? null : sportTint(b['court_type']),
@@ -207,6 +207,16 @@ class _OwnerBookingsScreenState extends State<OwnerBookingsScreen> {
                       if (person.isNotEmpty) ...[
                         const SizedBox(height: 2),
                         Text(person, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                      if (start != null) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          [
+                            if (end != null) clockRange(start, end),
+                            if (rupees(b['total_price']).isNotEmpty) rupees(b['total_price']),
+                          ].join(' · '),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textMuted),
+                        ),
                       ],
                     ],
                   ),
