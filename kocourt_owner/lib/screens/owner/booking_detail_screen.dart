@@ -261,8 +261,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     final space = '${booking['space_name'] ?? ''}';
     final when = start == null
         ? '${booking['start_time'] ?? ''}'
-        : '${DateFormat('EEE d MMM').format(start)} · ${DateFormat('h:mm a').format(start)}'
-            '${end == null ? '' : ' – ${DateFormat('h:mm a').format(end)}'}';
+        : '${friendlyDay(start)} · ${end == null ? clock(start) : clockRange(start, end)}';
     final collection = collectionLabel(booking['collection_method']);
     final arrival = recordedAfterPlayLabel(booking) ?? attendanceLabel(booking['attendance']);
     return Container(
