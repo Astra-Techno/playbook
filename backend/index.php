@@ -457,6 +457,10 @@ if (isset($seg[0]) && $seg[0] === 'subscriptions') {
     // Member door pass: the member's QR, and the venue's scan
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($seg[1] ?? '') === 'check-in-scan' && !isset($seg[2])) { $subController->scanCheckIn(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($seg[1]) && ctype_digit((string)$seg[1]) && ($seg[2] ?? '') === 'check-in-code') { $subController->checkInCode((int)$seg[1]); exit(); }
+    // Membership care at the desk: pause, resume, nudge
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && ctype_digit((string)$seg[1]) && in_array($seg[2] ?? '', ['freeze', 'unfreeze', 'remind'], true) && !isset($seg[3])) {
+        $subController->{$seg[2]}((int)$seg[1]); exit();
+    }
     if ($_SERVER['REQUEST_METHOD'] === 'GET') { Auth::require(); $subController->index(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($seg[1]) && $seg[1] === 'renew') { Auth::require(); $subController->renew(); exit(); }
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($seg[1])) { Auth::require(); $subController->create(); exit(); }

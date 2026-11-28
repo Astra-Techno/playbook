@@ -5,6 +5,7 @@ require_once __DIR__ . '/../MembershipDirectory.php';
 require_once __DIR__ . '/../AccountLookup.php';
 require_once __DIR__ . '/../StaffAccess.php';
 require_once __DIR__ . '/../MemberCheckIn.php';
+require_once __DIR__ . '/../MembershipCare.php';
 
 class SubscriptionController {
 
@@ -47,7 +48,7 @@ class SubscriptionController {
         if ($sub_court_id !== null) {
             $stmt = $db->prepare("
                 SELECT us.id, us.user_id, us.plan_id, us.status, us.start_date, us.end_date,
-                       us.slot_type, u.name AS user_name,
+                       us.slot_type, us.frozen_from, us.frozen_until, us.freeze_days_used, u.name AS user_name,
                        p.name AS plan_name, p.price AS plan_price,
                        (SELECT COUNT(*) FROM member_visits mv WHERE mv.subscription_id = us.id AND mv.visit_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) AS visits_this_month,
                        (SELECT MAX(mv.visited_at) FROM member_visits mv WHERE mv.subscription_id = us.id) AS last_visit
@@ -61,7 +62,7 @@ class SubscriptionController {
         } else {
             $stmt = $db->prepare("
                 SELECT us.id, us.user_id, us.plan_id, us.status, us.start_date, us.end_date,
-                       us.slot_type, u.name AS user_name,
+                       us.slot_type, us.frozen_from, us.frozen_until, us.freeze_days_used, u.name AS user_name,
                        p.name AS plan_name, p.price AS plan_price, p.sub_court_id,
                        (SELECT COUNT(*) FROM member_visits mv WHERE mv.subscription_id = us.id AND mv.visit_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) AS visits_this_month,
                        (SELECT MAX(mv.visited_at) FROM member_visits mv WHERE mv.subscription_id = us.id) AS last_visit
@@ -306,6 +307,7 @@ class SubscriptionController {
         MemberCheckIn::ensureSchema($db);
         $stmt = $db->prepare("
             SELECT us.id, us.user_id, us.court_id, us.status, us.start_date, us.end_date, us.check_in_code,
+                   us.frozen_from, us.frozen_until,
                    u.name AS member_name, p.name AS plan_name, c.name AS venue_name
             FROM user_subscriptions us
             JOIN users u ON u.id = us.user_id
@@ -333,6 +335,11 @@ class SubscriptionController {
             'end_date' => substr((string)$sub['end_date'], 0, 10),
             'days_left' => MemberCheckIn::daysLeft((string)$sub['end_date'], $today),
         ];
+        if (MembershipCare::isFrozen($sub['frozen_from'], $sub['frozen_until'], $today)) {
+            http_response_code(422);
+            echo json_encode(['message' => 'This membership is frozen until ' . substr((string)$sub['frozen_until'], 0, 10) . '. End the freeze in Members to let them in.', 'member' => $member]);
+            return;
+        }
         $decision = MemberCheckIn::decide((string)$sub['status'], (string)$sub['start_date'], (string)$sub['end_date'], $today);
         if (!$decision['ok']) {
             http_response_code(422); echo json_encode(['message' => $decision['message'], 'member' => $member]); return;
@@ -350,5 +357,96 @@ class SubscriptionController {
             'already' => $already,
             'member' => $member,
         ]);
+    }
+
+    /** A membership at a venue where this user may manage members, or null after a 404. */
+    private function venueSubscription(PDO $db, int $id, array $authUser): ?array
+    {
+        MemberCheckIn::ensureSchema($db);
+        $stmt = $db->prepare('SELECT us.*, c.name AS venue_name FROM user_subscriptions us JOIN courts c ON c.id = us.court_id WHERE us.id = ?');
+        $stmt->execute([$id]);
+        $sub = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$sub || !StaffAccess::canAtVenue($db, (int)$sub['court_id'], $authUser, 'members')) {
+            http_response_code(404); echo json_encode(['message' => 'Membership not found']);
+            return null;
+        }
+        return $sub;
+    }
+
+    private static function today(): string
+    {
+        return (new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata')))->format('Y-m-d');
+    }
+
+    /** In-app notification plus push, at most once per $eventKey. */
+    private static function tellMember(PDO $db, array $sub, string $type, string $title, string $body, string $eventKey): bool
+    {
+        $ins = $db->prepare('INSERT IGNORE INTO user_notifications (user_id, type, title, body, court_id, event_key) VALUES (?,?,?,?,?,?)');
+        $ins->execute([(int)$sub['user_id'], $type, $title, $body, (int)$sub['court_id'], $eventKey]);
+        if (!$ins->rowCount()) {
+            return false;
+        }
+        require_once __DIR__ . '/../Push.php';
+        Push::sendToUser((int)$sub['user_id'], $title, $body, ['type' => $type, 'subscription_id' => (string)$sub['id']]);
+        return true;
+    }
+
+    // POST /subscriptions/:id/freeze { days } — owner or manager pauses a membership
+    public function freeze(int $id): void
+    {
+        $authUser = Auth::require();
+        $db = Database::getConnection();
+        $sub = $this->venueSubscription($db, $id, $authUser);
+        if ($sub === null) return;
+        $data = json_decode(file_get_contents('php://input'));
+        $today = self::today();
+        $plan = MembershipCare::freeze((string)$sub['status'], (string)$sub['end_date'], $sub['frozen_until'], (int)($sub['freeze_days_used'] ?? 0), (int)($data->days ?? 0), $today);
+        if (!$plan['ok']) {
+            http_response_code(422); echo json_encode(['message' => $plan['message']]); return;
+        }
+        // end_date in the WHERE guards against two desks freezing at once.
+        $upd = $db->prepare('UPDATE user_subscriptions SET frozen_from = ?, frozen_until = ?, end_date = ?, freeze_days_used = ? WHERE id = ? AND end_date = ?');
+        $upd->execute([$plan['from'], $plan['until'], $plan['end'], $plan['used'], $id, $sub['end_date']]);
+        if (!$upd->rowCount()) {
+            http_response_code(409); echo json_encode(['message' => 'This membership just changed. Refresh and try again.']); return;
+        }
+        $until = (new DateTimeImmutable($plan['until']))->format('j M');
+        self::tellMember($db, $sub, 'membership', "Your {$sub['venue_name']} membership is paused", "Frozen until $until. Your end date moved to " . (new DateTimeImmutable($plan['end']))->format('j M') . '.', "freeze:$id:{$plan['from']}");
+        echo json_encode(['message' => $plan['message'], 'frozen_until' => $plan['until'], 'end_date' => $plan['end']]);
+    }
+
+    // POST /subscriptions/:id/unfreeze — end a freeze today and give back unused days
+    public function unfreeze(int $id): void
+    {
+        $authUser = Auth::require();
+        $db = Database::getConnection();
+        $sub = $this->venueSubscription($db, $id, $authUser);
+        if ($sub === null) return;
+        $plan = MembershipCare::unfreeze($sub['frozen_from'], $sub['frozen_until'], (string)$sub['end_date'], (int)($sub['freeze_days_used'] ?? 0), self::today());
+        if (!$plan['ok']) {
+            http_response_code(422); echo json_encode(['message' => $plan['message']]); return;
+        }
+        $upd = $db->prepare('UPDATE user_subscriptions SET frozen_from = ?, frozen_until = ?, end_date = ?, freeze_days_used = ? WHERE id = ? AND end_date = ?');
+        $upd->execute([$plan['from'], $plan['until'], $plan['end'], $plan['used'], $id, $sub['end_date']]);
+        if (!$upd->rowCount()) {
+            http_response_code(409); echo json_encode(['message' => 'This membership just changed. Refresh and try again.']); return;
+        }
+        echo json_encode(['message' => $plan['message'], 'end_date' => $plan['end']]);
+    }
+
+    // POST /subscriptions/:id/remind — owner or manager nudges a member, once a day
+    public function remind(int $id): void
+    {
+        $authUser = Auth::require();
+        $db = Database::getConnection();
+        $sub = $this->venueSubscription($db, $id, $authUser);
+        if ($sub === null) return;
+        if ($sub['status'] !== 'active') {
+            http_response_code(422); echo json_encode(['message' => 'Only active members can be reminded.']); return;
+        }
+        $today = self::today();
+        $msg = MembershipCare::reminder((string)$sub['venue_name'], (string)$sub['end_date'], $today);
+        $sent = self::tellMember($db, $sub, 'membership', $msg['title'], $msg['body'], "member:$id:$today");
+        echo json_encode(['sent' => $sent, 'kind' => $msg['kind'], 'message' => $sent ? 'Reminder sent' : 'Already reminded today']);
     }
 }
