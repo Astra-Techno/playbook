@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -18,9 +20,26 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _otpControllers = List.generate(4, (_) => TextEditingController());
   final _otpFocusNodes = List.generate(4, (_) => FocusNode());
   String? _error;
+  // Resend cooldown so the code isn't requested again and again.
+  int _resendIn = 0;
+  Timer? _resendTimer;
+
+  void _startResendTimer() {
+    _resendTimer?.cancel();
+    setState(() => _resendIn = 30);
+    _resendTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted || _resendIn <= 1) {
+        t.cancel();
+        if (mounted) setState(() => _resendIn = 0);
+        return;
+      }
+      setState(() => _resendIn--);
+    });
+  }
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     _phoneController.dispose();
     _nameController.dispose();
     for (final c in _otpControllers) c.dispose();
@@ -43,6 +62,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       setState(() => _error = err);
     } else {
       setState(() => _step = 2);
+      _startResendTimer();
       Future.delayed(const Duration(milliseconds: 100), () {
         _otpFocusNodes[0].requestFocus();
       });
@@ -108,109 +128,54 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     );
   }
 
+  /// Matchday light header: soft violet into white, the real logo, a small
+  /// violet kicker and the step title in the display font.
   Widget _buildBrandHeader({
     required String subtitle,
     required String title,
     Widget? leading,
     String? description,
   }) {
+    final brand = context.brand.primary;
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF1C1C1E), Color(0xFF2D2D30)],
+          colors: [Color.alphaBlend(brand.withValues(alpha: 0.10), Colors.white), AppColors.surface],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
       ),
-      padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 16,
-        left: 20,
-        right: 20,
-        bottom: 28,
-      ),
+      padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 16, left: 20, right: 20, bottom: 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              if (leading != null) ...[
-                leading,
-                const SizedBox(width: 12),
-              ],
+              if (leading != null) ...[leading, const SizedBox(width: 12)],
               if (leading == null) ...[
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Text(
-                    'K',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.asset('assets/images/logo.png', width: 44, height: 44, fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(width: 44, height: 44, color: brand)),
                 ),
                 const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'KoCourt',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    Text(
-                      'SPORTS \u00B7 GYM \u00B7 CLUB',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        fontSize: 9,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 2.5,
-                      ),
-                    ),
+                    Text('KoCourt', style: AppFonts.display(fontSize: 19, color: AppColors.textPrimary)),
+                    const Text('Book courts. Find players.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   ],
                 ),
               ],
             ],
           ),
-          const SizedBox(height: 24),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: AppColors.primaryLight,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2,
-            ),
-          ),
+          const SizedBox(height: 28),
+          Text(subtitle.toUpperCase(), style: AppFonts.score(fontSize: 13, letterSpacing: 1.4, color: brand)),
           const SizedBox(height: 6),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.w900,
-              height: 1.2,
-            ),
-          ),
+          Text(title, style: AppFonts.display(fontSize: 28, height: 1.15, color: AppColors.textPrimary)),
           if (description != null) ...[
-            const SizedBox(height: 8),
-            Text(
-              description,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            const SizedBox(height: 6),
+            Text(description, style: const TextStyle(fontSize: 15, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
           ],
         ],
       ),
@@ -222,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildBrandHeader(
-          subtitle: 'GET STARTED',
+          subtitle: 'Get started',
           title: 'Enter your mobile\nnumber',
         ),
 
@@ -233,15 +198,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             children: [
               if (_error != null) _buildError(),
               const SizedBox(height: 4),
-              Text(
-                'MOBILE NUMBER',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textMuted,
-                  letterSpacing: 1.5,
-                ),
-              ),
+              Text('Mobile number', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
               const SizedBox(height: 8),
               Container(
                 decoration: BoxDecoration(
@@ -316,10 +273,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 ),
               ),
               const SizedBox(height: 24),
-              Text(
-                'By continuing you agree to our Terms & Privacy Policy',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text('By continuing you agree to our ', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                  GestureDetector(
+                    onTap: () => context.push('/terms'),
+                    child: const Text('Terms', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary, decoration: TextDecoration.underline)),
+                  ),
+                  Text(' and ', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                  GestureDetector(
+                    onTap: () => context.push('/privacy'),
+                    child: const Text('Privacy Policy', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary, decoration: TextDecoration.underline)),
+                  ),
+                ],
               ),
               const SizedBox(height: 32),
               Wrap(
@@ -327,23 +295,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  '\u{1F3F8} Badminton', '\u26BD Football', '\u{1F3CB}\uFE0F Gym', '\u{1F3BE} Tennis',
-                  '\u{1F3CA} Swimming', '\u{1F94A} Boxing', '\u{1F3CF} Cricket', '\u{1F3C0} Basketball',
-                ].map((c) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                  ),
-                  child: Text(
-                    c,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textMuted,
+                  for (final c in sportCategories.where((c) => c.id != 'All'))
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(8, 5, 12, 5),
+                      decoration: BoxDecoration(color: sportTint(c.id).bg, borderRadius: BorderRadius.circular(AppRadius.full)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        SportIcon(c.id, size: 16, tint: Colors.white),
+                        const SizedBox(width: 5),
+                        Text(c.label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: sportTint(c.id).fg)),
+                      ]),
                     ),
-                  ),
-                )).toList(),
+                ],
               ),
             ],
           ),
@@ -357,8 +319,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildBrandHeader(
-          subtitle: 'VERIFICATION',
-          title: 'OTP sent to',
+          subtitle: 'Verify',
+          title: 'Check your messages',
           description: '+91 ${_phoneController.text}',
           leading: _backButton(),
         ),
@@ -370,16 +332,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             children: [
               if (_error != null) _buildError(),
               const SizedBox(height: 8),
-              Text(
-                'ENTER 4-DIGIT OTP',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textMuted,
-                  letterSpacing: 1.5,
-                ),
-              ),
+              Text('Enter the 4-digit code we sent', textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
               const SizedBox(height: 16),
               AppOtpRow(
                 controllers: _otpControllers,
@@ -392,7 +346,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 builder: (context, auth, _) => _buildPrimaryButton(
                   onPressed: _verifyOtp,
                   isLoading: auth.isLoading,
-                  label: 'Verify & Continue',
+                  label: 'Verify and continue',
                 ),
               ),
               const SizedBox(height: 24),
@@ -404,18 +358,19 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     style: TextStyle(fontSize: 14, color: AppColors.textMuted),
                   ),
                   GestureDetector(
-                    onTap: () async {
-                      setState(() => _error = null);
-                      for (final c in _otpControllers) c.clear();
-                      await context.read<AuthProvider>().sendOtp(_phoneController.text.trim());
-                    },
-                    child: const Text(
-                      'Resend',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primary,
-                      ),
+                    onTap: _resendIn > 0
+                        ? null
+                        : () async {
+                            setState(() => _error = null);
+                            for (final c in _otpControllers) {
+                              c.clear();
+                            }
+                            _startResendTimer();
+                            await context.read<AuthProvider>().sendOtp(_phoneController.text.trim());
+                          },
+                    child: Text(
+                      _resendIn > 0 ? 'Resend in ${_resendIn}s' : 'Resend',
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _resendIn > 0 ? AppColors.textMuted : AppColors.primary),
                     ),
                   ),
                 ],
@@ -432,8 +387,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildBrandHeader(
-          subtitle: 'NEW ACCOUNT',
-          title: 'Complete your\nprofile',
+          subtitle: 'New account',
+          title: 'What should we\ncall you?',
           leading: _backButton(),
         ),
 
@@ -474,15 +429,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 ),
               ),
               const SizedBox(height: 24),
-              Text(
-                'YOUR FULL NAME',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textMuted,
-                  letterSpacing: 1.5,
-                ),
-              ),
+              Text('Your name', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
               const SizedBox(height: 8),
               Semantics(
                 identifier: 'name_input',
