@@ -534,7 +534,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
     String formattedDate = date;
     String dayLabel = '';
     if (startDt != null) {
-      formattedDate = DateFormat('MMM d, yyyy').format(startDt);
+      formattedDate = friendlyDay(startDt);
       final now = DateTime.now();
       final today = DateTime(now.year, now.month, now.day);
       final tomorrow = today.add(const Duration(days: 1));
@@ -600,7 +600,7 @@ class _BookingsScreenState extends State<BookingsScreen> {
             if (booking['refund_status'] != null) ...[
               const SizedBox(height: 4),
               Text(
-                'Refund: ${booking['refund_status'].toString().replaceAll('_', ' ')} · INR ${((num.tryParse(booking['refund_amount_paise'].toString()) ?? 0) / 100).toStringAsFixed(2)}',
+                'Refund ${booking['refund_status'].toString().replaceAll('_', ' ')} · ${rupees((num.tryParse(booking['refund_amount_paise'].toString()) ?? 0) / 100)}',
                 style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
               ),
             ],

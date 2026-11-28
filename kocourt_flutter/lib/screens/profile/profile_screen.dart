@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
-import '../bookings/bookings_screen.dart';
 import '../reviews/reviews_screen.dart';
 import '../subscriptions/subscriptions_screen.dart';
-import '../search/find_courts_screen.dart';
-import '../notifications/notifications_screen.dart';
 import '../chat/chat_list_screen.dart';
 import '../static/faq_screen.dart';
 import '../static/terms_screen.dart';
@@ -122,97 +119,65 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Main menu section
+                    // Bookings, Explore and the notification bell already have their own places,
+                    // so Profile only lists what lives here.
+                    const _SectionLabel('Your account'),
                     _MenuSection(
                       children: [
-                        _MenuItem(
-                          icon: AppIcons.user,
-                          label: 'Edit Profile',
-                          onTap: () => ProfileEditSheet.show(context),
-                        ),
-                        _MenuItem(
-                          icon: AppIcons.calendarDays,
-                          label: 'My Bookings',
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BookingsScreen(standalone: true))),
-                        ),
-                        _MenuItem(
-                          icon: AppIcons.star,
-                          label: 'My Reviews',
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReviewsScreen())),
-                        ),
+                        _MenuItem(icon: AppIcons.user, label: 'Edit profile', onTap: () => ProfileEditSheet.show(context)),
                         _MenuItem(
                           icon: AppIcons.award,
-                          label: 'My Memberships',
+                          label: 'Memberships',
                           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionsScreen())),
                         ),
                         _MenuItem(
                           icon: AppIcons.wallet,
-                          label: 'Payment History',
+                          label: 'Payments and refunds',
                           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PaymentHistoryScreen())),
                         ),
                         _MenuItem(
-                          icon: AppIcons.mapPin,
-                          label: 'Find Available Courts',
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FindCourtsScreen())),
+                          icon: AppIcons.star,
+                          label: 'Your reviews',
+                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReviewsScreen())),
                         ),
                         _MenuItem(
                           icon: AppIcons.messageCircle,
                           label: 'Messages',
                           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatListScreen())),
                         ),
-                        _MenuItem(
-                          icon: AppIcons.bell,
-                          label: 'Notifications',
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsScreen())),
-                        ),
                       ],
                     ),
-
-                    const SizedBox(height: 12),
-
-                    // Support section
+                    const _SectionLabel('Help'),
                     _MenuSection(
                       children: [
                         _MenuItem(
                           icon: AppIcons.helpCircle,
-                          label: 'Help & FAQ',
+                          label: 'Help and FAQ',
                           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FaqScreen())),
                         ),
-                        _MenuItem(
-                          icon: AppIcons.fileText,
-                          label: 'Terms & Conditions',
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen())),
-                        ),
-                        _MenuItem(
-                          icon: AppIcons.shield,
-                          label: 'Privacy Policy',
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyScreen())),
-                        ),
-                        _MenuItem(
-                          icon: AppIcons.wallet,
-                          label: 'Refund & Cancellation',
-                          onTap: () => context.push('/refund-policy'),
-                        ),
-                        _MenuItem(
-                          icon: AppIcons.phone,
-                          label: 'Contact Support',
-                          onTap: () => context.push('/contact'),
-                        ),
+                        _MenuItem(icon: AppIcons.phone, label: 'Contact support', onTap: () => context.push('/contact')),
+                        _MenuItem(icon: AppIcons.fileText, label: 'Terms and policies', onTap: () => _showPolicies(context)),
                       ],
                     ),
-
-                    const SizedBox(height: 12),
-
-                    // Logout
+                    const SizedBox(height: 16),
                     _MenuSection(
                       children: [
                         _MenuItem(
                           icon: AppIcons.logOut,
-                          label: 'Logout',
+                          label: 'Log out',
                           color: AppColors.error,
                           showChevron: false,
                           onTap: () async {
-                            await auth.logout();
+                            final ok = await AppConfirmDialog.show(
+                              context,
+                              title: 'Log out?',
+                              body: 'You can sign in again with your mobile number.',
+                              cancelLabel: 'Stay',
+                              confirmLabel: 'Log out',
+                              destructive: true,
+                              icon: AppIcons.logOut,
+                            );
+                            if (ok == true) await auth.logout();
                           },
                         ),
                       ],
@@ -233,6 +198,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
     );
   }
+}
+
+/// Terms, privacy and refunds in one place instead of three rows.
+void _showPolicies(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    backgroundColor: Colors.white,
+    builder: (sheet) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(AppIcons.fileText),
+            title: const Text('Terms and conditions'),
+            onTap: () {
+              Navigator.pop(sheet);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsScreen()));
+            },
+          ),
+          ListTile(
+            leading: const Icon(AppIcons.shield),
+            title: const Text('Privacy policy'),
+            onTap: () {
+              Navigator.pop(sheet);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyScreen()));
+            },
+          ),
+          ListTile(
+            leading: const Icon(AppIcons.wallet),
+            title: const Text('Refunds and cancellations'),
+            onTap: () {
+              Navigator.pop(sheet);
+              context.push('/refund-policy');
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    ),
+  );
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+        child: Align(alignment: Alignment.centerLeft, child: Text(text, style: AppFonts.display(fontSize: 15, color: AppColors.textSecondary))),
+      );
 }
 
 class _MenuSection extends StatelessWidget {
