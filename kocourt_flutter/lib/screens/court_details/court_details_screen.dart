@@ -579,14 +579,10 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                         children: [
                           Text(
                             rupees(_court!['hourly_rate']),
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.primary,
-                            ),
+                            style: AppFonts.score(fontSize: 26, color: AppColors.primary),
                           ),
                           Text(
-                            ' /slot',
+                            '/hr',
                             style: TextStyle(fontSize: 14, color: AppColors.textMuted),
                           ),
                         ],
@@ -606,15 +602,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'SELECT SPACE',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textMuted,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
+                    Text('Pick a space', style: AppFonts.display(fontSize: 16)),
                     const SizedBox(height: 8),
                     SizedBox(
                       height: 38,
@@ -637,8 +625,9 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                                 duration: const Duration(milliseconds: 200),
                                 padding: const EdgeInsets.symmetric(horizontal: 16),
                                 decoration: BoxDecoration(
-                                  color: selected ? AppColors.textPrimary : AppColors.surface,
+                                  color: selected ? sportTint(_court!['type']).fg : Colors.white,
                                   borderRadius: BorderRadius.circular(AppRadius.full),
+                                  border: Border.all(color: selected ? Colors.transparent : AppColors.border),
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
@@ -659,8 +648,6 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                 ),
               ),
             ),
-
-          SliverToBoxAdapter(child: _buildMembershipSection()),
 
           // Tab bar
           SliverToBoxAdapter(
@@ -688,9 +675,9 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                 dividerColor: Colors.transparent,
                 splashBorderRadius: BorderRadius.circular(AppRadius.md),
                 tabs: [
-                  const Tab(text: 'Book Slots'),
-                  Tab(text: 'Reviews ($_reviewCount)'),
-                  Tab(text: 'Plans (${_plans.length})'),
+                  const Tab(text: 'Book'),
+                  Tab(text: _reviewCount > 0 ? 'Reviews · $_reviewCount' : 'Reviews'),
+                  Tab(text: _plans.isNotEmpty ? 'Memberships · ${_plans.length}' : 'Memberships'),
                 ],
               ),
             ),
@@ -771,11 +758,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                         const SizedBox(height: 2),
                         Text(
                           rupees(totalPrice),
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                          ),
+                          style: AppFonts.score(fontSize: 26, color: Colors.white),
                         ),
                       ],
                     ),
@@ -823,15 +806,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'SELECT DATE',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textMuted,
-            letterSpacing: 1.5,
-          ),
-        ),
+        Text('Pick a day', style: AppFonts.display(fontSize: 16)),
         const SizedBox(height: 10),
         SizedBox(
           height: 80,
@@ -894,11 +869,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                       const SizedBox(height: 4),
                       Text(
                         '${date.day}',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          color: selected ? Colors.white : AppColors.textPrimary,
-                        ),
+                        style: AppFonts.score(fontSize: 22, color: selected ? Colors.white : AppColors.textPrimary),
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -990,13 +961,13 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
 
       if (result.success) {
         HapticFeedback.heavyImpact();
-        context.toastSuccess('Subscription activated!');
+        context.toastSuccess('Membership active. Enjoy your games!');
       } else {
         context.toastError(result.error ?? 'Subscription failed');
       }
     } catch (e) {
       if (mounted) {
-        context.toastError('Subscription failed: $e');
+        context.toastError(Api.failureMessage(e, fallback: 'Payment did not go through. You were not charged.'));
       }
     } finally {
       if (mounted) setState(() => _subscribing = false);
@@ -1015,63 +986,6 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
       return;
     }
     context.toastInfo('No later slot is free today. Try another date.');
-  }
-
-  Widget _buildMembershipSection() {
-    final plans = _plans.where((plan) => '${plan['is_active'] ?? 1}' != '0').toList();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Membership', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 4),
-          Text('Subscription plans for this venue.', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-          const SizedBox(height: 12),
-          if (plans.isEmpty)
-            const Text('No membership plans yet.')
-          else
-            ...plans.map((plan) {
-              final price = double.tryParse('${plan['price'] ?? 0}') ?? 0;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.borderLight),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('${plan['name'] ?? 'Plan'}', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800)),
-                          Text('₹${price.toStringAsFixed(0)} · ${plan['duration_days'] ?? 30} days', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      height: 40,
-                      child: ElevatedButton(
-                        onPressed: _subscribing ? null : () => _subscribeToPlan(plan),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          elevation: 0,
-                        ),
-                        child: const FittedBox(child: Text('Join', style: TextStyle(fontWeight: FontWeight.w800, color: Colors.white))),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
-        ],
-      ),
-    );
   }
 
   Widget _buildPlans() {
@@ -1095,77 +1009,24 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
       crossAxisAlignment: CrossAxisAlignment.start,
       children: plans.map((plan) {
         final price = double.tryParse('${plan['price'] ?? 0}') ?? 0;
-        final days = plan['duration_days'] ?? 30;
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.borderLight),
-            boxShadow: AppShadows.card,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      plan['name'] ?? 'Plan',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
-                    ),
-                    child: Text(
-                      '$days days',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              if ('${plan['benefits'] ?? plan['description'] ?? ''}'.trim().isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  '${plan['benefits'] ?? plan['description']}'.trim(),
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                ),
-              ],
-                Text(
-                  'Access: ${plan['slot_type']}'.replaceAll('_', ' '),
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Text(
-                    '\u20B9${price.toStringAsFixed(0)}',
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.primary),
-                  ),
-                  const Spacer(),
-                  SizedBox(
-                    height: 40,
-                    child: ElevatedButton(
-                      onPressed: _subscribing ? null : () => _subscribeToPlan(plan),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        elevation: 0,
-                      ),
-                      child: _subscribing
-                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Subscribe', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
-                    ),
-                  ),
-                ],
-              ),
+        final days = int.tryParse('${plan['duration_days'] ?? 30}') ?? 30;
+        final access = '${plan['slot_type'] ?? 'full_day'}'.replaceAll('_', ' ');
+        final about = '${plan['benefits'] ?? plan['description'] ?? ''}'.trim();
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: KoCard(
+            sport: _court?['type'],
+            kicker: 'Membership',
+            title: '${plan['name'] ?? 'Plan'}',
+            meta: about.isEmpty ? null : about,
+            badge: rupees(price),
+            stats: [
+              KoStat('$days', 'days'),
+              KoStat(access[0].toUpperCase() + access.substring(1), 'access'),
+              if (price > 0 && days > 0) KoStat(rupees((price / days).ceil()), 'per day'),
             ],
+            actionLabel: _subscribing ? 'Processing…' : 'Join · ${rupees(price)}',
+            onAction: _subscribing ? null : () => _subscribeToPlan(plan),
           ),
         );
       }).toList(),
@@ -1208,7 +1069,7 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
           child: OutlinedButton.icon(
             onPressed: _writeReview,
             icon: const Icon(Icons.rate_review_outlined, size: 16),
-            label: const Text('Write a Review'),
+            label: const Text('Write a review'),
           ),
         ),
         const SizedBox(height: 16),
@@ -1258,17 +1119,18 @@ class _CourtDetailsScreenState extends State<CourtDetailsScreen> with SingleTick
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          r['user_name'] ?? 'Anonymous',
-                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                        ),
+                        Text.rich(TextSpan(children: [
+                          TextSpan(text: '${r['user_name'] ?? 'Player'}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                          if (timeAgo(r['created_at']).isNotEmpty)
+                            TextSpan(text: '  ·  ${timeAgo(r['created_at'])}', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                        ])),
                         Row(
                           children: List.generate(5, (i) => Padding(
                             padding: const EdgeInsets.only(right: 2),
                             child: Icon(
                               Icons.star_rounded,
                               size: 14,
-                              color: i < (int.tryParse('${r['rating'] ?? 0}') ?? 0) ? AppColors.accent : AppColors.textDisabled,
+                              color: i < (int.tryParse('${r['rating'] ?? 0}') ?? 0) ? const Color(0xFFF59E0B) : AppColors.textDisabled,
                             ),
                           )),
                         ),
