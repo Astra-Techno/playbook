@@ -109,7 +109,7 @@ onMounted(fetchSubs)
 
             <!-- ── Active ── -->
             <div v-if="active.length" class="px-4 pt-5">
-                <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-3">Active</p>
+                <p class="font-score text-[10px] font-bold text-outline uppercase tracking-[0.08em] mb-3">Active</p>
                 <div class="space-y-3">
                     <KoCard v-for="s in active" :key="s.id"
                         :kicker="isExpiringSoon(s.end_date) ? 'Expiring soon' : 'Membership'"
@@ -134,7 +134,7 @@ onMounted(fetchSubs)
 
             <!-- ── Cancelled (still within access period) ── -->
             <div v-if="cancelled.length" class="px-4 mt-6">
-                <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-3">Cancelled</p>
+                <p class="font-score text-[10px] font-bold text-outline uppercase tracking-[0.08em] mb-3">Cancelled</p>
                 <div class="space-y-2">
                     <div v-for="s in cancelled" :key="s.id"
                         class="bg-white rounded-2xl p-4 ring-1 ring-slate-100">
@@ -159,7 +159,7 @@ onMounted(fetchSubs)
 
             <!-- ── Past / Expired ── -->
             <div v-if="past.length" class="px-4 mt-6">
-                <p class="text-[10px] font-black text-outline uppercase tracking-widest mb-3">Expired</p>
+                <p class="font-score text-[10px] font-bold text-outline uppercase tracking-[0.08em] mb-3">Expired</p>
                 <div class="space-y-2">
                     <div v-for="s in past" :key="s.id"
                         class="bg-white rounded-2xl p-4 ring-1 ring-slate-100 opacity-60">

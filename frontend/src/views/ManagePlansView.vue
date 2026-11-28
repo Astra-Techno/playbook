@@ -1,4 +1,5 @@
 <script setup>
+import { rupees } from '../utils/format'
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
@@ -245,7 +246,7 @@ const addPlan = async () => {
                             <p v-if="plan.description" class="text-sm text-on-surface-variant mt-0.5">{{ plan.description }}</p>
                         </div>
                         <div class="text-right shrink-0">
-                            <p class="text-2xl font-bold text-on-surface">₹{{ plan.price }}</p>
+                            <p class="text-2xl font-bold text-on-surface">{{ rupees(plan.price) }}</p>
                         </div>
                     </div>
 

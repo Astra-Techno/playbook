@@ -1,4 +1,5 @@
 <script setup>
+import { rupees } from '../utils/format'
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
@@ -971,7 +972,7 @@ const subscribePlan = async (plan) => {
                         {{ court.open_time?.slice(0,5) || '06:00' }} – {{ court.close_time?.slice(0,5) || '22:00' }}
                     </span>
                     <p class="text-on-surface font-bold text-[18px]">
-                        ₹{{ court.hourly_rate }}<span class="font-normal text-[15px] text-on-surface-variant"> / hour</span>
+                        {{ rupees(court.hourly_rate) }}<span class="font-normal text-[15px] text-on-surface-variant"> / hour</span>
                     </p>
                 </div>
 
@@ -1006,7 +1007,7 @@ const subscribePlan = async (plan) => {
                 <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center gap-2">
                         <span class="text-[10px] font-black text-on-surface bg-gray-100 px-2 py-0.5 rounded-lg shrink-0">1</span>
-                        <h3 class="text-xs font-bold text-on-surface-variant uppercase tracking-widest">Select Space</h3>
+                        <h3 class="font-score text-[13px] font-bold text-on-surface-variant uppercase tracking-[0.08em]">Select Space</h3>
                     </div>
                     <button v-if="selectedSpace" type="button" @click="selectedSpace = null"
                         class="text-[11px] font-bold text-outline flex items-center gap-1">
@@ -1072,7 +1073,7 @@ const subscribePlan = async (plan) => {
                 <div v-if="activeTab === 'booking'">
                     <!-- Step 2: Date (only after space is chosen when venue has multiple spaces) -->
                     <template v-if="!spaces.length || selectedSpace">
-                        <h3 class="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <h3 class="font-score text-[13px] font-bold text-on-surface-variant uppercase tracking-[0.08em] mb-3 flex items-center gap-2">
                             <span v-if="spaces.length" class="text-[10px] font-black text-on-surface bg-gray-100 px-2 py-0.5 rounded-lg shrink-0">2</span>
                             Select Date
                         </h3>
@@ -1085,7 +1086,7 @@ const subscribePlan = async (plan) => {
                                 :class="selectedDate === d.value
                                     ? 'bg-primary border-black text-white'
                                     : 'bg-white border-gray-200 text-on-surface-variant'">
-                                <span class="text-[10px] font-bold uppercase tracking-wider leading-none mb-1"
+                                <span class="font-score text-[10px] font-bold uppercase tracking-[0.08em] leading-none mb-1"
                                     :class="selectedDate === d.value ? 'text-white/70' : 'text-outline'">
                                     {{ d.weekday }}
                                 </span>
@@ -1106,7 +1107,7 @@ const subscribePlan = async (plan) => {
                     <!-- Step 3: Time slots -->
                     <div v-if="!spaces.length || selectedSpace">
                         <div class="flex items-center justify-between mb-3 flex-wrap gap-1">
-                            <h3 class="text-xs font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-2">
+                            <h3 class="font-score text-[13px] font-bold text-on-surface-variant uppercase tracking-[0.08em] flex items-center gap-2">
                                 <span v-if="spaces.length" class="text-[10px] font-black text-on-surface bg-gray-100 px-2 py-0.5 rounded-lg shrink-0">3</span>
                                 Select Time
                             </h3>
@@ -1149,7 +1150,7 @@ const subscribePlan = async (plan) => {
                                     <span v-if="slotPrices[slot.hour] !== undefined && slotState(slot) !== 'booked' && slotState(slot) !== 'blocked' && slotState(slot) !== 'past'"
                                         class="text-[9px] font-normal leading-none"
                                         :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-outline'">
-                                        ₹{{ slotPrices[slot.hour] }}
+                                        {{ rupees(slotPrices[slot.hour]) }}
                                     </span>
                                     <span v-else-if="slotRemainingCapacity(slot) !== null && slotState(slot) !== 'booked' && slotState(slot) !== 'past'"
                                         class="text-[9px] font-normal leading-none"
@@ -1185,7 +1186,7 @@ const subscribePlan = async (plan) => {
                                         <span v-if="slotPrices[slot.hour] !== undefined && slotState(slot) !== 'booked' && slotState(slot) !== 'blocked' && slotState(slot) !== 'past'"
                                             class="text-[9px] font-normal leading-none"
                                             :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-outline'">
-                                            ₹{{ slotPrices[slot.hour] }}
+                                            {{ rupees(slotPrices[slot.hour]) }}
                                         </span>
                                         <Lock v-if="slotState(slot) === 'peak_morning'" :size="8" class="absolute top-1 right-1 opacity-60" />
                                     </button>
@@ -1215,7 +1216,7 @@ const subscribePlan = async (plan) => {
                                         <span v-if="slotPrices[slot.hour] !== undefined && slotState(slot) !== 'booked' && slotState(slot) !== 'blocked' && slotState(slot) !== 'past'"
                                             class="text-[9px] font-normal leading-none"
                                             :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-outline'">
-                                            ₹{{ slotPrices[slot.hour] }}
+                                            {{ rupees(slotPrices[slot.hour]) }}
                                         </span>
                                         <Lock v-if="slotState(slot) === 'peak_evening'" :size="8" class="absolute top-1 right-1 opacity-60" />
                                     </button>
@@ -1238,7 +1239,7 @@ const subscribePlan = async (plan) => {
                                         <span v-if="slotPrices[slot.hour] !== undefined && slotState(slot) !== 'booked' && slotState(slot) !== 'past'"
                                             class="text-[9px] font-normal leading-none"
                                             :class="slotState(slot) === 'selected' ? 'text-white/70' : 'text-outline'">
-                                            ₹{{ slotPrices[slot.hour] }}
+                                            {{ rupees(slotPrices[slot.hour]) }}
                                         </span>
                                     </button>
                                 </div>
@@ -1279,13 +1280,13 @@ const subscribePlan = async (plan) => {
                                 <span class="font-semibold text-on-surface">{{ selectedSlots.length }} hour{{ selectedSlots.length > 1 ? 's' : '' }}</span>
                             </div>
                             <div v-if="selectedSlots.length > 1" class="flex justify-between text-xs text-outline">
-                                <span>₹{{ price }} × {{ selectedSlots.length }} slots</span>
-                                <span>₹{{ totalPrice }}</span>
+                                <span>{{ rupees(price) }} × {{ selectedSlots.length }} slots</span>
+                                <span>{{ rupees(totalPrice) }}</span>
                             </div>
                         </div>
                         <div class="flex justify-between items-center pt-3 mt-3 border-t border-black/20">
                             <span class="font-bold text-on-surface-variant">Total payable</span>
-                            <span class="font-score text-2xl font-bold tabular-nums text-on-surface">₹{{ totalPrice }}</span>
+                            <span class="font-score text-2xl font-bold tabular-nums text-on-surface">{{ rupees(totalPrice) }}</span>
                         </div>
                         <!-- Squad split (same as the app): an estimate per player; one person still pays. -->
                         <div class="flex items-center justify-between pt-3 mt-3 border-t border-black/10">
@@ -1296,7 +1297,7 @@ const subscribePlan = async (plan) => {
                                 <span class="w-5 text-center font-score text-lg font-bold">{{ squad }}</span>
                                 <button type="button" class="h-8 w-8 rounded-full border border-primary font-bold text-primary disabled:opacity-30"
                                     :disabled="squad >= 30" aria-label="One player more" @click="squad++">+</button>
-                                <span class="ml-1 font-score text-lg font-bold text-primary tabular-nums">₹{{ perHead }} each</span>
+                                <span class="ml-1 font-score text-lg font-bold text-primary tabular-nums">{{ rupees(perHead) }} each</span>
                             </div>
                         </div>
                     </div>
@@ -1473,7 +1474,7 @@ const subscribePlan = async (plan) => {
                                     </span>
                                 </div>
                                 <div class="text-right shrink-0">
-                                    <p class="text-2xl font-extrabold text-on-surface">₹{{ plan.price }}</p>
+                                    <p class="text-2xl font-extrabold text-on-surface">{{ rupees(plan.price) }}</p>
                                     <p class="text-xs text-outline">{{ plan.duration_days }} days</p>
                                 </div>
                             </div>
@@ -1552,11 +1553,11 @@ const subscribePlan = async (plan) => {
                     <template v-if="!isRecurring">
                         <div class="flex items-center justify-between gap-4">
                             <div v-if="selectedSlots.length && selectedDate" class="min-w-0">
-                                <p class="text-on-surface font-bold text-[18px]">₹{{ totalPrice }}</p>
-                                <p class="text-on-surface-variant text-[13px]">{{ selectedSlots.length }} slot{{ selectedSlots.length > 1 ? 's' : '' }} selected<template v-if="squad > 1"> · ₹{{ perHead }} each</template></p>
+                                <p class="text-on-surface font-bold text-[18px]">{{ rupees(totalPrice) }}</p>
+                                <p class="text-on-surface-variant text-[13px]">{{ selectedSlots.length }} slot{{ selectedSlots.length > 1 ? 's' : '' }} selected<template v-if="squad > 1"> · {{ rupees(perHead) }} each</template></p>
                             </div>
                             <div v-else class="min-w-0">
-                                <p class="text-on-surface font-bold text-[18px]">₹{{ price }}</p>
+                                <p class="text-on-surface font-bold text-[18px]">{{ rupees(price) }}</p>
                                 <p class="text-on-surface-variant text-[13px] underline decoration-gray-300 underline-offset-2">per hour</p>
                             </div>
                             <button
@@ -1614,7 +1615,7 @@ const subscribePlan = async (plan) => {
                 <!-- Header -->
                 <div class="flex items-center justify-between mb-1 shrink-0">
                     <div>
-                        <p class="text-[10px] font-bold text-on-surface uppercase tracking-wider mb-0.5">Booking Confirmed!</p>
+                        <p class="font-score text-[10px] font-bold text-on-surface uppercase tracking-[0.08em] mb-0.5">Booking Confirmed!</p>
                         <h3 class="font-bold text-on-surface text-base">Invite Players</h3>
                     </div>
                     <button @click="submitPlayers" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
@@ -1630,7 +1631,7 @@ const subscribePlan = async (plan) => {
 
                     <!-- ① Regular players -->
                     <div class="shrink-0">
-                        <p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Regular Players</p>
+                        <p class="font-score text-[13px] font-bold text-on-surface-variant uppercase tracking-[0.08em] mb-2">Regular Players</p>
                         <!-- Loading -->
                         <div v-if="addPlayers.regularsLoading" class="flex gap-3">
                             <div v-for="i in 4" :key="i" class="flex flex-col items-center gap-1.5 animate-pulse">
@@ -1662,7 +1663,7 @@ const subscribePlan = async (plan) => {
 
                     <!-- ② Phone search -->
                     <div class="shrink-0">
-                        <p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">Search by Phone</p>
+                        <p class="font-score text-[13px] font-bold text-on-surface-variant uppercase tracking-[0.08em] mb-2">Search by Phone</p>
                         <div class="flex gap-2">
                             <div class="flex-1 relative">
                                 <input v-model="addPlayers.phone" @keyup.enter="searchPlayer"
@@ -1696,7 +1697,7 @@ const subscribePlan = async (plan) => {
 
                     <!-- ③ Selected list -->
                     <div v-if="addPlayers.selected.length" class="shrink-0">
-                        <p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-2">
+                        <p class="font-score text-[13px] font-bold text-on-surface-variant uppercase tracking-[0.08em] mb-2">
                             Invited ({{ addPlayers.selected.length }})
                         </p>
                         <div class="space-y-2">

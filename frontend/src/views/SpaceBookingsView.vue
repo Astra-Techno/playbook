@@ -1,4 +1,5 @@
 <script setup>
+import { rupees } from '../utils/format'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
@@ -118,7 +119,7 @@ const cancelBooking = async (id) => {
                             <p v-if="b.guest_phone" class="text-[11px] text-outline">{{ b.guest_phone }}</p>
                         </div>
                         <div class="text-right shrink-0">
-                            <p class="text-sm font-extrabold text-free">₹{{ b.total_price }}</p>
+                            <p class="text-sm font-extrabold text-free">{{ rupees(b.total_price) }}</p>
                             <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
                                 :class="b.status === 'confirmed' ? 'bg-emerald-50 text-free' : 'bg-gray-100 text-outline'">
                                 {{ b.status }}

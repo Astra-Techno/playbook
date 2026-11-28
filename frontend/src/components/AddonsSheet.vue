@@ -1,4 +1,5 @@
 <script setup>
+import { rupees } from '../utils/format'
 // "Add kit?" before paying — same rules as the app's addons_sheet.dart.
 // The server prices the kit; the totals here are an estimate.
 import { ref, computed, watch } from 'vue'
@@ -28,7 +29,7 @@ const change = (id, delta) => {
           <div v-for="a in addons" :key="a.id" class="flex items-center gap-2 py-2.5">
             <div class="min-w-0 flex-1">
               <p class="font-bold text-on-surface">{{ a.name }}</p>
-              <p class="text-xs text-on-surface-variant">₹{{ a.rental_rupees }} each<template v-if="a.deposit_rupees > 0"> · ₹{{ a.deposit_rupees }} deposit at venue</template></p>
+              <p class="text-xs text-on-surface-variant">{{ rupees(a.rental_rupees) }} each<template v-if="a.deposit_rupees > 0"> · {{ rupees(a.deposit_rupees) }} deposit at venue</template></p>
             </div>
             <button type="button" class="h-9 w-9 rounded-full border border-outline-variant text-lg font-bold disabled:opacity-30"
               :disabled="!counts[a.id]" :aria-label="`Remove one ${a.name}`" @click="change(a.id, -1)">−</button>

@@ -353,13 +353,13 @@ const menuGroups = computed(() => [
                 <template v-else>
                     <div class="space-y-3 rounded-2xl bg-gray-50 p-4">
                         <div>
-                            <label class="text-[10px] font-bold text-outline uppercase tracking-widest block mb-1">Bio</label>
+                            <label class="font-score text-[10px] font-bold text-outline uppercase tracking-[0.08em] block mb-1">Bio</label>
                             <textarea v-model="bioInput" rows="2" placeholder="Tell others about yourself..."
                                 class="w-full text-sm rounded-xl bg-white border border-gray-200 px-3 py-2 resize-none focus:ring-2 focus:ring-black outline-none placeholder:text-gray-300">
                             </textarea>
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-outline uppercase tracking-widest block mb-2">Skill Level</label>
+                            <label class="font-score text-[10px] font-bold text-outline uppercase tracking-[0.08em] block mb-2">Skill Level</label>
                             <div class="flex gap-2">
                                 <button v-for="l in SKILL_LEVELS" :key="l" @click="skillInput = l"
                                     class="flex-1 py-2 rounded-full text-xs font-bold capitalize transition-all"
@@ -369,7 +369,7 @@ const menuGroups = computed(() => [
                             </div>
                         </div>
                         <div>
-                            <label class="text-[10px] font-bold text-outline uppercase tracking-widest block mb-2">Sports I Play</label>
+                            <label class="font-score text-[10px] font-bold text-outline uppercase tracking-[0.08em] block mb-2">Sports I Play</label>
                             <div class="flex flex-wrap gap-1.5">
                                 <button v-for="s in SPORT_OPTIONS" :key="s" @click="toggleSport(s)"
                                     class="px-3 py-1.5 rounded-full text-xs font-bold transition-all"

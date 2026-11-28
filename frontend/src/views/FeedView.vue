@@ -4,7 +4,7 @@ import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
 import { useToastStore } from '../stores/toast'
 import { useRoute, useRouter } from 'vue-router'
-import { Heart, Send, Trash2, X, Loader2, ChevronLeft, ChevronRight, AtSign, MessageCircle, Share2, MoreHorizontal } from 'lucide-vue-next'
+import { Heart, Send, Trash2, X, Loader2, ChevronLeft, ChevronRight, AtSign, MessageCircle, Share2 } from 'lucide-vue-next'
 
 const auth   = useAuthStore()
 const toast  = useToastStore()
@@ -35,6 +35,31 @@ const timeAgo = (dt) => {
     if (diff < 3600)  return Math.floor(diff / 60) + 'm ago'
     if (diff < 86400) return Math.floor(diff / 3600) + 'h ago'
     return Math.floor(diff / 86400) + 'd ago'
+}
+
+// Comments open under the post (no detail page): { [postId]: { list, loading, text, sending } }
+const comments = ref({})
+const toggleComments = async (post) => {
+    if (comments.value[post.id]) { const { [post.id]: _, ...rest } = comments.value; comments.value = rest; return }
+    comments.value = { ...comments.value, [post.id]: { list: [], loading: true, text: '', sending: false } }
+    try {
+        const res = await axios.get(`/posts/${post.id}`)
+        comments.value[post.id].list = (res.data.post || res.data).comments || []
+    } catch { toast.error('Comments could not be loaded.') }
+    finally { if (comments.value[post.id]) comments.value[post.id].loading = false }
+}
+const sendComment = async (post) => {
+    const box = comments.value[post.id]
+    const text = box?.text?.trim()
+    if (!text || box.sending) return
+    box.sending = true
+    try {
+        const res = await axios.post(`/posts/${post.id}/comment`, { content: text })
+        box.text = ''
+        box.list.push(res.data)
+        post.comment_count = Number(post.comment_count || 0) + 1
+    } catch (e) { toast.error(e.response?.data?.message || 'Could not post your comment.') }
+    finally { box.sending = false }
 }
 
 const initials = (name) => (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
@@ -240,7 +265,7 @@ watch(() => route.fullPath, () => {
                 <div v-for="post in posts" :key="post.id" class="bg-white px-5 py-5 ring-1 ring-slate-100 shadow-sm">
                     <!-- Post Header -->
                     <div class="flex items-center justify-between gap-3 mb-4">
-                        <div class="flex items-center gap-3 cursor-pointer" @click="router.push(`/feed/${post.id}`)">
+                        <div class="flex items-center gap-3">
                             <div class="w-11 h-11 rounded-full p-[2px] ring-2 border border-gray-200 bg-white">
                                 <div class="w-full h-full rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
                                     <img v-if="post.avatar_url || (post.user_id === auth.user?.id && auth.user?.avatar_url)"
@@ -251,7 +276,7 @@ watch(() => route.fullPath, () => {
                             </div>
                             <div class="min-w-0">
                                 <p class="text-sm font-bold text-on-surface leading-none mb-1">{{ post.user_name }}</p>
-                                <p class="text-[10px] font-bold text-outline uppercase tracking-wider">{{ timeAgo(post.created_at) }}</p>
+                                <p class="font-score text-[10px] font-bold text-outline uppercase tracking-[0.08em]">{{ timeAgo(post.created_at) }}</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
@@ -260,17 +285,13 @@ watch(() => route.fullPath, () => {
                                 class="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-due hover:bg-red-50 transition-all active:scale-90">
                                 <Trash2 :size="15" />
                             </button>
-                            <button class="w-8 h-8 rounded-full flex items-center justify-center text-outline hover:text-on-surface hover:bg-white transition-all">
-                                <MoreHorizontal :size="18" />
-                            </button>
                         </div>
                     </div>
 
                     <!-- Post Content -->
                     <p v-if="post.content?.trim()"
-                        class="text-sm text-on-surface mb-4 leading-relaxed cursor-pointer"
-                        v-html="renderContent(post.content)"
-                        @click="router.push(`/feed/${post.id}`)"></p>
+                        class="text-sm text-on-surface mb-4 leading-relaxed"
+                        v-html="renderContent(post.content)"></p>
 
                     <!-- Image Media with Double Tap -->
                     <div v-if="post.images?.length" class="relative rounded-[24px] overflow-hidden bg-gray-100 mb-4" @click="handleImageTap(post)">
@@ -334,12 +355,12 @@ watch(() => route.fullPath, () => {
                                 </div>
                                 <span class="tabular-nums">{{ post.likes_count || 'Like' }}</span>
                             </button>
-                            <button @click="router.push(`/feed/${post.id}`)"
+                            <button @click="toggleComments(post)" :aria-expanded="!!comments[post.id]"
                                 class="flex items-center gap-2 text-xs font-bold text-on-surface-variant hover:text-on-surface active:scale-95 group">
                                 <div class="w-9 h-9 rounded-full flex items-center justify-center group-hover:bg-gray-50 transition-colors">
                                     <MessageCircle :size="20" :stroke-width="2.5" />
                                 </div>
-                                <span>Comment</span>
+                                <span>{{ post.comment_count ? `${post.comment_count} comment${post.comment_count == 1 ? '' : 's'}` : 'Comment' }}</span>
                             </button>
                             <button @click="sharePost(post)"
                                 class="flex items-center gap-2 text-xs font-bold text-on-surface-variant hover:text-on-surface active:scale-95 group">
@@ -356,6 +377,24 @@ watch(() => route.fullPath, () => {
                                  <Heart :size="10" class="text-white fill-white" />
                              </div>
                         </div>
+                    </div>
+                    <!-- Comments in place -->
+                    <div v-if="comments[post.id]" class="mt-3 border-t border-slate-50 pt-3 space-y-3">
+                        <p v-if="comments[post.id].loading" class="text-xs text-outline">Loading comments…</p>
+                        <p v-else-if="!comments[post.id].list.length" class="text-xs text-outline">No comments yet. Start the conversation.</p>
+                        <div v-for="c in comments[post.id].list" :key="c.id" class="flex gap-2">
+                            <span class="w-7 h-7 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center shrink-0">{{ initials(c.user_name) }}</span>
+                            <div class="min-w-0">
+                                <p class="text-[13px]"><span class="font-bold">{{ c.user_name }}</span> <span class="text-outline text-xs">{{ timeAgo(c.created_at) }}</span></p>
+                                <p class="text-sm text-on-surface break-words">{{ c.content }}</p>
+                            </div>
+                        </div>
+                        <form v-if="auth.isLoggedIn" class="flex gap-2" @submit.prevent="sendComment(post)">
+                            <input v-model="comments[post.id].text" :id="`comment-${post.id}`" type="text" placeholder="Add a comment…" aria-label="Add a comment"
+                                class="flex-1 min-w-0 rounded-xl border border-outline-variant px-3 py-2 text-sm" />
+                            <button type="submit" :disabled="comments[post.id].sending || !comments[post.id].text?.trim()"
+                                class="rounded-xl bg-primary px-3 py-2 text-sm font-bold text-on-primary disabled:opacity-40">Post</button>
+                        </form>
                     </div>
                 </div>
             </div>

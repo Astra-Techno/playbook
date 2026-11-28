@@ -334,7 +334,7 @@ const openChat = (booking) => {
                 <div class="bg-white w-full rounded-t-3xl px-5 pt-5 pb-10">
                     <div class="flex items-center justify-between mb-1">
                         <div>
-                            <p v-if="ratingModal.auto" class="text-[10px] font-bold text-on-surface uppercase tracking-wider mb-0.5">How was your session?</p>
+                            <p v-if="ratingModal.auto" class="font-score text-[10px] font-bold text-on-surface uppercase tracking-[0.08em] mb-0.5">How was your session?</p>
                             <h3 class="font-bold text-on-surface text-base">Rate Your Experience</h3>
                         </div>
                         <button @click="dismissModal" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">

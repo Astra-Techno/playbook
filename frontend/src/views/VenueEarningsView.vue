@@ -1,4 +1,5 @@
 <script setup>
+import { rupees } from '../utils/format'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
@@ -81,24 +82,24 @@ const maxMonthly = computed(() => {
         <template v-else-if="data">
 
             <!-- Summary cards -->
-            <div class="bg-gradient-to-br from-black via-gray-950 to-black px-5 pt-5 pb-8">
+            <div class="bg-gradient-to-br from-primary to-[#4C1D95] px-5 pt-5 pb-8">
                 <p class="text-white/70 text-xs font-bold uppercase tracking-wider mb-3">Revenue Overview</p>
                 <div class="grid grid-cols-2 gap-3">
                     <div class="bg-white/15 rounded-2xl px-4 py-3">
                         <p class="text-white/70 text-[10px] mb-1">Today</p>
-                        <p class="text-white font-extrabold text-xl">₹{{ Number(data.summary.today).toLocaleString('en-IN') }}</p>
+                        <p class="text-white font-extrabold text-xl">{{ rupees(data.summary.today) }}</p>
                     </div>
                     <div class="bg-white/15 rounded-2xl px-4 py-3">
                         <p class="text-white/70 text-[10px] mb-1">This Week</p>
-                        <p class="text-white font-extrabold text-xl">₹{{ Number(data.summary.this_week).toLocaleString('en-IN') }}</p>
+                        <p class="text-white font-extrabold text-xl">{{ rupees(data.summary.this_week) }}</p>
                     </div>
                     <div class="bg-white/15 rounded-2xl px-4 py-3">
                         <p class="text-white/70 text-[10px] mb-1">This Month</p>
-                        <p class="text-white font-extrabold text-xl">₹{{ Number(data.summary.this_month).toLocaleString('en-IN') }}</p>
+                        <p class="text-white font-extrabold text-xl">{{ rupees(data.summary.this_month) }}</p>
                     </div>
                     <div class="bg-white/20 rounded-2xl px-4 py-3 ring-1 ring-white/30">
                         <p class="text-white/70 text-[10px] mb-1">All Time</p>
-                        <p class="text-white font-extrabold text-xl">₹{{ Number(data.summary.total).toLocaleString('en-IN') }}</p>
+                        <p class="text-white font-extrabold text-xl">{{ rupees(data.summary.total) }}</p>
                     </div>
                 </div>
             </div>
@@ -161,7 +162,7 @@ const maxMonthly = computed(() => {
                             </div>
                             <!-- Amount -->
                             <div class="shrink-0 text-right">
-                                <p class="text-sm font-extrabold text-free">+₹{{ Number(tx.total_price).toLocaleString('en-IN') }}</p>
+                                <p class="text-sm font-extrabold text-free">+{{ rupees(tx.total_price) }}</p>
                             </div>
                         </div>
                     </div>
