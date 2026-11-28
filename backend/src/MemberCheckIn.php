@@ -59,11 +59,14 @@ final class MemberCheckIn
         return $now > $end ? 0 : (int)$now->diff($end)->days + 1;
     }
 
-    /** Adds the pass code column and the visits table. Safe to call on every request. */
+    /** Adds the pass code and freeze columns and the visits table. Safe to call on every request. */
     public static function ensureSchema(PDO $db): void
     {
         try { $db->exec('ALTER TABLE user_subscriptions ADD COLUMN check_in_code CHAR(8) NULL DEFAULT NULL'); } catch (PDOException $e) {}
         try { $db->exec('ALTER TABLE user_subscriptions ADD UNIQUE INDEX uq_sub_check_in_code (check_in_code)'); } catch (PDOException $e) {}
+        try { $db->exec('ALTER TABLE user_subscriptions ADD COLUMN frozen_from DATE NULL DEFAULT NULL'); } catch (PDOException $e) {}
+        try { $db->exec('ALTER TABLE user_subscriptions ADD COLUMN frozen_until DATE NULL DEFAULT NULL'); } catch (PDOException $e) {}
+        try { $db->exec('ALTER TABLE user_subscriptions ADD COLUMN freeze_days_used INT NOT NULL DEFAULT 0'); } catch (PDOException $e) {}
         $db->exec("CREATE TABLE IF NOT EXISTS member_visits (
             id              INT AUTO_INCREMENT PRIMARY KEY,
             subscription_id INT NOT NULL,

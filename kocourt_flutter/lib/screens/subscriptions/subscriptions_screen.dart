@@ -145,6 +145,12 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                       final daysRemaining = int.tryParse('${s['days_remaining'] ?? 100}') ?? 100;
                       final isExpiring = s['days_remaining'] != null && daysRemaining <= 7;
                       final ends = DateTime.tryParse('${s['end_date'] ?? ''}');
+                      // Paused by the venue: today falls inside frozen_from..frozen_until.
+                      final frozenFrom = DateTime.tryParse('${s['frozen_from'] ?? ''}');
+                      final frozenUntil = DateTime.tryParse('${s['frozen_until'] ?? ''}');
+                      final today = DateUtils.dateOnly(DateTime.now());
+                      final frozen = isActive && frozenFrom != null && frozenUntil != null &&
+                          !today.isBefore(frozenFrom) && !today.isAfter(frozenUntil);
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: KoCard(
@@ -158,7 +164,11 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                           ],
                           middle: Row(
                             children: [
-                              isActive ? const StatusTag('Active', tone: TagTone.free) : const StatusTag('Expired', tone: TagTone.due),
+                              frozen
+                                  ? StatusTag('Frozen until ${friendlyDay(frozenUntil)}', tone: TagTone.brand)
+                                  : isActive
+                                      ? const StatusTag('Active', tone: TagTone.free)
+                                      : const StatusTag('Expired', tone: TagTone.due),
                               if (isExpiring && isActive) ...[
                                 const SizedBox(width: 8),
                                 Flexible(
