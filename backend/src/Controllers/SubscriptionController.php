@@ -4,6 +4,7 @@ require_once __DIR__ . '/../Models/Plan.php';
 require_once __DIR__ . '/../MembershipDirectory.php';
 require_once __DIR__ . '/../AccountLookup.php';
 require_once __DIR__ . '/../StaffAccess.php';
+require_once __DIR__ . '/../MemberCheckIn.php';
 
 class SubscriptionController {
 
@@ -39,6 +40,7 @@ class SubscriptionController {
         // The owner, or a manager at this venue
         $db  = Database::getConnection();
         if (!StaffAccess::canAtVenue($db, $court_id, $authUser, 'members')) { http_response_code(403); echo json_encode(['error' => 'Forbidden']); return; }
+        MemberCheckIn::ensureSchema($db);
 
         $db = Database::getConnection();
 
@@ -46,7 +48,9 @@ class SubscriptionController {
             $stmt = $db->prepare("
                 SELECT us.id, us.user_id, us.plan_id, us.status, us.start_date, us.end_date,
                        us.slot_type, u.name AS user_name,
-                       p.name AS plan_name, p.price AS plan_price
+                       p.name AS plan_name, p.price AS plan_price,
+                       (SELECT COUNT(*) FROM member_visits mv WHERE mv.subscription_id = us.id AND mv.visit_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) AS visits_this_month,
+                       (SELECT MAX(mv.visited_at) FROM member_visits mv WHERE mv.subscription_id = us.id) AS last_visit
                 FROM user_subscriptions us
                 JOIN users u  ON u.id  = us.user_id
                 JOIN plans p  ON p.id  = us.plan_id
@@ -58,7 +62,9 @@ class SubscriptionController {
             $stmt = $db->prepare("
                 SELECT us.id, us.user_id, us.plan_id, us.status, us.start_date, us.end_date,
                        us.slot_type, u.name AS user_name,
-                       p.name AS plan_name, p.price AS plan_price, p.sub_court_id
+                       p.name AS plan_name, p.price AS plan_price, p.sub_court_id,
+                       (SELECT COUNT(*) FROM member_visits mv WHERE mv.subscription_id = us.id AND mv.visit_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) AS visits_this_month,
+                       (SELECT MAX(mv.visited_at) FROM member_visits mv WHERE mv.subscription_id = us.id) AS last_visit
                 FROM user_subscriptions us
                 JOIN users u  ON u.id  = us.user_id
                 JOIN plans p  ON p.id  = us.plan_id
@@ -260,5 +266,89 @@ class SubscriptionController {
         }
         http_response_code(503);
         echo json_encode(['message' => 'Unable to create subscription']);
+    }
+
+    // GET /subscriptions/:id/check-in-code — the member's door pass (QR)
+    public function checkInCode(int $id): void
+    {
+        $authUser = Auth::require();
+        $db = Database::getConnection();
+        MemberCheckIn::ensureSchema($db);
+        $stmt = $db->prepare('SELECT id, user_id, status, start_date, end_date, check_in_code FROM user_subscriptions WHERE id = ?');
+        $stmt->execute([$id]);
+        $sub = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$sub || (int)$sub['user_id'] !== (int)$authUser['id']) {
+            http_response_code(404); echo json_encode(['message' => 'Membership not found']); return;
+        }
+        if ($sub['status'] !== 'active') {
+            http_response_code(409); echo json_encode(['message' => 'Only an active membership has a pass.']); return;
+        }
+        $code = MemberCheckIn::ensureCode($db, $id, $sub['check_in_code']);
+        $visits = $db->prepare("SELECT COUNT(*) FROM member_visits WHERE subscription_id = ? AND visit_date >= DATE_FORMAT(CURDATE(), '%Y-%m-01')");
+        $visits->execute([$id]);
+        echo json_encode([
+            'payload' => MemberCheckIn::payload($id, $code),
+            'code' => $code,
+            'visits_this_month' => (int)$visits->fetchColumn(),
+        ]);
+    }
+
+    // POST /subscriptions/check-in-scan { payload } — venue staff scan a member at the door
+    public function scanCheckIn(): void
+    {
+        $authUser = Auth::require();
+        $data = json_decode(file_get_contents('php://input'));
+        $scan = MemberCheckIn::parse((string)($data->payload ?? ''));
+        if (!$scan) {
+            http_response_code(422); echo json_encode(['message' => 'This is not a KoCourt member pass.']); return;
+        }
+        $db = Database::getConnection();
+        MemberCheckIn::ensureSchema($db);
+        $stmt = $db->prepare("
+            SELECT us.id, us.user_id, us.court_id, us.status, us.start_date, us.end_date, us.check_in_code,
+                   u.name AS member_name, p.name AS plan_name, c.name AS venue_name
+            FROM user_subscriptions us
+            JOIN users u ON u.id = us.user_id
+            JOIN plans p ON p.id = us.plan_id
+            JOIN courts c ON c.id = us.court_id
+            WHERE us.id = ?
+        ");
+        $stmt->execute([$scan['id']]);
+        $sub = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Permission first, so a scan at the wrong venue reveals nothing about the member.
+        if (!$sub || !StaffAccess::canAtVenue($db, (int)$sub['court_id'], $authUser, 'attendance')) {
+            http_response_code(404); echo json_encode(['message' => 'This pass is not for a venue you manage.']); return;
+        }
+        if (!MemberCheckIn::matches($sub['check_in_code'], $scan['code'])) {
+            http_response_code(422); echo json_encode(['message' => 'This pass code does not match the membership.']); return;
+        }
+
+        $now = new DateTimeImmutable('now', new DateTimeZone('Asia/Kolkata'));
+        $today = $now->format('Y-m-d');
+        $member = [
+            'id' => (int)$sub['id'],
+            'member' => $sub['member_name'] ?: 'Member',
+            'plan' => $sub['plan_name'],
+            'venue' => $sub['venue_name'],
+            'end_date' => substr((string)$sub['end_date'], 0, 10),
+            'days_left' => MemberCheckIn::daysLeft((string)$sub['end_date'], $today),
+        ];
+        $decision = MemberCheckIn::decide((string)$sub['status'], (string)$sub['start_date'], (string)$sub['end_date'], $today);
+        if (!$decision['ok']) {
+            http_response_code(422); echo json_encode(['message' => $decision['message'], 'member' => $member]); return;
+        }
+
+        // One visit per member per day; a second scan the same day is fine, just not counted twice.
+        $ins = $db->prepare('INSERT IGNORE INTO member_visits (subscription_id, user_id, court_id, visit_date, visited_at, checked_in_by) VALUES (?,?,?,?,?,?)');
+        $ins->execute([(int)$sub['id'], (int)$sub['user_id'], (int)$sub['court_id'], $today, $now->format('Y-m-d H:i:s'), (int)$authUser['id']]);
+        $already = $ins->rowCount() === 0;
+        $visits = $db->prepare("SELECT COUNT(*) FROM member_visits WHERE subscription_id = ? AND visit_date >= ?");
+        $visits->execute([(int)$sub['id'], $now->format('Y-m-01')]);
+        $member['visits_this_month'] = (int)$visits->fetchColumn();
+        echo json_encode([
+            'message' => $already ? 'Already checked in today.' : 'Checked in.',
+            'already' => $already,
+            'member' => $member,
+        ]);
     }
 }

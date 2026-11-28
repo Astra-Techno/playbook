@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 
 class SubscriptionsScreen extends StatefulWidget {
@@ -71,6 +72,47 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
     }
   }
 
+  /// The door pass: the venue scans this QR, or types the code.
+  Future<void> _showPass(Map<String, dynamic> sub) async {
+    Map<String, dynamic> pass;
+    try {
+      final res = await Api().get('/subscriptions/${sub['id']}/check-in-code');
+      pass = Map<String, dynamic>.from(res.data as Map);
+    } catch (error) {
+      if (mounted) context.toastError(Api.failureMessage(error, fallback: 'Could not load your pass.'));
+      return;
+    }
+    final payload = '${pass['payload'] ?? ''}';
+    if (payload.isEmpty || !mounted) return;
+    final visits = int.tryParse('${pass['visits_this_month'] ?? ''}') ?? 0;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('${sub['court_name'] ?? ''}', style: AppFonts.display(fontSize: 22), textAlign: TextAlign.center),
+              const SizedBox(height: 2),
+              Text('${sub['plan_name'] ?? ''}', style: const TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 18),
+              QrImageView(data: payload, size: 220, padding: EdgeInsets.zero),
+              const SizedBox(height: 14),
+              Text('${pass['code'] ?? ''}', style: AppFonts.score(fontSize: 28, letterSpacing: 4)),
+              const SizedBox(height: 6),
+              Text('Show this at the door', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 14),
+              Text('$visits ${visits == 1 ? 'visit' : 'visits'} this month', style: AppFonts.score(fontSize: 20, color: AppColors.primary)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -126,8 +168,9 @@ class _SubscriptionsScreenState extends State<SubscriptionsScreen> {
                               ],
                             ],
                           ),
-                          actionLabel: !isActive || isExpiring ? 'Renew' : null,
-                          onAction: () => _renew(s),
+                          actionLabel: !isActive || isExpiring ? 'Renew' : 'Show pass',
+                          onAction: () => !isActive || isExpiring ? _renew(s) : _showPass(s),
+                          onTap: isActive ? () => _showPass(s) : null,
                         ),
                       );
                     },
