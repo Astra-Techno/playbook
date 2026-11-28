@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:kocourt_shared/kocourt_shared.dart';
 import 'edit_venue_screen.dart';
+import 'venue_access.dart';
 import 'spaces_screen.dart';
 import 'staff_screen.dart';
 import 'venue_earnings_screen.dart';
@@ -26,7 +27,10 @@ import 'cancellation_terms_screen.dart';
 class VenueDetailScreen extends StatefulWidget {
   final int courtId;
   final bool openedAsOwner;
-  const VenueDetailScreen({super.key, required this.courtId, this.openedAsOwner = false});
+
+  /// 'manager' or 'viewer' when opened from a staff assignment.
+  final String? staffRole;
+  const VenueDetailScreen({super.key, required this.courtId, this.openedAsOwner = false, this.staffRole});
 
   @override
   State<VenueDetailScreen> createState() => _VenueDetailScreenState();
@@ -90,7 +94,11 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
     }
 
     final img = getVenueImage(_court!);
-    final canManage = widget.openedAsOwner || venueOwnedBy(_court!, context.watch<AuthProvider>().userId);
+    final can = VenueAbilities(
+      owner: widget.openedAsOwner || venueOwnedBy(_court!, context.watch<AuthProvider>().userId),
+      staffRole: widget.staffRole,
+    );
+    final canManage = can.settings;
     final verified = venueIsVerified(_court!['is_verified']);
 
     return Scaffold(
@@ -161,28 +169,32 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                     _menuItem(AppIcons.pencil, 'Edit Venue', 'Update name, location, rate, photos', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => EditVenueScreen(courtId: widget.courtId))).then((_) => _load());
                     }),
-                  if (canManage)
+                  if (can.desk)
                     _menuItem(AppIcons.plus, 'Add booking', 'Record a guest on this venue', () async {
                       await WalkInSheet.open(context, courtId: widget.courtId, date: bookingDay(DateTime.now()));
                     }),
-                  _menuItem(Icons.point_of_sale_rounded, 'Court register', 'Live courts, till, check-ins and walk-ins', () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => CourtRegisterScreen(courtId: widget.courtId)));
-                  }),
-                  _menuItem(AppIcons.calendarDays, 'Booking Calendar', 'Day view, with Add booking', () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => CalendarScreen(courtId: widget.courtId)));
+                  if (can.desk)
+                    _menuItem(Icons.point_of_sale_rounded, 'Court register', 'Live courts, till, check-ins and walk-ins', () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => CourtRegisterScreen(courtId: widget.courtId)));
+                    }),
+                  _menuItem(AppIcons.calendarDays, 'Booking calendar', can.desk ? 'Day view, with Add booking' : 'Day view', () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => CalendarScreen(courtId: widget.courtId, canAdd: can.desk)));
                   }),
                   _menuItem(AppIcons.layoutGrid, 'Spaces', canManage ? 'Manage courts, lanes, rooms' : 'View courts, lanes, rooms', () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => SpacesScreen(courtId: widget.courtId))).then((_) => _load());
                   }),
-                  if (canManage) ...[
+                  if (can.desk) ...[
                     const SizedBox(height: 16),
                     _sectionLabel('OPERATIONS'),
-                    _menuItem(AppIcons.users, 'Staff', 'Add a staff account for this venue', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => StaffScreen(courtId: widget.courtId)));
-                    }),
+                    if (can.settings)
+                      _menuItem(AppIcons.users, 'Staff', 'Add a staff account for this venue', () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => StaffScreen(courtId: widget.courtId)));
+                      }),
+                    if (releaseFlags.shows('coaching'))
                     _menuItem(Icons.sports, 'Coach', 'Add a class and a coach name', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => VenueCoachingScreen(courtId: widget.courtId)));
                     }),
+                    if (can.settings)
                     _menuItem(Icons.policy_outlined, 'Cancellation terms', 'Refund windows players see for this court', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => CancellationTermsScreen(courtId: widget.courtId)));
                     }),
@@ -195,9 +207,11 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                     _menuItem(Icons.block, 'Block Slots', 'Block venue for a period', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => BlockSlotsScreen(courtId: widget.courtId)));
                     }),
+                    if (can.settings)
                     _menuItem(Icons.trending_up, 'Booking prices', 'Confirmed booking prices for this venue', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => VenueEarningsScreen(courtId: widget.courtId)));
                     }),
+                    if (can.settings)
                     _menuItem(Icons.insights_outlined, 'Report', 'Prices, collections, and cancellations', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => VenueReportScreen(courtId: widget.courtId)));
                     }),
@@ -205,9 +219,11 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                       _menuItem(Icons.inventory_2_outlined, 'Equipment', 'Rentals, quantity, and deposit', () {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => VenueEquipmentScreen(courtId: widget.courtId)));
                       }),
+                    if (can.settings)
                     _menuItem(Icons.price_change_outlined, 'Pricing Rules', 'Peak, off-peak, weekend rates', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => PricingScreen(courtId: widget.courtId)));
                     }),
+                    if (can.settings)
                     _menuItem(AppIcons.award, 'Subscription Plans', 'Create and manage plans', () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => ManagePlansScreen(courtId: widget.courtId)));
                     }),

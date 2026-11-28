@@ -55,7 +55,7 @@ class Court {
                 $conditions[] = "(c.claim_status IS NULL OR c.claim_status = 'approved')";
                 $conditions[] = "c.accepting_bookings = 1";
             }
-            if ($type && $type !== 'All') $conditions[] = "c.type = ?";
+            if ($type && $type !== 'All') $conditions[] = "(c.type = ? OR EXISTS (SELECT 1 FROM sub_courts sc WHERE sc.court_id = c.id AND sc.sport = ?))";
             if ($featured)                $conditions[] = "c.is_featured = 1";
 
             $where = implode(" AND ", $conditions);
@@ -78,7 +78,7 @@ class Court {
 
             // Positional binding: lat, lng, lat (again), [type,] radius
             $params = [(float)$lat, (float)$lng, (float)$lat];
-            if ($type && $type !== 'All') $params[] = $type;
+            if ($type && $type !== 'All') { $params[] = $type; $params[] = $type; }
             $params[] = (float)$radius;
 
             $stmt->execute($params);
@@ -93,7 +93,7 @@ class Court {
             $conditions[] = "c.accepting_bookings = 1";
         }
         if ($location && $location !== 'All') $conditions[] = "c.location LIKE ?";
-        if ($type     && $type     !== 'All') $conditions[] = "c.type = ?";
+        if ($type     && $type     !== 'All') $conditions[] = "(c.type = ? OR EXISTS (SELECT 1 FROM sub_courts sc WHERE sc.court_id = c.id AND sc.sport = ?))";
         if ($owner_id)                        $conditions[] = "c.owner_id = ?";
         if ($featured)                        $conditions[] = "c.is_featured = 1";
 
@@ -107,7 +107,7 @@ class Court {
 
         $params = [];
         if ($location && $location !== 'All') $params[] = "%{$location}%";
-        if ($type     && $type     !== 'All') $params[] = $type;
+        if ($type     && $type     !== 'All') { $params[] = $type; $params[] = $type; }
         if ($owner_id)                        $params[] = $owner_id;
 
         $stmt->execute($params);

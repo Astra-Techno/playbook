@@ -8,7 +8,10 @@ import 'booking_detail_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   final int courtId;
-  const CalendarScreen({super.key, required this.courtId});
+
+  /// Viewers read the calendar but cannot add bookings.
+  final bool canAdd;
+  const CalendarScreen({super.key, required this.courtId, this.canAdd = true});
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -116,7 +119,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             },
             child: Text(_week ? 'Day' : 'Week'),
           ),
-          TextButton(onPressed: _walkIn, child: const Text('Add booking')),
+          if (widget.canAdd) TextButton(onPressed: _walkIn, child: const Text('Add booking')),
         ],
       ),
       body: Column(

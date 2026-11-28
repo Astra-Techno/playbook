@@ -33,6 +33,14 @@ class SubCourtController
         try { $this->db->exec("ALTER TABLE sub_courts ADD COLUMN capacity INT DEFAULT 1"); } catch (Exception $e) {}
         try { $this->db->exec("ALTER TABLE sub_courts ADD COLUMN booking_mode VARCHAR(20) DEFAULT 'exclusive'"); } catch (Exception $e) {}
         try { $this->db->exec("ALTER TABLE sub_courts ADD COLUMN peak_members_override TINYINT(1) NULL DEFAULT NULL"); } catch (Exception $e) {}
+        try { $this->db->exec("ALTER TABLE sub_courts ADD COLUMN sport VARCHAR(30) NULL DEFAULT NULL"); } catch (Exception $e) {}
+    }
+
+    /** A sport key such as 'shuttle' or 'table_tennis'; blank means "same as the venue". */
+    private static function sport(mixed $raw): ?string
+    {
+        $value = strtolower(trim((string)($raw ?? '')));
+        return preg_match('/^[a-z_]{2,30}$/', $value) === 1 ? $value : null;
     }
 
     // GET /sub-courts/:id
@@ -83,7 +91,7 @@ class SubCourtController
             }
         }
 
-        $ins = $this->db->prepare("INSERT INTO sub_courts (court_id, name, description, hourly_rate, image_url, capacity, booking_mode, peak_members_override) VALUES (?,?,?,?,?,?,?,?)");
+        $ins = $this->db->prepare("INSERT INTO sub_courts (court_id, name, description, hourly_rate, image_url, capacity, booking_mode, peak_members_override, sport) VALUES (?,?,?,?,?,?,?,?,?)");
         $ins->execute([
             $court_id, $name,
             trim($data->description ?? '') ?: null,
@@ -92,6 +100,7 @@ class SubCourtController
             $capacity,
             $booking_mode,
             $pmo,
+            self::sport($data->sport ?? null),
         ]);
         $newId = (int)$this->db->lastInsertId();
         $row   = $this->db->prepare("SELECT * FROM sub_courts WHERE id=?");
@@ -116,6 +125,7 @@ class SubCourtController
         if (isset($data->hourly_rate)) { $fields[] = 'hourly_rate=?'; $vals[] = $data->hourly_rate !== '' ? (float)$data->hourly_rate : null; }
         if (isset($data->image_url))   { $fields[] = 'image_url=?';   $vals[] = trim($data->image_url) ?: null; }
         if (isset($data->capacity))    { $fields[] = 'capacity=?';    $vals[] = max(1, (int)$data->capacity); }
+        if (property_exists($data, 'sport')) { $fields[] = 'sport=?'; $vals[] = self::sport($data->sport); }
         if (isset($data->booking_mode)){ $fields[] = 'booking_mode=?';$vals[] = in_array($data->booking_mode, ['exclusive','shared']) ? $data->booking_mode : 'exclusive'; }
         if (property_exists($data, 'peak_members_override')) {
             $pv = $data->peak_members_override;

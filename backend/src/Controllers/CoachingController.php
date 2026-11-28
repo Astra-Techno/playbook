@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../CoachingSession.php';
+require_once __DIR__ . '/../StaffAccess.php';
 require_once __DIR__ . '/../SlotLock.php';
 
 class CoachingController
@@ -239,8 +240,7 @@ class CoachingController
             echo json_encode(['message' => 'Venue not found']);
             return false;
         }
-        $allowed = ($authUser['role'] ?? '') === 'admin' || (int)$venue['owner_id'] === (int)$authUser['id'];
-        if (!$allowed) {
+        if (!StaffAccess::canAtVenue($db, $courtId, $authUser, 'coaching')) {
             http_response_code(403);
             echo json_encode(['message' => 'Forbidden']);
             return false;

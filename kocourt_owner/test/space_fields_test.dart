@@ -18,6 +18,20 @@ void main() {
     expect(body['capacity'], 20);
     expect(body['booking_mode'], 'shared');
     expect(body['hourly_rate'], '');
+    expect(body['sport'], '', reason: 'blank keeps the venue sport');
+  });
+
+  test('a space can carry its own sport', () {
+    final body = spaceWriteBody(
+      name: 'Shuttle court 2',
+      description: '',
+      capacityText: '1',
+      hourlyRateText: '400',
+      bookingMode: 'exclusive',
+      sport: 'shuttle',
+    );
+    expect(body['sport'], 'shuttle');
+    expect(body.containsKey('court_id'), isFalse);
   });
 
   test('unknown booking modes are rejected', () {

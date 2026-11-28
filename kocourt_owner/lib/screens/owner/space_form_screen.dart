@@ -25,6 +25,7 @@ class _SpaceFormScreenState extends State<SpaceFormScreen> {
   late final TextEditingController _capacity;
   late final TextEditingController _rate;
   late String _mode;
+  String? _sport;
   bool _saving = false;
   String? _error;
 
@@ -39,6 +40,8 @@ class _SpaceFormScreenState extends State<SpaceFormScreen> {
     _rate = TextEditingController(text: rate == null || '$rate'.isEmpty ? '' : '$rate');
     final mode = '${initial?['booking_mode'] ?? 'exclusive'}';
     _mode = spaceBookingModes.contains(mode) ? mode : 'exclusive';
+    final sport = '${initial?['sport'] ?? ''}';
+    _sport = sport.isEmpty ? null : sport;
   }
 
   @override
@@ -60,6 +63,7 @@ class _SpaceFormScreenState extends State<SpaceFormScreen> {
         capacityText: _capacity.text,
         hourlyRateText: _rate.text,
         bookingMode: _mode,
+        sport: _sport,
       );
     } on SpaceFieldError catch (error) {
       setState(() => _error = error.message);
@@ -113,6 +117,30 @@ class _SpaceFormScreenState extends State<SpaceFormScreen> {
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
             decoration: const InputDecoration(labelText: 'Hourly rate', hintText: 'Leave blank to use the venue rate'),
+          ),
+          const SizedBox(height: 20),
+          const Text('Sport', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+          const SizedBox(height: 4),
+          const Text('Set this when the venue has more than one sport, so players find this space.',
+              style: TextStyle(fontSize: 13, color: AppColors.textMuted, height: 1.4)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ChoiceChip(
+                label: const Text('Same as venue'),
+                selected: _sport == null,
+                onSelected: _saving ? null : (_) => setState(() => _sport = null),
+              ),
+              for (final c in sportCategories.where((c) => c.id != 'All'))
+                ChoiceChip(
+                  avatar: SportIcon(c.id, size: 18, fallback: c.icon),
+                  label: Text(c.label),
+                  selected: _sport == c.id,
+                  onSelected: _saving ? null : (_) => setState(() => _sport = c.id),
+                ),
+            ],
           ),
           const SizedBox(height: 20),
           const Text('Booking mode', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
