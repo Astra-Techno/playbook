@@ -316,7 +316,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             children: [
               const Text('Amount', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
               const Spacer(),
-              Text('₹${booking['total_price'] ?? 0}', style: AppFonts.score(fontSize: 22, fontWeight: FontWeight.w900)),
+              Text(rupees(booking['total_price'] ?? 0), style: AppFonts.score(fontSize: 22, fontWeight: FontWeight.w900)),
             ],
           ),
         ],

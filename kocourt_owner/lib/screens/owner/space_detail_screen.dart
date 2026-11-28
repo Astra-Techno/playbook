@@ -120,7 +120,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen> {
           SliverAppBar(
             expandedHeight: 200,
             pinned: true,
-            backgroundColor: AppColors.textPrimary,
+            backgroundColor: AppColors.primary,
             actions: [
               if (_canManage)
                 IconButton(onPressed: _edit, icon: const Icon(Icons.edit_outlined)),
@@ -209,15 +209,7 @@ class _SpaceDetailScreenState extends State<SpaceDetailScreen> {
                   if (_canManage) ...[
                   const SizedBox(height: 20),
 
-                  const Text(
-                    'MANAGE',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textMuted,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
+                  Text('Manage', style: AppFonts.display(fontSize: 16, color: AppColors.textSecondary)),
                   const SizedBox(height: 12),
 
                   Container(

@@ -394,6 +394,6 @@ class _EditVenueScreenState extends State<EditVenueScreen> {
 
   Widget _label(String text) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textMuted, letterSpacing: 1.5)),
+    child: Text(text.isEmpty ? text : text[0].toUpperCase() + text.substring(1).toLowerCase(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
   );
 }

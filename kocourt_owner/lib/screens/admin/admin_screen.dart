@@ -101,7 +101,7 @@ class _AdminScreenState extends State<AdminScreen> with SingleTickerProviderStat
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${row['owner_name'] ?? 'Owner'} · ₹${row['amount']}', style: const TextStyle(fontWeight: FontWeight.w800)),
+              Text('${row['owner_name'] ?? 'Owner'} · ${rupees(row['amount'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
               const SizedBox(height: 4),
               Text('${row['owner_phone'] ?? ''}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               if ('${row['note'] ?? ''}'.isNotEmpty)

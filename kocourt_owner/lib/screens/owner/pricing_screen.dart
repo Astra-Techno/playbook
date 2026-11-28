@@ -300,7 +300,7 @@ class _PricingScreenState extends State<PricingScreen> {
       ),
       child: Row(
         children: [
-          TimePlate(top: '₹${num.tryParse('${rule['price']}')?.round() ?? rule['price']}', bottom: '/hr', width: 70),
+          TimePlate(top: rupees(num.tryParse('${rule['price']}')?.round() ?? rule['price']), bottom: '/hr', width: 70),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

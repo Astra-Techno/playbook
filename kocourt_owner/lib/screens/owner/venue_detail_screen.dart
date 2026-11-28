@@ -315,7 +315,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
   Widget _sectionLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textMuted, letterSpacing: 1.5)),
+      child: Text(text.isEmpty ? text : text[0].toUpperCase() + text.substring(1).toLowerCase(), style: AppFonts.display(fontSize: 16, color: AppColors.textSecondary)),
     );
   }
 
