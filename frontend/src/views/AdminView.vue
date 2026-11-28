@@ -1,4 +1,5 @@
 <script setup>
+import { rupees } from '../utils/format'
 import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
@@ -627,7 +628,7 @@ onMounted(() => {
                             <div>
                                 <p class="font-extrabold text-on-surface text-sm">{{ claim.name }}</p>
                                 <p class="text-xs text-outline mt-0.5">{{ claim.location }}</p>
-                                <p class="text-xs text-on-surface font-bold mt-0.5">₹{{ claim.hourly_rate }}/hr · {{ claim.type }}</p>
+                                <p class="text-xs text-on-surface font-bold mt-0.5">{{ rupees(claim.hourly_rate) }}/hr · {{ claim.type }}</p>
                             </div>
 
                             <!-- Claimant -->

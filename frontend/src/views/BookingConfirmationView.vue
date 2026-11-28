@@ -1,4 +1,5 @@
 <script setup>
+import { rupees } from '../utils/format'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
@@ -146,7 +147,7 @@ onMounted(async () => {
             <div class="w-full bg-white rounded-2xl shadow-sm ring-1 ring-slate-100 overflow-hidden mb-6">
                 <!-- Header band -->
                 <div class="bg-primary px-5 py-4">
-                    <p class="text-white/70 text-[11px] font-bold uppercase tracking-wider mb-0.5">Venue</p>
+                    <p class="font-score text-white/70 text-[11px] font-bold uppercase tracking-[0.08em] mb-0.5">Venue</p>
                     <p class="text-white font-black text-lg leading-tight">{{ booking.court_name }}</p>
                     <p v-if="booking.space_name" class="text-white/80 text-sm mt-0.5">{{ booking.space_name }}</p>
                 </div>
@@ -158,7 +159,7 @@ onMounted(async () => {
                             <Hash :size="16" class="text-on-surface-variant" />
                         </div>
                         <div>
-                            <p class="text-[10px] font-bold text-outline uppercase tracking-wider">Booking ID</p>
+                            <p class="font-score text-[10px] font-bold text-outline uppercase tracking-[0.08em]">Booking ID</p>
                             <p class="text-sm font-black text-on-surface">#{{ booking.id }}</p>
                         </div>
                     </div>
@@ -169,7 +170,7 @@ onMounted(async () => {
                             <CalendarDays :size="16" class="text-on-surface" />
                         </div>
                         <div>
-                            <p class="text-[10px] font-bold text-outline uppercase tracking-wider">Date</p>
+                            <p class="font-score text-[10px] font-bold text-outline uppercase tracking-[0.08em]">Date</p>
                             <p class="text-sm font-black text-on-surface">{{ fmtDate(booking.start_time) }}</p>
                         </div>
                     </div>
@@ -180,7 +181,7 @@ onMounted(async () => {
                             <Clock :size="16" class="text-on-surface" />
                         </div>
                         <div>
-                            <p class="text-[10px] font-bold text-outline uppercase tracking-wider">Time</p>
+                            <p class="font-score text-[10px] font-bold text-outline uppercase tracking-[0.08em]">Time</p>
                             <p class="text-sm font-black text-on-surface">{{ fmtTime(booking.start_time) }} – {{ fmtTime(booking.end_time) }}</p>
                         </div>
                     </div>
@@ -191,7 +192,7 @@ onMounted(async () => {
                             <MapPin :size="16" class="text-on-surface-variant" />
                         </div>
                         <div>
-                            <p class="text-[10px] font-bold text-outline uppercase tracking-wider">Location</p>
+                            <p class="font-score text-[10px] font-bold text-outline uppercase tracking-[0.08em]">Location</p>
                             <p class="text-sm font-semibold text-on-surface-variant">{{ booking.court_location }}</p>
                         </div>
                     </div>
@@ -199,7 +200,7 @@ onMounted(async () => {
                     <!-- Total price -->
                     <div class="border-t border-gray-100 pt-4 flex items-center justify-between">
                         <p class="text-sm font-bold text-on-surface-variant">Total Paid</p>
-                        <p class="text-xl font-black text-free">₹{{ Number(booking.total_price).toLocaleString('en-IN') }}</p>
+                        <p class="text-xl font-black text-free">{{ rupees(booking.total_price) }}</p>
                     </div>
                 </div>
             </div>
@@ -234,7 +235,7 @@ onMounted(async () => {
                                 <button type="button" class="text-xs font-bold text-primary" @click="markPaid(p, false)">Undo</button>
                             </template>
                             <template v-else>
-                                <span class="font-score text-base font-bold">Owes ₹{{ dueEach }}</span>
+                                <span class="font-score text-base font-bold">Owes {{ rupees(dueEach) }}</span>
                                 <button type="button" class="text-xs font-bold text-primary" @click="markPaid(p, true)">Mark paid</button>
                                 <button type="button" class="text-xs font-bold text-primary" @click="remind(p)">Remind</button>
                             </template>

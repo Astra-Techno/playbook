@@ -1,4 +1,5 @@
 <script setup>
+import { rupees } from '../utils/format'
 import { ref, watch } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
@@ -132,7 +133,7 @@ const hourLabel    = (h)  => HOURS[h]?.label ?? h
 
                             <!-- Info -->
                             <div class="bg-amber-50 rounded-xl px-4 py-3 text-xs text-ending leading-relaxed">
-                                Rules with higher priority override lower ones. Base rate (₹{{ court.hourly_rate }}/hr) applies when no rule matches.
+                                Rules with higher priority override lower ones. Base rate ({{ rupees(court.hourly_rate) }}/hr) applies when no rule matches.
                             </div>
 
                             <!-- Rules list -->
@@ -151,7 +152,7 @@ const hourLabel    = (h)  => HOURS[h]?.label ?? h
                                         <p class="text-[11px] text-outline mt-0.5">
                                             {{ dayTypeLabel(rule.day_type) }} · {{ hourLabel(rule.start_hour) }} – {{ hourLabel(rule.end_hour) }}
                                         </p>
-                                        <p class="text-sm font-extrabold text-free mt-0.5">₹{{ rule.price }}/hr</p>
+                                        <p class="text-sm font-extrabold text-free mt-0.5">{{ rupees(rule.price) }}/hr</p>
                                     </div>
                                     <button @click="removeRule(rule)" :disabled="removingId === rule.id"
                                         class="w-7 h-7 rounded-full bg-white flex items-center justify-center active:scale-90 transition">

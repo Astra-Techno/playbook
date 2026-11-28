@@ -133,15 +133,15 @@ const slotLabel = computed(() => {
         <div class="bg-white rounded-2xl p-4 ring-1 ring-slate-100 space-y-3 shadow-sm">
             <div class="grid grid-cols-2 gap-3">
                 <label class="block col-span-2">
-                    <span class="text-[10px] font-bold text-outline uppercase tracking-wider">Date</span>
+                    <span class="font-score text-[10px] font-bold text-outline uppercase tracking-[0.08em]">Date</span>
                     <input v-model="dateStr" type="date" class="input-field mt-1 text-sm py-2.5" />
                 </label>
                 <label class="block">
-                    <span class="text-[10px] font-bold text-outline uppercase tracking-wider">Start</span>
+                    <span class="font-score text-[10px] font-bold text-outline uppercase tracking-[0.08em]">Start</span>
                     <input v-model="timeStr" type="time" class="input-field mt-1 text-sm py-2.5" />
                 </label>
                 <label class="block">
-                    <span class="text-[10px] font-bold text-outline uppercase tracking-wider">Duration</span>
+                    <span class="font-score text-[10px] font-bold text-outline uppercase tracking-[0.08em]">Duration</span>
                     <select v-model.number="durationMin" class="input-field mt-1 text-sm py-2.5">
                         <option v-for="o in durationOptions" :key="o.v" :value="o.v">{{ o.label }}</option>
                     </select>

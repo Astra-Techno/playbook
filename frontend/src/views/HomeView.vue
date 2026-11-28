@@ -1,4 +1,5 @@
 <script setup>
+import { rupees } from '../utils/format'
 import KoSportIcon from '../components/KoSportIcon.vue'
 import { sportKey, sportTint } from '../utils/sport'
 import { ref, onMounted, watch, computed } from 'vue'
@@ -502,7 +503,7 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
                         <!-- Bottom-right: price badge on image -->
                         <div class="absolute bottom-3 right-3 z-10">
                             <div v-if="venue.hourly_rate" class="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-on-surface font-black text-sm shadow-sm">
-                                ₹{{ venue.hourly_rate }}<span class="text-[10px] text-on-surface-variant font-medium ml-0.5">/slot</span>
+                                {{ rupees(venue.hourly_rate) }}<span class="text-[10px] text-on-surface-variant font-medium ml-0.5">/slot</span>
                             </div>
                         </div>
                     </div>
@@ -724,7 +725,7 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
 
                             <!-- Sport Type -->
                             <div>
-                                <p class="text-[11px] font-black text-outline uppercase tracking-wider mb-3">Sport Type</p>
+                                <p class="font-score text-[11px] font-bold text-outline uppercase tracking-[0.08em] mb-3">Sport Type</p>
                                 <div class="flex flex-wrap gap-2">
                                     <button v-for="c in categories" :key="c.id"
                                         @click="draftSport = c.id"
@@ -738,7 +739,7 @@ watch(selectedRadius, () => { if (userLat.value && userLng.value) fetchVenues() 
 
                             <!-- Distance -->
                             <div>
-                                <p class="text-[11px] font-black text-outline uppercase tracking-wider mb-3">Search Radius</p>
+                                <p class="font-score text-[11px] font-bold text-outline uppercase tracking-[0.08em] mb-3">Search Radius</p>
                                 <div class="flex gap-2 flex-wrap">
                                     <button v-for="r in RADIUS_OPTIONS" :key="r"
                                         @click="draftRadius = r"

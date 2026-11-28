@@ -1,4 +1,5 @@
 <script setup>
+import { rupees } from '../utils/format'
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
@@ -101,7 +102,7 @@ const cancelSub = async (sub) => {
                                 <Award :size="10" />
                                 <span>{{ m.plan_name }}</span>
                                 <span class="text-outline">·</span>
-                                <span class="font-semibold text-on-surface">₹{{ m.plan_price }}</span>
+                                <span class="font-semibold text-on-surface">{{ rupees(m.plan_price) }}</span>
                             </div>
                             <div class="flex items-center gap-3 mt-1.5">
                                 <div class="flex items-center gap-1 text-[10px] text-outline">

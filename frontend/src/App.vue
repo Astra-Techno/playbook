@@ -68,7 +68,7 @@ const isActive = (path) =>
     path === '/' ? route.path === '/' : route.path.startsWith(path)
 
 const toastIcon = { success: CheckCircle2, error: XCircle, info: Info }
-const toastBg   = { success: 'bg-slate-900', error: 'bg-red-600', info: 'bg-slate-900' }
+const toastBg   = { success: 'bg-free', error: 'bg-red-600', info: 'bg-primary' }
 
 // ── Global review prompt ──────────────────────────────────────────────────────
 

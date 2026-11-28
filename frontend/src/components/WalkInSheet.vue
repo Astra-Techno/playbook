@@ -1,4 +1,5 @@
 <script setup>
+import { rupees } from '../utils/format'
 import { ref, computed, watch } from 'vue'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
@@ -221,7 +222,7 @@ const save = async () => {
                                 <span class="text-sm font-bold text-on-surface-variant">Total</span>
                                 <span v-if="loadingPrice" class="text-sm text-outline">Calculating...</span>
                                 <span v-else class="text-lg font-extrabold text-on-surface">
-                                    ₹{{ totalPrice?.toFixed(0) ?? '—' }}
+                                    {{ rupees(totalPrice?.toFixed(0) ?? '—') }}
                                     <span class="text-xs font-normal text-outline">({{ duration }}h)</span>
                                 </span>
                             </div>

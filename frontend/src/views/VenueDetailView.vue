@@ -1,4 +1,5 @@
 <script setup>
+import { rupees } from '../utils/format'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
@@ -126,7 +127,7 @@ const menuGroups = computed(() => {
                 <div class="flex items-end justify-between">
                     <div>
                         <span class="text-xs text-outline font-medium block">Starting at</span>
-                        <span class="text-on-surface font-bold text-xl">₹{{ court.hourly_rate }}<span class="text-sm font-normal text-on-surface-variant">/hr</span></span>
+                        <span class="text-on-surface font-bold text-xl">{{ rupees(court.hourly_rate) }}<span class="text-sm font-normal text-on-surface-variant">/hr</span></span>
                     </div>
                     <div class="flex items-center gap-2">
                         <div v-if="!isVenueOwner" class="flex items-center gap-1 bg-amber-50 border border-amber-100 text-ending text-[10px] font-bold px-2.5 py-1.5 rounded-full">
@@ -144,7 +145,7 @@ const menuGroups = computed(() => {
             <!-- Earnings summary card -->
             <div v-if="earnings" class="mx-4 mb-5 cursor-pointer"
                 @click="router.push(`/my-venues/${court.id}/earnings`)">
-                <div class="bg-gradient-to-br from-black via-gray-950 to-black rounded-2xl p-4 text-white shadow-lg shadow-sm">
+                <div class="bg-gradient-to-br from-primary to-[#4C1D95] rounded-2xl p-4 text-white shadow-lg shadow-sm">
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center gap-2">
                             <TrendingUp :size="16" />
@@ -157,15 +158,15 @@ const menuGroups = computed(() => {
                     <div class="grid grid-cols-3 gap-3">
                         <div>
                             <p class="text-[10px] opacity-70 mb-0.5">Today</p>
-                            <p class="text-base font-extrabold">₹{{ Number(earnings.today).toLocaleString('en-IN') }}</p>
+                            <p class="text-base font-extrabold">{{ rupees(earnings.today) }}</p>
                         </div>
                         <div>
                             <p class="text-[10px] opacity-70 mb-0.5">This Month</p>
-                            <p class="text-base font-extrabold">₹{{ Number(earnings.this_month).toLocaleString('en-IN') }}</p>
+                            <p class="text-base font-extrabold">{{ rupees(earnings.this_month) }}</p>
                         </div>
                         <div>
                             <p class="text-[10px] opacity-70 mb-0.5">All Time</p>
-                            <p class="text-base font-extrabold">₹{{ Number(earnings.total).toLocaleString('en-IN') }}</p>
+                            <p class="text-base font-extrabold">{{ rupees(earnings.total) }}</p>
                         </div>
                     </div>
                 </div>

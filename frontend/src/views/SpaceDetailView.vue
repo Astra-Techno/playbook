@@ -1,4 +1,5 @@
 <script setup>
+import { rupees } from '../utils/format'
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
@@ -108,7 +109,7 @@ const menuItems = computed(() => [
                     <div class="mt-3 flex items-end justify-between">
                         <div v-if="space.hourly_rate">
                             <span class="text-xs text-outline font-medium block">Rate</span>
-                            <span class="text-on-surface font-bold text-lg">₹{{ space.hourly_rate }}<span class="text-sm font-normal text-on-surface-variant">/hr</span></span>
+                            <span class="text-on-surface font-bold text-lg">{{ rupees(space.hourly_rate) }}<span class="text-sm font-normal text-on-surface-variant">/hr</span></span>
                         </div>
                         <div v-else>
                             <span class="text-xs text-outline">Uses venue base rate</span>

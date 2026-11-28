@@ -1,4 +1,5 @@
 <script setup>
+import { rupees } from '../utils/format'
 import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { useRouter, useRoute } from 'vue-router'
@@ -461,7 +462,7 @@ const handleAvatarUpload = async (event) => {
                                 <div class="flex flex-col">
                                     <span class="text-xs text-outline font-medium">Starting at</span>
                                     <span class="text-on-surface font-bold text-lg">
-                                        ₹{{ court.hourly_rate }}<span class="text-sm font-normal text-on-surface-variant">/hr</span>
+                                        {{ rupees(court.hourly_rate) }}<span class="text-sm font-normal text-on-surface-variant">/hr</span>
                                     </span>
                                 </div>
                                 <div class="flex items-center gap-2">
@@ -510,7 +511,7 @@ const handleAvatarUpload = async (event) => {
                                         {{ booking.status }}
                                     </span>
                                     <div class="flex items-center gap-2">
-                                        <span class="font-bold text-sm text-on-surface">₹{{ booking.total_price }}</span>
+                                        <span class="font-bold text-sm text-on-surface">{{ rupees(booking.total_price) }}</span>
                                         <button v-if="booking.user_id" @click="openOwnerChat(booking)"
                                             class="flex items-center gap-1 text-[11px] font-bold px-2.5 py-1.5 rounded-xl bg-gray-100 text-on-surface-variant active:bg-slate-200 transition-colors">
                                             <MessageSquare :size="11" />
@@ -599,7 +600,7 @@ const handleAvatarUpload = async (event) => {
                                             class="capitalize">
                                             {{ booking.status }}
                                         </span>
-                                        <span class="font-bold text-sm text-on-surface">₹{{ booking.total_price }}</span>
+                                        <span class="font-bold text-sm text-on-surface">{{ rupees(booking.total_price) }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -622,23 +623,23 @@ const handleAvatarUpload = async (event) => {
                     <div class="grid grid-cols-2 gap-3 mb-5">
                         <div class="bg-white rounded-2xl p-4 ring-1 ring-slate-100 shadow-sm col-span-2">
                             <p class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-1">Total Earned</p>
-                            <p class="text-3xl font-extrabold text-on-surface">₹{{ Number(earnings.summary.total_earned).toLocaleString('en-IN') }}</p>
+                            <p class="text-3xl font-extrabold text-on-surface">{{ rupees(earnings.summary.total_earned) }}</p>
                         </div>
                         <div class="bg-white rounded-2xl p-4 ring-1 ring-slate-100 shadow-sm">
                             <p class="text-[11px] font-semibold text-outline mb-1">This Week</p>
-                            <p class="text-xl font-bold text-on-surface">₹{{ Number(earnings.summary.this_week).toLocaleString('en-IN') }}</p>
+                            <p class="text-xl font-bold text-on-surface">{{ rupees(earnings.summary.this_week) }}</p>
                         </div>
                         <div class="bg-white rounded-2xl p-4 ring-1 ring-slate-100 shadow-sm">
                             <p class="text-[11px] font-semibold text-outline mb-1">This Month</p>
-                            <p class="text-xl font-bold text-on-surface">₹{{ Number(earnings.summary.this_month).toLocaleString('en-IN') }}</p>
+                            <p class="text-xl font-bold text-on-surface">{{ rupees(earnings.summary.this_month) }}</p>
                         </div>
                         <div class="bg-emerald-50 rounded-2xl p-4 ring-1 ring-emerald-100 shadow-sm">
                             <p class="text-[11px] font-semibold text-free mb-1">Pending Payout</p>
-                            <p class="text-xl font-bold text-free">₹{{ Number(earnings.summary.pending_payout).toLocaleString('en-IN') }}</p>
+                            <p class="text-xl font-bold text-free">{{ rupees(earnings.summary.pending_payout) }}</p>
                         </div>
                         <div class="bg-white rounded-2xl p-4 ring-1 ring-slate-100 shadow-sm">
                             <p class="text-[11px] font-semibold text-outline mb-1">Paid Out</p>
-                            <p class="text-xl font-bold text-on-surface-variant">₹{{ Number(earnings.summary.total_paid_out).toLocaleString('en-IN') }}</p>
+                            <p class="text-xl font-bold text-on-surface-variant">{{ rupees(earnings.summary.total_paid_out) }}</p>
                         </div>
                     </div>
 
@@ -659,7 +660,7 @@ const handleAvatarUpload = async (event) => {
                                 <p class="text-xs text-outline truncate">{{ tx.court_name }} · {{ tx.type }}</p>
                             </div>
                             <div class="text-right shrink-0">
-                                <p class="font-bold text-sm text-on-surface">₹{{ Number(tx.amount).toLocaleString('en-IN') }}</p>
+                                <p class="font-bold text-sm text-on-surface">{{ rupees(tx.amount) }}</p>
                                 <p class="text-[10px] text-outline">{{ formatDate(tx.created_at) }}</p>
                             </div>
                         </div>
@@ -683,7 +684,7 @@ const handleAvatarUpload = async (event) => {
                                 <p v-if="payout.note" class="text-xs text-outline truncate">{{ payout.note }}</p>
                             </div>
                             <div class="text-right shrink-0">
-                                <p class="font-bold text-sm text-free">₹{{ Number(payout.amount).toLocaleString('en-IN') }}</p>
+                                <p class="font-bold text-sm text-free">{{ rupees(payout.amount) }}</p>
                                 <p class="text-[10px] text-outline">{{ formatDate(payout.paid_at) }}</p>
                             </div>
                         </div>
@@ -768,14 +769,14 @@ const handleAvatarUpload = async (event) => {
                 <template v-else-if="analytics">
                     <!-- Summary cards -->
                     <div class="grid grid-cols-2 gap-3 mb-5">
-                        <div class="col-span-2 bg-gradient-to-br from-black via-gray-950 to-black rounded-2xl p-4 text-white">
+                        <div class="col-span-2 bg-gradient-to-br from-primary to-[#4C1D95] rounded-2xl p-4 text-white">
                             <p class="text-xs font-semibold opacity-80 mb-1">Total Revenue (30 days)</p>
-                            <p class="text-3xl font-extrabold">₹{{ Number(analytics.summary?.total_revenue || 0).toLocaleString('en-IN') }}</p>
+                            <p class="text-3xl font-extrabold">{{ rupees(analytics.summary?.total_revenue || 0) }}</p>
                             <p class="text-xs opacity-70 mt-1">{{ analytics.summary?.total_bookings || 0 }} bookings · {{ analytics.summary?.unique_players || 0 }} players</p>
                         </div>
                         <div class="bg-white rounded-2xl p-4 ring-1 ring-slate-100">
                             <p class="text-[11px] font-semibold text-outline mb-1">Avg Booking</p>
-                            <p class="text-xl font-bold text-on-surface">₹{{ Number(analytics.summary?.avg_booking_value || 0).toFixed(0) }}</p>
+                            <p class="text-xl font-bold text-on-surface">{{ rupees(analytics.summary?.avg_booking_value || 0) }}</p>
                         </div>
                         <div class="bg-white rounded-2xl p-4 ring-1 ring-slate-100">
                             <p class="text-[11px] font-semibold text-outline mb-1">Cancel Rate</p>
@@ -793,7 +794,7 @@ const handleAvatarUpload = async (event) => {
                                 class="flex-1 bg-gray-200 rounded-t hover:bg-black/40 transition-colors relative group"
                                 :style="`height: ${Math.max(4, (day.revenue / Math.max(...analytics.revenue_by_day.map(d=>d.revenue))) * 80)}px`">
                                 <div class="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[9px] px-1.5 py-0.5 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                    ₹{{ Number(day.revenue).toLocaleString('en-IN') }}
+                                    {{ rupees(day.revenue) }}
                                 </div>
                             </div>
                         </div>
@@ -813,7 +814,7 @@ const handleAvatarUpload = async (event) => {
                                     <p class="text-sm font-bold text-on-surface truncate">{{ court.name }}</p>
                                     <p class="text-[11px] text-outline">{{ court.booking_count }} bookings</p>
                                 </div>
-                                <p class="text-sm font-extrabold text-on-surface shrink-0">₹{{ Number(court.revenue).toLocaleString('en-IN') }}</p>
+                                <p class="text-sm font-extrabold text-on-surface shrink-0">{{ rupees(court.revenue) }}</p>
                             </div>
                         </div>
                     </div>

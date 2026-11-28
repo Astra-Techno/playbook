@@ -117,7 +117,7 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
                         <p class="text-white/40 text-[9px] font-semibold tracking-widest mt-0.5">SPORTS · GYM · CLUB</p>
                     </div>
                 </div>
-                <p class="text-white/50 text-[11px] font-semibold uppercase tracking-widest mb-0.5">Get Started</p>
+                <p class="font-score text-white/50 text-[11px] font-bold uppercase tracking-[0.08em] mb-0.5">Get Started</p>
                 <h2 class="text-white text-2xl font-extrabold leading-tight">Enter your mobile<br>number</h2>
             </div>
 
@@ -128,7 +128,7 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
                     ⚠ {{ error }}
                 </div>
 
-                <label class="block text-xs font-bold text-outline uppercase tracking-widest mb-2">Mobile Number</label>
+                <label class="font-score block text-[13px] font-bold text-outline uppercase tracking-[0.08em] mb-2">Mobile Number</label>
                 <div class="flex rounded-2xl border-2 border-gray-200 focus-within:border-black transition-colors overflow-hidden mb-4 bg-gray-50 focus-within:bg-white">
                     <div class="flex items-center gap-1.5 px-4 border-r border-gray-200 shrink-0">
                         <span class="text-base">🇮🇳</span>
@@ -171,7 +171,7 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
                     <ArrowLeft :size="18" />
                 </button>
                 <div class="pl-10">
-                    <p class="text-white/50 text-[11px] font-semibold uppercase tracking-widest mb-0.5">Verification</p>
+                    <p class="font-score text-white/50 text-[11px] font-bold uppercase tracking-[0.08em] mb-0.5">Verification</p>
                     <h2 class="text-white text-xl font-extrabold leading-tight">OTP sent to</h2>
                     <p class="text-white/60 text-sm font-semibold mt-0.5">+91 {{ phone }}</p>
                 </div>
@@ -183,7 +183,7 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
                     ⚠ {{ error }}
                 </div>
 
-                <label class="block text-xs font-bold text-outline uppercase tracking-widest mb-4 text-center">Enter 4-digit OTP</label>
+                <label class="font-score block text-[13px] font-bold text-outline uppercase tracking-[0.08em] mb-4 text-center">Enter 4-digit OTP</label>
 
                 <!-- Responsive OTP grid — 4 equal columns, fills full width -->
                 <div class="grid grid-cols-4 gap-3 mb-7">
@@ -219,7 +219,7 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
                     <ArrowLeft :size="18" />
                 </button>
                 <div class="pl-10">
-                    <p class="text-white/50 text-[11px] font-semibold uppercase tracking-widest mb-0.5">New Account</p>
+                    <p class="font-score text-white/50 text-[11px] font-bold uppercase tracking-[0.08em] mb-0.5">New Account</p>
                     <h2 class="text-white text-xl font-extrabold">Complete your profile</h2>
                 </div>
             </div>
@@ -238,7 +238,7 @@ const categories = ['🏸 Badminton', '⚽ Football', '🏋️ Gym', '🎾 Tenni
                     </p>
                 </div>
 
-                <label class="block text-xs font-bold text-outline uppercase tracking-widest mb-2">Your Full Name</label>
+                <label class="font-score block text-[13px] font-bold text-outline uppercase tracking-[0.08em] mb-2">Your Full Name</label>
                 <input v-model="name" type="text" placeholder="e.g. Mathavan Kumar"
                     @keyup.enter="handleRegisterSubmit"
                     autofocus
